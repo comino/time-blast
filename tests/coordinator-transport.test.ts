@@ -74,7 +74,8 @@ afterEach(() => {
 });
 
 function harness(inferencePlacement: Placement = 'browser', databasePlacement: Placement = 'browser',
-  overrides: { inference?: InferenceAdapter; database?: DatabaseAdapter; speculation?: boolean } = {}) {
+  overrides: { inference?: InferenceAdapter; database?: DatabaseAdapter; speculation?: boolean;
+    liveTranslation?: boolean; translationMinChars?: number } = {}) {
   const events: PipelineEvent[] = [];
   const inference: InferenceAdapter = overrides.inference ?? {
     id: `inference-${inferencePlacement}`, placement: inferencePlacement,
@@ -87,7 +88,8 @@ function harness(inferencePlacement: Placement = 'browser', databasePlacement: P
   };
   const compiler: QueryCompiler = { kind: 'rust-wasm', prepare: vi.fn(async () => {}), compile: vi.fn(() => 'VALIDATED SQL') };
   const options: CoordinatorOptions = { database, inference, compiler, context, emit: event => events.push(event),
-    speculation: overrides.speculation ?? true, debounceMs: 0 };
+    speculation: overrides.speculation ?? true, liveTranslation: overrides.liveTranslation,
+    translationMinChars: overrides.translationMinChars, debounceMs: 0 };
   return { events, inference, database, compiler, options };
 }
 
@@ -415,12 +417,94 @@ describe('remote coordinator control budgets', () => {
 
 describe('remote control with independent data and inference placement', () => {
   it.each<[Placement, Placement]>([['browser', 'browser'], ['browser', 'remote'], ['remote', 'browser'], ['remote', 'remote']])(
+    'prepares translation only and promotes once with %s inference and %s database', async (inferencePlacement, databasePlacement) => {
+      const h = remote(harness(inferencePlacement, databasePlacement, { speculation: false, liveTranslation: true }));
+      const hello = h.socket.last('HELLO');
+      expect(hello.liveTranslation).toBe(true); expect(hello.translationMinChars).toBe(20);
+      expect(hello.speculation).toBe(false);
+      h.client.draft('Compare vessel speeds over the last 24 hours'); await settle();
+      expect(h.inference.resolve).not.toHaveBeenCalled();
+      const prepared = prepareReply(h.socket.last('DRAFT'));
+      h.socket.receive(prepared);
+      expect(h.inference.resolve).toHaveBeenCalledTimes(1);
+      await settle();
+      expect(h.compiler.compile).toHaveBeenCalledTimes(1);
+      expect(h.database.execute).not.toHaveBeenCalled();
+      expect(h.events.some(event => event.type === 'speculation' && event.state === 'translated')).toBe(true);
+      h.client.commit('Compare vessel speeds over the last 24 hours'); await settle();
+      expect(h.database.execute).not.toHaveBeenCalled();
+      h.socket.receive(acceptReply(h.socket.last('COMMIT'))); await settle();
+      expect(h.inference.resolve).toHaveBeenCalledTimes(1);
+      expect(h.compiler.compile).toHaveBeenCalledTimes(1);
+      expect(h.database.execute).toHaveBeenCalledTimes(1);
+      expect(vi.mocked(h.database.execute).mock.calls[0][0].priority).toBe('committed');
+      expect(h.events.filter(event => event.type === 'batch')).toHaveLength(1);
+      expect(h.events.filter(event => event.type === 'complete')).toHaveLength(1);
+      h.socket.receive(prepared); await settle();
+      expect(h.inference.resolve).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('enforces the advertised live threshold and composition boundaries before PREPARE', async () => {
+    const h = remote(harness('browser', 'remote', { speculation: true, liveTranslation: true, translationMinChars: 24 }));
+    expect(h.socket.last('HELLO').translationMinChars).toBe(24);
+    h.client.draft('x'.repeat(23)); h.socket.receive(prepareReply(h.socket.last('DRAFT'))); await settle();
+    expect(h.inference.resolve).not.toHaveBeenCalled();
+    h.client.draft('x'.repeat(24), true); const composing = h.socket.last('DRAFT');
+    h.socket.receive(prepareReply(composing)); await settle();
+    expect(h.inference.resolve).not.toHaveBeenCalled();
+    h.client.draft('x'.repeat(24), false); const finished = h.socket.last('DRAFT');
+    expect(finished.draft.revision).toBeGreaterThan(composing.draft.revision);
+    h.socket.receive(prepareReply(composing)); await settle();
+    expect(h.inference.resolve).not.toHaveBeenCalled();
+    h.socket.receive(prepareReply(finished));
+    expect(h.inference.resolve).toHaveBeenCalledTimes(1);
+    await settle(); expect(h.database.execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels stale live translation immediately and only prepares the latest authorized revision', async () => {
+    const base = harness('remote', 'browser', { speculation: false, liveTranslation: true });
+    let signal!: AbortSignal; let finish!: (result: InferenceResult) => void;
+    base.inference.resolve = vi.fn((draft: Draft, candidateSignal: AbortSignal) => {
+      if (draft.text.startsWith('Average')) {
+        signal = candidateSignal; return new Promise<InferenceResult>(resolve => { finish = resolve; });
+      }
+      return Promise.resolve({ plan, source: 'remote' as const });
+    });
+    const h = remote(base);
+    h.client.draft('Average speed by hour'); const old = h.socket.last('DRAFT');
+    h.socket.receive(prepareReply(old)); expect(signal.aborted).toBe(false);
+    h.client.draft('Maximum wind by hour today');
+    expect(signal.aborted).toBe(true);
+    finish({ plan, source: 'remote' }); h.socket.receive(prepareReply(old)); await settle();
+    expect(h.compiler.compile).not.toHaveBeenCalled();
+    h.socket.receive(prepareReply(h.socket.last('DRAFT'))); await settle();
+    expect(h.inference.resolve).toHaveBeenCalledTimes(2);
+    expect(h.compiler.compile).toHaveBeenCalledTimes(1);
+    expect(h.database.execute).not.toHaveBeenCalled();
+  });
+
+  it('revokes same-text preparation when composition starts and permits the finished revision', async () => {
+    const h = remote(harness('browser', 'browser', { speculation: false, liveTranslation: true }));
+    const text = 'Compare vessel speeds over the last 24 hours';
+    h.client.draft(text); const before = h.socket.last('DRAFT');
+    h.socket.receive(prepareReply(before)); await settle();
+    h.client.draft(text, true); h.client.draft(text, false);
+    h.socket.receive(prepareReply(before)); await settle();
+    expect(h.inference.resolve).toHaveBeenCalledTimes(1);
+    h.socket.receive(prepareReply(h.socket.last('DRAFT'))); await settle();
+    expect(h.inference.resolve).toHaveBeenCalledTimes(2);
+    expect(h.database.execute).not.toHaveBeenCalled();
+  });
+
+  it.each<[Placement, Placement]>([['browser', 'browser'], ['browser', 'remote'], ['remote', 'browser'], ['remote', 'remote']])(
     'promotes retained data once with %s inference and %s database', async (inferencePlacement, databasePlacement) => {
       const h = remote(harness(inferencePlacement, databasePlacement));
       const hello = h.socket.last('HELLO');
       expect(hello.inference.placement).toBe(inferencePlacement);
       expect(hello.database.placement).toBe(databasePlacement);
       expect(hello.dataPlane).toBe('direct-to-browser');
+      expect(hello.liveTranslation).toBe(false); expect(hello.translationMinChars).toBe(20);
       h.client.draft('Average speed by hour'); await settle();
       expect(h.inference.resolve).not.toHaveBeenCalled();
       const prepared = prepareReply(h.socket.last('DRAFT'));

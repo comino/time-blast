@@ -17,6 +17,7 @@ type Component = 'database' | 'model' | 'compiler' | 'coordinator';
 const fmt = new Intl.NumberFormat('en', { maximumFractionDigits: 1 });
 const integer = new Intl.NumberFormat('en');
 const date = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+const syntheticDatasetIds = new Set(['synthetic-vessels-2026-09-v1', 'synthetic-vessels-2026-09-6s-v1']);
 
 export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   root.innerHTML = shell;
@@ -34,18 +35,22 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   const input = el<HTMLTextAreaElement>('input');
   input.maxLength = MAX_PROMPT_CHARS;
   const runtimeForm = el<HTMLFormElement>('runtime-form');
+  (runtimeForm.elements.namedItem('translationMinChars') as HTMLInputElement).max = String(MAX_PROMPT_CHARS);
   const runtimeDialog = el<HTMLDialogElement>('runtime-dialog');
   const datasetDialog = el<HTMLDialogElement>('dataset-dialog');
   let config: RuntimeConfig = { ...DEFAULT_CONFIG };
   let context: DatasetContext | undefined, current: QueryView | undefined;
   let canceledId: string | undefined;
+  let completedId: string | undefined;
   let composing = false, awaitingStart = false, modelLoading = false, sum = 0, count = 0, total = 0, minimum = Infinity, maximum = -Infinity, batchCount = 0;
   let tableFrame = 0, historyFrame = 0;
   const seenSeries = new Set<number>();
   const chart = new StreamChart(el<HTMLCanvasElement>('chart'), (id, at) => {
     callbacks.onDraw(id, at);
     if (current?.id === id) { current.timing.firstDrawAt = at; updateTiming(current.timing); }
-  }, updateProgress, reordered => track.indexed(reordered));
+  }, updateProgress, reordered => track.indexed(reordered), id => {
+    if (id === current?.id) updateCompletionState();
+  });
   const track = new TrackChart(el<HTMLCanvasElement>('track'));
 
   function updateProgress(progress: BatchProgress): void {
@@ -57,6 +62,12 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
     el('mean').textContent = count ? fmt.format(sum / count) : '—';
     el('range').textContent = count ? `${fmt.format(minimum)} — ${fmt.format(maximum)}` : '—';
     if (legendChanged) renderLegend();
+  }
+
+  function updateCompletionState(): void {
+    if (!current || completedId !== current.id || canceledId === current.id || awaitingStart) return;
+    const complete = !total || chart.isSettled;
+    setResultState(complete ? total ? 'COMPLETE' : 'EMPTY RESULT' : 'DRAWING', complete ? 'ready' : 'loading');
   }
 
   function scrollHistory(): void {
@@ -75,20 +86,21 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   }
   function submit(): void {
     const text = input.value; if (!text.trim() || composing) return;
+    completedId = undefined;
     el('empty-title').textContent = 'Following your question…';
     if (!current) el('empty-detail').textContent = 'Preparing a validated query.';
     awaitingStart = true; setBusy(true); callbacks.onCommit(text);
   }
   el('composer').addEventListener('submit', e => { e.preventDefault(); submit(); });
   input.addEventListener('focus', () => callbacks.onFocus());
-  input.addEventListener('compositionstart', () => { composing = true; });
+  input.addEventListener('compositionstart', () => { composing = true; callbacks.onDraft(input.value, true); });
   input.addEventListener('compositionend', () => { composing = false; callbacks.onDraft(input.value, false); });
   input.addEventListener('input', () => callbacks.onDraft(input.value, composing));
   input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !composing && e.keyCode !== 229) { e.preventDefault(); submit(); } });
   root.querySelectorAll<HTMLButtonElement>('[data-prompt]').forEach(button => button.addEventListener('click', () => setPrompt(button.dataset.prompt!)));
   root.querySelector<HTMLAnchorElement>('.brand')!.addEventListener('click', e => { e.preventDefault(); input.focus(); });
   action('cancel').addEventListener('click', () => {
-    awaitingStart = false; canceledId = current?.id; chart.stop(); track.stop(); callbacks.onCancel(); setBusy(false); setResultState('CANCELED', 'quiet');
+    awaitingStart = false; completedId = undefined; canceledId = current?.id; chart.stop(); track.stop(); callbacks.onCancel(); setBusy(false); setResultState('CANCELED', 'quiet');
     if (!total) { el('plot-empty').hidden = false; el('empty-title').textContent = 'Query canceled.'; el('empty-detail').textContent = 'Your next question starts a fresh result.'; }
     else el('plot-subtitle').textContent = 'Canceled · partial result';
   });
@@ -113,20 +125,34 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
     const local = next.coordinatorMode === 'browser' && next.databaseMode === 'browser' && next.inferenceMode !== 'remote';
     el('placement').lastChild!.textContent = local ? ' LOCAL FIRST' : ' HYBRID RUNTIME';
     action('speculation').setAttribute('aria-checked', String(config.speculation));
-    el('draft-note').textContent = local ? 'Drafts stay in this browser.' : 'Drafts may be sent to configured remote services.';
-    el('draft-state').textContent = config.speculation ? 'Ready when you are' : 'Preparation paused'; el('draft-dot').dataset.state = 'quiet';
+    el('draft-note').textContent = (config.liveTranslation ? `Translate each edit from ${config.translationMinChars} characters. ` : '')
+      + (local ? 'Drafts stay in this browser.' : 'Drafts may be sent to configured remote services.');
+    el('draft-state').textContent = idleDraftLabel(); el('draft-dot').dataset.state = 'quiet';
+  }
+  function idleDraftLabel(): string {
+    return config.liveTranslation ? `Translation starts at ${config.translationMinChars} characters` : config.speculation ? 'Ready when you are' : 'Preparation paused';
   }
   action('speculation').addEventListener('click', () => { const next = { ...config, speculation: !config.speculation }; setConfig(next); callbacks.onConfig(next); });
   function field(name: string): HTMLInputElement | HTMLSelectElement { return runtimeForm.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement; }
   function updateEndpointFields(): void {
     for (const name of ['coordinator', 'inference', 'database']) { const remote = field(`${name}Mode`).value === 'remote'; const endpoint = field(`${name}Endpoint`) as HTMLInputElement; endpoint.hidden = !remote; endpoint.required = remote; }
     el('inference-draft-field').hidden = field('inferenceMode').value !== 'remote';
+    const browserDatabase = field('databaseMode').value === 'browser';
+    el('dataset-profile-field').hidden = !browserDatabase;
+    field('datasetProfile').disabled = !browserDatabase;
     root.querySelector<HTMLElement>('.model-load')!.hidden = !['auto', 'webgpu'].includes(field('inferenceMode').value);
     action<HTMLButtonElement>('warm-model').disabled = modelLoading || field('inferenceMode').value !== config.inferenceMode || !['auto', 'webgpu'].includes(config.inferenceMode);
     action('warm-model').title = field('inferenceMode').value !== config.inferenceMode ? 'Apply runtime before preparing this model' : 'Prepare the current local model';
+    const live = (field('liveTranslation') as HTMLInputElement).checked;
+    el('translation-threshold').hidden = !live;
+    (field('translationMinChars') as HTMLInputElement).disabled = !live;
+    (field('translationMinChars') as HTMLInputElement).required = live;
   }
   function fillRuntime(value = config): void {
-    for (const [key, val] of Object.entries(value)) if (key !== 'speculation') field(key).value = String(val);
+    for (const [key, val] of Object.entries(value)) {
+      if (typeof val === 'boolean') (field(key) as HTMLInputElement).checked = val;
+      else field(key).value = String(val);
+    }
     field('inferenceDraftEndpoint').value = value.inferenceDraftEndpoint || '';
     (field('speculation') as HTMLInputElement).checked = value.speculation; el('runtime-error').textContent = ''; updateEndpointFields();
   }
@@ -134,12 +160,20 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   action('reset-settings').addEventListener('click', () => fillRuntime(DEFAULT_CONFIG));
   runtimeForm.addEventListener('submit', e => {
     e.preventDefault();
+    const liveTranslation = (field('liveTranslation') as HTMLInputElement).checked;
+    const minimum = (field('translationMinChars') as HTMLInputElement).valueAsNumber;
+    const validMinimum = Number.isInteger(minimum) && minimum >= 1 && minimum <= MAX_PROMPT_CHARS;
+    if (liveTranslation && !validMinimum) {
+      el('runtime-error').textContent = `Use a whole number from 1 to ${MAX_PROMPT_CHARS} for minimum characters.`; return;
+    }
     const next: RuntimeConfig = {
       coordinatorMode: field('coordinatorMode').value as RuntimeConfig['coordinatorMode'], coordinatorEndpoint: field('coordinatorEndpoint').value.trim(),
       inferenceMode: field('inferenceMode').value as RuntimeConfig['inferenceMode'], inferenceEndpoint: field('inferenceEndpoint').value.trim(),
       inferenceDraftEndpoint: field('inferenceDraftEndpoint').value.trim(),
       databaseMode: field('databaseMode').value as RuntimeConfig['databaseMode'], databaseEndpoint: field('databaseEndpoint').value.trim(),
+      datasetProfile: field('datasetProfile').value as RuntimeConfig['datasetProfile'],
       speculation: (field('speculation') as HTMLInputElement).checked,
+      liveTranslation, translationMinChars: validMinimum ? minimum : config.translationMinChars,
     };
     for (const name of ['coordinator', 'inference', 'database'] as const) if (next[`${name}Mode`] === 'remote') {
       try { const url = new URL(next[`${name}Endpoint`]); const valid = name === 'coordinator' ? ['ws:', 'wss:'] : ['http:', 'https:']; if (!valid.includes(url.protocol)) throw new Error(); }
@@ -154,15 +188,15 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
 
   function setDataset(value: DatasetContext): void {
     context = value; el('dataset-name').textContent = value.label;
-    const synthetic = value.id === 'synthetic-vessels-2026-09-v1';
+    const synthetic = syntheticDatasetIds.has(value.id);
     el('dataset-badge').textContent = synthetic ? 'SYNTHETIC DATA' : 'DATASET';
     el('dataset-dialog-badge').textContent = synthetic ? 'GENERATED FIXTURE' : 'DATASET';
-    el('dataset-note').textContent = synthetic ? 'Synthetic vessel observations for exploring the complete query-to-chart pipeline.' : 'Dataset metadata supplied by the configured database.';
+    el('dataset-note').textContent = synthetic ? 'Generated observations feed the query. Each chart point aggregates a time bucket and vessel group, so chart point counts differ from dataset rows.' : 'Dataset metadata supplied by the configured database.';
     el('dataset-sub').textContent = `${integer.format(value.rowCount)} observations · ${value.vessels.length} vessels`;
     el('dataset-footer').textContent = `${date.format(value.start)} — ${date.format(value.end)} · ${integer.format(value.rowCount)} observations`;
     el('dataset-description').textContent = value.description;
     const facts = el('dataset-facts'); facts.replaceChildren();
-    for (const [name, detail] of [['Observations', integer.format(value.rowCount)], ['Period · UTC', `${date.format(value.start)} — ${date.format(value.end)}`], ['Vessels', value.vessels.join(', ')], ['Metrics', 'Speed, wind, wave height, water temperature']]) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = name; dd.textContent = detail; facts.append(dt, dd); }
+    for (const [name, detail] of [['Dataset rows', integer.format(value.rowCount)], ['Period · UTC', `${date.format(value.start)} — ${date.format(value.end)}`], ['Vessels', value.vessels.join(', ')], ['Metrics', 'Speed, wind, wave height, water temperature']]) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = name; dd.textContent = detail; facts.append(dt, dd); }
   }
   function setStatus(component: Component, status: AdapterStatus): void {
     const stage = root.querySelector<HTMLElement>(`[data-stage="${component}"]`)!; stage.dataset.state = status.state;
@@ -187,14 +221,16 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   function handleEvent(event: PipelineEvent): void {
     if (event.type === 'draft') { el('revision').textContent = `r.${event.revision}`; return; }
     if (event.type === 'speculation') {
-      const labels = { idle: 'Ready when you are', resolving: 'Reading your draft…', querying: 'Preparing a candidate…', ready: `${integer.format(event.points)} points staged before Enter`, canceled: 'Draft changed · preparing again' };
-      el('draft-state').textContent = config.speculation ? labels[event.state] : 'Preparation paused'; el('draft-dot').dataset.state = event.state === 'ready' ? 'ready' : ['resolving', 'querying'].includes(event.state) ? 'loading' : 'quiet'; return;
+      const labels = { idle: idleDraftLabel(), resolving: 'Translating your draft…', translated: 'SQL prepared before Enter', querying: 'Preparing query results…', ready: `${integer.format(event.points)} points staged before Enter`, canceled: 'Draft changed · preparing again' };
+      const active = config.speculation || config.liveTranslation;
+      el('draft-state').textContent = active ? labels[event.state] : 'Preparation paused';
+      el('draft-dot').dataset.state = active && ['ready', 'translated'].includes(event.state) ? 'ready' : active && ['resolving', 'querying'].includes(event.state) ? 'loading' : 'quiet'; return;
     }
     if (event.type === 'trace') {
       el('trace-empty').hidden = true; const li = document.createElement('li'), name = document.createElement('span'), detail = document.createElement('span'); name.textContent = event.entry.event; detail.textContent = event.entry.detail; li.append(name, detail); el('trace-list').prepend(li); while (el('trace-list').children.length > 12) el('trace-list').lastElementChild!.remove(); return;
     }
     if (event.type === 'start') {
-      current = event.view; awaitingStart = false; canceledId = undefined; sum = 0; count = 0; total = 0; batchCount = 0; minimum = Infinity; maximum = -Infinity; seenSeries.clear();
+      current = event.view; awaitingStart = false; canceledId = undefined; completedId = undefined; sum = 0; count = 0; total = 0; batchCount = 0; minimum = Infinity; maximum = -Infinity; seenSeries.clear();
       chart.begin(current); setTab('chart'); track.begin(chart.batches, chart.order); setBusy(true); setResultState('QUERYING', 'loading');
       renderLegend(); el('table-body').replaceChildren();
       const metric = METRIC_LABELS[current.plan.metric];
@@ -222,12 +258,12 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
     }
     if (event.type === 'complete') {
       if (event.id !== current?.id || event.id === canceledId) return;
-      current.timing = event.timing; updateTiming(event.timing); setBusy(false); setResultState(total ? 'COMPLETE' : 'EMPTY RESULT', 'ready');
+      current.timing = event.timing; completedId = event.id; updateTiming(event.timing); setBusy(false); updateCompletionState();
       if (!total) { el('empty-title').textContent = 'No matching observations.'; el('empty-detail').textContent = 'Try a wider time window or another vessel.'; el('points').textContent = '0'; } return;
     }
     if (event.type === 'error') {
       if (event.id && (event.id === canceledId || current && event.id !== current.id && !awaitingStart)) return;
-      awaitingStart = false;
+      awaitingStart = false; completedId = undefined;
       setBusy(false); setResultState('QUERY ERROR', 'error'); const message = document.createElement('div'); message.className = 'error-message'; message.setAttribute('role', 'alert'); message.textContent = event.message; el('history').append(message); scrollHistory();
       if (!total) { el('plot-empty').hidden = false; el('empty-title').textContent = 'This question needs another pass.'; el('empty-detail').textContent = event.message; } else el('plot-subtitle').textContent = `Incomplete result · ${event.message}`;
     }

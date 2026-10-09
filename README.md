@@ -25,7 +25,9 @@ pnpm dev
 
 Open the printed localhost URL. Use Node 22.12+ (or Node 20.19+). The checked-in Wasm compiler and synthetic Parquet dataset make Rust/Python unnecessary to run the app.
 
-The app loads **120,960 synthetic vessel readings** into DuckDB. Start typing **“Compare vessel speeds over the last 24 hours”**, wait for the preparation indicator, then press Enter. The chart reports measured commit-to-first-draw submission, whether prepared data was reused, and the actual point/batch count. Query details expose the generated SQL. This measures software, not photons.
+The app generates **1,209,600 synthetic vessel readings** directly inside DuckDB: six vessels, every six seconds, for 14 days. Runtime → Browser dataset also offers the smaller **120,960-reading** Parquet demo. Source row counts and chart point counts are different: aggregation deliberately reduces the latter.
+
+Try **“Compare vessel wave height by minute over the last 7 days”** for **60,480 chart points**, or **“Compare vessel speeds by minute over the last 24 hours”** for **8,640**. Wait for the preparation indicator, then press Enter. The chart reports measured commit-to-first-draw submission, whether prepared data was reused, and the actual point/batch count. Query details expose the generated SQL. This measures software, not photons.
 
 Auto inference uses conservative exact templates for recognized requests and a local **Qwen2.5-0.5B** WebGPU model for other wording. Select **Local language model · WebGPU** in Runtime to force real inference even for a template. Initial model download is hundreds of megabytes; loading and model availability are visible. Unsupported WebGPU leaves exact templates usable in Auto mode. Templates are explicitly identified as templates, never presented as model output.
 
@@ -39,6 +41,7 @@ Default execution stays in your browser. Assets and model weights must download 
 
 - Every input revision crosses a local MessageChannel immediately, then reaches the inference worker. A complete immutable snapshot accompanies Enter.
 - After a 180 ms typing pause, one bounded speculative job resolves the current draft and may query DuckDB. Matching work is promoted without executing it again; stale work is canceled. This predicts the current draft, not future words.
+- Optionally enable **Runtime → Translate on every edit**, starting at **20 characters** by default. Each eligible edit replaces the previous translation immediately, including deletion/paste; IME composition waits until completion. The threshold is adjustable. Turn **Prepare query results while I type** off to prepare SQL only, then execute the database on Enter. The selected inference mode still applies: Auto may use templates, while Local WebGPU forces the language model.
 - Rust/Wasm compiles the intent; DuckDB runs in its own worker; WebLLM runs in another worker. Heavy engines are initialized before submission where possible.
 - Arrow numeric columns retain their backing buffers into Canvas2D. The first marker is submitted on the first batch before subsequent chart work. Local data does not get encoded for a fictitious network boundary.
 - Cancellation epochs, exact question/snapshot matching, per-query database connections, bounded queues, staged-memory limits, and explicit failure/completion protect speculation.
@@ -57,7 +60,9 @@ pnpm build:wasm
 cargo test --manifest-path crates/query-core/Cargo.toml
 # With Vite running and Python Playwright + Chromium available:
 python3 tests/browser_database.py
+python3 tests/browser_database.py --dataset-profile large
 python3 tests/browser_ui.py
+python3 tests/ui_live_translation.py
 # Requires a real available WebGPU adapter; downloads model weights:
 python3 tests/browser_inference.py
 ```

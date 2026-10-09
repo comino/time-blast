@@ -39,3 +39,18 @@ The compiler still aggregates and sorts the whole selected time range (`crates/q
 An in-flight speculative request now exposes its current priority to the browser adapter at admission through the coordinator's priority getter. Once a remote POST has already been submitted, the existing bridge contract has no operation to upgrade its server-side priority. Such promotion remains local; no remote priority-upgrade endpoint was invented. The admission gate remains one active query and one waiter, with coordinator cancellation providing the current replacement policy.
 
 Whole-batch validity checks precede publication. A small first record batch is a candidate for reducing that barrier, but it requires measured batch-size sweeps and must preserve complete-point validation. The framing check introduces bounded metadata parsing work; there is no claimed speedup from that correctness check.
+
+## Follow-up: live translation and dataset profiles
+
+Remote HELLO now explicitly includes `liveTranslation` (default false) and `translationMinChars` (default 20). With live translation enabled, PREPARE is eligible only at the trimmed-text threshold and outside composition; the browser still requires server authorization for each revision. Composition state changes advance the revision even when text is unchanged, preventing an earlier permission from restarting canceled composition work. With database speculation disabled, the candidate contains validated SQL only and reaches the database after the matching ACCEPT. Tests cover all four independent inference/database placement combinations, immediate stale cancellation, threshold boundaries, and same-text composition transitions. No remote scheduling service is implemented, so these client changes do not guarantee immediate remote translation latency.
+
+The browser database now offers two explicitly synthetic profiles:
+
+| Profile | Snapshot ID | Observations | Sampling |
+| --- | --- | ---: | --- |
+| Demo | `synthetic-vessels-2026-09-v1` | 120,960 | One minute |
+| Large (default) | `synthetic-vessels-2026-09-6s-v1` | 1,209,600 | Six seconds |
+
+Both contain six fictional vessels over the same 14-day UTC window. Demo loads the existing small Parquet file. Large evaluates the original continuous-time synthetic formulas directly inside DuckDB using SQL `range`; it does not repeat downloaded rows, construct JavaScript row objects, or add a large asset. Natural range order avoids a global startup sort. The 256 MB database memory limit now applies before materialization. A 6,048,000-row stress option was not added: its primitive columns alone would occupy about 363 MB, exceeding that engine budget before execution overhead.
+
+Increasing source observations does not directly multiply the number of aggregated chart points. Minute buckets across all six vessels produce 8,640 chart points for one day or 60,480 for one week. `tests/browser_database.py --dataset-profile demo|large` verifies actual materialized row counts, date bounds, vessel count, normal query results, and cancellation, while reporting startup duration as an observation. The default smoke profile remains explicit `demo`; integrating browser checks and startup/memory observations for `large` are run separately, without concurrent browser benchmarks.

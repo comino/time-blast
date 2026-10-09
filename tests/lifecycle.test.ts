@@ -1,17 +1,17 @@
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {DEFAULT_CONFIG} from '../src/core/types';
 
-const state=vi.hoisted(()=>({databases:[] as any[],models:[] as any[],clients:[] as any[],callbacks:undefined as any,
+const state=vi.hoisted(()=>({databases:[] as any[],models:[] as any[],clients:[] as any[],coordinatorOptions:[] as any[],callbacks:undefined as any,
   statuses:[] as any[],events:[] as any[],busy:[] as boolean[],failConstruct:false,failDispose:false,listeners:new Map<string,Function>()}));
 vi.mock('../src/adapters/duckdb',()=>({DuckDBAdapter:class {
   dispose=vi.fn(async()=>{if(state.failDispose)throw new Error('Disposal failed');});
   context={id:`dataset-${state.databases.length}`,vessels:['A'],start:0,end:1};
   prepare=vi.fn(async()=>this.context);
-  constructor(){if(state.failConstruct)throw new Error('Invalid database endpoint');state.databases.push(this);}
+  constructor(readonly profile?:string){if(state.failConstruct)throw new Error('Invalid database endpoint');state.databases.push(this);}
 }}));
 vi.mock('../src/adapters/remote-database',async()=>({RemoteDatabaseAdapter:(await import('../src/adapters/duckdb')).DuckDBAdapter}));
 vi.mock('../src/core/compiler',()=>({WasmQueryCompiler:class {prepare=vi.fn(async()=>{});}}));
-vi.mock('../src/core/coordinator',()=>({BrowserCoordinator:class {},LocalCoordinatorClient:class {
+vi.mock('../src/core/coordinator',()=>({BrowserCoordinator:class {constructor(options:any){state.coordinatorOptions.push(options);}},LocalCoordinatorClient:class {
   dispose=vi.fn();draft=vi.fn();commit=vi.fn();
   constructor(){state.clients.push(this);}
 }}));
@@ -25,7 +25,7 @@ vi.mock('../src/ui',()=>({createUI:(_root:any,callbacks:any)=>{
 }}));
 
 beforeEach(()=>{
-  vi.resetModules();state.databases=[];state.models=[];state.clients=[];state.statuses=[];state.events=[];state.busy=[];state.failConstruct=false;state.failDispose=false;state.listeners.clear();
+  vi.resetModules();state.databases=[];state.models=[];state.clients=[];state.coordinatorOptions=[];state.statuses=[];state.events=[];state.busy=[];state.failConstruct=false;state.failDispose=false;state.listeners.clear();
   vi.stubGlobal('document',{querySelector:()=>({})});
   vi.stubGlobal('window',{addEventListener:(type:string,callback:Function)=>state.listeners.set(type,callback)});
 });
@@ -33,6 +33,20 @@ afterEach(()=>vi.unstubAllGlobals());
 const start=async()=>{await import('../src/main');await vi.waitFor(()=>expect(state.clients).toHaveLength(1));};
 
 describe('runtime adapter ownership',()=>{
+  it('reconfigures live translation without replacing warmed adapters',async()=>{
+    await start();expect(state.coordinatorOptions[0]).toMatchObject({liveTranslation:false,translationMinChars:20});
+    state.callbacks.onConfig({...DEFAULT_CONFIG,liveTranslation:true,translationMinChars:24,speculation:false});
+    await vi.waitFor(()=>expect(state.clients).toHaveLength(2));
+    expect(state.databases).toHaveLength(1);expect(state.models).toHaveLength(1);
+    expect(state.coordinatorOptions.at(-1)).toMatchObject({liveTranslation:true,translationMinChars:24,speculation:false});
+  });
+  it('changes local dataset profiles without replacing the warmed model',async()=>{
+    await start();expect(state.databases[0].profile).toBe('large');
+    state.callbacks.onConfig({...DEFAULT_CONFIG,datasetProfile:'demo'});
+    await vi.waitFor(()=>expect(state.clients).toHaveLength(2));
+    expect(state.databases).toHaveLength(2);expect(state.databases[1].profile).toBe('demo');expect(state.models).toHaveLength(1);
+    expect(state.models[0].prepare).toHaveBeenLastCalledWith(state.databases[1].context);
+  });
   it.each(['constructor','disposal'])('reports database %s failures instead of leaving initialization pending',async failure=>{
     await start();state.failConstruct=failure==='constructor';state.failDispose=failure==='disposal';
     state.callbacks.onConfig({...DEFAULT_CONFIG,databaseMode:'remote',databaseEndpoint:'https://db.test?invalid'});

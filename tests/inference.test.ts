@@ -137,6 +137,27 @@ describe('generation ownership and cancellation', () => {
 });
 
 describe('adapter behavior', () => {
+  it('releases canceled edits during cold warmup and admits only the latest after readiness',async()=>{
+    let worker:any;
+    vi.stubGlobal('navigator',{gpu:{}});
+    vi.stubGlobal('Worker',class {
+      messages:WorkerRequest[]=[];onmessage:any;terminate(){};
+      constructor(){worker=this;}postMessage(message:WorkerRequest){this.messages.push(message);}
+    });
+    const adapter=createInferenceAdapter('webgpu');const preparation=adapter.prepare(context);
+    for(let i=0;i<50;i++) {
+      const controller=new AbortController();const remove=vi.spyOn(controller.signal,'removeEventListener');
+      const result=adapter.resolve(draft('Please show vessel speeds',i),controller.signal);
+      controller.abort();await expect(result).rejects.toMatchObject({name:'AbortError'});
+      expect(remove).toHaveBeenCalledWith('abort',expect.any(Function));
+    }
+    const latest=adapter.resolve(draft('Please show the latest vessel speeds',51),signal());
+    worker.onmessage({data:{type:'ready',id:worker.messages[0].id,model:'test'}});await preparation;
+    await vi.waitFor(()=>expect(worker.messages.filter((message:WorkerRequest)=>message.type==='resolve')).toHaveLength(1));
+    const request=worker.messages.find((message:WorkerRequest)=>message.type==='resolve');
+    expect(request.draft.revision).toBe(51);
+    worker.onmessage({data:{type:'result',id:request.id,result:{source:'webgpu',plan}}});await expect(latest).resolves.toMatchObject({plan});adapter.dispose();
+  });
   it('retries failed preparation with a fresh worker and retains a successful worker',async()=>{
     const workers:any[]=[];
     class Worker {

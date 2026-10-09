@@ -42,7 +42,7 @@ async function warmModel():Promise<void> {
 async function initialize():Promise<void> {
   const own=++generation;
   const selected={...config};
-  const nextDatabaseKey=JSON.stringify([selected.databaseMode,selected.databaseEndpoint]);
+  const nextDatabaseKey=JSON.stringify([selected.databaseMode,selected.databaseEndpoint,selected.databaseMode==='browser'?selected.datasetProfile:null]);
   const nextInferenceKey=JSON.stringify([selected.inferenceMode,selected.inferenceEndpoint,selected.inferenceDraftEndpoint]);
   const keepDatabase=databaseKey===nextDatabaseKey&&Boolean(database&&context);
   const keepInference=inferenceKey===nextInferenceKey&&Boolean(inference);
@@ -57,7 +57,7 @@ async function initialize():Promise<void> {
   try {
     await previous?.dispose();
     if (own!==generation) return;
-    const db=database??(selected.databaseMode==='browser'?new DuckDBAdapter():new RemoteDatabaseAdapter(selected.databaseEndpoint));
+    const db=database??(selected.databaseMode==='browser'?new DuckDBAdapter(selected.datasetProfile):new RemoteDatabaseAdapter(selected.databaseEndpoint));
     database=db;
     databaseKey=nextDatabaseKey;
     const [dataset]=await Promise.all([
@@ -87,7 +87,8 @@ function connect(selected:RuntimeConfig,own:number,dataset:DatasetContext,db:Dat
     ui.handleEvent(event);
     if(event.type==='complete'||event.type==='error')ui.setBusy(false);
   };
-  const options={database:db,inference:model,compiler,context:dataset,emit,speculation:selected.speculation};
+  const options={database:db,inference:model,compiler,context:dataset,emit,speculation:selected.speculation,
+    liveTranslation:selected.liveTranslation,translationMinChars:selected.translationMinChars};
   ui.setBusy(false);
   try {
     if(selected.coordinatorMode==='browser') {

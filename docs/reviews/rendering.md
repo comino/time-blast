@@ -70,4 +70,5 @@ Unit regressions cover retained batch identity, bounded indexing, incremental ch
 - The first grid, small DOM changes and bounded trace/history updates still execute around request start. This review avoids the duplicate first-marker grid draw when its domain is unchanged, but does not claim those remaining operations are free.
 - A frame budget is shared across these drawing components; it does not reserve time from unrelated scripts, style/layout or browser rendering.
 - Full result drawing and statistics complete asynchronously after database completion. The first valid point remains prioritized.
+- The follow-up UI distinguishes this with `DRAWING` until primary geometry and statistics settle, then `COMPLETE`. A 60,480-point browser regression checks the intermediate state, final statistics/coverage, cancellation, replacement, error fencing and hide/show redraw. Database `completedAt` is unchanged.
 - Drawing metadata and marker backing surfaces consume memory in addition to retained column buffers. This implementation preserves column-buffer identity; it does not claim zero browser/GPU copies or that the column byte budget measures all browser memory.

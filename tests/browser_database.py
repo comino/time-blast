@@ -14,14 +14,16 @@ from pathlib import Path
 from playwright.async_api import async_playwright
 
 
-SMOKE = """async () => {
+SMOKE = """async (profile) => {
   const { DuckDBAdapter } = await import('/src/adapters/duckdb.ts');
   const { WasmQueryCompiler } = await import('/src/core/compiler.ts');
-  const database = new DuckDBAdapter();
+  const database = new DuckDBAdapter(profile);
   const compiler = new WasmQueryCompiler();
   const progress = [];
   try {
+    const startedAt = performance.now();
     const context = await database.prepare(status => progress.push(status.label));
+    const startupMs = performance.now() - startedAt;
     await compiler.prepare();
     const plan = { metric: 'speed', aggregate: 'avg', bucketMinutes: 60,
       windowHours: 24, splitByVessel: true, vessel: null, view: 'line' };
@@ -34,10 +36,21 @@ SMOKE = """async () => {
       batches++; points += batch.length;
       first ??= { x: batch.x[0], y: batch.y[0], series: batch.series[0] };
     }
-    if (context.rowCount !== 120960 || points !== 144)
+    const expectedRows = profile === 'large' ? 1209600 : 120960;
+    if (context.rowCount !== expectedRows || points !== 144)
       throw new Error(`Unexpected fixture/result count: ${context.rowCount}/${points}`);
     if (first.x !== context.end - 24 * 3600000 || first.series !== 0 || !Number.isFinite(first.y))
       throw new Error('Unexpected first hourly observation');
+
+    const stats = [];
+    for await (const batch of database.execute({ ...request('browser-smoke-dataset-bounds'),
+      sql: 'SELECT min(t)::DOUBLE AS x, count(*)::DOUBLE AS y, 0::INTEGER AS series FROM telemetry UNION ALL SELECT max(t)::DOUBLE, count(DISTINCT vessel)::DOUBLE, 0::INTEGER FROM telemetry' })) {
+      for (let i = 0; i < batch.length; i++) stats.push([batch.x[i], batch.y[i]]);
+    }
+    const interval = profile === 'large' ? 6000 : 60000;
+    if (stats.length !== 2 || !stats.some(([x, y]) => x === context.start && y === expectedRows) ||
+        !stats.some(([x, y]) => x === context.end - interval && y === 6))
+      throw new Error(`Unexpected materialized dataset bounds: ${JSON.stringify(stats)}`);
 
     const controller = new AbortController();
     const stream = database.execute({ ...request('browser-smoke-cancel', controller.signal),
@@ -55,7 +68,7 @@ SMOKE = """async () => {
       nextRows += batch.length;
     if (nextRows !== 144) throw new Error(`Cancellation affected next query: ${nextRows} rows`);
     await new Promise(resolve => setTimeout(resolve, 250));
-    return { contextId: context.id, datasetRows: context.rowCount, progress,
+    return { profile, contextId: context.id, datasetRows: context.rowCount, startupMs, progress,
       batches, points, first, cancelFirstBatch, cancellation, nextRows };
   } finally { await database.dispose(); }
 }"""
@@ -84,7 +97,7 @@ async def run(args):
             await page.route("**/__database_smoke", lambda route: route.fulfill(
                 status=200, content_type="text/html", body="<!doctype html><title>Database smoke</title>"))
             await page.goto(args.url.rstrip("/") + "/__database_smoke")
-            result = await asyncio.wait_for(page.evaluate(SMOKE), timeout=args.timeout)
+            result = await asyncio.wait_for(page.evaluate(SMOKE, args.dataset_profile), timeout=args.timeout)
             print(json.dumps({"versions": {**installed_versions(), "chromium": browser.version},
                               "result": result, "page_errors": errors}, indent=2))
             if errors:
@@ -98,4 +111,5 @@ if __name__ == "__main__":
     parser.add_argument("--url", default="http://localhost:5173", help="Running Vite development origin")
     parser.add_argument("--chromium", help="Optional Chromium executable path")
     parser.add_argument("--timeout", type=float, default=120, help="Database smoke timeout in seconds")
+    parser.add_argument("--dataset-profile", choices=("demo", "large"), default="demo", help="Explicit synthetic dataset profile")
     asyncio.run(run(parser.parse_args()))

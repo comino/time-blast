@@ -4,12 +4,17 @@ import {MAX_PROMPT_CHARS} from '../inference/plan';
 type Emit = (event:PipelineEvent)=>void;
 interface Job {
   id:string; draft:Draft; abort:AbortController; timing:QueryTiming;
-  view?:QueryView; staged:ColumnBatch[]; committed:boolean; settled:boolean; error?:Error;
+  view?:QueryView; staged:ColumnBatch[]; committed:boolean; settled:boolean; queryStarted:boolean; error?:Error;
   retained:Set<ArrayBufferLike>; retainedBytes:number; draining?:Promise<void>;
 }
 export interface CoordinatorOptions {
   database:DatabaseAdapter; inference:InferenceAdapter; compiler:QueryCompiler; context:DatasetContext;
   emit:Emit; speculation:boolean; debounceMs?:number; speculativeBytes?:number; resultBytes?:number;
+  liveTranslation?:boolean; translationMinChars?:number;
+}
+
+export function translationThreshold(value?:number):number {
+  return Number.isSafeInteger(value)&&value!>=1&&value!<=MAX_PROMPT_CHARS?value!:20;
 }
 
 /** Control only. The data path passes retained column views by reference. */
@@ -34,7 +39,7 @@ export class BrowserCoordinator {
     this.emit({type:'error',message:`Requests must be at most ${MAX_PROMPT_CHARS} characters.`});return false;
   }
 
-  observeDraft(draft:Draft,composing=false):void {
+  observeDraft(draft:Draft,composing=false,schedulingSuppressed=false):void {
     if (this.closed || (this.latest && draft.revision < this.latest.revision)) return;
     if(!this.validatePrompt(draft.text))return;
     if (draft.contextId !== this.options.context.id) return;
@@ -42,16 +47,22 @@ export class BrowserCoordinator {
     this.options.inference.observeDraft(draft);
     this.emit({type:'draft',revision:draft.revision,chars:draft.text.length});
     clearTimeout(this.timer);
-    if (this.candidate && this.candidate.draft.text !== draft.text) this.dropCandidate('Draft changed');
-    if (!this.options.speculation || composing || draft.text.trim().length<4 || this.candidate) return;
-    this.timer=setTimeout(()=> {
+    const live=this.options.liveTranslation??false;
+    const minimum=live?translationThreshold(this.options.translationMinChars):4;
+    if (this.candidate && (this.candidate.draft.text !== draft.text||composing||draft.text.trim().length<minimum)) this.dropCandidate('Draft changed');
+    if(composing||draft.text.trim().length<minimum) {
+      this.emit({type:'speculation',state:'idle',text:'',points:0});return;
+    }
+    if ((!this.options.speculation&&!live) || schedulingSuppressed || this.candidate) return;
+    const prepare=()=> {
       if (this.closed || this.latest !== draft) return;
       const job=this.makeJob(draft,false);
       this.candidate=job;
       this.emit({type:'speculation',state:'resolving',text:draft.text,points:0});
-      this.trace('speculation_started',`revision ${draft.revision}`);
+      this.trace(live?'translation_started':'speculation_started',`revision ${draft.revision}`);
       void this.run(job);
-    },this.options.debounceMs ?? 180);
+    };
+    if(live)prepare();else this.timer=setTimeout(prepare,this.options.debounceMs ?? 180);
   }
 
   commit(draft:Draft):void {
@@ -75,7 +86,7 @@ export class BrowserCoordinator {
       job.timing.committedAt=draft.sentAt;
       job.timing.promoted=job.staged.length>0;
       this.foreground=job;
-      this.trace(job.timing.promoted?'prepared_result_promoted':'inflight_work_promoted',`revision ${draft.revision}`);
+      this.trace(job.timing.promoted?'prepared_result_promoted':job.view&&!job.queryStarted?'prepared_sql_promoted':'inflight_work_promoted',`revision ${draft.revision}`);
       // A same-text draft may have a later revision; bind display to the committed revision.
       job.draft=draft;
       if (job.view) {
@@ -84,6 +95,7 @@ export class BrowserCoordinator {
         this.publishStaged(job);
       }
       if (job.settled) void this.completePromoted(job);
+      else if(job.view&&!job.queryStarted)void this.run(job);
     } else {
       this.dropCandidate('Commit did not match prepared work');
       job=this.makeJob(draft,true);
@@ -96,23 +108,32 @@ export class BrowserCoordinator {
 
   private makeJob(draft:Draft,committed:boolean):Job {
     const now=performance.now();
-    return {id:`${this.session}-${++this.counter}`,draft,abort:new AbortController(),committed,settled:false,staged:[],retained:new Set(),retainedBytes:0,
+    return {id:`${this.session}-${++this.counter}`,draft,abort:new AbortController(),committed,settled:false,queryStarted:false,staged:[],retained:new Set(),retainedBytes:0,
       timing:{startedAt:now,committedAt:committed?draft.sentAt:undefined,promoted:false,batches:0,points:0,bytes:0}};
   }
 
   private async run(job:Job):Promise<void> {
     const {inference,compiler,database,context}=this.options;
     try {
-      const result=await inference.resolve(job.draft,job.abort.signal);
-      if (job.abort.signal.aborted || this.closed) return;
-      job.timing.intentAt=performance.now();
-      const sql=compiler.compile(result.plan,context);
-      job.view={id:job.id,prompt:job.draft.text,revision:job.draft.revision,plan:result.plan,sql,
-        source:result.source,model:result.model,context,timing:job.timing};
-      if (job.committed) this.emit({type:'start',view:job.view});
-      else this.emit({type:'speculation',state:'querying',text:job.draft.text,points:0});
-      this.trace('intent_validated',`${result.source} · ${job.id}`);
-      for await (const batch of database.execute({id:job.id,sql,plan:result.plan,context,signal:job.abort.signal,
+      if(!job.view) {
+        const result=await inference.resolve(job.draft,job.abort.signal);
+        if (job.abort.signal.aborted || this.closed) return;
+        job.timing.intentAt=performance.now();
+        const sql=compiler.compile(result.plan,context);
+        job.view={id:job.id,prompt:job.draft.text,revision:job.draft.revision,plan:result.plan,sql,
+          source:result.source,model:result.model,context,timing:job.timing};
+        if (job.committed) this.emit({type:'start',view:job.view});
+        this.trace('intent_validated',`${result.source} · ${job.id}`);
+      }
+      if(job.abort.signal.aborted||this.closed||job.queryStarted)return;
+      if(!job.committed&&!this.options.speculation) {
+        this.emit({type:'speculation',state:'translated',text:job.draft.text,points:0});
+        this.trace('sql_prepared',`revision ${job.draft.revision} · database waits for Enter`);return;
+      }
+      job.queryStarted=true;
+      if(!job.committed)this.emit({type:'speculation',state:'querying',text:job.draft.text,points:0});
+      const {sql,plan}=job.view;
+      for await (const batch of database.execute({id:job.id,sql,plan,context,signal:job.abort.signal,
         // Admission can occur after Enter. An already-sent remote request needs a
         // service-specific upgrade protocol, which this prototype does not have.
         get priority() { return job.committed?'committed' as const:'speculative' as const; }})) {

@@ -105,4 +105,30 @@ describe('cooperative chart rendering', () => {
     expect(target.ctx.fillRect.mock.calls.length).toBe(102); // background and all 101 rescaled bars
     chart.destroy();
   });
+
+  it('reports settlement only after indexing and painting, and invalidates it on redraw', () => {
+    const target = canvas(), settled = vi.fn();
+    const chart = new StreamChart(target as unknown as HTMLCanvasElement, () => {}, () => {}, () => {}, settled);
+    chart.begin(view('large')); chart.append(batch(6000));
+    expect(chart.isSettled).toBe(false); frame(); frame();
+    expect(chart.isSettled).toBe(false); expect(settled).not.toHaveBeenCalled();
+    settle(); expect(chart.isSettled).toBe(true); expect(settled.mock.calls).toEqual([['large', true]]);
+    chart.setVisible(false); expect(chart.isSettled).toBe(true);
+    chart.setVisible(true); expect(chart.isSettled).toBe(false);
+    settle(); expect(settled.mock.calls).toEqual([['large', true], ['large', false], ['large', true]]);
+    chart.destroy();
+  });
+
+  it('settles hidden results after indexing, but never settles canceled or replaced work', () => {
+    const target = canvas(), settled = vi.fn();
+    const chart = new StreamChart(target as unknown as HTMLCanvasElement, () => {}, () => {}, () => {}, settled);
+    chart.begin(view('canceled')); chart.append(batch(6000)); chart.stop(); settle();
+    expect(chart.isSettled).toBe(false); expect(settled).not.toHaveBeenCalled();
+    chart.begin(view('replaced')); chart.append(batch(6000)); frame();
+    chart.begin(view('hidden')); chart.setVisible(false); chart.append(batch(6000)); settle();
+    expect(chart.isSettled).toBe(true);
+    expect(settled.mock.calls.every(([id]) => id === 'hidden')).toBe(true);
+    expect(settled.mock.calls.at(-1)).toEqual(['hidden', true]);
+    chart.destroy();
+  });
 });

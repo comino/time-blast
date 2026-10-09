@@ -30,6 +30,7 @@ def run(url, screenshot):
         assert page.evaluate("isSecureContext")
         assert "no-cache" in document.headers.get("cache-control", "")
         page.locator('[data-stage="database"][data-state="ready"]').wait_for(state="attached")
+        assert "1,209,600" in page.locator('[data-el="dataset-sub"]').inner_text()
         before = len(engines)
         assert before == 1, engines
         page.evaluate("""() => {
@@ -61,6 +62,53 @@ def run(url, screenshot):
         page.get_by_role("tab", name="Data", exact=True).click()
         assert page.locator('[data-el="table-body"] tr').count() == 12
         page.get_by_role("tab", name="Chart", exact=True).click()
+        page.wait_for_function("document.querySelector('[data-el=\"result-state\"]').textContent.trim() === 'COMPLETE'")
+
+        # Translation-only mode prepares SQL on each eligible edit without a query.
+        page.locator('[data-el="input"]').fill("")
+        page.get_by_role("button", name="Runtime settings", exact=True).click()
+        page.locator('[name="liveTranslation"]').check()
+        page.locator('[name="translationMinChars"]').fill("20")
+        page.locator('[name="speculation"]').uncheck()
+        page.get_by_role("button", name="Apply runtime").click()
+        page.wait_for_function("document.querySelector('[data-stage=\"coordinator\"]').dataset.state === 'ready'")
+        page.evaluate("""() => {
+          window.__translationEvents = [];
+          new MutationObserver(records => {
+            for (const record of records) for (const node of record.addedNodes)
+              if (node.nodeType === 1) window.__translationEvents.push(node.firstElementChild?.textContent);
+          }).observe(document.querySelector('[data-el="trace-list"]'), {childList:true});
+        }""")
+        previous_revision = page.locator('[data-el="revision"]').inner_text()
+        page.locator('[data-el="input"]').fill("Average wind")
+        page.wait_for_function("before => document.querySelector('[data-el=\"revision\"]').textContent !== before", arg=previous_revision)
+        assert page.evaluate("window.__translationEvents.includes('translation_started')") is False
+        page.locator('[data-el="input"]').fill("Average speed by hour")
+        page.wait_for_function("window.__translationEvents.includes('sql_prepared')")
+        prepared = page.evaluate("window.__translationEvents.filter(e => e === 'sql_prepared').length")
+        page.locator('[data-el="input"]').press("Space")
+        page.wait_for_function("count => window.__translationEvents.filter(e => e === 'sql_prepared').length > count", arg=prepared)
+        assert page.locator('[data-el="draft-state"]').inner_text() == "SQL prepared before Enter"
+        assert not page.evaluate("window.__translationEvents.includes('query_complete')")
+        page.locator('[data-el="input"]').press("Enter")
+        page.wait_for_function("window.__translationEvents.includes('prepared_sql_promoted') && window.__translationEvents.includes('query_complete')")
+        assert page.locator('[data-el="points"]').inner_text() == "24"
+
+        # Exercise dense output on the larger source, not merely its row-count label.
+        page.get_by_role("button", name="Runtime settings", exact=True).click()
+        page.locator('[name="liveTranslation"]').uncheck()
+        page.locator('[name="speculation"]').check()
+        page.get_by_role("button", name="Apply runtime").click()
+        page.wait_for_function("document.querySelector('[data-stage=\"coordinator\"]').dataset.state === 'ready'")
+        page.locator('[data-el="input"]').fill("Compare vessel wave height by minute over the last 7 days")
+        page.wait_for_function("document.querySelector('[data-el=\"draft-state\"]').textContent.includes('60,480 points staged')")
+        page.locator('[data-el="input"]').press("Enter")
+        page.wait_for_function("""() =>
+          document.querySelector('[data-el="result-state"]').textContent.trim() === 'COMPLETE' &&
+          document.querySelector('[data-el="points"]').textContent.trim() === '60,480'""")
+        assert page.locator('[data-el="latency-detail"]').inner_text() == "Prepared result promoted"
+        assert page.evaluate("window.__databaseReloads") == 0
+        assert len(engines) == before
         if screenshot:
             page.screenshot(path=screenshot, full_page=True)
         for engine in engines:
@@ -70,7 +118,8 @@ def run(url, screenshot):
             assert "immutable" in engine["headers"].get("cache-control", ""), engine
         assert not failed_assets, failed_assets
         assert not errors, errors
-        print(json.dumps({"url": url, "chromium": browser.version, "points": 144,
+        print(json.dumps({"url": url, "chromium": browser.version, "dataset_rows": 1_209_600,
+                          "dense_chart_points": 60_480, "live_translation_without_query": True,
                           "prepared_whitespace_promoted": True, "database_reloads": 0,
                           "http_decoded_engines": len(engines), "page_errors": errors}, indent=2))
         browser.close()

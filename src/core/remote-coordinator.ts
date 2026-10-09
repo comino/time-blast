@@ -1,4 +1,4 @@
-import {BrowserCoordinator,type CoordinatorClient,type CoordinatorOptions} from './coordinator';
+import {BrowserCoordinator,translationThreshold,type CoordinatorClient,type CoordinatorOptions} from './coordinator';
 import type {AdapterStatus,Draft} from './types';
 import {MAX_PROMPT_CHARS} from '../inference/plan';
 
@@ -6,7 +6,9 @@ const MAX_SOCKET_BYTES=65_536;
 const controlEncoder=new TextEncoder();
 
 /** Remote scheduling, direct data delivery. A server never needs to bounce local
- * Arrow buffers through a network to decide which draft to prepare or accept. */
+ * Arrow buffers through a network to decide which draft to prepare or accept.
+ * Live translation is advertised policy, still authorized per revision by PREPARE;
+ * no remote service or immediate remote scheduling guarantee is provided here. */
 export class RemoteCoordinatorClient implements CoordinatorClient {
   private socket:WebSocket;
   private executor:BrowserCoordinator;
@@ -30,6 +32,7 @@ export class RemoteCoordinatorClient implements CoordinatorClient {
     this.timeout=setTimeout(()=>this.fail('Remote coordinator did not become ready within 10 seconds.'),10_000);
     status({state:'loading',label:'Connecting remote coordinator'});
     this.socket.onopen=()=>this.send({type:'HELLO',version:1,epoch:this.epoch,context:options.context,speculation:options.speculation,
+      liveTranslation:options.liveTranslation??false,translationMinChars:translationThreshold(options.translationMinChars),
       inference:{id:options.inference.id,placement:options.inference.placement},
       database:{id:options.database.id,placement:options.database.placement},
       dataPlane:'direct-to-browser'});
@@ -43,7 +46,8 @@ export class RemoteCoordinatorClient implements CoordinatorClient {
           this.ready=true; status({state:'ready',label:'Remote coordinator connected'});
           if (this.latest) this.send({type:'DRAFT',epoch:this.epoch,draft:this.latest,composing:this.composing});
           if (this.committed) this.send({type:'COMMIT',epoch:this.epoch,commitId:this.commitId,draft:this.committed});
-        } else if (message.type==='PREPARE'&&this.ready&&options.speculation&&!this.composing
+        } else if (message.type==='PREPARE'&&this.ready&&(options.speculation||options.liveTranslation)&&!this.composing
+          &&(!options.liveTranslation||(this.latest?.text.trim().length??0)>=translationThreshold(options.translationMinChars))
           &&message.epoch===this.epoch&&message.revision>this.lastPrepared&&message.revision>this.lastAccepted
           &&message.revision===this.latest?.revision&&message.contextId===options.context.id) {
           this.lastPrepared=message.revision;
@@ -69,8 +73,8 @@ export class RemoteCoordinatorClient implements CoordinatorClient {
     }
     this.socket.send(payload);
   }
-  private snapshot(text:string):Draft {
-    if (text!==this.lastText) { this.revision++; this.lastText=text; }
+  private snapshot(text:string,advance=false):Draft {
+    if (advance||text!==this.lastText) { this.revision++; this.lastText=text; }
     return {revision:this.revision,text,contextId:this.options.context.id,sentAt:performance.now()};
   }
   draft(text:string,composing=false):void {
@@ -78,14 +82,16 @@ export class RemoteCoordinatorClient implements CoordinatorClient {
     if (text.length>MAX_PROMPT_CHARS) {
       // Invalidate the old candidate, but neither retain nor transmit an unbounded paste.
       this.latest=undefined;
-      this.executor.observeDraft(this.snapshot(''),true);
+      this.executor.observeDraft(this.snapshot('',composing!==this.composing),composing,true);
+      this.composing=composing;
       return;
     }
-    this.latest=this.snapshot(text); this.composing=composing;
+    // Composition changes revoke scheduling permission even when text is unchanged.
+    this.latest=this.snapshot(text,composing!==this.composing); this.composing=composing;
     // Inference context receives edits immediately even before scheduling permission.
     // Observe with scheduling suppressed: invalidate stale work immediately,
     // then await the server's PREPARE decision for this revision.
-    this.executor.observeDraft(this.latest,true);
+    this.executor.observeDraft(this.latest,composing,true);
     if (this.ready) this.send({type:'DRAFT',epoch:this.epoch,draft:this.latest,composing});
   }
   commit(text:string):void {
@@ -99,9 +105,9 @@ export class RemoteCoordinatorClient implements CoordinatorClient {
       this.options.emit({type:'error',message:`Requests must be at most ${MAX_PROMPT_CHARS} characters.`});
       return;
     }
-    this.latest=this.committed=this.snapshot(text); this.composing=false;
+    this.latest=this.committed=this.snapshot(text,this.composing); this.composing=false;
     // Preserve an exact candidate; discard mismatched speculation before server latency.
-    this.executor.observeDraft(this.committed,true);
+    this.executor.observeDraft(this.committed,false,true);
     if (this.ready) this.send({type:'COMMIT',epoch:this.epoch,commitId:this.commitId,draft:this.committed});
   }
   cancel():void {

@@ -106,26 +106,32 @@ export interface QueryView {
 }
 export type PipelineEvent =
   | { type: 'draft'; revision: number; chars: number }
-  | { type: 'speculation'; state: 'idle' | 'resolving' | 'querying' | 'ready' | 'canceled'; text: string; points: number }
+  | { type: 'speculation'; state: 'idle' | 'resolving' | 'translated' | 'querying' | 'ready' | 'canceled'; text: string; points: number }
   | { type: 'start'; view: QueryView }
   | { type: 'batch'; id: string; batch: ColumnBatch }
   | { type: 'complete'; id: string; timing: QueryTiming }
   | { type: 'error'; id?: string; message: string }
   | { type: 'trace'; entry: TraceEvent };
 export type InferenceMode = 'auto' | 'webgpu' | 'templates' | 'remote';
+export type DatasetProfile = 'demo' | 'large';
 export interface RuntimeConfig {
   inferenceMode: InferenceMode;
   inferenceEndpoint: string;
   inferenceDraftEndpoint: string;
   databaseMode: 'browser' | 'remote';
   databaseEndpoint: string;
+  datasetProfile: DatasetProfile;
   coordinatorMode: 'browser' | 'remote';
   coordinatorEndpoint: string;
   speculation: boolean;
+  liveTranslation: boolean;
+  translationMinChars: number;
 }
 export const DEFAULT_CONFIG: RuntimeConfig = {
   inferenceMode: 'auto', inferenceEndpoint: '', inferenceDraftEndpoint: '', databaseMode: 'browser',
   databaseEndpoint: '', coordinatorMode: 'browser', coordinatorEndpoint: '', speculation: true,
+  liveTranslation: false, translationMinChars: 20,
+  datasetProfile: 'large',
 };
 export const METRIC_LABELS: Record<Metric, { name: string; unit: string }> = {
   speed: { name: 'Vessel speed', unit: 'kn' }, wind: { name: 'Wind speed', unit: 'kn' },

@@ -30,6 +30,10 @@ flowchart LR
 
 `BrowserCoordinator` owns one speculative candidate and one foreground request. An input pause of 180 ms starts speculative work. Enter promotes a matching in-flight or completed candidate, or starts a new job. Identity includes the exact prompt and immutable dataset context, with configuration isolated by the coordinator instance. Only already-staged data counts as a prepared-result hit. An in-flight reuse has a separate trace event. Queued draft/commit messages are fenced by cancellation epochs.
 
+Optional `liveTranslation` changes that trigger to every eligible edit, with no debounce after `translationMinChars` (default 20, after trimming outer spaces). It remains off by default. Composition, shorter input, cancellation and replacement invalidate the old candidate. Native generation has one active task and one removable waiter; canceled warmup waiters are removed immediately. Thus each edit starts a logical request, but a busy model may still need to finish interrupting its prior task before executing the latest one.
+
+With database speculation disabled, live translation stops after validated intent and Rust SQL compilation. The UI reports `SQL prepared before Enter`; Enter reuses that plan/SQL and starts the database, emitting `prepared_sql_promoted`. With database speculation enabled, the candidate may also execute the query and stage results. This policy is independent of model placement, and neither mode performs incremental KV-cache updates.
+
 The model receives draft snapshots immediately in its worker, but those messages do **not** incrementally mutate a KV cache. Generation starts on a speculative pause or committed miss. Warmup downloads/initializes the model; full prepared inference moves the actual prompt evaluation before Enter. The implementation does not yet predict a sentence suffix, fork model caches, or preload every possible result.
 
 Qwen2.5-0.5B-Instruct is selected from WebLLM 0.2.85's pinned model registry. It uses q4f16 when `shader-f16` is exposed and q4f32 otherwise. Generation is deterministic (`temperature: 0`), constrained to a compact JSON schema, and capped at 256 output tokens. A dedicated worker serializes generations and owns cancellation. Partial model output never becomes executable SQL. The exact-template parser refuses unsupported wording, including unsupported filters/negation, instead of silently dropping it. Model semantic accuracy remains a separate evaluation problem.
@@ -38,11 +42,15 @@ The Rust compiler has no external dependencies. It accepts numerical/enumerated 
 
 ## Data plane and first drawing
 
-The bundled deterministic Parquet file contains 120,960 rows: six fictional vessels, every minute for 14 days from 2026-09-01 inclusive to 2026-09-15 exclusive. Units and schema are in `public/data/context.json`. DuckDB materializes the table at startup, then disables external access and locks configuration. Each query owns its connection. One active query and one waiter bound database admission; cancellation finishes before that query's connection is released.
+Two local synthetic profiles cover six fictional vessels for 14 days from 2026-09-01 inclusive to 2026-09-15 exclusive. The default `large` profile evaluates the original continuous-time signal formulas every six seconds inside DuckDB, producing 1,209,600 rows without JavaScript row objects or an additional download. The `demo` profile loads the bundled 120,960-row, one-minute Parquet fixture. They have distinct immutable context IDs. Source formulas and profile metadata are in `src/adapters/synthetic-data.ts`; the original fixture generator and metadata remain in `scripts/generate-dataset.py` and `public/data/context.json`.
+
+DuckDB materializes the selected table at startup under its 256 MiB database memory limit, then disables external access and locks configuration. That setting is not a cap on the browser's entire process. Each query owns its connection. One active query and one waiter bound database admission; cancellation finishes before that query's connection is released. Switching profiles replaces the database and context but preserves the warmed model. Minute-level output yields 60,480 points for a grouped seven-day query; hourly output over one day remains 144 points even on the larger source.
 
 `connection.send(sql, true)` yields Arrow record batches. `retainArrowBatch` verifies primitive contiguous, non-null columns, then returns typed-array views with their Arrow owner retained. Canvas receives those references directly. Unit tests assert backing-buffer identity, including slices. The first complete point is submitted without waiting for query completion. Bulk indexing, statistics, and drawing leave the next animation-frame callback free, then run in bounded slices targeting a shared four-millisecond frame budget. This gives rendering an opportunity; it does not prove physical presentation.
 
 Ordered appends draw only new segments while domains remain unchanged. Rescaling, resizing, or reordering requires a redraw. Track extrema are maintained incrementally; hidden time-series charts retain data without drawing geometry. Reference indexes can be sorted cooperatively without repacking producer columns. At large result sizes, bounded slices trade full-chart completion time for responsiveness; measure useful coverage as well as the first marker.
+
+Database completion and display completion are separate. The UI shows `DRAWING` while primary-chart geometry or statistics remain pending, then `COMPLETE` once that work settles. Database completion timestamps and first-marker timing remain unchanged. Connected lines include every returned point; only the latest point per series gets an endpoint dot. The continuous synthetic signals are deliberately smooth, so denser sampling increases vertices without necessarily changing the apparent curve.
 
 Expected output columns:
 
@@ -99,7 +107,7 @@ Connect using WebSocket subprotocol `time-blast.v1`. All messages are bounded JS
 
 | Message | Fields |
 | --- | --- |
-| `HELLO` | `version:1`, `epoch`, `context`, `speculation`, inference/database adapter IDs and placements, `dataPlane:"direct-to-browser"` |
+| `HELLO` | `version:1`, `epoch`, `context`, `speculation`, `liveTranslation`, `translationMinChars`, inference/database adapter IDs and placements, `dataPlane:"direct-to-browser"` |
 | `DRAFT` | `epoch`, full `draft`, `composing` |
 | `COMMIT` | `epoch`, unique `commitId`, full committed `draft` |
 | `CANCEL` | Incremented `epoch` |
@@ -107,6 +115,8 @@ Connect using WebSocket subprotocol `time-blast.v1`. All messages are bounded JS
 Server replies with `READY {version:1}`, `PREPARE {epoch,revision,contextId}`, or `ACCEPT {epoch,commitId,revision,contextId}`. `ERROR {message}` reports scheduling failure. PREPARE permits one speculative execution for the current non-composing draft. ACCEPT commits exactly the pending immutable snapshot. Enter immediately cancels the previous foreground, even before ACCEPT, while retaining an exactly matching candidate. Stale epochs, revisions, repeated preparation, and previous commit IDs cannot authorize later work. The browser retains and promotes buffers itself. A 10-second readiness timeout and a 64 KiB socket send-queue budget (existing buffered bytes plus the next UTF-8 message) prevent silent indefinite setup/queue growth. Incoming messages are capped at 16 KiB UTF-8; prompts are checked before transport.
 
 This reference coordinator client and remote adapters are implemented; production services are not included. The adapter placement tests exercise the four inference/database combinations under remote scheduling using controlled service doubles. They do not claim a deployed remote service or a production ClickHouse integration.
+
+Remote live translation still needs a matching `PREPARE` for each revision; the client advertises its requested policy in HELLO, but cannot make a server grant scheduling permission sooner. Below-threshold and composing drafts cannot be prepared even if the server sends PREPARE. Local SQL-only candidates remain reusable on ACCEPT without an unnecessary database round trip through the coordinator.
 
 ## Measurement and remaining work
 

@@ -28,3 +28,13 @@ Original read-only check: 54 inference/coordinator tests passed. Post-change tar
 ## Remaining performance questions
 
 Pinned WebLLM checks its interruption flag after prefill, so an expensive active prefill can still delay a committed request despite bounded queue memory. Measure cancellation-to-next-generation admission on actual hardware before selecting a speculation budget or timeout policy. Draft snapshots still do not mutate a KV cache. Completed hardware-WebGPU inference and semantic accuracy remain unverified here. Speculative GPU time, discarded tokens, and remote post-submission priority upgrades need explicit instrumentation/protocol work before stronger performance claims.
+
+## Optional live SQL translation
+
+The subsequently requested `liveTranslation` option defaults to false. When enabled, each eligible non-composing revision starts translation immediately at `translationMinChars` trimmed characters (default 20, configurable from 1 to 4096). A newer edit cancels the previous candidate; composition and shorter/empty drafts invalidate it. The existing 180 ms speculative pause remains the default when live translation is disabled.
+
+Database speculation remains an independent setting. With it disabled, live work stops after a validated plan and compiled SQL: the `translated` event reports SQL ready with zero staged points, and no database call or result-start event occurs. Exact Enter promotes this intent with `prepared_sql_promoted`, starts database execution at committed priority, and does not repeat inference or compilation. An in-flight translation also promotes without duplication. Prepared-data hits continue to use `timing.promoted`; SQL-only reuse does not claim a result hit.
+
+Local model initialization now has one shared completion subscription and removable waiters, so canceled keystrokes release their abort listeners while weights are still loading. The generation queue remains one active generation plus one removable waiter. These bounds do not imply that a remote provider instantly stops billed work or that WebLLM can interrupt an active prefill.
+
+Runtime changes to live mode or its threshold reconnect only coordination and preserve warmed adapters. Changing the new local dataset profile recreates DuckDB and refreshes the existing inference context without replacing the warmed model. The default profile is `large` (1,209,600 rows); `demo` retains the original 120,960-row fixture. Dataset generation and browser verification belong to the data-plane review.

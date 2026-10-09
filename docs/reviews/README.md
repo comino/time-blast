@@ -47,6 +47,24 @@ on warm DuckDB, with no LLM, no observed hit-rate estimate and no photon claim.
 The earlier benchmark used a different Chromium/build combination and is not a
 controlled before/after comparison with this sample.
 
+The subsequent live-translation/dataset follow-up passed **164 tests**, TypeScript
+and a production build. Browser checks verified both materialized datasets (actual
+counts/date bounds/six vessels), cancellation and a subsequent successful query.
+The large profile generated 1,209,600 rows inside DuckDB. Separate fresh-browser
+development-server observations took 2,917 ms to initialize Large and 2,557 ms for
+Demo; these are individual startup observations including engine initialization,
+not a controlled latency comparison or memory-usage measurement. The 256 MiB
+database setting does not measure or cap the entire browser process.
+
+The public UI check exercises live SQL preparation at 20 characters, replacement
+on another edit, SQL promotion on Enter with database speculation disabled, and
+60,480-point prepared output on the larger source. The dedicated
+`tests/ui_completion.py` browser check distinguishes early database completion
+from pending primary geometry/statistics (`DRAWING` → `COMPLETE`) and tests stale
+callbacks, cancellation, errors and tab restoration. Every line vertex is drawn;
+smooth synthetic curves and endpoint-only dots should not be interpreted as a
+point-count visualization.
+
 The next substantial database experiment is an exact first time bucket/tile
 followed by the remaining query against the same snapshot. Current whole-window
 aggregation and sorting can still block the first result. Remote services,

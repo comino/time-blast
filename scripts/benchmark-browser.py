@@ -117,12 +117,22 @@ async def benchmark(args):
             await page.wait_for_selector('[data-stage="database"][data-state="ready"]', state="attached")
             await page.locator('[data-action="settings"]').click()
             await page.locator('[name="inferenceMode"]').select_option("templates")
+            await page.locator('[name="datasetProfile"]').select_option(args.dataset_profile)
+            await page.locator('[name="liveTranslation"]').uncheck()
             await page.locator('[name="speculation"]').uncheck()
             await page.locator('[data-el="runtime-form"] button[type="submit"]').click()
             await page.wait_for_function("""() =>
               document.querySelector('[data-stage="coordinator"]').dataset.state === 'ready' &&
               document.querySelector('[data-stage="database"]').dataset.state === 'ready' &&
               document.querySelector('[data-stage="model"] small').textContent === 'Deterministic templates'""")
+            dataset = json.loads((ROOT / "public/data/context.json").read_text())
+            if args.dataset_profile == "large":
+                dataset.update(id="synthetic-vessels-2026-09-6s-v1", rowCount=1_209_600,
+                               label="North Atlantic · dense synthetic telemetry",
+                               description="Six fictional vessels sampled every six seconds from the original continuous-time formulas.")
+            dataset_text = await page.locator('[data-el="dataset-sub"]').inner_text()
+            if f"{dataset['rowCount']:,}" not in dataset_text:
+                raise AssertionError(f"Wrong dataset profile: {dataset_text}")
             await page.evaluate(TRACE_OBSERVER)
             for _ in range(args.warmup):
                 await trial(page, False)
@@ -149,7 +159,8 @@ async def benchmark(args):
                 "trace_rounding_ms": 0.01,
                 "question": QUESTION,
                 "points_per_result": 144,
-                "dataset": json.loads((ROOT / "public/data/context.json").read_text()),
+                "dataset": dataset,
+                "dataset_profile": args.dataset_profile,
                 "versions": {**versions(), "chromium": browser.version},
                 "environment": {"os": platform.system(), "architecture": platform.machine(),
                                 "logical_cpus": os.cpu_count(), "headless": True,
@@ -188,6 +199,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default="http://localhost:5173", help="Running app URL")
     parser.add_argument("--build-mode", choices=["development", "production"], default="development", help="Build served at --url")
+    parser.add_argument("--dataset-profile", choices=["demo", "large"], default="large", help="Synthetic source size; does not change aggregate point count")
     parser.add_argument("--chromium", help="Optional Chromium executable path")
     parser.add_argument("--trials", type=int, default=20, help="Recorded trials per speculation mode")
     parser.add_argument("--warmup", type=int, default=2, help="Discarded warmup trials per mode")

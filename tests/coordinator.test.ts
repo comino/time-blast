@@ -1,17 +1,19 @@
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
-import {BrowserCoordinator,LocalCoordinatorClient} from '../src/core/coordinator';
+import {BrowserCoordinator,LocalCoordinatorClient,translationThreshold} from '../src/core/coordinator';
 import type {ColumnBatch,DatabaseAdapter,DatasetContext,Draft,InferenceAdapter,InferenceResult,PipelineEvent,QueryCompiler,QueryPlan} from '../src/core/types';
 
 const context:DatasetContext={id:'snapshot-1',label:'Test',rowCount:2,start:0,end:86_400_000,vessels:['A'],description:'Test'};
 const plan:QueryPlan={metric:'speed',aggregate:'avg',bucketMinutes:60,windowHours:24,splitByVessel:false,vessel:null,view:'line'};
 const batch:ColumnBatch={x:new Float64Array([0,3600000]),y:new Float64Array([12,14]),series:new Int32Array([0,0]),length:2,byteLength:40};
 const draft=(text='Average speed by hour',revision=1):Draft=>({text,revision,contextId:context.id,sentAt:performance.now()});
-function harness(overrides:{database?:DatabaseAdapter;inference?:InferenceAdapter;speculativeBytes?:number}={}) {
+function harness(overrides:{database?:DatabaseAdapter;inference?:InferenceAdapter;speculativeBytes?:number;speculation?:boolean;liveTranslation?:boolean;translationMinChars?:number;debounceMs?:number}={}) {
   const events:PipelineEvent[]=[];
   const inference:InferenceAdapter=overrides.inference??{id:'test',placement:'browser',prepare:async()=>{},observeDraft:vi.fn(),dispose(){},resolve:vi.fn(async()=>({plan,source:'template' as const}))};
   const database:DatabaseAdapter=overrides.database??{id:'test-db',placement:'browser',prepare:async()=>context,dispose:async()=>{},execute:vi.fn(async function*(){yield batch;})};
   const compiler:QueryCompiler={kind:'rust-wasm',prepare:async()=>{},compile:vi.fn(()=>'SQL')};
-  const coordinator=new BrowserCoordinator({inference,database,compiler,context,emit:e=>events.push(e),speculation:true,debounceMs:10,speculativeBytes:overrides.speculativeBytes});
+  const coordinator=new BrowserCoordinator({inference,database,compiler,context,emit:e=>events.push(e),speculation:overrides.speculation??true,
+    debounceMs:'debounceMs' in overrides?overrides.debounceMs:10,speculativeBytes:overrides.speculativeBytes,
+    liveTranslation:overrides.liveTranslation,translationMinChars:overrides.translationMinChars});
   return {coordinator,events,inference,database,compiler};
 }
 beforeEach(()=>vi.stubGlobal('scheduler',{yield:()=>new Promise<void>(resolve=>setTimeout(resolve,0))}));
@@ -24,6 +26,60 @@ function queuedTransport() {
 }
 
 describe('draft preparation and commit correctness',()=>{
+  it('keeps the default 180ms speculation pause when live translation is disabled',async()=>{
+    vi.useFakeTimers();const h=harness({debounceMs:undefined});h.coordinator.observeDraft(draft());
+    expect(h.inference.resolve).not.toHaveBeenCalled();await vi.advanceTimersByTimeAsync(179);
+    expect(h.inference.resolve).not.toHaveBeenCalled();await vi.advanceTimersByTimeAsync(1);
+    expect(h.inference.resolve).toHaveBeenCalledOnce();h.coordinator.dispose();
+  });
+  it('starts live translation at the configured threshold without a debounce or database work',async()=>{
+    vi.useFakeTimers();const h=harness({liveTranslation:true,speculation:false});
+    h.coordinator.observeDraft(draft('x'.repeat(19)));expect(h.inference.resolve).not.toHaveBeenCalled();
+    h.coordinator.observeDraft(draft('x'.repeat(20),2));expect(h.inference.resolve).toHaveBeenCalledOnce();await settle();
+    expect(h.compiler.compile).toHaveBeenCalledOnce();expect(h.database.execute).not.toHaveBeenCalled();
+    expect(h.events.some(e=>e.type==='speculation'&&e.state==='translated'&&e.points===0)).toBe(true);
+    expect(h.events.some(e=>e.type==='start'||e.type==='complete')).toBe(false);h.coordinator.dispose();
+    const custom=harness({liveTranslation:true,speculation:false,translationMinChars:5});custom.coordinator.observeDraft(draft('12345'));
+    expect(custom.inference.resolve).toHaveBeenCalledOnce();custom.coordinator.dispose();
+    for(const invalid of [undefined,0,-1,1.5,4097,NaN])expect(translationThreshold(invalid)).toBe(20);
+  });
+  it('reuses prepared SQL on Enter without repeating inference or compilation',async()=>{
+    const h=harness({liveTranslation:true,speculation:false});const d=draft();h.coordinator.observeDraft(d);await settle();
+    expect(h.database.execute).not.toHaveBeenCalled();h.coordinator.commit({...d,sentAt:performance.now()});await settle();
+    expect(h.inference.resolve).toHaveBeenCalledOnce();expect(h.compiler.compile).toHaveBeenCalledOnce();expect(h.database.execute).toHaveBeenCalledOnce();
+    expect((h.database.execute as any).mock.calls[0][0]).toMatchObject({sql:'SQL',priority:'committed'});
+    expect(h.events.filter(e=>e.type==='start')).toHaveLength(1);expect(h.events.filter(e=>e.type==='complete')).toHaveLength(1);
+    expect(h.events.some(e=>e.type==='trace'&&e.entry.event==='prepared_sql_promoted')).toBe(true);h.coordinator.dispose();
+  });
+  it('replaces each eligible edited translation and rejects canceled late inference',async()=>{
+    const requests:{signal:AbortSignal;finish:(result:InferenceResult)=>void}[]=[];
+    const inference:InferenceAdapter={id:'held',placement:'browser',prepare:async()=>{},dispose(){},observeDraft(){},resolve:vi.fn((_draft,signal)=>new Promise<InferenceResult>(resolve=>requests.push({signal,finish:resolve})))};
+    const h=harness({inference,liveTranslation:true,speculation:false});
+    for(let i=0;i<20;i++)h.coordinator.observeDraft(draft('x'.repeat(20+i),i+1));
+    expect(inference.resolve).toHaveBeenCalledTimes(20);expect(requests.slice(0,-1).every(r=>r.signal.aborted)).toBe(true);expect(requests.at(-1)?.signal.aborted).toBe(false);
+    for(const request of requests)request.finish({plan,source:'template'});await settle();
+    expect(h.compiler.compile).toHaveBeenCalledOnce();expect(h.database.execute).not.toHaveBeenCalled();
+    h.coordinator.commit(draft('x'.repeat(39),20));await settle();expect(inference.resolve).toHaveBeenCalledTimes(20);expect(h.database.execute).toHaveBeenCalledOnce();h.coordinator.dispose();
+  });
+  it('cancels live candidates during composition or below threshold and resumes final IME text',async()=>{
+    const h=harness({liveTranslation:true,speculation:false});const d=draft();h.coordinator.observeDraft(d);await settle();
+    h.coordinator.observeDraft(d,true);h.coordinator.commit(d);await settle();expect(h.inference.resolve).toHaveBeenCalledTimes(2);
+    h.coordinator.observeDraft({...d,revision:2},true);expect(h.inference.resolve).toHaveBeenCalledTimes(2);
+    h.coordinator.observeDraft({...d,revision:3});await settle();expect(h.inference.resolve).toHaveBeenCalledTimes(3);
+    h.coordinator.observeDraft(draft('short',4));h.coordinator.commit(draft(d.text,5));await settle();expect(h.inference.resolve).toHaveBeenCalledTimes(4);h.coordinator.dispose();
+  });
+  it('promotes in-flight live translation without rerunning it',async()=>{
+    let finish!:(result:InferenceResult)=>void;
+    const inference:InferenceAdapter={id:'held',placement:'browser',prepare:async()=>{},dispose(){},observeDraft(){},resolve:vi.fn(()=>new Promise<InferenceResult>(resolve=>{finish=resolve;}))};
+    const h=harness({inference,liveTranslation:true,speculation:false});const d=draft();h.coordinator.observeDraft(d);h.coordinator.commit(d);
+    finish({plan,source:'template'});await settle();expect(inference.resolve).toHaveBeenCalledOnce();expect(h.database.execute).toHaveBeenCalledOnce();
+    expect(h.events.filter(e=>e.type==='start')).toHaveLength(1);h.coordinator.dispose();
+  });
+  it('keeps database speculation independently enabled for immediate live candidates',async()=>{
+    const h=harness({liveTranslation:true,speculation:true});const d=draft();h.coordinator.observeDraft(d);await settle();
+    expect(h.database.execute).toHaveBeenCalledOnce();expect(h.events.some(e=>e.type==='speculation'&&e.state==='ready')).toBe(true);
+    h.coordinator.commit(d);expect(h.database.execute).toHaveBeenCalledOnce();expect(h.events.some(e=>e.type==='complete'&&e.timing.promoted)).toBe(true);h.coordinator.dispose();
+  });
   it('supersedes the foreground at Enter before the replacement commit is delivered',async()=>{
     const deliver=queuedTransport();let finish!:(result:InferenceResult)=>void;let active:AbortSignal|undefined;let calls=0;
     const inference:InferenceAdapter={id:'held',placement:'browser',prepare:async()=>{},dispose(){},observeDraft(){},resolve:(_draft,signal)=>{

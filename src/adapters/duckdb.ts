@@ -3,14 +3,12 @@ import mvpWasm from '@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm?url';
 import mvpWorker from '@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js?url';
 import ehWasm from '@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url';
 import ehWorker from '@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?url';
-import contextJSON from '../../public/data/context.json';
-import type { AdapterStatus, ColumnBatch, DatabaseAdapter, DatasetContext, QueryRequest } from '../core/types';
+import type { AdapterStatus, ColumnBatch, DatabaseAdapter, DatasetContext, DatasetProfile, QueryRequest } from '../core/types';
 import { abortError, accountRetainedBytes, checkAbort, MAX_RESULT_BYTES, MAX_RESULT_ROWS, QueryGate, retainArrowBatch } from './arrow';
 import { fetchEngineWasm } from './engine-asset';
+import { LARGE_DATASET_SQL, SYNTHETIC_CONTEXTS } from './synthetic-data';
 
-export const SYNTHETIC_CONTEXT: DatasetContext = Object.freeze({
-  ...contextJSON, vessels: Object.freeze([...contextJSON.vessels]) as unknown as string[],
-});
+export const SYNTHETIC_CONTEXT = SYNTHETIC_CONTEXTS.demo;
 
 /** Locally bundled engine assets. Each query owns a connection so late cancellation
  * cannot cancel a newer query. Streaming granularity is Arrow batches, not rows. */
@@ -24,6 +22,10 @@ export class DuckDBAdapter implements DatabaseAdapter {
   private startupAbort = new AbortController();
   private gate = new QueryGate();
   private active?: { connection: duckdb.AsyncDuckDBConnection; cancel: () => Promise<void> };
+
+  constructor(private readonly profile: DatasetProfile = 'large') {
+    if (profile !== 'demo' && profile !== 'large') throw new Error('Unknown browser dataset profile');
+  }
 
   prepare(onProgress: (status: AdapterStatus) => void = () => {}): Promise<DatasetContext> {
     if (this.disposed) return Promise.reject(new Error('Database adapter is disposed'));
@@ -57,19 +59,25 @@ export class DuckDBAdapter implements DatabaseAdapter {
       if (objectURL) URL.revokeObjectURL(objectURL);
     }
     const connection = await db.connect();
+    const context = SYNTHETIC_CONTEXTS[this.profile];
     try {
-      progress({ state: 'loading', label: 'Loading 120,960 synthetic readings', progress: 0.55 });
-      const dataURL = new URL(`${import.meta.env.BASE_URL}data/telemetry.parquet`, location.href).href;
-      await db.registerFileURL('telemetry.parquet', dataURL, duckdb.DuckDBDataProtocol.HTTP, false);
-      await connection.query("CREATE TABLE telemetry AS SELECT * FROM 'telemetry.parquet'");
-      await db.dropFile('telemetry.parquet');
-      await connection.query("SET enable_external_access = false");
+      // Bound materialization too, rather than imposing the limit only after loading.
       await connection.query("SET memory_limit = '256MB'");
+      progress({ state: 'loading', label: `${this.profile === 'large' ? 'Generating' : 'Loading'} ${context.rowCount.toLocaleString()} synthetic readings`, progress: 0.55 });
+      if (this.profile === 'large') {
+        await connection.query(LARGE_DATASET_SQL);
+      } else {
+        const dataURL = new URL(`${import.meta.env.BASE_URL}data/telemetry.parquet`, location.href).href;
+        await db.registerFileURL('telemetry.parquet', dataURL, duckdb.DuckDBDataProtocol.HTTP, false);
+        await connection.query("CREATE TABLE telemetry AS SELECT * FROM 'telemetry.parquet'");
+        await db.dropFile('telemetry.parquet');
+      }
+      await connection.query("SET enable_external_access = false");
       await connection.query("SET lock_configuration = true");
     } finally { await connection.close(); }
     if (this.disposed) throw abortError();
-    progress({ state: 'ready', label: 'DuckDB ready · 120,960 readings', progress: 1 });
-    return SYNTHETIC_CONTEXT;
+    progress({ state: 'ready', label: `DuckDB ready · ${context.rowCount.toLocaleString()} readings`, progress: 1 });
+    return context;
   }
   async *execute(request: QueryRequest): AsyncGenerator<ColumnBatch> {
     checkAbort(request.signal);

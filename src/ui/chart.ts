@@ -56,12 +56,14 @@ export class StreamChart {
   private sorting?: Generator<void>;
   private repaint = true;
   private gridReady = false;
+  private settled = false;
   private low = 0; private high = 40; private xLow = 0; private xHigh = 1; private xPadding = 0;
   private readonly pad = { left: 53, right: 22, top: 26, bottom: 38 };
 
   constructor(private canvas: HTMLCanvasElement, private onDraw: (id: string, at: number) => void,
     private onProgress: (progress: BatchProgress) => void = () => {},
-    private onIndexed: (reordered: boolean) => void = () => {}) {
+    private onIndexed: (reordered: boolean) => void = () => {},
+    private onSettledChange: (id: string, settled: boolean) => void = () => {}) {
     const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) throw new Error('Canvas 2D is unavailable in this browser.');
     this.ctx = ctx; this.markers = new Markers(canvas);
@@ -72,7 +74,7 @@ export class StreamChart {
     this.work.cancel(); this.sorting = undefined;
     this.view = view; this.batches.length = 0; this.order.clear(); this.cursors.clear();
     this.nextBatch = 0; this.nextRow = 0; this.drawn = false; this.stopped = false; this.repaint = true;
-    this.firstBatch = undefined;
+    this.firstBatch = undefined; this.settled = false;
     this.xPadding = view.plan.view === 'bar' ? view.plan.bucketMinutes * 30_000 : 0;
     this.xLow = Math.max(view.context.start, view.context.end - view.plan.windowHours * 3_600_000) - this.xPadding;
     this.xHigh = view.context.end + this.xPadding;
@@ -85,6 +87,7 @@ export class StreamChart {
     this.batches.push(batch);
     // Validated producer batches begin with a complete point. Invalid test inputs are scanned later.
     this.firstMarker(batch, 0);
+    this.setSettled(false);
     this.work.schedule();
   }
 
@@ -108,6 +111,7 @@ export class StreamChart {
     this.canvas.width = Math.round(box.width * dpr); this.canvas.height = Math.round(box.height * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0); this.markers.resize(this.width, this.height, dpr);
     this.repaint = true;
+    if (this.visible) this.setSettled(false);
     if (this.stopped && this.order.needsSort) this.sorting = this.order.sortSteps();
     if (this.visible) { this.grid(); this.work.schedule(); }
   }
@@ -117,10 +121,17 @@ export class StreamChart {
     this.visible = visible;
     if (visible) {
       this.repaint = true;
+      this.setSettled(false);
       if (this.stopped && this.order.needsSort) this.sorting = this.order.sortSteps();
       if (this.batches.length) this.firstMarker(this.batches[0], 0);
       this.work.schedule();
-    }
+    } else if (this.nextBatch === this.batches.length && !this.sorting) this.setSettled(true);
+  }
+
+  get isSettled(): boolean { return this.settled && !this.stopped; }
+  private setSettled(value: boolean): void {
+    if (!this.view || this.stopped || value === this.settled) return;
+    this.settled = value; this.onSettledChange(this.view.id, value);
   }
 
   private advance(deadline: number): boolean {
@@ -155,7 +166,9 @@ export class StreamChart {
       if (this.order.needsSort) this.sorting = this.order.sortSteps(); else this.onIndexed(false);
     }
     if (this.visible && !this.sorting && performance.now() < deadline) this.render(deadline);
-    return !this.stopped && this.nextBatch < this.batches.length || !!this.sorting || this.visible && this.needsPaint();
+    const pending = !this.stopped && this.nextBatch < this.batches.length || !!this.sorting || this.visible && this.needsPaint();
+    this.setSettled(!pending);
+    return pending;
   }
 
   private needsPaint(): boolean {
