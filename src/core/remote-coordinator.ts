@@ -34,6 +34,7 @@ export class RemoteCoordinatorClient implements CoordinatorClient {
     status({state:'loading',label:'Connecting remote coordinator'});
     this.socket.onopen=()=>this.send({type:'HELLO',version:1,epoch:this.epoch,context:options.context,speculation:options.speculation,
       liveTranslation:options.liveTranslation??false,translationMinChars:translationThreshold(options.translationMinChars),
+      draftDebounceMs:options.draftDebounceMs,
       inference:{id:options.inference.id,placement:options.inference.placement},
       database:{id:options.database.id,placement:options.database.placement},
       dataPlane:'direct-to-browser'});

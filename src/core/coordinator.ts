@@ -10,7 +10,7 @@ interface Job {
 export interface CoordinatorOptions {
   database:DatabaseAdapter; inference:InferenceAdapter; compiler:QueryCompiler; context:DatasetContext;
   emit:Emit; speculation:boolean; debounceMs?:number; speculativeBytes?:number; resultBytes?:number;
-  liveTranslation?:boolean; translationMinChars?:number;
+  liveTranslation?:boolean; translationMinChars?:number; draftDebounceMs?:number;
 }
 
 export function translationThreshold(value?:number):number {
@@ -62,7 +62,13 @@ export class BrowserCoordinator {
       this.trace(live?'translation_started':'speculation_started',`revision ${draft.revision}`);
       void this.run(job);
     };
-    if(live)prepare();else this.timer=setTimeout(prepare,this.options.debounceMs ?? 180);
+    // The timestamp belongs to the browser draft, not a remote PREPARE reply.
+    // Count network/scheduler delay toward the pause instead of waiting twice.
+    const idle=this.options.draftDebounceMs;
+    if(idle!==undefined) {
+      const wait=Math.max(0,Math.min(idle,draft.sentAt+idle-performance.now()));
+      if(wait>0)this.timer=setTimeout(prepare,Math.ceil(wait));else prepare();
+    } else if(live)prepare();else this.timer=setTimeout(prepare,this.options.debounceMs ?? 180);
   }
 
   commit(draft:Draft):void {
@@ -127,7 +133,7 @@ export class BrowserCoordinator {
         const sql=compiler.compile(result.plan,context);
         job.timing.compiledAt=performance.now();
         job.view={id:job.id,prompt:job.draft.text,revision:job.draft.revision,plan:result.plan,sql,
-          source:result.source,model:result.model,database:database.id,context,timing:job.timing};
+          source:result.source,model:result.model,inference:result.diagnostics,database:database.id,context,timing:job.timing};
         if (job.committed) this.emit({type:'start',view:job.view});
         this.trace('intent_validated',`${result.source} · ${job.id}`);
       }

@@ -23,7 +23,7 @@ const markup = `
   <div class="card-stats"><div><span>MEAN <small data-card-el="mean-unit"></small></span><strong data-card-el="mean">—</strong></div><div><span>POINTS</span><strong data-card-el="points">—</strong></div><div><span>RANGE</span><strong data-card-el="range">—</strong></div><div><span>RUN → DRAW</span><strong data-card-el="latency">—</strong></div></div>
   <div class="card-timings" aria-label="Query latency breakdown"><div title="Time spent resolving the query intent, including model queueing and remote transport when used"><span data-card-el="inference-label">TRANSLATION</span><strong data-card-el="inference-latency">—</strong></div><div title="Database request to first nonempty batch, including queueing and decoding"><span data-card-el="database-first-label">DB → FIRST</span><strong data-card-el="database-first-latency">—</strong></div><div title="Database request to stream completion; includes first-batch time and streaming"><span data-card-el="database-label">DB TOTAL</span><strong data-card-el="database-latency">—</strong></div><div title="First batch delivered to this card to first drawing submission, including renderer readiness"><span>DATA → DRAW</span><strong data-card-el="render-latency">—</strong></div></div>
   <footer class="card-footer result-footer"><button class="detail-button" data-card-action="sql" aria-expanded="false">${icon('<path d="m8 7-5 5 5 5m8-10 5 5-5 5"/>')}<span>Query details</span><span class="source-pill" data-card-el="source">—</span></button><span class="card-batch-count" data-card-el="batch-count">Waiting for data</span><div class="result-actions"><button class="text-button cancel-button" data-card-action="cancel">Stop query</button><button class="icon-button" data-card-action="export" aria-label="Export result as CSV" title="Export result as CSV" disabled>${icon('<path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4"/>')}</button></div></footer>
-  <div class="sql-panel" data-card-el="sql-panel" hidden><pre data-card-el="sql">A validated query will appear here.</pre><p data-card-el="query-meta"></p><p data-card-el="latency-detail">First point draw submitted</p></div>
+  <div class="sql-panel" data-card-el="sql-panel" hidden><p class="inference-detail" data-card-el="inference-detail" hidden></p><pre data-card-el="sql">A validated query will appear here.</pre><p data-card-el="query-meta"></p><p data-card-el="latency-detail">First point draw submitted</p></div>
   <button class="card-resize-handle" aria-label="Resize view" title="Drag to resize">◢</button>`;
 // Parse static chrome once during module warmup, outside the Enter path.
 const template = document.createElement('template');
@@ -120,6 +120,7 @@ export class ResultCard {
     this.part('sql-panel').hidden = true; this.actions.get('sql')!.setAttribute('aria-expanded', 'false');
     this.part('sql').textContent = 'A validated query will appear here.'; this.part('query-meta').textContent = '';
     this.part('latency-detail').textContent = 'First point draw submitted';
+    this.part('inference-detail').textContent = ''; this.part('inference-detail').hidden = true;
     this.part('legend').replaceChildren(); this.part('table-body').replaceChildren();
     this.part('mean-unit').textContent = ''; this.part('time-range').textContent = 'UTC'; this.part('batch-count').textContent = 'Waiting for data';
     for (const name of ['source', 'mean', 'points', 'range', 'latency', 'inference-latency', 'database-first-latency', 'database-latency', 'render-latency']) this.part(name).textContent = '—';
@@ -291,7 +292,7 @@ export class ResultCard {
   private updateTiming(): void {
     const view = this.view; if (!view) return;
     const t = view.timing;
-    this.part('inference-label').textContent = view.source === 'template' ? 'TEMPLATE' : 'INFERENCE';
+    this.part('inference-label').textContent = view.inference?.cacheHit ? 'PLAN CACHE' : view.source === 'template' ? 'TEMPLATE' : 'INFERENCE';
     const database = view.database === 'duckdb-wasm' ? 'DUCKDB' : 'DB';
     this.part('database-first-label').textContent = `${database} → FIRST`;
     this.part('database-label').textContent = `${database} TOTAL`;
@@ -309,6 +310,26 @@ export class ResultCard {
     this.part('latency').textContent = duration(t.committedAt, t.firstDrawAt);
     const prepared = t.committedAt !== undefined && t.inferenceStartedAt !== undefined && t.inferenceStartedAt < t.committedAt;
     this.part('latency-detail').textContent = `${t.promoted ? 'Prepared result promoted. ' : prepared ? 'Preparation began before this run. ' : ''}SQL compile: ${duration(t.intentAt, t.compiledAt)}. Stage times may overlap; database total includes time to first batch. Run → draw starts at dispatch; data → draw starts at delivery to this card. Drawing measures submission, not screen presentation.`;
+    const detail = this.part('inference-detail'), d = view.inference;
+    detail.hidden = view.source === 'template';
+    if (d?.cacheHit) {
+      detail.textContent = 'Exact model-plan cache hit · no model generation for this run. The database query still executes for this request.';
+      this.part('source').textContent = 'CACHED MODEL PLAN';
+    } else if (view.source !== 'template') {
+      const stages: string[] = [];
+      for (const [name, value] of [['Model warmup wait', d?.warmupMs], ['Worker queue', d?.queueMs],
+        ['Generation wall time', d?.generationMs], ['First token', d?.firstTokenMs],
+        ['Prompt processing', d?.prefillMs], ['Token generation', d?.decodeMs],
+        ['Grammar setup', d?.grammarInitMs], ['Grammar / token', d?.grammarPerTokenMs]] as const) {
+        if (value !== undefined) stages.push(`${name}: ${duration(0, value)}`);
+      }
+      if (d?.promptTokens !== undefined) stages.push(`Input: ${integer.format(d.promptTokens)} tokens`);
+      if (d?.completionTokens !== undefined) stages.push(`Output: ${integer.format(d.completionTokens)} tokens`);
+      if (d?.decodeTokensPerSecond !== undefined) stages.push(`Decode: ${fmt.format(d.decodeTokensPerSecond)} tokens/s`);
+      if (d?.prefillTokensPerSecond !== undefined) stages.push(`Prefill: ${fmt.format(d.prefillTokensPerSecond)} tokens/s`);
+      detail.textContent = stages.length ? `${stages.join(' · ')}. Engine stages and grammar costs overlap; do not sum these values.`
+        : 'This inference service did not report a phase breakdown.';
+    }
   }
   private seriesName(id: number): string { const v = this.view; if (!v) return String(id); const vessel = !v.plan.splitByVessel && v.plan.vessel !== null ? v.plan.vessel : id; return v.plan.splitByVessel || v.plan.vessel !== null ? v.context.vessels[vessel] || `Series ${vessel + 1}` : 'Fleet'; }
   private renderTable(): void {

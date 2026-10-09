@@ -35,9 +35,10 @@ def actual_duckdb(browser, url, errors, screenshot=None):
     page.locator('[data-stage="database"][data-state="ready"]').wait_for(state='attached')
     page.locator('[data-stage="coordinator"][data-state="ready"]').wait_for(state='attached')
     page.evaluate('''() => {
-      window.liveEvents=[];
+      window.liveEvents=[];window.liveEventTimes=[];
+      document.querySelector('[data-el="input"]').addEventListener('input',()=>{window.lastEditAt=performance.now();},true);
       new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes)
-        if(node.nodeType===1)liveEvents.push(node.firstElementChild?.textContent);
+        if(node.nodeType===1){const name=node.firstElementChild?.textContent;liveEvents.push(name);liveEventTimes.push({name,at:performance.now()});}
       }).observe(document.querySelector('[data-el="trace-list"]'),{childList:true});
     }''')
     input_field = page.locator('[data-el="input"]')
@@ -46,6 +47,9 @@ def actual_duckdb(browser, url, errors, screenshot=None):
     assert cards.count() == 0
     input_field.fill('Compare vessel speeds by hour over the last 24 hours')
     settle(page, 144)
+    first_work_after_edit = page.evaluate('''() => Math.min(...liveEventTimes
+      .filter(event=>['commit','translation_started','speculation_started'].includes(event.name)).map(event=>event.at))-lastEditAt''')
+    assert first_work_after_edit >= 2000, ('Automatic inference started before the typing pause', first_work_after_edit)
     assert cards.count() == 1
     assert cards.first.get_attribute('data-live-preview') == 'true'
     assert page.locator('[data-history-card]').count() == 0
@@ -65,6 +69,7 @@ def actual_duckdb(browser, url, errors, screenshot=None):
     timings = {field: cards.first.locator(f'[data-card-el="{field}"]').inner_text()
                for field in ['inference-latency', 'database-first-latency', 'database-latency', 'render-latency']}
     input_field.fill('Compare vessel wind by hour over the last 24 hours')
+    page.wait_for_function("document.querySelector('[data-card-el=\"plot-title\"]').textContent.includes('Wind')")
     settle(page, 144)
     assert cards.count() == 1 and cards.first.get_attribute('data-card-id') == first_card
     assert page.evaluate('''() => document.querySelector('.result-card')===firstPreviewNode &&
@@ -103,7 +108,7 @@ def actual_duckdb(browser, url, errors, screenshot=None):
     assert not page.locator('.result-card[data-live-preview="true"]').count()
     assert 'Prepared result promoted' in page.locator('[data-el="latency-detail"]').inner_text()
     page.close()
-    return {'default_live_duckdb': True, 'preview_replaces_in_place': True,
+    return {'default_live_duckdb': True, 'automatic_work_waited_for_two_seconds': True, 'preview_replaces_in_place': True,
             'enter_pins_without_query': True, 'pinned_result_preserved': True,
             'short_draft_removes_preview': True, 'manual_preparation_mode': True,
             'observed_stage_timings_not_benchmark': timings}
@@ -121,6 +126,17 @@ def controlled_ui(browser, url, errors):
       const {DEFAULT_CONFIG}=await import('/src/core/types.ts');
       const assert=(value,message)=>{if(!value)throw Error(message);};
       const tick=()=>new Promise(resolve=>queueMicrotask(resolve));
+      const realTimeout=window.setTimeout,realClearTimeout=window.clearTimeout,realNow=performance.now.bind(performance);
+      let clock=0,nextTimer=0;const timers=new Map();
+      window.setTimeout=(callback,delay=0)=>{const id=++nextTimer;timers.set(id,{at:clock+Number(delay),callback});return id;};
+      window.clearTimeout=id=>timers.delete(id);
+      Object.defineProperty(performance,'now',{configurable:true,value:()=>clock});
+      const advance=async milliseconds=>{
+        const target=clock+milliseconds;
+        while(true){const next=[...timers].filter(([,timer])=>timer.at<=target).sort((a,b)=>a[1].at-b[1].at)[0];
+          if(!next)break;clock=next[1].at;timers.delete(next[0]);next[1].callback();await tick();}
+        clock=target;await tick();
+      };
       const calls={commits:[],drafts:[],cancels:0,draws:[]};
       const ui=createUI(document.querySelector('#root'),{
         onDraft(text,composing){calls.drafts.push({text,composing});},onCommit(text){calls.commits.push(text);},
@@ -147,15 +163,20 @@ def controlled_ui(browser, url, errors):
       const first='Average speed by hour';
       edit(first);await tick();
       assert(calls.commits.length===0&&cards().length===0,'Typing before runtime readiness must wait');
-      ready();await tick();
-      assert(calls.commits.join('|')===first&&cards().length===1,'Ready runtime must run an existing eligible draft without Enter');
+      await advance(800);ready();await advance(1199);
+      assert(calls.commits.length===0&&cards().length===0,'Readiness must preserve the original 2 second edit deadline');
+      assert(calls.drafts.length===1,'Draft transport must happen before the quiet period');
+      await advance(1);
+      assert(calls.commits.join('|')===first&&cards().length===1,'Ready runtime must run at 2000 ms without Enter or an additional pause');
       const beforeDuplicateDraft=calls.drafts.length;edit(first);await tick();
       assert(calls.drafts.length===beforeDuplicateDraft&&calls.commits.length===1,'Unchanged native input must not repeat draft transport or query');
       const old=view('old',first);start(old);append(old);
       const previewNode=active(),previewCanvas=active().querySelector('[data-card-el="chart"]');
       const replacement='Average wind speed by hour';
-      edit(replacement);await tick();
-      assert(calls.commits.at(-1)===replacement&&cards().length===1,'Each edit must replace one preview');
+      edit('Average wind speed by minute');await advance(1500);edit(replacement);await advance(1999);
+      assert(calls.commits.length===1,'Every keystroke must restart the 2 second quiet period');
+      await advance(1);
+      assert(calls.commits.at(-1)===replacement&&cards().length===1,'The latest rested draft must replace one preview');
       assert(active()===previewNode&&active().querySelector('[data-card-el="chart"]')===previewCanvas,'Live edits must reuse card and canvas DOM');
       assert(field('points')==='—'&&field('mean')==='—','New revision must immediately clear old summary values');
       const current=view('current',replacement);start(current);
@@ -186,33 +207,77 @@ def controlled_ui(browser, url, errors):
       edit('Compare every vessel speed by minute');await tick();
       input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',isComposing:true,bubbles:true}));await tick();
       assert(calls.commits.length===beforePin&&cards().length===1,'IME composition must suppress live and manual query');
-      input.dispatchEvent(new CompositionEvent('compositionend'));await tick();
+      await advance(2500);assert(calls.commits.length===beforePin,'Composition must stay idle beyond two seconds');
+      input.dispatchEvent(new CompositionEvent('compositionend'));await advance(1999);
+      assert(calls.commits.length===beforePin,'Final IME text gets its own quiet period');await advance(1);
       assert(calls.commits.length===beforePin+1&&cards().length===2,'Composition end must run the final draft');
       const afterCompositionDrafts=calls.drafts.length;edit(input.value);await tick();
       assert(calls.drafts.length===afterCompositionDrafts&&calls.commits.length===beforePin+1,'Duplicate final IME input must not repeat inference');
-      const gpu=view('gpu',calls.commits.at(-1));gpu.source='webgpu';start(gpu);
+      const gpu=view('gpu',calls.commits.at(-1));gpu.source='webgpu';
+      gpu.inference={warmupMs:100,queueMs:20,prefillMs:30,decodeMs:40,promptTokens:500,completionTokens:30,decodeTokensPerSecond:25};start(gpu);
       assert(field('inference-label')==='INFERENCE','Actual model work must use the inference label');
+      for(const phase of ['Model warmup wait: 100.0 ms','Worker queue: 20.0 ms','Prompt processing: 30.0 ms',
+        'Token generation: 40.0 ms','Input: 500 tokens','Output: 30 tokens','Decode: 25 tokens/s'])
+        assert(field('inference-detail').includes(phase),`Missing inference telemetry: ${phase}`);
+      edit('Average wind speed by minute');await advance(2000);
+      const cached=view('cached-model',calls.commits.at(-1));cached.source='webgpu';cached.inference={cacheHit:true};start(cached);
+      assert(field('inference-label')==='PLAN CACHE','Cached plans must not claim fresh inference');
+      assert(field('inference-detail').includes('no model generation'),'Cache hits must explain that the model did not run');
+      assert(!field('inference-detail').includes('500 tokens')&&!field('inference-detail').includes('Worker queue'),
+        'A cached preview must not retain the previous generation telemetry');
       const beforeStop=calls.commits.length;
       document.querySelector('[data-action="cancel-active"]').click();await tick();ready();await tick();
       assert(calls.commits.length===beforeStop,'Stop must stay stopped across readiness notifications');
       const stopped=view('stopped',calls.commits.at(-1));start(stopped);append(stopped);complete(stopped);
       assert(field('result-state').includes('CANCELED'),'Late stopped events must not restart the preview');
-      edit('Average wave height by hour');await tick();
+      edit('Average wave height by hour');await advance(2000);
       assert(calls.commits.length===beforeStop+1,'An actual edit resumes live query after Stop');
       edit('short');await tick();
       assert(cards().length===1&&pinned.isConnected,'Short drafts must remove only the unsaved preview');
       const beforeBurst=calls.commits.length;
-      edit('Average speed by hour');edit('Average wind speed by hour');edit('Average water temperature by hour');await tick();
+      edit('Average speed by hour');edit('Average wind speed by hour');edit('Average water temperature by hour');await advance(1999);
+      assert(calls.commits.length===beforeBurst,'A burst must remain idle for 1999 ms');await advance(1);
       assert(calls.commits.length===beforeBurst+1&&calls.commits.at(-1)==='Average water temperature by hour','Synchronous edits must coalesce to the latest draft');
+      const beforeImmediateEnter=calls.commits.length;
+      edit('Average wave height by minute');await advance(150);enter();await tick();
+      assert(calls.commits.length===beforeImmediateEnter+1,'Enter must bypass the rest delay');
+      await advance(2500);assert(calls.commits.length===beforeImmediateEnter+1,'The old idle timer must not execute after Enter');
       const beforeManual=calls.commits.length;
       ui.setConfig({...DEFAULT_CONFIG,liveQuery:false});
       edit('Average fleet speed by minute');await tick();ready();await tick();
       assert(calls.commits.length===beforeManual,'Disabled live query must never auto-submit');
       enter();await tick();assert(calls.commits.length===beforeManual+1,'Manual Enter must still submit');
       assert(pinned.isConnected,'Runtime and manual transitions must preserve pinned charts');
-      ui.destroy();
-      return {startupDraftReplayed:true,completedPreviewRequeriesAfterRuntimeChange:true,previewDOMReused:true,staleEventsIgnored:true,stageBoundariesExact:true,imeSuppressed:true,
-        stopPersistsUntilEdit:true,burstCoalesced:true,manualModeWorks:true,pinnedDataPreserved:true};
+      ui.setConfig({...DEFAULT_CONFIG});ready();
+      document.querySelector('[data-action="clear-canvas"]').click();
+      const beforeClear=calls.commits.length;
+      edit('Average wave height by hour over the last week');await advance(500);
+      assert(cards().length===0,'The empty canvas must remain empty during the quiet period');
+      const cancelBeforeClear=calls.cancels;
+      document.querySelector('[data-action="clear-canvas"]').click();
+      assert(calls.cancels===cancelBeforeClear+1,'Clearing an empty canvas must cancel pending model work exactly once');
+      await advance(2500);ready();edit(input.value);await advance(2500);
+      assert(calls.commits.length===beforeClear&&cards().length===0,'Clear must cancel the live timer and suppress unchanged text');
+      for(const terminal of ['complete','stopped']){
+        edit(`Average vessel speed by minute ${terminal}`);await advance(2000);
+        const closing=view(`closing-${terminal}`,calls.commits.at(-1));start(closing);
+        if(terminal==='complete'){append(closing);complete(closing);await waitDraw();}
+        else document.querySelector('[data-action="cancel-active"]').click();
+        const closeNode=active(),beforeClose=calls.commits.length;
+        edit(`Average vessel wind by minute after ${terminal}`);await advance(500);
+        const cancelBeforeClose=calls.cancels;
+        closeNode.querySelector('[data-card-action="close"]').click();
+        assert(calls.cancels===cancelBeforeClose+1,`Closing a ${terminal} preview must cancel pending model work exactly once`);
+        await advance(2500);ready();edit(input.value);await advance(2500);
+        assert(calls.commits.length===beforeClose&&cards().length===0,`Closing a ${terminal} preview must cancel its replacement timer and suppress unchanged text`);
+      }
+      edit('Average speed by minute over the last week');
+      const beforeDestroy=calls.commits.length;ui.destroy();await advance(3000);
+      assert(calls.commits.length===beforeDestroy,'Destroy must clear pending live work');
+      window.setTimeout=realTimeout;window.clearTimeout=realClearTimeout;
+      Object.defineProperty(performance,'now',{configurable:true,value:realNow});
+      return {quietPeriodExact:true,everyEditResetsDeadline:true,enterBypassesPause:true,teardownCancelsTimer:true,startupDraftReplayed:true,completedPreviewRequeriesAfterRuntimeChange:true,previewDOMReused:true,staleEventsIgnored:true,stageBoundariesExact:true,inferencePhaseBreakdown:true,planCacheClearsOldTelemetry:true,imeSuppressed:true,
+        stopPersistsUntilEdit:true,clearCancelsEmptyCanvasTimer:true,closeCancelsPendingReplacement:true,burstCoalesced:true,manualModeWorks:true,pinnedDataPreserved:true};
     }''')
     page.close()
     return result

@@ -4,6 +4,7 @@ import { shell } from './shell';
 import './styles.css';
 import { MAX_PROMPT_CHARS } from '../inference/plan';
 import { prewarmViews } from './renderer-registry';
+import { DRAFT_IDLE_MS } from '../core/scheduling';
 
 export interface UICallbacks {
   onDraft(text: string, composing: boolean): void;
@@ -32,8 +33,9 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   let composing = false, modelLoading = false, historyFrame = 0;
   let runtimeReady = false, destroyed = false, internalCancel = false, liveEpoch = 0;
   let lastDraft = '', lastDraftComposing = false, suppressedLiveText: string | undefined;
+  let lastDraftAt = 0, liveTimer: ReturnType<typeof setTimeout> | undefined;
   const workspace = new CanvasWorkspace(root, {
-    cancel: () => { liveEpoch++; if (!internalCancel) suppressedLiveText = input.value; callbacks.onCancel(); },
+    cancel: () => { cancelLiveTimer(); if (!internalCancel) suppressedLiveText = input.value; callbacks.onCancel(); },
     busy: value => showBusy(value), draw: (id, at) => callbacks.onDraw(id, at),
     added(card) {
       const id = card.id, prompt = card.prompt;
@@ -55,21 +57,27 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   // Runtime startup/teardown may stop work without emitting a query terminal event.
   function cancelInternally(action: () => void): void { internalCancel = true; try { action(); } finally { internalCancel = false; } }
   function setBusy(value: boolean): void { if (!value) cancelInternally(() => workspace.cancelActive('RUNTIME CHANGED')); showBusy(value); }
+  function cancelLiveTimer(): void { liveEpoch++; clearTimeout(liveTimer); liveTimer = undefined; }
   function queueLive(): void {
-    const text = input.value, epoch = ++liveEpoch;
+    cancelLiveTimer();
+    const text = input.value, epoch = liveEpoch;
     if (!config.liveQuery || !runtimeReady || composing || text.trim().length < config.translationMinChars || text === suppressedLiveText) return;
-    // Coalesce synchronous input notifications, without a timer or frame delay.
-    queueMicrotask(() => {
+    // Retain the edit deadline while the runtime warms or reconnects. Draft
+    // transport/model warmup are immediate, but expensive work waits for rest.
+    const run = () => {
+      liveTimer = undefined;
       if (destroyed || epoch !== liveEpoch || !runtimeReady || !config.liveQuery || composing || input.value !== text || suppressedLiveText === text) return;
       if (workspace.submitLive(text)) callbacks.onCommit(text);
-    });
+    };
+    const wait = Math.max(0, lastDraftAt + DRAFT_IDLE_MS - performance.now());
+    if (wait > 0) liveTimer = setTimeout(run, Math.ceil(wait)); else queueMicrotask(run);
   }
   function draftChanged(): void {
     const text = input.value;
     // Browsers may send the final composition value twice. A duplicate draft
     // would otherwise trigger a second speculative model/database execution.
     if (text === lastDraft && composing === lastDraftComposing) return;
-    liveEpoch++;
+    cancelLiveTimer(); lastDraftAt = performance.now();
     if (text !== lastDraft) suppressedLiveText = undefined;
     if (config.liveQuery && (text !== lastDraft || composing)) cancelInternally(() => workspace.invalidateLive(text.trim().length < config.translationMinChars));
     lastDraft = text; lastDraftComposing = composing;
@@ -80,7 +88,7 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   function setPrompt(text: string): void { input.value = text; input.focus(); input.setSelectionRange(text.length, text.length); draftChanged(); }
   function submit(): void {
     const text = input.value; if (!text.trim() || composing) return;
-    liveEpoch++; suppressedLiveText = text;
+    cancelLiveTimer(); suppressedLiveText = text;
     if (workspace.pinLive(text)) return;
     workspace.submit(text); callbacks.onCommit(text);
   }
@@ -102,7 +110,7 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   action('warm-model').addEventListener('click', () => callbacks.onWarmModel());
   function setConfig(next: RuntimeConfig): void {
     if (JSON.stringify(next) !== JSON.stringify(config)) {
-      liveEpoch++; runtimeReady = false; suppressedLiveText = undefined;
+      cancelLiveTimer(); runtimeReady = false; suppressedLiveText = undefined;
       if (config.liveQuery && !next.liveQuery) workspace.pinLive(input.value);
       cancelInternally(() => workspace.cancelActive('RUNTIME CHANGED'));
       cancelInternally(() => workspace.invalidateLive(true));
@@ -115,12 +123,12 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
     el('composer-caption').textContent = config.liveQuery ? 'Live view · Enter to keep' : 'Add a view';
     el('submit-hint').textContent = config.liveQuery ? '↵ Keep this view' : '↵ Add to canvas';
     el('submit').setAttribute('aria-label', config.liveQuery ? 'Keep this view on the canvas' : 'Run question');
-    el('draft-note').textContent = (config.liveQuery ? `Charts update after each edit from ${config.translationMinChars} characters. ` : config.liveTranslation ? `Translate each edit from ${config.translationMinChars} characters. ` : '')
+    el('draft-note').textContent = (config.liveQuery ? `Charts update after a 2 s pause, from ${config.translationMinChars} characters. ` : config.liveTranslation ? `Translate after a 2 s pause, from ${config.translationMinChars} characters. ` : config.speculation ? 'Prepare after a 2 s pause. ' : '')
       + (local ? 'Drafts stay in this browser.' : 'Drafts may be sent to configured remote services.');
     el('draft-state').textContent = idleDraftLabel(); el('draft-dot').dataset.state = 'quiet';
   }
   function idleDraftLabel(): string {
-    return config.liveQuery ? `Live charts from ${config.translationMinChars} characters` : config.liveTranslation ? `Translation starts at ${config.translationMinChars} characters` : config.speculation ? 'Ready when you are' : 'Preparation paused';
+    return config.liveQuery ? `Live charts after 2 s · ${config.translationMinChars}+ characters` : config.liveTranslation ? `Translate after 2 s · ${config.translationMinChars}+ characters` : config.speculation ? 'Prepare after a 2 s pause' : 'Preparation paused';
   }
   action('live-query').addEventListener('click', () => { const next = { ...config, liveQuery: !config.liveQuery }; setConfig(next); callbacks.onConfig(next); });
   action('speculation').addEventListener('click', () => { const next = { ...config, speculation: !config.speculation }; setConfig(next); callbacks.onConfig(next); });
@@ -196,7 +204,7 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
     if (component === 'coordinator') {
       runtimeReady = status.state === 'ready';
       if (runtimeReady) queueLive();
-      else { liveEpoch++; cancelInternally(() => { workspace.cancelActive('RUNTIME CHANGED'); workspace.invalidateLive(true); }); }
+      else { cancelLiveTimer(); cancelInternally(() => { workspace.cancelActive('RUNTIME CHANGED'); workspace.invalidateLive(true); }); }
     }
     if (component === 'database') { el('dataset-dot').dataset.state = status.state; if (!context || status.state !== 'ready') el('dataset-sub').textContent = status.label; }
     if (component === 'model') { modelLoading = status.state === 'loading'; const progress = status.progress === undefined ? '' : ` · ${Math.round(status.progress <= 1 ? status.progress * 100 : status.progress)}%`; el('model-progress').textContent = status.label + progress; updateEndpointFields(); }
@@ -221,5 +229,5 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   }
   setConfig(config);
   return { setDataset, setStatus, setConfig, handleEvent, setBusy, setPrompt,
-    destroy() { destroyed = true; liveEpoch++; workspace.destroy(); if (historyFrame) cancelAnimationFrame(historyFrame); root.replaceChildren(); } };
+    destroy() { destroyed = true; cancelLiveTimer(); workspace.destroy(); if (historyFrame) cancelAnimationFrame(historyFrame); root.replaceChildren(); } };
 }

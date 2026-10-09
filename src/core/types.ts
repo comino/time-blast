@@ -27,11 +27,28 @@ export interface Draft {
   contextId: string;
   sentAt: number;
 }
+/** Durations are milliseconds measured within each component's own clock. */
+export interface InferenceDiagnostics {
+  warmupMs?: number;
+  queueMs?: number;
+  generationMs?: number;
+  firstTokenMs?: number;
+  prefillMs?: number;
+  decodeMs?: number;
+  grammarInitMs?: number;
+  grammarPerTokenMs?: number;
+  promptTokens?: number;
+  completionTokens?: number;
+  prefillTokensPerSecond?: number;
+  decodeTokensPerSecond?: number;
+  cacheHit?: boolean;
+}
 export interface InferenceResult {
   plan: QueryPlan;
   source: 'template' | 'webgpu' | 'remote';
   model?: string;
   tokens?: number;
+  diagnostics?: InferenceDiagnostics;
 }
 export interface AdapterStatus {
   state: 'cold' | 'loading' | 'ready' | 'unavailable' | 'error';
@@ -110,6 +127,7 @@ export interface QueryView {
   source: InferenceResult['source'];
   model?: string;
   database?: string;
+  inference?: InferenceDiagnostics;
   context: DatasetContext;
   timing: QueryTiming;
 }

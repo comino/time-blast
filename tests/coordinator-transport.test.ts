@@ -75,7 +75,7 @@ afterEach(() => {
 
 function harness(inferencePlacement: Placement = 'browser', databasePlacement: Placement = 'browser',
   overrides: { inference?: InferenceAdapter; database?: DatabaseAdapter; speculation?: boolean;
-    liveTranslation?: boolean; translationMinChars?: number } = {}) {
+    liveTranslation?: boolean; translationMinChars?: number; draftDebounceMs?: number } = {}) {
   const events: PipelineEvent[] = [];
   const inference: InferenceAdapter = overrides.inference ?? {
     id: `inference-${inferencePlacement}`, placement: inferencePlacement,
@@ -89,7 +89,7 @@ function harness(inferencePlacement: Placement = 'browser', databasePlacement: P
   const compiler: QueryCompiler = { kind: 'rust-wasm', prepare: vi.fn(async () => {}), compile: vi.fn(() => 'VALIDATED SQL') };
   const options: CoordinatorOptions = { database, inference, compiler, context, emit: event => events.push(event),
     speculation: overrides.speculation ?? true, liveTranslation: overrides.liveTranslation,
-    translationMinChars: overrides.translationMinChars, debounceMs: 0 };
+    translationMinChars: overrides.translationMinChars, debounceMs: 0, draftDebounceMs: overrides.draftDebounceMs };
   return { events, inference, database, compiler, options };
 }
 
@@ -102,6 +102,31 @@ function remote(h = harness(), ready = true) {
   if (ready) socket.receive({ type: 'READY', version: 1 });
   return { ...h, client, socket, statuses };
 }
+
+it('enforces the browser quiet period even when remote PREPARE arrives immediately or late',async()=>{
+  const h=remote(harness('browser','browser',{liveTranslation:true,draftDebounceMs:2000}));
+  expect(h.socket.last('HELLO').draftDebounceMs).toBe(2000);
+  h.client.draft('Average speed by hour');h.socket.receive(prepareReply(h.socket.last('DRAFT')));
+  expect(h.inference.observeDraft).toHaveBeenCalled();
+  await vi.advanceTimersByTimeAsync(1999);expect(h.inference.resolve).not.toHaveBeenCalled();
+  h.client.draft('Average wind speed by hour');
+  await vi.advanceTimersByTimeAsync(1250);h.socket.receive(prepareReply(h.socket.last('DRAFT')));
+  await vi.advanceTimersByTimeAsync(749);expect(h.inference.resolve).not.toHaveBeenCalled();
+  await vi.advanceTimersByTimeAsync(1);expect(h.inference.resolve).toHaveBeenCalledOnce();expect(h.database.execute).toHaveBeenCalledOnce();
+  h.client.draft('Average water temperature by hour');
+  await vi.advanceTimersByTimeAsync(2100);expect(h.inference.resolve).toHaveBeenCalledOnce();
+  h.socket.receive(prepareReply(h.socket.last('DRAFT')));
+  expect(h.inference.resolve).toHaveBeenCalledTimes(2);
+});
+
+it('remote Enter bypasses the quiet period and late PREPARE cannot duplicate it',async()=>{
+  const h=remote(harness('browser','browser',{liveTranslation:true,draftDebounceMs:2000}));
+  h.client.draft('Average speed by hour');const draft=h.socket.last('DRAFT');h.socket.receive(prepareReply(draft));
+  await vi.advanceTimersByTimeAsync(300);h.client.commit('Average speed by hour');h.socket.receive(acceptReply(h.socket.last('COMMIT')));
+  await vi.advanceTimersByTimeAsync(0);expect(h.inference.resolve).toHaveBeenCalledOnce();expect(h.database.execute).toHaveBeenCalledOnce();
+  h.socket.receive(prepareReply(draft));await vi.advanceTimersByTimeAsync(2000);
+  expect(h.inference.resolve).toHaveBeenCalledOnce();expect(h.database.execute).toHaveBeenCalledOnce();
+});
 
 it('ignores queued socket replies after disposal and stops after a service error',async()=>{
   const old=remote();old.client.dispose();const previous=old.statuses.length;

@@ -33,6 +33,15 @@ def run(url, screenshot):
         assert "1,209,600" in page.locator('[data-el="dataset-sub"]').inner_text()
         before = len(engines)
         assert before == 1, engines
+        page.evaluate('''() => {
+          window.__typingWork=[];
+          document.querySelector('[data-el="input"]').addEventListener('input',()=>{window.__lastTypedAt=performance.now();},true);
+          new MutationObserver(records=>{for(const record of records)for(const node of record.addedNodes){
+            const name=node.firstElementChild?.textContent;
+            if(['commit','translation_started','speculation_started'].includes(name))
+              __typingWork.push({name,at:performance.now()});
+          }}).observe(document.querySelector('[data-el="trace-list"]'),{childList:true});
+        }''')
         # The deployed default must draw real data without Enter or settings edits.
         assert page.locator('[data-action="live-query"]').get_attribute('aria-checked') == 'true'
         page.locator('[data-el="input"]').fill("Compare vessel speeds by hour over the last 24 hours")
@@ -40,6 +49,8 @@ def run(url, screenshot):
           document.querySelector('[data-el="result-state"]')?.textContent.trim() === 'COMPLETE' &&
           document.querySelector('[data-el="points"]')?.textContent.trim() === '144'""")
         assert page.locator('.result-card[data-live-preview="true"]').count() == 1
+        automatic_start_ms = page.evaluate("Math.min(...__typingWork.map(event=>event.at))-__lastTypedAt")
+        assert 2000 <= automatic_start_ms < 60_000, ('Automatic work must wait for the typing pause', automatic_start_ms)
         assert page.locator('[data-history-card]').count() == 0
         for name in ['inference-latency', 'database-first-latency', 'database-latency', 'render-latency']:
             assert page.locator(f'[data-el="{name}"]').inner_text() != '—', name
@@ -52,6 +63,16 @@ def run(url, screenshot):
         assert page.locator('[data-el="query-meta"]').inner_text() == live_query_meta
         assert page.locator('[data-history-card]').count() == 1
         page.locator('[data-el="input"]').fill("")
+        page.locator('[data-action="clear-canvas"]').click()
+        page.evaluate('window.__typingWork=[]')
+        page.locator('[data-el="input"]').fill('Compare vessel wind by hour over the last 24 hours')
+        page.locator('[data-el="input"]').press('Enter')
+        page.wait_for_function('''() => document.querySelector('[data-el="result-state"]')?.textContent.trim()==='COMPLETE'
+          &&document.querySelector('[data-el="points"]')?.textContent.trim()==='144' ''')
+        enter_start_ms = page.evaluate("Math.min(...__typingWork.map(event=>event.at))-__lastTypedAt")
+        assert 0 <= enter_start_ms < 2000, ('Enter must bypass the typing pause', enter_start_ms)
+        assert page.locator('.result-card[data-live-preview="true"]').count() == 0
+        page.locator('[data-el="input"]').fill('')
         page.locator('[data-action="clear-canvas"]').click()
         page.evaluate("""() => {
           window.__databaseReloads = 0;
@@ -86,7 +107,7 @@ def run(url, screenshot):
         page.get_by_role("tab", name="Chart", exact=True).click()
         page.wait_for_function("document.querySelector('[data-el=\"result-state\"]').textContent.trim() === 'COMPLETE'")
 
-        # Translation-only mode prepares SQL on each eligible edit without a query.
+        # Translation-only mode prepares SQL after each quiet period without a query.
         page.locator('[data-el="input"]').fill("")
         page.get_by_role("button", name="Runtime settings", exact=True).click()
         page.locator('[name="liveTranslation"]').check()
@@ -186,6 +207,7 @@ def run(url, screenshot):
         print(json.dumps({"url": url, "chromium": browser.version, "dataset_rows": 1_209_600,
                           "dense_chart_points": 60_480, "default_live_chart_without_enter": True,
                           "live_pin_without_query": True, "stage_timings_visible": True,
+                          "automatic_work_waits_two_seconds": True, "enter_bypasses_typing_pause": True,
                           "live_translation_without_query": True,
                           "prepared_whitespace_promoted": True, "database_reloads": 0,
                           "persistent_cards": 4, "presentation_without_new_query": True,

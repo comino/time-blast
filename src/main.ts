@@ -6,6 +6,7 @@ import {RemoteCoordinatorClient} from './core/remote-coordinator';
 import {DEFAULT_CONFIG,type DatabaseAdapter,type DatasetContext,type InferenceAdapter,type PipelineEvent,type RuntimeConfig} from './core/types';
 import {createInferenceAdapter} from './inference';
 import {createUI} from './ui';
+import {DRAFT_IDLE_MS} from './core/scheduling';
 
 let client:CoordinatorClient|undefined;
 let database:DatabaseAdapter|undefined;
@@ -88,7 +89,7 @@ function connect(selected:RuntimeConfig,own:number,dataset:DatasetContext,db:Dat
     ui.handleEvent(event);
   };
   const options={database:db,inference:model,compiler,context:dataset,emit,speculation:selected.speculation,
-    liveTranslation:selected.liveTranslation,translationMinChars:selected.translationMinChars};
+    liveTranslation:selected.liveTranslation,translationMinChars:selected.translationMinChars,draftDebounceMs:DRAFT_IDLE_MS};
   ui.setBusy(false);
   try {
     if(selected.coordinatorMode==='browser') {

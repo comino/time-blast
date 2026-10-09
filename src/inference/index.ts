@@ -2,6 +2,8 @@ import type { AdapterStatus, DatasetContext, Draft, InferenceAdapter, InferenceM
 import type { WorkerRequest, WorkerResponse } from './messages';
 import { abortError, assertNotAborted, MAX_PROMPT_CHARS, MODEL_RESPONSE_SCHEMA, validateDraft, validateQueryPlan } from './plan';
 import { parseTemplate } from './templates';
+import { PlanCache } from './plan-cache';
+import { readInferenceDiagnostics } from './diagnostics';
 
 export { parseTemplate } from './templates';
 export { validateQueryPlan, parseModelPlan, QUERY_PLAN_SCHEMA, MODEL_RESPONSE_SCHEMA } from './plan';
@@ -30,6 +32,7 @@ export class LocalInferenceAdapter implements InferenceAdapter {
   private disposed = false;
   private nextId = 0;
   private latestDraft?: Draft;
+  private readonly plans = new PlanCache();
   private pending = new Map<string, { resolve(value: InferenceResult | undefined): void; reject(error: Error): void; cleanup(): void }>();
   private warmWaiters=new Set<{finish(error?:unknown):void}>();
 
@@ -39,7 +42,9 @@ export class LocalInferenceAdapter implements InferenceAdapter {
 
   async prepare(context: DatasetContext): Promise<void> {
     this.assertLive();
-    this.context = frozenContext(context);
+    if (JSON.stringify(this.context) !== JSON.stringify(context)) {
+      this.plans.clear(); this.context = frozenContext(context);
+    }
     if (this.mode === 'templates') {
       this.options.onStatus?.({ state: 'ready', label: 'Deterministic templates', detail: 'Limited exact grammar · no language model' });
       return;
@@ -75,6 +80,7 @@ export class LocalInferenceAdapter implements InferenceAdapter {
   async resolve(draft: Draft, signal: AbortSignal): Promise<InferenceResult> {
     this.assertLive();
     assertNotAborted(signal);
+    draft = { ...draft };
     const context = this.context;
     if (!context) throw new Error('Prepare a dataset before requesting inference.');
     validateDraft(draft, context);
@@ -83,21 +89,32 @@ export class LocalInferenceAdapter implements InferenceAdapter {
       if (plan) return { plan, source: 'template', model: 'Exact template grammar' };
       if (this.mode === 'templates') throw new Error('This wording is outside the deterministic template grammar. Choose Auto, Local WebGPU or remote inference.');
     }
+    const cached = this.plans.get(draft.text, context);
+    if (cached) return cached;
+    let warmupMs = 0;
     if (this.warming&&!this.ready) {
+      const waitingAt = performance.now();
       try { await this.waitForWarm(signal); }
       catch (error) { if (signal.aborted) throw abortError(); }
+      warmupMs = performance.now() - waitingAt;
     }
     assertNotAborted(signal);
     this.assertLive();
     if (!this.ready || !this.worker) throw new Error(`This request needs a local language model. ${this.failure ?? 'The WebGPU model is not ready.'}`);
     const result = await this.request({ type: 'resolve', draft: { ...draft }, context }, signal);
+    assertNotAborted(signal);
     if (!result) throw new Error('The local model returned no query plan.');
-    return { ...result, plan: validateQueryPlan(result.plan, context), source: 'webgpu' };
+    const diagnostics = readInferenceDiagnostics(result.diagnostics);
+    const validated: InferenceResult = { ...result, plan: validateQueryPlan(result.plan, context), source: 'webgpu',
+      diagnostics: { ...diagnostics, warmupMs: warmupMs + (diagnostics?.warmupMs ?? 0) } };
+    if (this.context === context && !this.disposed) this.plans.set(draft.text, context, validated);
+    return validated;
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    this.plans.clear();
     this.ready = false;
     this.finishWarmWaiters(abortError());
     for (const pending of this.pending.values()) { pending.cleanup(); pending.reject(abortError()); }
@@ -126,6 +143,7 @@ export class LocalInferenceAdapter implements InferenceAdapter {
 
   private resetWorker(error:Error):void {
     this.ready=false;
+    this.plans.clear();
     this.finishWarmWaiters(error);
     for(const pending of this.pending.values()){pending.cleanup();pending.reject(error);}
     this.pending.clear();
@@ -270,9 +288,11 @@ export class RemoteInferenceAdapter implements InferenceAdapter {
       if (controller.signal.aborted) throw abortError();
       const envelope = payload && typeof payload === 'object' && !Array.isArray(payload) ? payload as Record<string, unknown> : undefined;
       const plan = validateQueryPlan(envelope && 'plan' in envelope ? envelope.plan : payload, context);
+      const diagnostics = readInferenceDiagnostics(envelope?.diagnostics);
       return { plan, source: 'remote',
         model: typeof envelope?.model === 'string' ? envelope.model.slice(0, 200) : undefined,
         tokens: typeof envelope?.tokens === 'number' && Number.isSafeInteger(envelope.tokens) && envelope.tokens >= 0 ? envelope.tokens : undefined,
+        ...(diagnostics ? { diagnostics } : {}),
       };
     } finally { signal.removeEventListener('abort', abort); this.controllers.delete(controller); }
   }

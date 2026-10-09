@@ -34,7 +34,7 @@ with sync_playwright() as p:
     }''')
     settings = page.get_by_role('button', name='Runtime settings', exact=True)
     apply = page.get_by_role('button', name='Apply runtime')
-    live = page.get_by_role('checkbox', name='Translate on every edit', exact=True)
+    live = page.get_by_role('checkbox', name='Prepare translation after typing', exact=True)
     live_query = page.locator('[name="liveQuery"]')
     results = page.get_by_role('checkbox', name='Prepare query results while I type', exact=True)
     threshold = page.get_by_label('Minimum characters', exact=True)

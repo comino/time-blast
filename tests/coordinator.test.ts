@@ -6,14 +6,14 @@ const context:DatasetContext={id:'snapshot-1',label:'Test',rowCount:2,start:0,en
 const plan:QueryPlan={metric:'speed',aggregate:'avg',bucketMinutes:60,windowHours:24,splitByVessel:false,vessel:null,view:'line'};
 const batch:ColumnBatch={x:new Float64Array([0,3600000]),y:new Float64Array([12,14]),series:new Int32Array([0,0]),length:2,byteLength:40};
 const draft=(text='Average speed by hour',revision=1):Draft=>({text,revision,contextId:context.id,sentAt:performance.now()});
-function harness(overrides:{database?:DatabaseAdapter;inference?:InferenceAdapter;speculativeBytes?:number;speculation?:boolean;liveTranslation?:boolean;translationMinChars?:number;debounceMs?:number}={}) {
+function harness(overrides:{database?:DatabaseAdapter;inference?:InferenceAdapter;speculativeBytes?:number;speculation?:boolean;liveTranslation?:boolean;translationMinChars?:number;debounceMs?:number;draftDebounceMs?:number}={}) {
   const events:PipelineEvent[]=[];
   const inference:InferenceAdapter=overrides.inference??{id:'test',placement:'browser',prepare:async()=>{},observeDraft:vi.fn(),dispose(){},resolve:vi.fn(async()=>({plan,source:'template' as const}))};
   const database:DatabaseAdapter=overrides.database??{id:'test-db',placement:'browser',prepare:async()=>context,dispose:async()=>{},execute:vi.fn(async function*(){yield batch;})};
   const compiler:QueryCompiler={kind:'rust-wasm',prepare:async()=>{},compile:vi.fn(()=>'SQL')};
   const coordinator=new BrowserCoordinator({inference,database,compiler,context,emit:e=>events.push(e),speculation:overrides.speculation??true,
     debounceMs:'debounceMs' in overrides?overrides.debounceMs:10,speculativeBytes:overrides.speculativeBytes,
-    liveTranslation:overrides.liveTranslation,translationMinChars:overrides.translationMinChars});
+    liveTranslation:overrides.liveTranslation,translationMinChars:overrides.translationMinChars,draftDebounceMs:overrides.draftDebounceMs});
   return {coordinator,events,inference,database,compiler};
 }
 beforeEach(()=>vi.stubGlobal('scheduler',{yield:()=>new Promise<void>(resolve=>setTimeout(resolve,0))}));
@@ -94,6 +94,42 @@ describe('pipeline timing boundaries',()=>{
 });
 
 describe('draft preparation and commit correctness',()=>{
+  it.each([true,false])('waits for two quiet seconds before automatic work, with live translation %s',async liveTranslation=>{
+    vi.useFakeTimers();const h=harness({liveTranslation,draftDebounceMs:2000});
+    h.coordinator.observeDraft(draft('Average speed by hour'));
+    expect(h.inference.observeDraft).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(h.inference.resolve).not.toHaveBeenCalled();expect(h.database.execute).not.toHaveBeenCalled();
+    h.coordinator.observeDraft(draft('Average wind speed by hour',2));
+    expect(h.inference.observeDraft).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(h.inference.resolve).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(h.inference.resolve).toHaveBeenCalledOnce();expect(h.database.execute).toHaveBeenCalledOnce();
+    expect(vi.mocked(h.inference.resolve).mock.calls[0][0].text).toBe('Average wind speed by hour');h.coordinator.dispose();
+  });
+  it('runs Enter immediately and promotes work when submission meets the idle deadline',async()=>{
+    vi.useFakeTimers();const h=harness({liveTranslation:true,draftDebounceMs:2000});const first=draft();
+    h.coordinator.observeDraft(first);await vi.advanceTimersByTimeAsync(500);
+    h.coordinator.commit({...first,sentAt:performance.now()});await settle();
+    expect(h.inference.resolve).toHaveBeenCalledOnce();expect(h.database.execute).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(2000);expect(h.inference.resolve).toHaveBeenCalledOnce();
+    const second=draft('Average wind speed by hour',2);h.coordinator.observeDraft(second);
+    await vi.advanceTimersByTimeAsync(2000);h.coordinator.commit({...second,sentAt:performance.now()});await settle();
+    expect(h.inference.resolve).toHaveBeenCalledTimes(2);expect(h.database.execute).toHaveBeenCalledTimes(2);
+    expect(h.events.filter(event=>event.type==='start')).toHaveLength(2);h.coordinator.dispose();
+  });
+  it('cancels quiet-period work on composition, short drafts and Stop',async()=>{
+    vi.useFakeTimers();const h=harness({liveTranslation:true,draftDebounceMs:2000});
+    h.coordinator.observeDraft(draft());await vi.advanceTimersByTimeAsync(1000);
+    h.coordinator.observeDraft(draft('Average speed by hour',2),true);await vi.advanceTimersByTimeAsync(2000);
+    expect(h.inference.resolve).not.toHaveBeenCalled();
+    h.coordinator.observeDraft(draft('Average speed by hour',3));await vi.advanceTimersByTimeAsync(1000);
+    h.coordinator.observeDraft(draft('short',4));await vi.advanceTimersByTimeAsync(2000);
+    expect(h.inference.resolve).not.toHaveBeenCalled();
+    h.coordinator.observeDraft(draft('Average speed by hour',5));h.coordinator.cancel();
+    await vi.advanceTimersByTimeAsync(2000);expect(h.inference.resolve).not.toHaveBeenCalled();h.coordinator.dispose();
+  });
   it('keeps the default 180ms speculation pause when live translation is disabled',async()=>{
     vi.useFakeTimers();const h=harness({debounceMs:undefined});h.coordinator.observeDraft(draft());
     expect(h.inference.resolve).not.toHaveBeenCalled();await vi.advanceTimersByTimeAsync(179);

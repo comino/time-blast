@@ -48,7 +48,11 @@ export class CanvasWorkspace {
   get isLiveActive(): boolean { return !!this.preview && this.active === this.preview; }
   private create(prompt: string): ResultCard {
     const card = new ResultCard(`view-${++this.counter}`, prompt, this.world, {
-      select: c => this.select(c), close: c => this.remove(c), duplicate: c => this.duplicate(c), cancel: c => this.cancel(c),
+      select: c => this.select(c), close: c => {
+        // A finished preview can still have a replacement waiting on the typing timer.
+        if (c === this.preview && !c.busy) this.callbacks.cancel();
+        this.remove(c);
+      }, duplicate: c => this.duplicate(c), cancel: c => this.cancel(c),
       change: c => { if (c === this.active) this.callbacks.busy(c.busy); }, draw: (id, at) => this.callbacks.draw(id, at),
     });
     const columns = this.width >= 900 ? 2 : 1;
@@ -81,7 +85,7 @@ export class CanvasWorkspace {
       this.release(card); card.reset(prompt);
     } else {
       card = this.create(prompt);
-      const badge = document.createElement('span'); badge.className = 'live-preview-badge'; badge.textContent = 'LIVE'; badge.title = 'Updates while you type · Enter to keep';
+      const badge = document.createElement('span'); badge.className = 'live-preview-badge'; badge.textContent = 'LIVE'; badge.title = 'Updates after a 2 second pause · Enter to keep';
       card.element.querySelector('.card-toolbar')!.prepend(badge);
     }
     this.preview = this.active = this.pending = card;
@@ -173,7 +177,13 @@ export class CanvasWorkspace {
     if (this.selected === card) { this.selected = undefined; const next = this.cards.at(-1); if (next) this.select(next); }
     this.updateCount();
   }
-  clear(): void { for (const card of [...this.cards]) this.remove(card); this.x = this.y = 0; this.scale = 1; this.paintCamera(); }
+  clear(): void {
+    // Clear also stops pending live work when no result card exists yet.
+    this.callbacks.cancel();
+    if (this.active?.busy) this.active.cancel('CANCELED');
+    for (const card of [...this.cards]) this.remove(card);
+    this.x = this.y = 0; this.scale = 1; this.paintCamera();
+  }
   private notice(text: string): void { const notice = this.el('board-notice'); notice.textContent = text; notice.hidden = false; clearTimeout(this.noticeTimer); this.noticeTimer = setTimeout(() => { notice.textContent = ''; notice.hidden = true; }, 8000); }
   private updateCount(): void { this.el('card-count').textContent = `${this.cards.length} ${this.cards.length === 1 ? 'view' : 'views'}`; this.el('board-empty').hidden = !!this.cards.length; }
   private zoom(factor: number): void {

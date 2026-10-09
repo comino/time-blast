@@ -63,6 +63,16 @@ python3 tests/browser_live_query.py
 
 The preview reuses its card and primary canvases instead of reconstructing them on every edit. An isolated 120-revision headless check, discarding 20 warmups, observed median empty-preview replacement time fall from 4.9 ms to 0.1 ms (p95 5.7 ms to 0.2 ms). This measures synchronous empty-card maintenance only, with no inference, query, populated renderer, or screen presentation; it is not an end-to-end benchmark.
 
+## Inference work reduction and 2-second pause
+
+The next update passes **363 unit tests**, TypeScript checking and the production build. Controlled clocks verify no automatic inference/query before 2,000 ms, timer reset on edits, immediate Enter, remaining-deadline behavior after startup/remote PREPARE, and no duplicate execution at the deadline. Browser fixtures also prove Clear on an empty canvas and closing a finished/stopped preview cancel a pending replacement. Real DuckDB live queries wait at least two seconds after the recorded input event. All eight local browser suites, including the 1,209,600-row database smoke, pass. The public HTTPS smoke also verifies the measured pause and early Enter bypass, prepared promotion, 60,480-point results, advanced views and asset loading with no browser errors; its screenshot is included in the README.
+
+The actual worker is exercised with a controlled engine: compact schema requests, full validated plans, separated queue/warmup/generation telemetry, usage conversion, and rejection of interrupted/truncated output. Compact decoder tests cover all ten views and reject unsafe grouping, extra/missing fields, invalid values and malformed output. Cache tests cover exact identity, capacity, immutable returned plans, context changes, caller mutation and canceled/failed generations. The UI verifies phase labels and removes old generation statistics on a cache hit.
+
+[Recorded Qwen tokenizer measurements](benchmarks/inference-token-counts-2026-10-09.json) show the system prompt shrinking from **951 to 527 tokens**; a representative complete ChatML input shrinks from **979 to 555**. Three canonical output examples shrink **37→31**, **38→32**, and **41→35** tokens. The artifact records the exact texts, tokenizer URL/hash, context and method. These are offline token counts, not model output, semantic-accuracy results, or measured GPU speedups. No hardware inference was available on this host; the existing `browser_inference.py` probe remains available for a hardware-equipped browser.
+
+True KV prefix reuse remains unimplemented: the pinned browser runtime resets independent system/user requests and has no supported prefix checkpoint/restore API. The new exact plan cache is explicitly labeled and skips only repeated local model generation. Remote latency comparisons and a trained semantic parser remain separate experiments requiring an actual service or training/evaluation workload.
+
 ## Warm preparation comparison
 
 [`benchmark-browser.json`](benchmark-browser.json) records 20 measured trials per mode and two discarded warmups per mode. The paired order alternated, the same database stayed loaded, all results contained 144 points, and the source was explicitly `LOCAL TEMPLATE`. This run used headless Chromium **151.0.7922.34**, `--disable-gpu`, on a shared Linux aarch64 host with four logical CPUs.
