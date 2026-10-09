@@ -197,6 +197,31 @@ def run(url, screenshot):
         assert len(engines) == before
         if screenshot:
             page.screenshot(path=screenshot, full_page=True)
+        # Exact reported failures: preserve the requested window while showing
+        # only actual coverage. This uses templates, not hardware model inference.
+        page.locator('[data-action="clear-canvas"]').click()
+        window_queries = [
+            (710, 2016, 'Compare vessel wave height by hour over the last 710 days as a 3D surface'),
+            (1, 144, 'Compare vessel wave height by hour over the last 1days as a 3D surface'),
+        ]
+        for days, points, prompt in window_queries:
+            page.locator('[data-el="input"]').fill(prompt)
+            page.locator('[data-el="input"]').press('Enter')
+            page.wait_for_function("""points =>
+              document.querySelector('[data-el="result-state"]')?.textContent.trim()==='COMPLETE' &&
+              document.querySelector('[data-el="points"]')?.textContent.replaceAll(',','')===String(points)""", arg=points)
+            assert page.locator('[data-el="representation"]').input_value() == 'surface'
+            assert page.locator('[data-el="source"]').inner_text() == 'LOCAL TEMPLATE'
+            coverage = page.locator('[data-el="coverage-note"]')
+            if days == 710:
+                assert '710 days' in page.locator('[data-el="plot-subtitle"]').inner_text()
+                assert coverage.is_visible()
+                assert '710 days' in coverage.inner_text() and '14 days' in coverage.inner_text()
+                bounds = page.locator('[data-el="time-range"]').inner_text()
+                assert 'Sep 1' in bounds and 'Sep 15' in bounds, bounds
+            else:
+                assert '24 hours' in page.locator('[data-el="plot-subtitle"]').inner_text()
+                assert coverage.is_hidden()
         for engine in engines:
             assert engine["status"] == 200, engine
             assert engine["headers"].get("content-encoding") == "gzip", engine
@@ -212,6 +237,8 @@ def run(url, screenshot):
                           "prepared_whitespace_promoted": True, "database_reloads": 0,
                           "persistent_cards": 4, "presentation_without_new_query": True,
                           "advanced_intents": [mode for mode, _ in advanced], "calendar_switch": True,
+                          "reported_window_prompts": [prompt for _, _, prompt in window_queries],
+                          "requested_window_preserved_with_actual_coverage": True,
                           "http_decoded_engines": len(engines), "page_errors": errors}, indent=2))
         browser.close()
 

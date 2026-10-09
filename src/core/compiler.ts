@@ -1,4 +1,5 @@
 import { CHART_VIEWS, type DatasetContext, type QueryCompiler, type QueryPlan } from './types';
+import { MAX_WINDOW_HOURS } from './query-limits';
 
 interface CompilerExports extends WebAssembly.Exports {
   memory: WebAssembly.Memory;
@@ -24,7 +25,7 @@ export class WasmQueryCompiler implements QueryCompiler {
     const a = ['avg','min','max'].indexOf(plan.aggregate);
     // Check before coercing into the integer WASM ABI, including malformed remote responses.
     if (m < 0 || a < 0 || ![1,5,15,60,360,1440].includes(plan.bucketMinutes)
-      || !Number.isInteger(plan.windowHours) || plan.windowHours<1 || plan.windowHours>336
+      || !Number.isInteger(plan.windowHours) || plan.windowHours<1 || plan.windowHours>MAX_WINDOW_HOURS
       || typeof plan.splitByVessel !== 'boolean' || (plan.vessel !== null && (!Number.isInteger(plan.vessel) || plan.vessel<0 || plan.vessel>5))
       || !CHART_VIEWS.includes(plan.view)
       || (['map','density','tracks'].includes(plan.view) && !plan.splitByVessel)) throw new Error('Invalid query intent.');

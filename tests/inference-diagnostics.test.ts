@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readInferenceDiagnostics, webLLMDiagnostics } from '../src/inference/diagnostics';
+import { createInferenceAdapter } from '../src/inference';
+import { InferenceFailure } from '../src/inference/failure';
+import type { WorkerRequest } from '../src/inference/messages';
+
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 describe('inference telemetry boundaries', () => {
   it('converts WebLLM seconds to milliseconds using its reported decode token convention', () => {
@@ -23,5 +28,80 @@ describe('inference telemetry boundaries', () => {
       time_to_first_token_s: 0, time_per_output_token_s: NaN, prefill_tokens_per_s: Infinity,
       decode_tokens_per_s: NaN, grammar_init_s: Number.MAX_VALUE,
     } })).toEqual({ promptTokens: 0, completionTokens: 0, prefillMs: 0 });
+  });
+  it('preserves local refusal diagnostics and adds adapter warmup time exactly once', async () => {
+    let now = 100, worker: any;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    vi.stubGlobal('navigator', { gpu: {} });
+    vi.stubGlobal('Worker', class {
+      messages: WorkerRequest[] = []; onmessage: any;
+      constructor() { worker = this; }
+      postMessage(message: WorkerRequest) { this.messages.push(message); }
+      terminate() {}
+    });
+    const context = { id: 'test', start: 0, end: 86_400_000, rowCount: 3, label: 'Fleet', vessels: ['Aurora'], description: '' };
+    const draft = { text: 'Please show fleet speed', revision: 1, contextId: context.id, sentAt: now };
+    const adapter = createInferenceAdapter('webgpu');
+    const preparation = adapter.prepare(context);
+    const result = adapter.resolve(draft, new AbortController().signal);
+    const rejected = expect(result).rejects.toMatchObject({ message: 'This request cannot be expressed.',
+      details: { source: 'webgpu', model: 'test-model', diagnostics: { warmupMs: 105,
+        generationMs: 140, queueMs: 10, promptTokens: 80, completionTokens: 9 } } });
+    now = 200;
+    worker.onmessage({ data: { type: 'ready', id: worker.messages[0].id, model: 'test-model' } });
+    await preparation;
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    const request = worker.messages.find((message: WorkerRequest) => message.type === 'resolve');
+    expect(request).toBeDefined();
+    now = 350;
+    worker.onmessage({ data: { type: 'error', id: request.id, message: 'This request cannot be expressed.',
+      inference: { source: 'webgpu', model: 'test-model', diagnostics: {
+        warmupMs: 5, queueMs: 10, generationMs: 140, promptTokens: 80, completionTokens: 9,
+      } } } });
+    await rejected; adapter.dispose();
+  });
+  it('retains sanitized remote measurements when its returned plan fails validation', async () => {
+    const context = { id: 'test', start: 0, end: 86_400_000, rowCount: 3, label: 'Fleet', vessels: ['Aurora'], description: '' };
+    const adapter = createInferenceAdapter('remote', { endpoint: 'https://example.invalid/inference',
+      fetchImpl: vi.fn(async () => new Response(JSON.stringify({ model: 'remote-model', plan: {},
+        diagnostics: { generationMs: 55, promptTokens: 80, queueMs: -3, completionTokens: 1.5, extra: 'ignore' },
+      }))) });
+    await adapter.prepare(context);
+    await expect(adapter.resolve({ text: 'Please show fleet speed', revision: 1, contextId: context.id, sentAt: 0 },
+      new AbortController().signal)).rejects.toMatchObject({ details: { source: 'remote', model: 'remote-model',
+        diagnostics: { generationMs: 55, promptTokens: 80 } } });
+    adapter.dispose();
+  });
+  it('attributes device-loss measurements only to the generation that performed the work', async () => {
+    let worker: any;
+    vi.stubGlobal('navigator', { gpu: {} });
+    vi.stubGlobal('Worker', class {
+      messages: WorkerRequest[] = []; onmessage: any;
+      constructor() { worker = this; }
+      postMessage(message: WorkerRequest) { this.messages.push(message); }
+      terminate() {}
+    });
+    const context = { id: 'test', start: 0, end: 86_400_000, rowCount: 3, label: 'Fleet', vessels: ['Aurora'], description: '' };
+    const adapter = createInferenceAdapter('webgpu');
+    const preparation = adapter.prepare(context);
+    worker.onmessage({ data: { type: 'ready', id: worker.messages[0].id, model: 'test-model' } });
+    await preparation;
+    const draft = { text: 'Please show fleet speed', revision: 1, contextId: context.id, sentAt: 0 };
+    const active = adapter.resolve(draft, new AbortController().signal);
+    const waiting = adapter.resolve({ ...draft, text: 'Please show fleet wind', revision: 2 }, new AbortController().signal);
+    const activeError = active.catch(error => error), waitingError = waiting.catch(error => error);
+    const request = worker.messages.find((message: WorkerRequest) => message.type === 'resolve');
+    worker.onmessage({ data: { type: 'error', id: request.id, name: 'DeviceLostError', message: 'Device lost',
+      inference: { source: 'webgpu', model: 'test-model', diagnostics: { generationMs: 90, firstTokenMs: 20 } } } });
+    expect(await activeError).toMatchObject({ name: 'DeviceLostError', details: { source: 'webgpu',
+      diagnostics: { generationMs: 90, firstTokenMs: 20 } } });
+    expect((await waitingError).details.diagnostics).toEqual({ warmupMs: 0 });
+    adapter.dispose();
+  });
+  it('does not turn arbitrary error properties into trusted telemetry', () => {
+    const failure = new InferenceFailure(new Error('Failed'), { source: 'remote', model: 'x'.repeat(500),
+      diagnostics: { generationMs: Infinity, promptTokens: 1.2, queueMs: 3 } });
+    expect(failure.details.model).toHaveLength(200);
+    expect(failure.details.diagnostics).toEqual({ queueMs: 3 });
   });
 });

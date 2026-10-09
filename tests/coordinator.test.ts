@@ -1,5 +1,6 @@
 import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {BrowserCoordinator,LocalCoordinatorClient,translationThreshold} from '../src/core/coordinator';
+import {InferenceFailure} from '../src/inference/failure';
 import type {ColumnBatch,DatabaseAdapter,DatasetContext,Draft,InferenceAdapter,InferenceResult,PipelineEvent,QueryCompiler,QueryPlan} from '../src/core/types';
 
 const context:DatasetContext={id:'snapshot-1',label:'Test',rowCount:2,start:0,end:86_400_000,vessels:['A'],description:'Test'};
@@ -26,6 +27,61 @@ function queuedTransport() {
 }
 
 describe('pipeline timing boundaries',()=>{
+  it('publishes failed inference work without inventing a validated plan or a database run',async()=>{
+    let now=100;vi.spyOn(performance,'now').mockImplementation(()=>now);
+    let rejectInference!:(error:Error)=>void;
+    const inference:InferenceAdapter={id:'model',placement:'browser',prepare:async()=>{},dispose(){},observeDraft(){},resolve:()=>new Promise((_resolve,reject)=>{rejectInference=reject;})};
+    const h=harness({inference});h.coordinator.commit(draft());
+    now=260;rejectInference(new InferenceFailure(new Error('The model declined this request.'),{
+      source:'webgpu',model:'test-model',diagnostics:{generationMs:140,promptTokens:80,completionTokens:9},
+    }));await settle();
+    const error=h.events.find(event=>event.type==='error');if(error?.type!=='error')throw new Error('Missing failure');
+    expect(error).toMatchObject({message:'The model declined this request.',failure:{phase:'inference',source:'webgpu',model:'test-model',
+      inference:{generationMs:140,promptTokens:80,completionTokens:9},database:'test-db',
+      timing:{inferenceStartedAt:100,failedAt:260,points:0,batches:0}}});
+    expect(error.id).toBeUndefined();expect(error.failure?.timing.intentAt).toBeUndefined();
+    expect(error.failure?.timing.queryStartedAt).toBeUndefined();expect(error.failure?.timing.completedAt).toBeUndefined();
+    expect(h.events.some(event=>event.type==='start'||event.type==='batch'||event.type==='complete')).toBe(false);
+    expect(h.compiler.compile).not.toHaveBeenCalled();expect(h.database.execute).not.toHaveBeenCalled();h.coordinator.dispose();
+  });
+  it('retains completed inference metadata when compilation fails before a view exists',async()=>{
+    let now=100;vi.spyOn(performance,'now').mockImplementation(()=>now);
+    const h=harness();vi.mocked(h.inference.resolve).mockImplementation(async()=>{
+      now=120;return {plan,source:'remote',model:'remote-model',diagnostics:{generationMs:15}};
+    });
+    vi.mocked(h.compiler.compile).mockImplementation(()=>{now=150;throw new Error('Compilation failed');});
+    h.coordinator.commit(draft());await settle();
+    const error=h.events.find(event=>event.type==='error');if(error?.type!=='error')throw new Error('Missing failure');
+    expect(error).toMatchObject({failure:{phase:'compile',source:'remote',model:'remote-model',inference:{generationMs:15},
+      timing:{inferenceStartedAt:100,intentAt:120,failedAt:150}}});
+    expect(error.failure?.timing.compiledAt).toBeUndefined();expect(h.database.execute).not.toHaveBeenCalled();
+    expect(h.events.some(event=>event.type==='start'||event.type==='complete')).toBe(false);h.coordinator.dispose();
+  });
+  it('keeps inference cost unchanged when streaming fails after its first batch',async()=>{
+    let now=100;vi.spyOn(performance,'now').mockImplementation(()=>now);
+    const database:DatabaseAdapter={id:'duckdb-wasm',placement:'browser',prepare:async()=>context,dispose:async()=>{},execute:async function*(){
+      now=135;yield batch;now=160;throw new Error('Database stopped');
+    }};
+    const h=harness({database});vi.mocked(h.inference.resolve).mockImplementation(async()=>{
+      now=110;return {plan,source:'webgpu',model:'test-model',diagnostics:{generationMs:8}};
+    });vi.mocked(h.compiler.compile).mockImplementation(()=>{now=113;return 'SQL';});
+    h.coordinator.commit(draft());await settle();
+    const start=h.events.find(event=>event.type==='start');const error=h.events.find(event=>event.type==='error');
+    if(start?.type!=='start'||error?.type!=='error')throw new Error('Missing events');
+    expect(error.id).toBe(start.view.id);expect(error.failure?.timing).toBe(start.view.timing);
+    expect(error.failure).toMatchObject({phase:'query',source:'webgpu',model:'test-model',inference:{generationMs:8},
+      timing:{inferenceStartedAt:100,intentAt:110,queryStartedAt:113,firstBatchAt:135,failedAt:160,batches:1,points:2}});
+    expect(error.failure?.timing.completedAt).toBeUndefined();expect(h.events.some(event=>event.type==='complete')).toBe(false);h.coordinator.dispose();
+  });
+  it.each(['cancel','supersede','dispose'] as const)('does not publish delayed inference failures after %s',async action=>{
+    const rejects:((error:Error)=>void)[]=[];
+    const inference:InferenceAdapter={id:'model',placement:'browser',prepare:async()=>{},dispose(){},observeDraft(){},resolve:()=>new Promise((_resolve,reject)=>{rejects.push(reject);})};
+    const h=harness({inference});h.coordinator.commit(draft());
+    if(action==='supersede')h.coordinator.commit(draft('Maximum wind by hour',2));
+    else h.coordinator[action]();
+    rejects[0](new InferenceFailure(new Error('Old refusal'),{source:'webgpu',diagnostics:{generationMs:40}}));await settle();
+    expect(h.events.some(event=>event.type==='error')).toBe(false);h.coordinator.dispose();
+  });
   it('separates inference, compilation, first database batch and full database streaming',async()=>{
     let now=100;vi.spyOn(performance,'now').mockImplementation(()=>now);
     let finishInference!:(result:InferenceResult)=>void,firstBatch!:()=>void,lastBatch!:()=>void;

@@ -56,6 +56,42 @@ describe('actual inference worker with a controlled engine', () => {
     await vi.waitFor(() => expect(h.messages.some(m => m.type === 'error')).toBe(true));
     expect(h.messages.some(m => m.type === 'result')).toBe(false);
   });
+  it.each([
+    ['refusal', '{"error":"unsupported_request"}', 'The model marked this request as unsupported.'],
+    ['invalid JSON', '{"m":', 'invalid JSON'],
+    ['invalid plan', '{}', 'missing or unsupported fields'],
+  ])('preserves generation and token measurements after a model %s', async (_kind, text, message) => {
+    let now = 100;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    mock.create.mockImplementation(async () => (async function* () {
+      now = 120; yield { choices: [{ delta: { content: text }, finish_reason: null }] };
+      now = 150; yield { choices: [{ delta: {}, finish_reason: 'stop' }] };
+      yield { choices: [], usage: { prompt_tokens: 80, completion_tokens: 9, extra: {
+        time_to_first_token_s: .02, time_per_output_token_s: .003,
+      } } };
+    })());
+    const h = await worker(); h.send({ type: 'resolve', id: 'failed', draft, context });
+    await vi.waitFor(() => expect(h.messages.some(m => m.type === 'error')).toBe(true));
+    const error = h.messages.find(m => m.type === 'error');
+    expect(error).toMatchObject({ type: 'error', id: 'failed', message: expect.stringContaining(message),
+      inference: { source: 'webgpu', model: 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC', diagnostics: {
+        queueMs: 0, warmupMs: 0, generationMs: 50, firstTokenMs: 20, prefillMs: 20, decodeMs: 27,
+        promptTokens: 80, completionTokens: 9,
+      } } });
+    expect(h.messages.some(m => m.type === 'result')).toBe(false);
+  });
+  it('retains wall time and first-token measurements if the engine fails mid-generation', async () => {
+    let now = 100; vi.spyOn(performance, 'now').mockImplementation(() => now);
+    mock.create.mockImplementation(async () => (async function* () {
+      now = 115; yield { choices: [{ delta: { content: '{' }, finish_reason: null }] };
+      now = 140; throw new Error('Engine stopped');
+    })());
+    const h = await worker(); h.send({ type: 'resolve', id: 'failed', draft, context });
+    await vi.waitFor(() => expect(h.messages.some(m => m.type === 'error')).toBe(true));
+    expect(h.messages.find(m => m.type === 'error')).toMatchObject({ message: 'Engine stopped',
+      inference: { source: 'webgpu', diagnostics: { generationMs: 40, firstTokenMs: 15 } } });
+    expect(h.messages.some(m => m.type === 'result')).toBe(false);
+  });
   it('keeps draft transmission separate from expensive execution', async () => {
     const h = await worker();
     for (let revision = 1; revision <= 30; revision++) h.send({ type: 'draft', draft: { ...draft, revision } });

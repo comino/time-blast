@@ -1,4 +1,4 @@
-import { METRIC_LABELS, type ChartView, type ColumnBatch, type QueryTiming, type QueryView } from '../core/types';
+import { METRIC_LABELS, type ChartView, type ColumnBatch, type QueryFailure, type QueryTiming, type QueryView } from '../core/types';
 import { SERIES_COLORS, StreamChart, type BatchProgress } from './chart';
 import { icon } from './shell';
 import { VIEWS, definition, isPrimary, isAdvanced, unavailableReason, warmRenderer, rendererFactory } from './renderer-registry';
@@ -8,6 +8,8 @@ export type CardMode = ChartView;
 const fmt = new Intl.NumberFormat('en', { maximumFractionDigits: 1 });
 const integer = new Intl.NumberFormat('en');
 const dates = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+const windowLabel = (hours: number): string => hours < 48 ? `${fmt.format(hours)} hours` : `${fmt.format(hours / 24)} days`;
+const sourceLabels = { template: 'LOCAL TEMPLATE', webgpu: 'LOCAL MODEL', remote: 'REMOTE MODEL' };
 const viewOptions = VIEWS.map(view => `<option value="${view.id}">${view.label}</option>`).join('') + '<option disabled>Photos · dataset has no image URLs</option>';
 const glyph = icon('<path d="M4 17 9 10l4 3 7-9M4 4v16h16"/>');
 const markup = `
@@ -19,6 +21,7 @@ const markup = `
     <div class="data-table-wrap" data-card-el="table-wrap" hidden><table class="data-table"><thead><tr><th>TIME · UTC</th><th>SERIES</th><th data-card-el="value-header">VALUE</th></tr></thead><tbody data-card-el="table-body"></tbody></table><p>First 12 points. Export the complete result below.</p></div>
     <div class="plot-empty card-loading" data-card-el="plot-empty"><div class="loading-orb"><i></i><i></i><i></i><b></b></div><span data-card-el="empty-title">Following your question</span><small data-card-el="empty-detail">Preparing a validated query.</small></div>
   </div>
+  <p class="coverage-note" data-card-el="coverage-note" hidden></p>
   <p class="view-caption" data-card-el="view-caption" hidden></p><div class="plot-bottom"><div class="legend" data-card-el="legend"></div><span class="mono" data-card-el="time-range">UTC</span></div>
   <div class="card-stats"><div><span>MEAN <small data-card-el="mean-unit"></small></span><strong data-card-el="mean">—</strong></div><div><span>POINTS</span><strong data-card-el="points">—</strong></div><div><span>RANGE</span><strong data-card-el="range">—</strong></div><div><span>RUN → DRAW</span><strong data-card-el="latency">—</strong></div></div>
   <div class="card-timings" aria-label="Query latency breakdown"><div title="Time spent resolving the query intent, including model queueing and remote transport when used"><span data-card-el="inference-label">TRANSLATION</span><strong data-card-el="inference-latency">—</strong></div><div title="Database request to first nonempty batch, including queueing and decoding"><span data-card-el="database-first-label">DB → FIRST</span><strong data-card-el="database-first-latency">—</strong></div><div title="Database request to stream completion; includes first-batch time and streaming"><span data-card-el="database-label">DB TOTAL</span><strong data-card-el="database-latency">—</strong></div><div title="First batch delivered to this card to first drawing submission, including renderer readiness"><span>DATA → DRAW</span><strong data-card-el="render-latency">—</strong></div></div>
@@ -44,7 +47,7 @@ export class ResultCard {
   readonly chart: StreamChart;
   view?: QueryView;
   mode: CardMode = 'line';
-  x = 0; y = 0; width = 548; height = 440;
+  x = 0; y = 0; width = 548; height = 560;
   total = 0;
   completeReceived = false;
   stopped = false;
@@ -58,6 +61,7 @@ export class ResultCard {
   private visible = true;
   private explicitMode = false;
   private copied = false;
+  private failure?: QueryFailure;
   private batchCount = 0;
   private tableRows = 0;
   private destroyed = false;
@@ -107,12 +111,12 @@ export class ResultCard {
     if (this.destroyed) return;
     this.rendererEpoch++; this.stopPlayback(); this.renderer?.destroy(); this.renderer = undefined;
     this.rendererMode = undefined; this.rendererLoading = this.rendererError = false;
-    this.chart.reset(); this.view = undefined; this.prompt = prompt;
+    this.chart.reset(); this.view = undefined; this.failure = undefined; this.prompt = prompt;
     this.mode = this.lastChart = 'line'; this.explicitMode = this.copied = false;
     this.total = this.batchCount = this.tableRows = this.sum = this.count = 0;
     this.minimum = Infinity; this.maximum = -Infinity; this.series.clear();
     this.completeReceived = this.stopped = false;
-    this.element.classList.add('is-loading'); this.element.setAttribute('aria-label', prompt);
+    this.element.classList.remove('is-error'); this.element.classList.add('is-loading'); this.element.setAttribute('aria-label', prompt);
     this.part('plot-title').textContent = prompt; this.part('plot-subtitle').textContent = 'Preparing your question…';
     this.part('empty-title').textContent = 'Following your question'; this.part('empty-detail').textContent = 'Preparing a validated query.';
     this.part('plot-empty').hidden = false; this.part('plot-container').hidden = false;
@@ -121,6 +125,7 @@ export class ResultCard {
     this.part('sql').textContent = 'A validated query will appear here.'; this.part('query-meta').textContent = '';
     this.part('latency-detail').textContent = 'First point draw submitted';
     this.part('inference-detail').textContent = ''; this.part('inference-detail').hidden = true;
+    this.part('coverage-note').textContent = ''; this.part('coverage-note').hidden = true;
     this.part('legend').replaceChildren(); this.part('table-body').replaceChildren();
     this.part('mean-unit').textContent = ''; this.part('time-range').textContent = 'UTC'; this.part('batch-count').textContent = 'Waiting for data';
     for (const name of ['source', 'mean', 'points', 'range', 'latency', 'inference-latency', 'database-first-latency', 'database-latency', 'render-latency']) this.part(name).textContent = '—';
@@ -137,9 +142,13 @@ export class ResultCard {
     this.view = view;
     const metric = METRIC_LABELS[view.plan.metric];
     this.part('plot-title').textContent = `${metric.name}${view.plan.splitByVessel ? ' across the fleet' : ''}`;
-    this.part('plot-subtitle').textContent = `${({ avg: 'Average', min: 'Minimum', max: 'Maximum' })[view.plan.aggregate]} · ${view.plan.bucketMinutes} min buckets · ${view.plan.windowHours < 48 ? `${view.plan.windowHours} hours` : `${view.plan.windowHours / 24} days`}`;
+    this.part('plot-subtitle').textContent = `${({ avg: 'Average', min: 'Minimum', max: 'Maximum' })[view.plan.aggregate]} · ${view.plan.bucketMinutes} min buckets · ${windowLabel(view.plan.windowHours)}`;
     this.part('time-range').textContent = `${dates.format(Math.max(view.context.start, view.context.end - view.plan.windowHours * 3_600_000))} — ${dates.format(view.context.end)} · UTC`;
-    this.part('sql').textContent = view.sql; this.part('source').textContent = ({ template: 'LOCAL TEMPLATE', webgpu: 'LOCAL MODEL', remote: 'REMOTE MODEL' })[view.source];
+    const availableHours = (view.context.end - view.context.start) / 3_600_000;
+    const coverage = this.part('coverage-note');
+    coverage.hidden = view.plan.windowHours <= availableHours;
+    coverage.textContent = coverage.hidden ? '' : `Requested ${windowLabel(view.plan.windowHours)} · available dataset spans ${windowLabel(availableHours)} (${dates.format(view.context.start)} — ${dates.format(view.context.end)} UTC). Showing the available interval.`;
+    this.part('sql').textContent = view.sql; this.part('source').textContent = sourceLabels[view.source];
     this.part('query-meta').textContent = `${view.id} · revision ${view.revision}${view.model ? ` · ${view.model}` : ''}`;
     this.part('mean-unit').textContent = metric.unit; this.part('value-header').textContent = `${metric.name.toUpperCase()} · ${metric.unit}`;
     this.chart.begin(view);
@@ -180,10 +189,21 @@ export class ResultCard {
     else this.part('plot-subtitle').textContent += ' · partial result';
     this.callbacks.change(this);
   }
-  error(message: string): void {
+  error(message: string, failure?: QueryFailure): void {
+    if (this.stopped || this.destroyed || this.completeReceived) return;
+    this.failure = failure;
     this.cancel('QUERY ERROR'); this.setState('QUERY ERROR', 'error');
-    this.part('empty-title').textContent = 'This question needs another pass'; this.part('empty-detail').textContent = message;
-    if (this.total) this.part('plot-subtitle').textContent = `Incomplete result · ${message}`;
+    this.element.classList.add('is-error');
+    const phase = failure?.phase === 'inference' ? 'Inference failed' : failure?.phase === 'compile' ? 'SQL compilation failed' : 'Query failed';
+    this.part('empty-title').textContent = phase; this.part('empty-detail').textContent = message;
+    this.part('plot-subtitle').textContent = this.total ? `Incomplete result · ${message}` : phase;
+    this.part('batch-count').textContent = this.total ? `${this.batchCount} batches · incomplete` : 'No result';
+    if (failure?.source) this.part('source').textContent = sourceLabels[failure.source];
+    if (!this.view) {
+      this.part('sql').textContent = 'No executable SQL generated.';
+      this.part('query-meta').textContent = failure?.model ?? '';
+    }
+    this.updateTiming();
   }
   setVisible(visible: boolean): void {
     if (this.visible === visible) return;
@@ -290,12 +310,14 @@ export class ResultCard {
     if (!this.copied) this.callbacks.draw(id, at); this.view.timing.firstDrawAt = at; this.updateTiming();
   }
   private updateTiming(): void {
-    const view = this.view; if (!view) return;
-    const t = view.timing;
-    this.part('inference-label').textContent = view.inference?.cacheHit ? 'PLAN CACHE' : view.source === 'template' ? 'TEMPLATE' : 'INFERENCE';
-    const database = view.database === 'duckdb-wasm' ? 'DUCKDB' : 'DB';
+    const view = this.view, failure = this.failure; if (!view && !failure) return;
+    const t = failure?.timing ?? view!.timing;
+    const d = failure?.inference ?? view?.inference;
+    const source = failure?.source ?? view?.source;
+    this.part('inference-label').textContent = d?.cacheHit ? 'PLAN CACHE' : source === 'template' ? 'TEMPLATE' : 'INFERENCE';
+    const database = (failure?.database ?? view?.database) === 'duckdb-wasm' ? 'DUCKDB' : 'DB';
     this.part('database-first-label').textContent = `${database} → FIRST`;
-    this.part('database-label').textContent = `${database} TOTAL`;
+    this.part('database-label').textContent = `${database} ${failure?.phase === 'query' ? '→ ERROR' : 'TOTAL'}`;
     // A duplicate shares results, not a new execution. Do not reuse its source's latency.
     if (this.copied) { this.part('latency-detail').textContent = 'Shared result · no new query'; return; }
     const duration = (start?: number, end?: number): string => {
@@ -303,19 +325,20 @@ export class ResultCard {
       const elapsed = end - start;
       return elapsed < 1000 ? `${elapsed.toFixed(1)} ms` : `${(elapsed / 1000).toFixed(2)} s`;
     };
-    this.part('inference-latency').textContent = duration(t.inferenceStartedAt, t.intentAt);
+    this.part('inference-latency').textContent = duration(t.inferenceStartedAt, t.intentAt ?? (failure?.phase === 'inference' ? t.failedAt : undefined));
     this.part('database-first-latency').textContent = duration(t.queryStartedAt, t.firstBatchAt);
-    this.part('database-latency').textContent = duration(t.queryStartedAt, t.completedAt);
+    this.part('database-latency').textContent = duration(t.queryStartedAt, failure?.phase === 'query' ? t.failedAt : t.completedAt);
     this.part('render-latency').textContent = duration(t.firstPublishedAt, t.firstDrawAt);
     this.part('latency').textContent = duration(t.committedAt, t.firstDrawAt);
     const prepared = t.committedAt !== undefined && t.inferenceStartedAt !== undefined && t.inferenceStartedAt < t.committedAt;
-    this.part('latency-detail').textContent = `${t.promoted ? 'Prepared result promoted. ' : prepared ? 'Preparation began before this run. ' : ''}SQL compile: ${duration(t.intentAt, t.compiledAt)}. Stage times may overlap; database total includes time to first batch. Run → draw starts at dispatch; data → draw starts at delivery to this card. Drawing measures submission, not screen presentation.`;
-    const detail = this.part('inference-detail'), d = view.inference;
-    detail.hidden = view.source === 'template';
+    const failureDetail = failure ? `${({ inference: 'Inference', compile: 'SQL compilation', query: 'Database query' })[failure.phase]} failed. Run → error: ${duration(t.committedAt, t.failedAt)}. ${t.queryStartedAt === undefined ? 'Database did not start. ' : ''}` : '';
+    this.part('latency-detail').textContent = `${failureDetail}${t.promoted ? 'Prepared result promoted. ' : prepared ? 'Preparation began before this run. ' : ''}SQL compile: ${duration(t.intentAt, t.compiledAt)}. Stage times may overlap; database total includes time to first batch. Run → draw starts at dispatch; data → draw starts at delivery to this card. Drawing measures submission, not screen presentation.`;
+    const detail = this.part('inference-detail');
+    detail.hidden = !source || source === 'template';
     if (d?.cacheHit) {
-      detail.textContent = 'Exact model-plan cache hit · no model generation for this run. The database query still executes for this request.';
+      detail.textContent = 'Exact model-plan cache hit · no model generation for this run.' + (t.queryStartedAt === undefined ? '' : ' The database query executes separately for this request.');
       this.part('source').textContent = 'CACHED MODEL PLAN';
-    } else if (view.source !== 'template') {
+    } else if (source && source !== 'template') {
       const stages: string[] = [];
       for (const [name, value] of [['Model warmup wait', d?.warmupMs], ['Worker queue', d?.queueMs],
         ['Generation wall time', d?.generationMs], ['First token', d?.firstTokenMs],

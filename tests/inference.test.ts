@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AdapterStatus, DatasetContext, Draft, QueryPlan } from '../src/core/types';
 import { CHART_VIEWS } from '../src/core/types';
+import { MAX_WINDOW_HOURS } from '../src/core/query-limits';
 import { createInferenceAdapter, parseTemplate, parseModelPlan, validateQueryPlan } from '../src/inference';
 import { buildSystemPrompt, QUERY_PLAN_SCHEMA, validateDraft } from '../src/inference/plan';
 import { GenerationQueue } from '../src/inference/generation';
@@ -28,6 +29,9 @@ describe('conservative deterministic templates', () => {
     ['Compare vessel speeds over the last 24 hours', { ...plan, splitByVessel: true }],
     ['Maximum wind by hour', { ...plan, metric: 'wind', aggregate: 'max' }],
     ['Show wave height over the last 7 days', { ...plan, metric: 'wave_height', windowHours: 168 }],
+    ['Show wave height over the last 15 days', { ...plan, metric: 'wave_height', windowHours: 360 }],
+    ['Average speed over the last 337 hours', { ...plan, windowHours: 337 }],
+    ['Compare vessel wave height by hour over the last 710 days as a 3D surface', { ...plan, metric: 'wave_height', windowHours: 17040, splitByVessel: true, view: 'surface' }],
   ])('supports the advertised request: %s', (text, expected) => {
     expect(parseTemplate(text as string, context)).toEqual(expected);
   });
@@ -35,6 +39,14 @@ describe('conservative deterministic templates', () => {
   it('binds exact vessel names, explicit supported buckets and windows', () => {
     expect(parseTemplate('Minimum water temperature for vessel Borealis by 5 minutes over the last 2 days as a bar chart.', context))
       .toEqual({ ...plan, metric: 'water_temp', aggregate: 'min', vessel: 1, bucketMinutes: 5, windowHours: 48, view: 'bar' });
+  });
+
+  it.each([
+    ['1days', 24], ['1day', 24], ['1 days', 24], ['1 day', 24], ['1\tday', 24],
+    ['710days', 17040], ['710 days', 17040], ['24hours', 24], ['24 hours', 24], ['1hour', 1],
+  ])('accepts numeric window spacing in the reported surface request: %s', (window, windowHours) => {
+    expect(parseTemplate(`Compare vessel wave height by hour over the last ${window} as a 3D surface`, context))
+      .toEqual({ ...plan, metric: 'wave_height', windowHours, splitByVessel: true, view: 'surface' });
   });
 
   it.each([
@@ -64,11 +76,15 @@ describe('conservative deterministic templates', () => {
     'Average speed excluding Aurora', 'Average speed where speed > 10', 'Average speed and wind',
     'Not average speed', 'Compare vessel speeds except Borealis', 'Average speed since yesterday',
     'Average speed for vessel Unknown', 'Average speed for vessel 6', 'Maximum wind by 2 minutes',
-    'Average speed over the last 0 hours', 'Average speed over the last 337 hours',
-    'Average speed over the last 1.5 hours', 'Show wave height over the last 15 days',
+    'Average speed over the last 0 hours', 'Average speed over the last 4294967296hours',
+    'Average speed over the last 1.5 hours', 'Show wave height over the last 178956971days',
     'Average speed by hour; DROP TABLE telemetry',
     'Show a heatmap of vessel speeds excluding Aurora',
     'Compare vessel wave height by hour over the last 7 days as a 3D surface where speed > 10',
+    'Compare vessel wave height by hour over the last 1days as a 3D surface excluding Aurora',
+    'Compare vessel wave height by hour over the last 710days as a 3D surface where speed > 10',
+    'Compare vessel wave height by hour over the last 1days as a 3D surface and wind',
+    'Compare vessel wave height by hour over the last 1daysish as a 3D surface',
     'Show a scatter plot of speed versus wind',
     'Show a geographic map of vessel speeds except Borealis',
     'Show a density map of vessel speeds weighted by speed',
@@ -86,6 +102,10 @@ describe('untrusted model plan validation', () => {
     expect(validateQueryPlan(plan, context)).toEqual(plan);
     expect(validateQueryPlan(plan, context)).not.toBe(plan);
   });
+  it.each([337, 15 * 24, 710 * 24, MAX_WINDOW_HOURS])('keeps a %s hour request intact beyond sample coverage', windowHours => {
+    expect(validateQueryPlan({ ...plan, windowHours }, context)).toEqual({ ...plan, windowHours });
+    expect(QUERY_PLAN_SCHEMA.properties.windowHours.maximum).toBe(MAX_WINDOW_HOURS);
+  });
   it.each(CHART_VIEWS)('validates %s as presentation intent without adding query fields', (view) => {
     const expected = { ...plan, view, splitByVessel: true };
     expect(parseModelPlan(JSON.stringify(expected), context)).toEqual(expected);
@@ -97,7 +117,8 @@ describe('untrusted model plan validation', () => {
   it.each([
     null, [], {}, { ...plan, sql: 'SELECT * FROM telemetry' }, { ...plan, metric: 'fuel' },
     { ...plan, aggregate: 'sum' }, { ...plan, windowHours: '24' }, { ...plan, windowHours: Infinity },
-    { ...plan, windowHours: 1.5 }, { ...plan, bucketMinutes: 30 }, { ...plan, splitByVessel: 'false' },
+    { ...plan, windowHours: NaN }, { ...plan, windowHours: 0 }, { ...plan, windowHours: -1 },
+    { ...plan, windowHours: MAX_WINDOW_HOURS + 1 }, { ...plan, windowHours: 1.5 }, { ...plan, bucketMinutes: 30 }, { ...plan, splitByVessel: 'false' },
     { ...plan, vessel: 6 }, { ...plan, vessel: -1 }, { ...plan, vessel: 0.5 }, { ...plan, view: 'pie' },
     { ...plan, view: 'gallery' }, { ...plan, view: 'scatter', secondMetric: 'wind' },
   ])('rejects invalid values without coercion: %j', (value) => {
@@ -109,7 +130,7 @@ describe('untrusted model plan validation', () => {
   it('rejects partial, fenced and declined output', () => {
     expect(() => parseModelPlan('{"metric":', context)).toThrow('incomplete or invalid JSON');
     expect(() => parseModelPlan('```json\n' + JSON.stringify(plan) + '\n```', context)).toThrow();
-    expect(() => parseModelPlan('{"error":"unsupported_request"}', context)).toThrow('cannot be expressed');
+    expect(() => parseModelPlan('{"error":"unsupported_request"}', context)).toThrow('The model marked this request as unsupported.');
   });
   it('checks full prompt limits and context identity', () => {
     expect(() => validateDraft(draft('x'.repeat(4097)), context)).toThrow('4096');
@@ -125,6 +146,9 @@ describe('untrusted model plan validation', () => {
     expect(prompt).toContain('counts of returned bucket-mean positions');
     expect(prompt).toContain('no monthly/seasonal aggregation');
     expect(prompt).toContain('Photo galleries, photos, image URLs');
+    expect(prompt).toContain('Requested windows may exceed coverage. Preserve the requested windowHours');
+    expect(prompt).toContain('1days or 1day means windowHours 24');
+    expect(prompt).not.toContain('at most 14 days');
   });
 });
 
@@ -348,6 +372,17 @@ describe('adapter behavior', () => {
     const request = fetcher.mock.calls[0] as unknown as [string, RequestInit];
     expect(JSON.parse(request[1].body as string)).toMatchObject({ text: 'Average speed', revision: 7, context: { id: context.id } });
     expect(result).toEqual({ source: 'remote', plan, model: 'real-remote-model', tokens: 48 });
+    adapter.dispose();
+  });
+
+  it('accepts a wide remote plan against coverage extending beyond the demo dataset', async () => {
+    const remoteContext = { ...context, id: 'remote-history', start: Date.UTC(2020, 0, 1) };
+    const widePlan = { ...plan, windowHours: 710 * 24 };
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({ plan: widePlan })));
+    const adapter = createInferenceAdapter('remote', { endpoint: 'https://example.test/infer', fetchImpl: fetcher as typeof fetch });
+    await adapter.prepare(remoteContext);
+    const request = { ...draft('Average speed over the last 710 days'), contextId: remoteContext.id };
+    await expect(adapter.resolve(request, signal())).resolves.toMatchObject({ source: 'remote', plan: widePlan });
     adapter.dispose();
   });
 

@@ -1,5 +1,6 @@
-import type {ColumnBatch, DatabaseAdapter, DatasetContext, Draft, InferenceAdapter, PipelineEvent, QueryCompiler, QueryTiming, QueryView} from './types';
+import type {ColumnBatch, DatabaseAdapter, DatasetContext, Draft, InferenceAdapter, InferenceResult, PipelineEvent, QueryCompiler, QueryTiming, QueryView} from './types';
 import {MAX_PROMPT_CHARS} from '../inference/plan';
+import {inferenceFailureDetails} from '../inference/failure';
 
 type Emit = (event:PipelineEvent)=>void;
 interface Job {
@@ -124,10 +125,11 @@ export class BrowserCoordinator {
 
   private async run(job:Job):Promise<void> {
     const {inference,compiler,database,context}=this.options;
+    let resolved:InferenceResult|undefined;
     try {
       if(!job.view) {
         job.timing.inferenceStartedAt=performance.now();
-        const result=await inference.resolve(job.draft,job.abort.signal);
+        const result=resolved=await inference.resolve(job.draft,job.abort.signal);
         if (job.abort.signal.aborted || this.closed) return;
         job.timing.intentAt=performance.now();
         const sql=compiler.compile(result.plan,context);
@@ -182,10 +184,18 @@ export class BrowserCoordinator {
     } catch (cause) {
       if (job.abort.signal.aborted || this.closed) return;
       job.error=cause instanceof Error?cause:new Error(String(cause));
+      job.timing.failedAt=performance.now();
       job.settled=true;
       job.abort.abort();
       job.staged=[]; job.retained.clear();
-      if (job.committed && this.foreground===job) this.emit({type:'error',id:job.view?job.id:undefined,message:job.error.message});
+      if (job.committed && this.foreground===job) {
+        const details=resolved??inferenceFailureDetails(cause);
+        this.emit({type:'error',id:job.view?job.id:undefined,message:job.error.message,failure:{
+          timing:job.timing,phase:job.queryStarted?'query':job.timing.intentAt!==undefined?'compile':'inference',
+          source:job.view?.source??details.source,model:job.view?.model??details.model,
+          inference:job.view?.inference??details.diagnostics,database:database.id,
+        }});
+      }
       else if (this.candidate===job) {
         this.candidate=undefined;
         this.emit({type:'speculation',state:'idle',text:'',points:0});

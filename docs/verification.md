@@ -73,6 +73,20 @@ The actual worker is exercised with a controlled engine: compact schema requests
 
 True KV prefix reuse remains unimplemented: the pinned browser runtime resets independent system/user requests and has no supported prefix checkpoint/restore API. The new exact plan cache is explicitly labeled and skips only repeated local model generation. Remote latency comparisons and a trained semantic parser remain separate experiments requiring an actual service or training/evaluation workload.
 
+## Requested windows and failed inference
+
+This update passes **411 unit tests**, including actual rebuilt Rust/Wasm compilation, plus **5 Rust tests**. Requests retain their original trailing window instead of inheriting the bundled dataset's 14-day duration. Tests cover 710 days, longer dataset contexts, adjacent number/unit wording such as `1days`, and the positive unsigned 32-bit ABI boundary.
+
+`tests/browser_query_failures.py` executes the user's two surface requests through deterministic templates and real DuckDB: 710 days returns **2,016 hourly points** from the available 14 days; `1days` returns **144 hourly points**. It checks all six vessel series, exact time bounds, the visible requested-versus-available coverage note, and live preview reuse. Controlled UI fixtures verify inference, compilation and partial database failure durations, retained model diagnostics, stopped loading, recovery and stale-event rejection. A failure cannot fabricate database activity or a draw. Workspace, all ten real query/view routes, and live-translation browser regressions also pass.
+
+The public HTTPS production smoke passes both exact prompts, the existing 60,480-point query, prepared promotion, the 2-second typing pause and independent chart views, with no browser errors. Desktop cards now leave room for the surface and coverage note; live edits preserve a manually resized card. The existing compact mobile card height remains unchanged and can still squeeze a surface when coverage and timing rows are present.
+
+The original one-day refusal message corresponds to the model's explicit `unsupported_request` output. A template miss in Auto mode continues to the model; the valid one-day surface plan passes validation. These tests establish query support and failure reporting, **not** that the revised prompt prevents false refusals on a hardware WebGPU model. Prompt instructions now explain missing number/unit spaces and windows exceeding available coverage; actual model semantic accuracy remains unverified on this host. The earlier token-count artifact records the prompt before these additions.
+
+```sh
+python3 tests/browser_query_failures.py
+```
+
 ## Warm preparation comparison
 
 [`benchmark-browser.json`](benchmark-browser.json) records 20 measured trials per mode and two discarded warmups per mode. The paired order alternated, the same database stayed loaded, all results contained 144 points, and the source was explicitly `LOCAL TEMPLATE`. This run used headless Chromium **151.0.7922.34**, `--disable-gpu`, on a shared Linux aarch64 host with four logical CPUs.

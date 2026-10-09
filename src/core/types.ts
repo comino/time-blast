@@ -112,6 +112,8 @@ export interface QueryTiming {
   firstPublishedAt?: number;
   firstDrawAt?: number;
   completedAt?: number;
+  /** Terminal failure time; never implies a validated plan or completed query. */
+  failedAt?: number;
   promoted: boolean;
   batches: number;
   points: number;
@@ -131,13 +133,21 @@ export interface QueryView {
   context: DatasetContext;
   timing: QueryTiming;
 }
+export interface QueryFailure {
+  timing: QueryTiming;
+  phase: 'inference' | 'compile' | 'query';
+  source?: InferenceResult['source'];
+  model?: string;
+  inference?: InferenceDiagnostics;
+  database?: string;
+}
 export type PipelineEvent =
   | { type: 'draft'; revision: number; chars: number }
   | { type: 'speculation'; state: 'idle' | 'resolving' | 'translated' | 'querying' | 'ready' | 'canceled'; text: string; points: number }
   | { type: 'start'; view: QueryView }
   | { type: 'batch'; id: string; batch: ColumnBatch }
   | { type: 'complete'; id: string; timing: QueryTiming }
-  | { type: 'error'; id?: string; message: string }
+  | { type: 'error'; id?: string; message: string; failure?: QueryFailure }
   | { type: 'trace'; entry: TraceEvent };
 export type InferenceMode = 'auto' | 'webgpu' | 'templates' | 'remote';
 export type DatasetProfile = 'demo' | 'large';

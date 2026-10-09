@@ -20,7 +20,7 @@ const views: Record<string, ChartView> = {
   'seasonal wheel': 'seasons', 'seasonal chart': 'seasons',
 };
 const viewPattern = Object.keys(views).sort((a, b) => b.length - a.length).join('|');
-const suffix = '(?: for vessel (?<vessel>.+?))?(?: by (?<bucket>minute|hour|day|(?:1|5|15|60|360|1440) minutes?))?(?: (?:over|for) (?:the )?last (?<windowValue>\\d+) (?<windowUnit>hours?|days?))?';
+const suffix = '(?: for vessel (?<vessel>.+?))?(?: by (?<bucket>minute|hour|day|(?:1|5|15|60|360|1440) minutes?))?(?: (?:over|for) (?:the )?last (?<windowValue>\\d+) ?(?<windowUnit>hours?|days?))?';
 const normal = new RegExp(`^(?:(?:show|plot) )?(?<compared>compare vessel )?(?:(?<aggregate>average|mean|avg|minimum|min|maximum|max) )?(?:(?<group>vessel|fleet) )?(?<metric>speeds?|wind speed|wind|wave height|water temperature|water temp)${suffix}(?: as (?:a |an )?(?<view>${viewPattern}))?$`);
 const prefix = new RegExp(`^(?:(?:show|plot) )?(?:a |an )?(?<view>${viewPattern}) of (?<request>.+)$`);
 

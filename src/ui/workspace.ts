@@ -57,7 +57,9 @@ export class CanvasWorkspace {
     });
     const columns = this.width >= 900 ? 2 : 1;
     card.width = Math.min(548, Math.max(280, (this.width - 24 * (columns + 1)) / columns));
-    card.height = Math.min(420, Math.max(380, this.height - 48));
+    card.height = matchMedia('(max-width: 650px)').matches
+      ? Math.min(420, Math.max(380, this.height - 48))
+      : Math.min(560, Math.max(520, this.height - 48));
     let slot = 0;
     do {
       card.x = 24 + slot % columns * (card.width + 24); card.y = 24 + Math.floor(slot / columns) * (card.height + 24); slot++;
@@ -118,7 +120,7 @@ export class CanvasWorkspace {
     if (event.type === 'complete') { this.byQuery.get(event.id)?.finish(event.timing); return; }
     if (event.type === 'error') {
       const card = event.id ? this.byQuery.get(event.id) : this.pending ?? (this.active?.busy ? this.active : undefined);
-      if (card && !card.stopped && !card.completeReceived) { if (card === this.pending) this.pending = undefined; card.error(event.message); }
+      if (card && !card.stopped && !card.completeReceived) { if (card === this.pending) this.pending = undefined; card.error(event.message, event.failure); }
       else if (!event.id) this.notice(event.message);
     }
   }

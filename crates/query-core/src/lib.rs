@@ -7,7 +7,7 @@ pub fn compile(metric: u32, aggregate: u32, bucket: u32, hours: u32, split: u32,
     vessel: i32, start: f64, end: f64) -> Result<String, &'static str> {
     let metric = match metric { 0 => "speed", 1 => "wind", 2 => "wave_height", 3 => "water_temp", _ => return Err("Unknown metric") };
     let aggregate = match aggregate { 0 => "avg", 1 => "min", 2 => "max", _ => return Err("Unknown aggregate") };
-    if ![1,5,15,60,360,1440].contains(&bucket) || hours == 0 || hours > 336 || split > 1 || !(-1..=5).contains(&vessel) {
+    if ![1,5,15,60,360,1440].contains(&bucket) || hours == 0 || split > 1 || !(-1..=5).contains(&vessel) {
         return Err("Invalid query parameters");
     }
     if !start.is_finite() || !end.is_finite() || start < 0.0 || end <= start || end > 8_640_000_000_000_000.0 || start.fract() != 0.0 || end.fract() != 0.0 {
@@ -52,5 +52,22 @@ mod tests {
     #[test] fn matches_committed_relative_window() {
         let sql=compile(0,0,60,1,0,-1,0.0,7_200_000.0).unwrap();
         assert!(sql.contains("t >= 3600000 AND t < 7200000"));
+    }
+    #[test] fn wide_requests_query_available_coverage() {
+        let start = 1_788_220_800_000.0;
+        let end = start + 14.0 * 86_400_000.0;
+        for hours in [15 * 24, 710 * 24, u32::MAX] {
+            let sql = compile(2,0,60,hours,1,-1,start,end).unwrap();
+            assert!(sql.contains(&format!("t >= {start:.0} AND t < {end:.0}")));
+            assert!(sql.contains("avg(wave_height)"));
+        }
+        assert!(compile(2,0,60,0,1,-1,start,end).is_err());
+    }
+    #[test] fn long_datasets_do_not_inherit_demo_coverage_limits() {
+        let start = 1_700_000_000_000.0;
+        let end = start + 1000.0 * 86_400_000.0;
+        let lower = end - 710.0 * 86_400_000.0;
+        let sql = compile(0,0,60,710*24,1,-1,start,end).unwrap();
+        assert!(sql.contains(&format!("t >= {lower:.0} AND t < {end:.0}")));
     }
 }

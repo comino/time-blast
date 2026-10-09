@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CHART_VIEWS, type DatasetContext, type QueryPlan } from '../src/core/types';
+import { MAX_WINDOW_HOURS } from '../src/core/query-limits';
 import {
   buildLocalSystemPrompt, buildSystemPrompt, LOCAL_MODEL_RESPONSE_SCHEMA,
   MODEL_RESPONSE_SCHEMA, parseLocalModelPlan, parseModelPlan,
@@ -25,11 +26,16 @@ describe('compact local model contract', () => {
       .toEqual({ ...full, view, splitByVessel: true });
   });
 
+  it.each([337, 15 * 24, 710 * 24, MAX_WINDOW_HOURS])('preserves a %s hour request instead of treating coverage as an intent limit', h => {
+    expect(parseLocalModelPlan(JSON.stringify({ ...compact, h }), context)).toEqual({ ...full, windowHours: h });
+    expect(LOCAL_MODEL_RESPONSE_SCHEMA.anyOf[0]).toHaveProperty('properties.h.maximum', MAX_WINDOW_HOURS);
+  });
+
   it.each([
     null, [], {}, { ...compact, sql: 'SELECT * FROM telemetry' }, full,
     { m: 'speed', a: 'avg', b: 60, h: 24, s: false, v: null },
     { ...compact, m: 'fuel' }, { ...compact, a: 'sum' }, { ...compact, b: 30 },
-    { ...compact, h: '24' }, { ...compact, h: 1.5 }, { ...compact, h: 0 }, { ...compact, h: 337 },
+    { ...compact, h: '24' }, { ...compact, h: 1.5 }, { ...compact, h: 0 }, { ...compact, h: MAX_WINDOW_HOURS + 1 },
     { ...compact, s: 1 }, { ...compact, s: 'true' }, { ...compact, v: -1 }, { ...compact, v: 6 },
     { ...compact, v: 0.5 }, { ...compact, v: '0' }, { ...compact, c: 'gallery' },
     { ...compact, m: ['speed', 'wind'] }, { ...compact, not: 'Aurora' },
@@ -44,7 +50,7 @@ describe('compact local model contract', () => {
 
   it('preserves dataset bounds and a faithful refusal instead of manufacturing a plan', () => {
     expect(() => parseLocalModelPlan(JSON.stringify({ ...compact, v: 1 }), { ...context, vessels: ['Aurora'] })).toThrow('Unknown vessel');
-    expect(() => parseLocalModelPlan('{"error":"unsupported_request"}', context)).toThrow('cannot be expressed');
+    expect(() => parseLocalModelPlan('{"error":"unsupported_request"}', context)).toThrow('The model marked this request as unsupported.');
     expect(LOCAL_MODEL_RESPONSE_SCHEMA.anyOf).toContainEqual(MODEL_RESPONSE_SCHEMA.anyOf[1]);
   });
 
@@ -72,7 +78,10 @@ describe('shorter local instructions', () => {
     expect(prompt).toContain('no spatial interpolation');
     expect(prompt).toContain('s=true always');
     expect(prompt).toContain('not raw-event density or time spent');
-    expect(prompt).toContain('no seasonal pattern claims, monthly/seasonal aggregation, missing months, extrapolation or extra years');
+    expect(prompt).toContain('No invented seasonal patterns, monthly/seasonal aggregation, missing months or extrapolation');
+    expect(prompt).toContain('Requested windows may exceed coverage: preserve h');
+    expect(prompt).toContain('1days or 1day means h=24');
+    expect(prompt).not.toContain('At most 14 days');
     expect(prompt).toContain('never silently drop unsupported meaning');
     expect(prompt).toContain('photos/galleries/image URLs: unsupported');
     expect(prompt).toContain('FULL request cannot be represented faithfully');

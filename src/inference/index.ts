@@ -4,6 +4,7 @@ import { abortError, assertNotAborted, MAX_PROMPT_CHARS, MODEL_RESPONSE_SCHEMA, 
 import { parseTemplate } from './templates';
 import { PlanCache } from './plan-cache';
 import { readInferenceDiagnostics } from './diagnostics';
+import { InferenceFailure, inferenceFailureDetails } from './failure';
 
 export { parseTemplate } from './templates';
 export { validateQueryPlan, parseModelPlan, QUERY_PLAN_SCHEMA, MODEL_RESPONSE_SCHEMA } from './plan';
@@ -28,6 +29,7 @@ export class LocalInferenceAdapter implements InferenceAdapter {
   private worker?: Worker;
   private warming?: Promise<void>;
   private ready = false;
+  private model?: string;
   private failure?: string;
   private disposed = false;
   private nextId = 0;
@@ -78,6 +80,20 @@ export class LocalInferenceAdapter implements InferenceAdapter {
   }
 
   async resolve(draft: Draft, signal: AbortSignal): Promise<InferenceResult> {
+    const timing: { warmupMs?: number } = {};
+    try { return await this.resolvePlan(draft, signal, timing); }
+    catch (error) {
+      if (signal.aborted) throw abortError();
+      const details = inferenceFailureDetails(error);
+      throw new InferenceFailure(error, { source: this.mode === 'templates' ? 'template' : 'webgpu',
+        model: details.model ?? this.model ?? this.options.model,
+        diagnostics: { ...details.diagnostics, ...(timing.warmupMs === undefined ? {} : {
+          warmupMs: timing.warmupMs + (details.diagnostics?.warmupMs ?? 0),
+        }) } });
+    }
+  }
+
+  private async resolvePlan(draft: Draft, signal: AbortSignal, timing: { warmupMs?: number }): Promise<InferenceResult> {
     this.assertLive();
     assertNotAborted(signal);
     draft = { ...draft };
@@ -91,12 +107,12 @@ export class LocalInferenceAdapter implements InferenceAdapter {
     }
     const cached = this.plans.get(draft.text, context);
     if (cached) return cached;
-    let warmupMs = 0;
+    let warmupMs = timing.warmupMs = 0;
     if (this.warming&&!this.ready) {
       const waitingAt = performance.now();
       try { await this.waitForWarm(signal); }
       catch (error) { if (signal.aborted) throw abortError(); }
-      warmupMs = performance.now() - waitingAt;
+      warmupMs = timing.warmupMs = performance.now() - waitingAt;
     }
     assertNotAborted(signal);
     this.assertLive();
@@ -105,8 +121,11 @@ export class LocalInferenceAdapter implements InferenceAdapter {
     assertNotAborted(signal);
     if (!result) throw new Error('The local model returned no query plan.');
     const diagnostics = readInferenceDiagnostics(result.diagnostics);
-    const validated: InferenceResult = { ...result, plan: validateQueryPlan(result.plan, context), source: 'webgpu',
-      diagnostics: { ...diagnostics, warmupMs: warmupMs + (diagnostics?.warmupMs ?? 0) } };
+    let validated: InferenceResult;
+    try {
+      validated = { ...result, plan: validateQueryPlan(result.plan, context), source: 'webgpu',
+        diagnostics: { ...diagnostics, warmupMs: warmupMs + (diagnostics?.warmupMs ?? 0) } };
+    } catch (error) { throw new InferenceFailure(error, { ...result, source: 'webgpu', diagnostics }); }
     if (this.context === context && !this.disposed) this.plans.set(draft.text, context, validated);
     return validated;
   }
@@ -162,6 +181,15 @@ export class LocalInferenceAdapter implements InferenceAdapter {
       // WebLLM can unload after device loss without crashing this worker. Invalidate
       // that engine even when its request was canceled and has no pending listener.
       if(data.type==='error'&&(data.name==='ModelNotLoadedError'||data.name==='DeviceLostError')) {
+        // Only this generation owns its measurements; other queued requests get
+        // the device-loss error without inheriting work they did not perform.
+        const pending=this.pending.get(data.id);
+        if(pending) {
+          this.pending.delete(data.id);pending.cleanup();
+          const error=new Error(data.message);error.name=data.name;
+          pending.reject(new InferenceFailure(error,{source:'webgpu',model:data.inference?.model??this.model,
+            diagnostics:data.inference?.diagnostics}));
+        }
         fail(data.message,data.name);return;
       }
       const pending = this.pending.get(data.id);
@@ -169,9 +197,11 @@ export class LocalInferenceAdapter implements InferenceAdapter {
       this.pending.delete(data.id);
       pending.cleanup();
       if (data.type === 'error') {
-        const error = new Error(data.message); error.name = data.name ?? 'Error'; pending.reject(error);
+        const error = new Error(data.message); error.name = data.name ?? 'Error';
+        pending.reject(new InferenceFailure(error, { source: 'webgpu', model: data.inference?.model ?? this.model,
+          diagnostics: data.inference?.diagnostics }));
       } else {
-        if (data.type === 'ready') this.ready = true;
+        if (data.type === 'ready') { this.ready = true; this.model = data.model; }
         pending.resolve(data.type === 'result' ? data.result : undefined);
       }
     };
@@ -277,6 +307,7 @@ export class RemoteInferenceAdapter implements InferenceAdapter {
     const abort = () => controller.abort();
     signal.addEventListener('abort', abort, { once: true });
     this.controllers.add(controller);
+    let diagnostics: InferenceResult['diagnostics'], model: string | undefined;
     try {
       const response = await this.fetcher(this.endpoint, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
@@ -287,13 +318,17 @@ export class RemoteInferenceAdapter implements InferenceAdapter {
       assertNotAborted(signal);
       if (controller.signal.aborted) throw abortError();
       const envelope = payload && typeof payload === 'object' && !Array.isArray(payload) ? payload as Record<string, unknown> : undefined;
+      diagnostics = readInferenceDiagnostics(envelope?.diagnostics);
+      model = typeof envelope?.model === 'string' ? envelope.model.slice(0, 200) : undefined;
       const plan = validateQueryPlan(envelope && 'plan' in envelope ? envelope.plan : payload, context);
-      const diagnostics = readInferenceDiagnostics(envelope?.diagnostics);
       return { plan, source: 'remote',
-        model: typeof envelope?.model === 'string' ? envelope.model.slice(0, 200) : undefined,
+        model,
         tokens: typeof envelope?.tokens === 'number' && Number.isSafeInteger(envelope.tokens) && envelope.tokens >= 0 ? envelope.tokens : undefined,
         ...(diagnostics ? { diagnostics } : {}),
       };
+    } catch (error) {
+      if (signal.aborted || controller.signal.aborted) throw abortError();
+      throw new InferenceFailure(error, { source: 'remote', model, diagnostics });
     } finally { signal.removeEventListener('abort', abort); this.controllers.delete(controller); }
   }
 
