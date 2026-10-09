@@ -29,7 +29,7 @@ Before the Enter path, `HELLO → READY` selects a protocol version and declares
 {
   "type": "HELLO",
   "versions": ["tb/0"],
-  "result_codecs": ["arrow-ipc", "point-batch-json"],
+  "result_codecs": ["arrow-ipc"],
   "features": ["draft-snapshot", "candidate-promotion", "point-upsert"],
   "limits": {"max_control_bytes": 65536, "max_frame_bytes": 262144}
 }
@@ -136,7 +136,7 @@ Every result event identifies `commit_id`, `query_id`, and `result_generation`, 
 
 Epoch nanoseconds must not pass through a JavaScript `Number`. Preserve int64/BigInt or high/low representation; subtract a nearby origin before converting a plot coordinate to float. Preserve exact values separately from GPU display coordinates. Decimals likewise need an explicit conversion policy.
 
-`BATCH` carries columns, not one object and message per point on the bulk path. The debugging encoding can use JSON arrays; Arrow IPC is the initial binary candidate. A batch has a schema reference, point count, payload size, and operation (`append`, `upsert`, or `retract`). Nulls and missing values must not become zeroes.
+`BATCH` carries columns, not one object and message per point on the bulk path. Arrow IPC is the initial binary candidate; a separately negotiated JSON-array encoding may be used for diagnostics, outside the intended low-latency data path. A batch has a schema reference, point count, payload size, and operation (`append`, `upsert`, or `retract`). Nulls and missing values must not become zeroes. Consumers retain or transfer buffer ownership and update the chart incrementally rather than collecting or reconstructing the full result. The [representation contract](streaming-without-repacking.md) defines the zero-avoidable-copy objective.
 
 Point identity is `(series_id, timestamp, bucket_width, resolution_id, observation_id)` within a generation. Bucketed points omit `observation_id`; raw data with multiple observations at the same series/timestamp requires a stable disambiguator. Revisions are monotonic per identity. Upsert replaces that point at a higher revision; retract removes it with a higher revision tombstone. An adapter can use cheaper append mode only when it guarantees no duplicate/revised identities. A renderer must not connect out-of-order points as if they were time-ordered.
 
@@ -167,6 +167,8 @@ Reserve initial receive credit so the first schema and point do not wait for an 
 Promotion aliases the candidate and new generation to one credit ledger atomically. Outstanding/in-flight bytes, unused grants, and decoded-memory ownership transfer without resetting or granting a second bootstrap window. Late candidate grants apply to that same ledger, with grant-ID deduplication preserved; no new candidate output beyond the promotion cursor is permitted. Keep the alias until in-flight buffers and grants are settled, then retire it. Cancellation revokes unused credit and prevents new production; already-sent buffers remain accounted for until consumed or discarded. Distinct nonpromoted generations receive separate ledgers, all bounded by the session memory cap.
 
 Maintain a separate decoded-memory cap, because compression or variable-width values can expand. Release buffer ownership deliberately when returning credit. Transferable worker buffers detach from the sender; shared buffers require an ownership protocol rather than optimistic simultaneous mutation.
+
+Record-batch assembly needs its own bounded reservation. Transport fragmentation alone cannot prevent a credit deadlock when the decoder needs a whole IPC message before it can release any buffer. Before admitting an active stream, reserve assembly capacity under the session cap and negotiate a maximum encoded IPC message and decoded size. Bootstrap credit must permit reading its bounded metadata. Once that metadata declares a permitted message size, grant enough completion credit from the reserved pool without waiting for that same message to decode or render. Account for retained dictionaries and previous batches separately. Reject/cancel an over-cap message or unsupported expansion instead of accepting an unbounded size or waiting forever. These grants consume existing reservation; they do not create additional memory capacity. Fragmenting transport bytes never implies splitting or repacking an Arrow record batch.
 
 Priority is commit/cancel/error, then the first useful data, then continuation data, then speculative work and diagnostic telemetry. Reserve bounded space for critical control messages. Transport multiplexing does not create CPU/GPU/database priority automatically: each adapter must also enforce admission and scheduling.
 

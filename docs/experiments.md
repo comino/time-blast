@@ -92,6 +92,10 @@ Measure app/model/data cold starts separately from warm runs. Also measure a war
 | E13 | Local model and renderer together vs paused speculation/remote model | Does GPU contention move the bottleneck into presentation? |
 | E14 | Compression off/on; proxy buffering off/on | Where is the first byte being held? |
 | E15 | Duplicate commits, revision races, cancel, disconnect | Can stale or incomplete results ever look current and complete? |
+| E16 | Direct column views vs copying Wasm bindings vs retained Rust buffers | Which copies/calls are introduced or removed, including first-point cost? |
+| E17 | Per-card incremental visibility vs complete workspace result/reveal | Which persistence, multi-card, and animation barriers delay a correct mark? |
+| E18 | Rust socket backends under identical TLS, payloads, queues, and flush policy | Does a crate change improve end-to-end p95/p99 rather than echo throughput alone? |
+| E19 | ClickHouse byte relay vs decode/re-encode adapter | Can original columnar payloads reach the decoder sooner with fewer copied bytes while preserving completion/errors? |
 
 Vary one mechanism at a time before testing combinations. Pin builds and record negotiated capabilities. Compare under equal resource budgets; a second GPU or preloaded full dataset is a different configuration, not a free software speedup.
 

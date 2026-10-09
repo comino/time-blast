@@ -4,6 +4,8 @@ Status: proposed design, October 9, 2026.
 
 Time-blast is a browser application and execution protocol for interactive analytical queries. Its optimization unit is the remaining dependency chain from a committed request to a correct visible point. The system moves independent work before commitment and removes avoidable delays after it.
 
+Embedded DuckDB-Wasm is the first prototype adapter. ClickHouse is the primary intended deployment backend, with a native Rust coordinator/streaming relay as the leading service approach. The canvas is a workspace of views beside chat, not necessarily one rendering surface; see the [reference inspection](canvas-reference.md).
+
 ## The latency model
 
 On a cold request, the approximate dependency chain is:
@@ -66,6 +68,8 @@ flowchart TB
 The browser owns the submitted revision and the visible chart generation. A coordinator owns candidate admission, priorities, and cancellation. Each adapter owns engine-specific handles. A remote coordinator is optional; no network hop is required between local components.
 
 Use the same logical events across placements. An in-process call does not serialize itself to a network packet merely to satisfy the abstraction. Worker adapters can pass transferable buffers. Remote adapters encode messages. Keep interfaces coarse enough that a data batch does not generate one promise or worker message per point.
+
+Preserve columnar buffers through those boundaries. The chart consumes batch views incrementally and starts at the first complete point; no whole-result materialization, row-object conversion, or workspace serialization belongs in the data path. Preserve upstream encoding in the Rust relay where compatible, and account for every unavoidable copy. Ownership and decoder availability can require a copy or a complete small batch; document that boundary rather than claiming universal zero-copy. See [streaming without repacking](streaming-without-repacking.md).
 
 ## Placement combinations
 
@@ -134,7 +138,7 @@ Query binding, point quality, resolution, and coverage are independent. An exact
 
 ## Initial decisions
 
-- Begin with TypeScript for orchestration and a direct Canvas 2D renderer. Move specific measured hotspots into Rust/Wasm or a GPU path when the boundary costs pay back.
+- Favor native Rust for the service and compare Rust/Wasm kernels with a direct typed-array browser path. Keep the browser event/DOM bridge small and begin first-marker comparisons with a precreated Canvas 2D renderer. Preserve an already usable buffer rather than copying it through Wasm for language uniformity.
 - Use a persistent WebSocket control/data baseline remotely and native calls or worker messages locally. Benchmark WebTransport as an optional transport.
 - Support Arrow streams first for database interoperability. Compare one-row first batches and a custom first-point frame before standardizing another binary format.
 - Separate the user interface framework from the per-batch draw path. Keep transport decoding, chart state, and buffers persistent across requests.

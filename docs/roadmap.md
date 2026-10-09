@@ -8,13 +8,16 @@ Status: proposed work. Nothing below is implemented or benchmarked yet.
 | --- | --- | --- |
 | 0. Browser floor | Input, deterministic point source, prebuilt canvas, trace recorder | Reproducible input-to-draw distribution; physical timing method documented |
 | 1. Correct protocol | Draft/commit/generation reducer, bounded queues, simulated adapters | Stale, duplicated, reordered, canceled, and truncated event tests pass |
-| 2. Real data | DuckDB-Wasm and ClickHouse adapters with version probes | Compare first point and final result against reference queries; demonstrate actual early batches where plans permit |
-| 3. Real inference | One remote adapter and one local WebGPU adapter; typed query intent | Semantic accuracy corpus passes the chosen threshold; cold/warm timings reported |
+| 2. Embedded data prototype | DuckDB-Wasm worker, columnar batch ownership, incremental chart | First complete point draws without whole-result collection or row-object conversion; reference-query and copy audits pass |
+| 3. Real inference | One model adapter and typed query intent; preserve local/remote contract | Semantic accuracy corpus passes the chosen threshold; cold/warm timings reported |
 | 4. Prepared commit | Draft mirroring, one speculative candidate, valid promotion | Demonstrate a result staged before Enter; misses remain correct and do not starve |
-| 5. Whole-path experiments | Typing replay and all four model/database placements | End-to-end distributions, hit rates, costs, and tail traces reproducible |
-| 6. Deeper optimization | Winning codec, memory, transport, rendering, and scheduler changes | Each change improves its declared objective without breaking the correctness/resource gates |
+| 5. Usable service direction | Native Rust coordinator and incremental ClickHouse relay | Same consumer contract and correctness; no full-result JSON or unnecessary repacking; explicit completion/errors |
+| 6. Whole-path experiments | Typing replay, second model placement, all four model/database placements | End-to-end distributions, hit rates, copied bytes, costs, and tail traces reproducible |
+| 7. Deeper optimization | Winning codec, memory, transport, rendering, and scheduler changes | Each change improves its declared objective without breaking the correctness/resource gates |
 
 Start milestone 0 without an LLM so inference variance cannot conceal browser mistakes. Keep it as a calibration fixture after real adapters arrive. The first prototype should support one narrow time-series query family end to end before expanding arbitrary SQL.
+
+ClickHouse is the primary deployment target. DuckDB provides the initial controlled embedded path; native DuckDB in a service is optional, not a required production hop. Service and transport experiments can run alongside the embedded prototype, but this remains a research plan until building is requested.
 
 ## Tricks worth testing early
 

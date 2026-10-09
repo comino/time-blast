@@ -245,3 +245,106 @@ Measure the marginal rule: expected saved foreground latency must exceed added s
 verification and contention costs. Adopt an optimization only when the whole chain improves
 under a fixed correctness target and resource budget. No absolute latency claim follows
 from choosing a particular model runtime, quantization level or protocol.
+
+## Recommended inference deployment
+
+Recommendation, still unimplemented: start with a hosted structured-output adapter behind
+the proposed Rust coordinator; keep inference replaceable. Use DuckDB-Wasm for the first
+embedded prototype and make the production path coordinator → ClickHouse → chart.
+Then compare a direct hosted endpoint and a dedicated engine near the coordinator/data.
+Treat browser inference as a parallel placement experiment for resident capable devices.
+
+The inference ladder should be:
+
+1. **Deterministic template:** recognize a supported request and fill validated slots
+   without generation. Reuse an existing accepted intent when only typed parameters change.
+2. **Small intent model:** emit the compact constrained representation above, followed by
+   deterministic compilation. Roughly 1–8B parameters is an experimental candidate range,
+   not a selected model or minimum requirement. Choose by held-out semantic accuracy and
+   commit-to-validated-intent latency; quantization must meet the same accuracy target.
+3. **Larger fallback:** route unsupported or failed interpretations to a more capable model,
+   with a bounded retry budget. True ambiguity may require a clarification; a larger model
+   cannot manufacture the user's missing intent. Never silently force an invalid template.
+
+All three routes terminate at the same complete validated intent/SQL boundary. A token
+prefix cannot trigger database execution. For speculative execution, complete and validate
+the candidate first, then apply the commit-promotion rules when Enter arrives.
+
+### Hosted baseline: convenient routing, measured latency
+
+OpenRouter is a useful first adapter for comparing eligible models/endpoints. Its routing
+API supports `provider.sort: "latency"`; `"throughput"` is a separate objective. Require
+support for the structured-output parameters actually sent with
+`provider.require_parameters: true`, and restrict experiments to endpoints that pass our
+semantic fixtures. These routing controls are not an end-to-end latency guarantee.
+[OpenRouter provider routing](https://openrouter.ai/docs/guides/routing/provider-selection)
+
+Keep provider credentials in the proposed coordinator, reuse its HTTP connections, stream
+model output for timing/preparation, and stop at the complete intent. Record provider/model
+identity, queue/prefill information when exposed, cache usage, output length and retry time.
+The winning metric is usable query completion followed by the correct chart point, not
+tokens per second or the arrival of an opening JSON brace.
+
+OpenRouter documents provider affinity for prompt caching and an explicit `session_id`
+sticky-routing key. Manual `provider.order` takes precedence, and provider failure can
+change the route. Measure cache hits after routing/fallback instead of assuming warmth.
+The application must not interpret that routing session as appendable or suspended model
+state. [OpenRouter prompt caching](https://openrouter.ai/docs/guides/best-practices/prompt-caching)
+
+Once a model/provider combination works, replay the same workload through its direct API
+and the gateway. Compare complete-query p50/p95/p99, cache behavior, failure handling and
+cost at equal correctness. A direct path removes a gateway dependency, but its actual
+deployment route and cache behavior determine whether the whole chain improves.
+
+### Dedicated engine: the route to tighter control
+
+For the aggressive deployment, keep a model resident in vLLM or SGLang near the Rust
+coordinator and ClickHouse. Reuse a mature GPU inference engine; Rust owns orchestration,
+query compilation, admission and streaming rather than replacing CUDA kernels to keep
+the language uniform. Versioned stable context should occupy the reusable prompt prefix.
+vLLM explicitly documents that matching prefix caches skip repeated prefill.
+[vLLM prefix caching](https://docs.vllm.ai/en/v0.15.0/features/automatic_prefix_caching/)
+
+Give committed work reserved admission capacity and make canceled speculation observable.
+Benchmark engine scheduling, cache eviction, grammar overhead and cancellation recovery
+under load. Expose prefill-only/append/truncate/fork controls only after testing the exact
+engine API; self-hosting alone does not establish those capabilities. SGLang's documented
+grammar constraints are a concrete starting point for short intent generation.
+[SGLang structured output](https://github.com/sgl-project/sglang/blob/main/docs/docs/advanced_features/structured_outputs.mdx)
+
+### Browser engine: remove the inference network trip when it pays
+
+WebLLM provides browser inference using WebGPU and worker integration. Rust/Wasm CPU
+code and WebGPU tensor kernels are different execution paths: compiling a CPU model
+runtime into Wasm does not automatically move its matrix operations onto the GPU.
+[WebLLM runtime](https://webllm.mlc.ai/docs/)
+
+No particular model weights have been selected yet. The local route requires an available,
+compatible model artifact and runtime build; an arbitrary OpenRouter catalog entry is not
+automatically downloadable or supported by WebLLM. Test the exact local model/quantization
+and hosted endpoint against the same semantic corpus rather than assuming identical behavior.
+
+Evaluate a resident compact model, warmed grammar/context and an already-created worker.
+Account for initial weights/download, memory capacity, cold startup, battery behavior and
+GPU contention with the chart. Keep the hosted route available when the local model is
+unready or its measured end-to-end path is slower. Placement must not change query meaning.
+
+### Spend typing time first; tune token decoding separately
+
+The primary speculation lever is predicting **the user's eventual request before Enter**.
+Mirror edits continuously, keep schema/prompt context stable, and consider one bounded
+candidate after a meaningful pause. An illustrative 50–150 ms pause range is a tuning
+experiment, not a promised optimum or a delay added to Enter. Commit always bypasses it.
+Cancel losing candidates, preserve reusable prefixes, and measure prediction waste.
+
+Inference-engine **speculative decoding** is different: draft output tokens are verified
+by the target model within a generation. vLLM documents this as an inter-token latency
+optimization whose gains depend on workload and hardware. Benchmark it separately for
+our short intents; compare longer fallback outputs too, where there is more decoding to
+amortize verification. It does not validate a guess about the user's future prompt.
+[vLLM speculative decoding](https://docs.vllm.ai/en/latest/features/speculative_decoding/)
+
+First compare templates, hosted constrained intent, and one pre-Enter candidate using a
+fixed accuracy suite. Introduce dedicated-engine control and local WebGPU only against
+that measured baseline. The desired fast path is an already validated candidate at Enter,
+followed by direct streaming of the first valid database point into the chart.
