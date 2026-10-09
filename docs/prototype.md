@@ -55,6 +55,7 @@ The track is a visualization of generated coordinates, not a navigation map. Glo
 
 Copy accounting:
 
+- Production ships DuckDB engine binaries as gzip assets (about 8–9 MB each) to fit the preview host's 25 MiB per-file limit. The selected engine is expanded into a temporary Blob URL once at startup, then revoked. This adds startup buffer allocation; query/result buffers do not go through this loader. Development loads the raw local engine asset. Production therefore also requires `DecompressionStream` support.
 - Parquet decoding, table materialization, DuckDB's Wasm/worker output, and Arrow IPC assembly are engine/browser boundaries, not end-to-end zero-copy guarantees.
 - Arrow-to-chart columns are views, retained by reference. No row-object expansion, JSON data conversion, full-table collection, or bulk passage through Rust is on this path.
 - Numeric validity checks walk a batch before publication. The chart walks values to draw/scale. Those are reads, not copies, and are profiling candidates.

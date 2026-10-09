@@ -6,6 +6,7 @@ import ehWorker from '@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?url';
 import contextJSON from '../../public/data/context.json';
 import type { AdapterStatus, ColumnBatch, DatabaseAdapter, DatasetContext, QueryRequest } from '../core/types';
 import { abortError, checkAbort, MAX_RESULT_BYTES, MAX_RESULT_ROWS, QueryGate, retainArrowBatch } from './arrow';
+import { fetchEngineWasm } from './engine-asset';
 
 export const SYNTHETIC_CONTEXT: DatasetContext = Object.freeze({
   ...contextJSON, vessels: Object.freeze([...contextJSON.vessels]) as unknown as string[],
@@ -20,6 +21,7 @@ export class DuckDBAdapter implements DatabaseAdapter {
   private worker?: Worker;
   private loading?: Promise<DatasetContext>;
   private disposed = false;
+  private startupAbort = new AbortController();
   private gate = new QueryGate();
   private active?: { connection: duckdb.AsyncDuckDBConnection; cancel: () => Promise<void> };
 
@@ -42,7 +44,18 @@ export class DuckDBAdapter implements DatabaseAdapter {
     if (this.disposed) throw abortError();
     this.worker = new Worker(bundle.mainWorker!);
     const db = this.engine = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(duckdb.LogLevel.WARNING), this.worker);
-    await db.instantiate(bundle.mainModule);
+    let engineURL = bundle.mainModule;
+    let objectURL: string | undefined;
+    try {
+      if (import.meta.env.PROD) {
+        const wasm = await fetchEngineWasm(`${engineURL}.gz`, { signal: this.startupAbort.signal });
+        if (this.disposed) throw abortError();
+        engineURL = objectURL = URL.createObjectURL(wasm);
+      }
+      await db.instantiate(engineURL);
+    } finally {
+      if (objectURL) URL.revokeObjectURL(objectURL);
+    }
     const connection = await db.connect();
     try {
       progress({ state: 'loading', label: 'Loading 120,960 synthetic readings', progress: 0.55 });
@@ -110,6 +123,7 @@ export class DuckDBAdapter implements DatabaseAdapter {
   async dispose(): Promise<void> {
     if (this.disposed) return;
     this.disposed = true;
+    this.startupAbort.abort();
     await this.active?.cancel();
     await this.engine?.terminate().catch(() => {});
     this.worker?.terminate();

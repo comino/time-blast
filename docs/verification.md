@@ -18,6 +18,7 @@ Python Playwright with Chromium **145.0.7632.0** on this Linux host:
 - A raw scan returned its first **2,048-row** batch. Cancellation caused the next iterator request to reject with `AbortError`. A subsequent committed query returned all 144 expected points.
 - The integrated UI rendered actual results, exported CSV, displayed 12 visible table rows, generated SQL, and recorded first-draw trace events. Desktop 1440×1000 and mobile 390×844 layouts were inspected. IME Enter suppression, stale/canceled events, settings validation, and pre-start errors were exercised.
 - A **production-build** smoke staged 144 points before Enter, promoted them on submission, and completed without page errors. Single-run latency values are deliberately not treated as a benchmark.
+- After gzip engine packaging, the production app was checked with both HTTP-transparent decoding and an actual gzip response without `Content-Encoding`. Both initialized the real DuckDB engine and staged/promoted 144 points without browser errors; no raw DuckDB Wasm URL was requested. Gzip-loader tests cover bounded bodies, truncation and cancellation.
 
 Reproduce database/UI checks with Vite running:
 
@@ -38,6 +39,8 @@ The scripts' module-isolation harnesses use Vite development module URLs. The se
 | Prepared result | 5.65 ms | 20.8 ms |
 
 The prepared case waits until all points are staged before submitting. It measures the benefit of a successful preparation hit, not hit rate, inference performance, overall GPU/CPU cost, or presentation time. The host was uncontrolled and the sample is small; these are observations, not latency guarantees. Raw samples and hashes of the measured source files are retained in the JSON.
+
+The measured source was committed in `c0527b645da6a0b2cd2cb0cea9508f9aa0b62275`. Subsequent gzip engine packaging changes cold startup; these measurements concern the already-warmed development runtime.
 
 ```sh
 python3 scripts/benchmark-browser.py --output /tmp/time-blast-benchmark.json
