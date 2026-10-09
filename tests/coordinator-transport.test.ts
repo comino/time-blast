@@ -100,6 +100,21 @@ function remote(h = harness(), ready = true) {
   return { ...h, client, socket, statuses };
 }
 
+it('ignores queued socket replies after disposal and stops after a service error',async()=>{
+  const old=remote();old.client.dispose();const previous=old.statuses.length;
+  old.socket.receive({type:'READY',version:1});
+  old.socket.receive({type:'ERROR',message:'Late old connection error'});
+  expect(old.statuses).toHaveLength(previous);
+  expect(old.events.some(event=>event.type==='error')).toBe(false);
+  const current=remote();current.client.commit('Average speed by hour');
+  const commit=current.socket.last('COMMIT');
+  current.socket.receive({type:'ERROR',message:'Service failed'});
+  current.socket.receive({type:'ACCEPT',epoch:commit.epoch,commitId:commit.commitId,revision:commit.draft.revision,contextId:context.id});
+  await vi.advanceTimersByTimeAsync(10);
+  expect(current.inference.resolve).not.toHaveBeenCalled();
+  expect(current.events.some(event=>event.type==='error'&&event.message==='Service failed')).toBe(true);
+});
+
 function prepareReply(message: Message): Message {
   return { type: 'PREPARE', epoch: message.epoch, revision: message.draft.revision, contextId: message.draft.contextId };
 }

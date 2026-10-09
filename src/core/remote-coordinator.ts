@@ -30,6 +30,7 @@ export class RemoteCoordinatorClient implements CoordinatorClient {
       database:{id:options.database.id,placement:options.database.placement},
       dataPlane:'direct-to-browser'});
     this.socket.onmessage=({data})=> {
+      if(this.disposed)return;
       try {
         if (typeof data!=='string'||data.length>16_384) throw new Error('Invalid coordinator message.');
         const message=JSON.parse(data);
@@ -49,7 +50,7 @@ export class RemoteCoordinatorClient implements CoordinatorClient {
           this.lastAccepted=message.revision;
           const draft=this.committed; this.committed=undefined; this.executor.commit(draft);
         } else if (message.type==='ERROR') {
-          this.options.emit({type:'error',message:String(message.message??'Remote coordinator failed').slice(0,1024)});
+          this.fail(String(message.message??'Remote coordinator failed').slice(0,1024));
         }
       } catch (error) { this.fail(error instanceof Error?error.message:String(error)); }
     };
