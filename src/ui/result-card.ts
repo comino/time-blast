@@ -20,7 +20,8 @@ const markup = `
     <div class="plot-empty card-loading" data-card-el="plot-empty"><div class="loading-orb"><i></i><i></i><i></i><b></b></div><span data-card-el="empty-title">Following your question</span><small data-card-el="empty-detail">Preparing a validated query.</small></div>
   </div>
   <p class="view-caption" data-card-el="view-caption" hidden></p><div class="plot-bottom"><div class="legend" data-card-el="legend"></div><span class="mono" data-card-el="time-range">UTC</span></div>
-  <div class="card-stats"><div><span>MEAN <small data-card-el="mean-unit"></small></span><strong data-card-el="mean">—</strong></div><div><span>POINTS</span><strong data-card-el="points">—</strong></div><div><span>RANGE</span><strong data-card-el="range">—</strong></div><div><span>ENTER → DRAW</span><strong data-card-el="latency">—</strong></div></div>
+  <div class="card-stats"><div><span>MEAN <small data-card-el="mean-unit"></small></span><strong data-card-el="mean">—</strong></div><div><span>POINTS</span><strong data-card-el="points">—</strong></div><div><span>RANGE</span><strong data-card-el="range">—</strong></div><div><span>RUN → DRAW</span><strong data-card-el="latency">—</strong></div></div>
+  <div class="card-timings" aria-label="Query latency breakdown"><div title="Time spent resolving the query intent, including model queueing and remote transport when used"><span data-card-el="inference-label">TRANSLATION</span><strong data-card-el="inference-latency">—</strong></div><div title="Database request to first nonempty batch, including queueing and decoding"><span data-card-el="database-first-label">DB → FIRST</span><strong data-card-el="database-first-latency">—</strong></div><div title="Database request to stream completion; includes first-batch time and streaming"><span data-card-el="database-label">DB TOTAL</span><strong data-card-el="database-latency">—</strong></div><div title="First batch delivered to this card to first drawing submission, including renderer readiness"><span>DATA → DRAW</span><strong data-card-el="render-latency">—</strong></div></div>
   <footer class="card-footer result-footer"><button class="detail-button" data-card-action="sql" aria-expanded="false">${icon('<path d="m8 7-5 5 5 5m8-10 5 5-5 5"/>')}<span>Query details</span><span class="source-pill" data-card-el="source">—</span></button><span class="card-batch-count" data-card-el="batch-count">Waiting for data</span><div class="result-actions"><button class="text-button cancel-button" data-card-action="cancel">Stop query</button><button class="icon-button" data-card-action="export" aria-label="Export result as CSV" title="Export result as CSV" disabled>${icon('<path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4"/>')}</button></div></footer>
   <div class="sql-panel" data-card-el="sql-panel" hidden><pre data-card-el="sql">A validated query will appear here.</pre><p data-card-el="query-meta"></p><p data-card-el="latency-detail">First point draw submitted</p></div>
   <button class="card-resize-handle" aria-label="Resize view" title="Drag to resize">◢</button>`;
@@ -66,7 +67,7 @@ export class ResultCard {
   private readonly elements = new Map<string, HTMLElement>();
   private readonly actions = new Map<string, HTMLButtonElement>();
 
-  constructor(readonly id: string, readonly prompt: string, parent: HTMLElement, private callbacks: CardCallbacks) {
+  constructor(readonly id: string, public prompt: string, parent: HTMLElement, private callbacks: CardCallbacks) {
     this.element.className = 'result-card card is-loading'; this.element.dataset.cardId = id;
     this.element.tabIndex = 0; this.element.setAttribute('aria-label', prompt); this.element.append(template.content.cloneNode(true));
     parent.append(this.element); this.layout();
@@ -101,6 +102,35 @@ export class ResultCard {
     for (const [name, e] of this.actions) selected ? e.setAttribute('data-action', name) : e.removeAttribute('data-action');
     this.element.querySelectorAll<HTMLElement>('[data-card-tab]').forEach(e => selected ? e.setAttribute('data-tab', e.dataset.cardTab!) : e.removeAttribute('data-tab'));
   }
+  /** Reuse live card chrome and canvas storage; old query buffers are released. */
+  reset(prompt: string): void {
+    if (this.destroyed) return;
+    this.rendererEpoch++; this.stopPlayback(); this.renderer?.destroy(); this.renderer = undefined;
+    this.rendererMode = undefined; this.rendererLoading = this.rendererError = false;
+    this.chart.reset(); this.view = undefined; this.prompt = prompt;
+    this.mode = this.lastChart = 'line'; this.explicitMode = this.copied = false;
+    this.total = this.batchCount = this.tableRows = this.sum = this.count = 0;
+    this.minimum = Infinity; this.maximum = -Infinity; this.series.clear();
+    this.completeReceived = this.stopped = false;
+    this.element.classList.add('is-loading'); this.element.setAttribute('aria-label', prompt);
+    this.part('plot-title').textContent = prompt; this.part('plot-subtitle').textContent = 'Preparing your question…';
+    this.part('empty-title').textContent = 'Following your question'; this.part('empty-detail').textContent = 'Preparing a validated query.';
+    this.part('plot-empty').hidden = false; this.part('plot-container').hidden = false;
+    this.part('track-wrap').hidden = this.part('table-wrap').hidden = this.part('view-caption').hidden = true;
+    this.part('sql-panel').hidden = true; this.actions.get('sql')!.setAttribute('aria-expanded', 'false');
+    this.part('sql').textContent = 'A validated query will appear here.'; this.part('query-meta').textContent = '';
+    this.part('latency-detail').textContent = 'First point draw submitted';
+    this.part('legend').replaceChildren(); this.part('table-body').replaceChildren();
+    this.part('mean-unit').textContent = ''; this.part('time-range').textContent = 'UTC'; this.part('batch-count').textContent = 'Waiting for data';
+    for (const name of ['source', 'mean', 'points', 'range', 'latency', 'inference-latency', 'database-first-latency', 'database-latency', 'render-latency']) this.part(name).textContent = '—';
+    this.part('inference-label').textContent = 'TRANSLATION'; this.part('database-first-label').textContent = 'DB → FIRST'; this.part('database-label').textContent = 'DB TOTAL';
+    this.actions.get('duplicate')!.disabled = this.actions.get('export')!.disabled = true; this.actions.get('cancel')!.hidden = false;
+    const representation = this.part<HTMLSelectElement>('representation'); representation.disabled = false; representation.value = 'line';
+    for (const option of representation.options) if (VIEWS.some(v => v.id === option.value)) { option.disabled = false; option.title = ''; }
+    this.element.querySelectorAll<HTMLButtonElement>('[data-card-tab]').forEach(e => { const active = e.dataset.cardTab === 'chart'; e.classList.toggle('active', active); e.setAttribute('aria-selected', String(active)); });
+    // begin() selects the validated view and restarts work when inference finishes.
+    this.chart.setVisible(false); this.setState('THINKING', 'loading');
+  }
   begin(view: QueryView): void {
     if (this.stopped || this.destroyed) return;
     this.view = view;
@@ -118,6 +148,7 @@ export class ResultCard {
     if (!this.explicitMode) this.mode = view.plan.view;
     this.setMode(this.mode, false);
     this.setState('QUERYING', 'loading'); this.part('empty-title').textContent = 'Listening for the first point'; this.part('empty-detail').textContent = 'Drawing begins as soon as data arrives.';
+    this.updateTiming();
   }
   append(batch: ColumnBatch): void {
     if (this.stopped || this.destroyed || this.completeReceived || !this.view) return;
@@ -128,6 +159,7 @@ export class ResultCard {
     if (this.mode === 'table') { this.renderTable(); if (this.visible && batch.length) this.recordDraw(this.view.id, performance.now()); }
     this.part('points').textContent = integer.format(this.total); this.part('batch-count').textContent = `${this.batchCount} ${this.batchCount === 1 ? 'batch' : 'batches'}`;
     this.setState('STREAMING', 'ready'); this.callbacks.change(this);
+    if (this.batchCount === 1) this.updateTiming();
   }
   finish(timing: QueryTiming): void {
     if (this.stopped || this.completeReceived || !this.view) return;
@@ -257,9 +289,26 @@ export class ResultCard {
     if (!this.copied) this.callbacks.draw(id, at); this.view.timing.firstDrawAt = at; this.updateTiming();
   }
   private updateTiming(): void {
-    const t = this.view?.timing;
+    const view = this.view; if (!view) return;
+    const t = view.timing;
+    this.part('inference-label').textContent = view.source === 'template' ? 'TEMPLATE' : 'INFERENCE';
+    const database = view.database === 'duckdb-wasm' ? 'DUCKDB' : 'DB';
+    this.part('database-first-label').textContent = `${database} → FIRST`;
+    this.part('database-label').textContent = `${database} TOTAL`;
+    // A duplicate shares results, not a new execution. Do not reuse its source's latency.
     if (this.copied) { this.part('latency-detail').textContent = 'Shared result · no new query'; return; }
-    if (t?.committedAt !== undefined && t.firstDrawAt !== undefined) { const elapsed = Math.max(0, t.firstDrawAt - t.committedAt); this.part('latency').textContent = elapsed < 1000 ? `${elapsed.toFixed(1)} ms` : `${(elapsed / 1000).toFixed(2)} s`; this.part('latency-detail').textContent = t.promoted ? 'Prepared result promoted' : 'First point draw submitted'; }
+    const duration = (start?: number, end?: number): string => {
+      if (start === undefined || end === undefined || end < start) return '—';
+      const elapsed = end - start;
+      return elapsed < 1000 ? `${elapsed.toFixed(1)} ms` : `${(elapsed / 1000).toFixed(2)} s`;
+    };
+    this.part('inference-latency').textContent = duration(t.inferenceStartedAt, t.intentAt);
+    this.part('database-first-latency').textContent = duration(t.queryStartedAt, t.firstBatchAt);
+    this.part('database-latency').textContent = duration(t.queryStartedAt, t.completedAt);
+    this.part('render-latency').textContent = duration(t.firstPublishedAt, t.firstDrawAt);
+    this.part('latency').textContent = duration(t.committedAt, t.firstDrawAt);
+    const prepared = t.committedAt !== undefined && t.inferenceStartedAt !== undefined && t.inferenceStartedAt < t.committedAt;
+    this.part('latency-detail').textContent = `${t.promoted ? 'Prepared result promoted. ' : prepared ? 'Preparation began before this run. ' : ''}SQL compile: ${duration(t.intentAt, t.compiledAt)}. Stage times may overlap; database total includes time to first batch. Run → draw starts at dispatch; data → draw starts at delivery to this card. Drawing measures submission, not screen presentation.`;
   }
   private seriesName(id: number): string { const v = this.view; if (!v) return String(id); const vessel = !v.plan.splitByVessel && v.plan.vessel !== null ? v.plan.vessel : id; return v.plan.splitByVessel || v.plan.vessel !== null ? v.context.vessels[vessel] || `Series ${vessel + 1}` : 'Fleet'; }
   private renderTable(): void {

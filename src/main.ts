@@ -96,7 +96,7 @@ function connect(selected:RuntimeConfig,own:number,dataset:DatasetContext,db:Dat
       ui.setStatus('coordinator',{state:'ready',label:'Local MessageChannel · ready'});
     } else client=new RemoteCoordinatorClient(selected.coordinatorEndpoint,options,status=>{if(own===generation)ui.setStatus('coordinator',status);});
     if(draftText)client.draft(draftText,draftComposing);
-  } catch(error) { client=undefined;emit({type:'error',message:String(error)}); }
+  } catch(error) { client=undefined;ui.setStatus('coordinator',{state:'error',label:'Execution path unavailable',detail:String(error)});emit({type:'error',message:String(error)}); }
 }
 
 ui.setConfig(config);

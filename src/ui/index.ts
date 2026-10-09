@@ -30,8 +30,11 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   let config: RuntimeConfig = { ...DEFAULT_CONFIG };
   let context: DatasetContext | undefined;
   let composing = false, modelLoading = false, historyFrame = 0;
+  let runtimeReady = false, destroyed = false, internalCancel = false, liveEpoch = 0;
+  let lastDraft = '', lastDraftComposing = false, suppressedLiveText: string | undefined;
   const workspace = new CanvasWorkspace(root, {
-    cancel: () => callbacks.onCancel(), busy: value => showBusy(value), draw: (id, at) => callbacks.onDraw(id, at),
+    cancel: () => { liveEpoch++; if (!internalCancel) suppressedLiveText = input.value; callbacks.onCancel(); },
+    busy: value => showBusy(value), draw: (id, at) => callbacks.onDraw(id, at),
     added(card) {
       const id = card.id, prompt = card.prompt;
       const item = document.createElement('button'); item.className = 'history-question'; item.textContent = prompt;
@@ -46,21 +49,46 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   }
   function showBusy(value: boolean): void {
     action('cancel-active').hidden = !value;
-    el('submit').setAttribute('aria-label', value ? 'Run a new question' : 'Run question');
+    el('submit').setAttribute('aria-label', config.liveQuery ? 'Keep this view on the canvas' : value ? 'Run a new question' : 'Run question');
     el('composer').classList.toggle('working', value);
   }
   // Runtime startup/teardown may stop work without emitting a query terminal event.
-  function setBusy(value: boolean): void { if (!value) workspace.cancelActive('RUNTIME CHANGED'); showBusy(value); }
-  function setPrompt(text: string): void { input.value = text; input.focus(); input.setSelectionRange(text.length, text.length); prewarmViews(text); callbacks.onDraft(text, false); }
+  function cancelInternally(action: () => void): void { internalCancel = true; try { action(); } finally { internalCancel = false; } }
+  function setBusy(value: boolean): void { if (!value) cancelInternally(() => workspace.cancelActive('RUNTIME CHANGED')); showBusy(value); }
+  function queueLive(): void {
+    const text = input.value, epoch = ++liveEpoch;
+    if (!config.liveQuery || !runtimeReady || composing || text.trim().length < config.translationMinChars || text === suppressedLiveText) return;
+    // Coalesce synchronous input notifications, without a timer or frame delay.
+    queueMicrotask(() => {
+      if (destroyed || epoch !== liveEpoch || !runtimeReady || !config.liveQuery || composing || input.value !== text || suppressedLiveText === text) return;
+      if (workspace.submitLive(text)) callbacks.onCommit(text);
+    });
+  }
+  function draftChanged(): void {
+    const text = input.value;
+    // Browsers may send the final composition value twice. A duplicate draft
+    // would otherwise trigger a second speculative model/database execution.
+    if (text === lastDraft && composing === lastDraftComposing) return;
+    liveEpoch++;
+    if (text !== lastDraft) suppressedLiveText = undefined;
+    if (config.liveQuery && (text !== lastDraft || composing)) cancelInternally(() => workspace.invalidateLive(text.trim().length < config.translationMinChars));
+    lastDraft = text; lastDraftComposing = composing;
+    callbacks.onDraft(text, composing);
+    if (!composing) prewarmViews(text);
+    queueLive();
+  }
+  function setPrompt(text: string): void { input.value = text; input.focus(); input.setSelectionRange(text.length, text.length); draftChanged(); }
   function submit(): void {
     const text = input.value; if (!text.trim() || composing) return;
+    liveEpoch++; suppressedLiveText = text;
+    if (workspace.pinLive(text)) return;
     workspace.submit(text); callbacks.onCommit(text);
   }
   el('composer').addEventListener('submit', e => { e.preventDefault(); submit(); });
   input.addEventListener('focus', () => callbacks.onFocus());
-  input.addEventListener('compositionstart', () => { composing = true; callbacks.onDraft(input.value, true); });
-  input.addEventListener('compositionend', () => { composing = false; prewarmViews(input.value); callbacks.onDraft(input.value, false); });
-  input.addEventListener('input', () => { callbacks.onDraft(input.value, composing); if (!composing) prewarmViews(input.value); });
+  input.addEventListener('compositionstart', () => { composing = true; draftChanged(); });
+  input.addEventListener('compositionend', () => { composing = false; draftChanged(); });
+  input.addEventListener('input', draftChanged);
   input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !composing && e.keyCode !== 229) { e.preventDefault(); submit(); } });
   root.querySelectorAll<HTMLButtonElement>('[data-prompt]').forEach(button => button.addEventListener('click', () => setPrompt(button.dataset.prompt!)));
   root.querySelector<HTMLAnchorElement>('.brand')!.addEventListener('click', e => { e.preventDefault(); input.focus(); });
@@ -73,18 +101,28 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   for (const dialog of [runtimeDialog, datasetDialog]) dialog.addEventListener('click', e => { if (e.target === dialog) { const b = dialog.getBoundingClientRect(); if (e.clientX < b.left || e.clientX > b.right || e.clientY < b.top || e.clientY > b.bottom) dialog.close(); } });
   action('warm-model').addEventListener('click', () => callbacks.onWarmModel());
   function setConfig(next: RuntimeConfig): void {
-    if (JSON.stringify(next) !== JSON.stringify(config)) workspace.cancelActive('RUNTIME CHANGED');
+    if (JSON.stringify(next) !== JSON.stringify(config)) {
+      liveEpoch++; runtimeReady = false; suppressedLiveText = undefined;
+      if (config.liveQuery && !next.liveQuery) workspace.pinLive(input.value);
+      cancelInternally(() => workspace.cancelActive('RUNTIME CHANGED'));
+      cancelInternally(() => workspace.invalidateLive(true));
+    }
     config = { ...next };
     const local = next.coordinatorMode === 'browser' && next.databaseMode === 'browser' && next.inferenceMode !== 'remote';
     el('placement').lastChild!.textContent = local ? ' LOCAL FIRST' : ' HYBRID RUNTIME';
     action('speculation').setAttribute('aria-checked', String(config.speculation));
-    el('draft-note').textContent = (config.liveTranslation ? `Translate each edit from ${config.translationMinChars} characters. ` : '')
+    action('live-query').setAttribute('aria-checked', String(config.liveQuery));
+    el('composer-caption').textContent = config.liveQuery ? 'Live view · Enter to keep' : 'Add a view';
+    el('submit-hint').textContent = config.liveQuery ? '↵ Keep this view' : '↵ Add to canvas';
+    el('submit').setAttribute('aria-label', config.liveQuery ? 'Keep this view on the canvas' : 'Run question');
+    el('draft-note').textContent = (config.liveQuery ? `Charts update after each edit from ${config.translationMinChars} characters. ` : config.liveTranslation ? `Translate each edit from ${config.translationMinChars} characters. ` : '')
       + (local ? 'Drafts stay in this browser.' : 'Drafts may be sent to configured remote services.');
     el('draft-state').textContent = idleDraftLabel(); el('draft-dot').dataset.state = 'quiet';
   }
   function idleDraftLabel(): string {
-    return config.liveTranslation ? `Translation starts at ${config.translationMinChars} characters` : config.speculation ? 'Ready when you are' : 'Preparation paused';
+    return config.liveQuery ? `Live charts from ${config.translationMinChars} characters` : config.liveTranslation ? `Translation starts at ${config.translationMinChars} characters` : config.speculation ? 'Ready when you are' : 'Preparation paused';
   }
+  action('live-query').addEventListener('click', () => { const next = { ...config, liveQuery: !config.liveQuery }; setConfig(next); callbacks.onConfig(next); });
   action('speculation').addEventListener('click', () => { const next = { ...config, speculation: !config.speculation }; setConfig(next); callbacks.onConfig(next); });
   function field(name: string): HTMLInputElement | HTMLSelectElement { return runtimeForm.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement; }
   function updateEndpointFields(): void {
@@ -96,7 +134,7 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
     root.querySelector<HTMLElement>('.model-load')!.hidden = !['auto', 'webgpu'].includes(field('inferenceMode').value);
     action<HTMLButtonElement>('warm-model').disabled = modelLoading || field('inferenceMode').value !== config.inferenceMode || !['auto', 'webgpu'].includes(config.inferenceMode);
     action('warm-model').title = field('inferenceMode').value !== config.inferenceMode ? 'Apply runtime before preparing this model' : 'Prepare the current local model';
-    const live = (field('liveTranslation') as HTMLInputElement).checked;
+    const live = (field('liveQuery') as HTMLInputElement).checked || (field('liveTranslation') as HTMLInputElement).checked;
     el('translation-threshold').hidden = !live;
     (field('translationMinChars') as HTMLInputElement).disabled = !live;
     (field('translationMinChars') as HTMLInputElement).required = live;
@@ -114,9 +152,10 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   runtimeForm.addEventListener('submit', e => {
     e.preventDefault();
     const liveTranslation = (field('liveTranslation') as HTMLInputElement).checked;
+    const liveQuery = (field('liveQuery') as HTMLInputElement).checked;
     const minimum = (field('translationMinChars') as HTMLInputElement).valueAsNumber;
     const validMinimum = Number.isInteger(minimum) && minimum >= 1 && minimum <= MAX_PROMPT_CHARS;
-    if (liveTranslation && !validMinimum) {
+    if ((liveQuery || liveTranslation) && !validMinimum) {
       el('runtime-error').textContent = `Use a whole number from 1 to ${MAX_PROMPT_CHARS} for minimum characters.`; return;
     }
     const next: RuntimeConfig = {
@@ -126,7 +165,7 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
       databaseMode: field('databaseMode').value as RuntimeConfig['databaseMode'], databaseEndpoint: field('databaseEndpoint').value.trim(),
       datasetProfile: field('datasetProfile').value as RuntimeConfig['datasetProfile'],
       speculation: (field('speculation') as HTMLInputElement).checked,
-      liveTranslation, translationMinChars: validMinimum ? minimum : config.translationMinChars,
+      liveQuery, liveTranslation, translationMinChars: validMinimum ? minimum : config.translationMinChars,
     };
     for (const name of ['coordinator', 'inference', 'database'] as const) if (next[`${name}Mode`] === 'remote') {
       try { const url = new URL(next[`${name}Endpoint`]); const valid = name === 'coordinator' ? ['ws:', 'wss:'] : ['http:', 'https:']; if (!valid.includes(url.protocol)) throw new Error(); }
@@ -154,27 +193,33 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   function setStatus(component: Component, status: AdapterStatus): void {
     const stage = root.querySelector<HTMLElement>(`[data-stage="${component}"]`)!; stage.dataset.state = status.state;
     stage.querySelector('small')!.textContent = status.label; stage.title = status.detail || status.label;
+    if (component === 'coordinator') {
+      runtimeReady = status.state === 'ready';
+      if (runtimeReady) queueLive();
+      else { liveEpoch++; cancelInternally(() => { workspace.cancelActive('RUNTIME CHANGED'); workspace.invalidateLive(true); }); }
+    }
     if (component === 'database') { el('dataset-dot').dataset.state = status.state; if (!context || status.state !== 'ready') el('dataset-sub').textContent = status.label; }
     if (component === 'model') { modelLoading = status.state === 'loading'; const progress = status.progress === undefined ? '' : ` · ${Math.round(status.progress <= 1 ? status.progress * 100 : status.progress)}%`; el('model-progress').textContent = status.label + progress; updateEndpointFields(); }
   }
   function handleEvent(event: PipelineEvent): void {
     if (event.type === 'draft') { el('revision').textContent = `r.${event.revision}`; return; }
     if (event.type === 'speculation') {
-      const labels = { idle: idleDraftLabel(), resolving: 'Translating your draft…', translated: 'SQL prepared before Enter', querying: 'Preparing query results…', ready: `${integer.format(event.points)} points staged before Enter`, canceled: 'Draft changed · preparing again' };
-      const active = config.speculation || config.liveTranslation;
+      const labels = { idle: idleDraftLabel(), resolving: 'Translating your draft…', translated: config.liveQuery ? 'SQL prepared' : 'SQL prepared before Enter', querying: config.liveQuery ? 'Updating live chart…' : 'Preparing query results…', ready: `${integer.format(event.points)} points ${config.liveQuery ? 'ready' : 'staged before Enter'}`, canceled: 'Draft changed · preparing again' };
+      const active = config.liveQuery || config.speculation || config.liveTranslation;
       el('draft-state').textContent = active ? labels[event.state] : 'Preparation paused';
       el('draft-dot').dataset.state = active && ['ready', 'translated'].includes(event.state) ? 'ready' : active && ['resolving', 'querying'].includes(event.state) ? 'loading' : 'quiet'; return;
     }
     if (event.type === 'trace') {
       el('trace-empty').hidden = true; const li = document.createElement('li'), name = document.createElement('span'), detail = document.createElement('span'); name.textContent = event.entry.event; detail.textContent = event.entry.detail; li.append(name, detail); el('trace-list').prepend(li); while (el('trace-list').children.length > 12) el('trace-list').lastElementChild!.remove(); return;
     }
+    const liveError = workspace.isLiveActive;
     workspace.handle(event);
-    if (event.type === 'error' && !event.id) {
+    if (event.type === 'error' && !event.id && !liveError) {
       const message = document.createElement('div'); message.className = 'error-message'; message.setAttribute('role', 'alert'); message.textContent = event.message;
       el('history').append(message); scrollHistory();
     }
   }
   setConfig(config);
   return { setDataset, setStatus, setConfig, handleEvent, setBusy, setPrompt,
-    destroy() { workspace.destroy(); if (historyFrame) cancelAnimationFrame(historyFrame); root.replaceChildren(); } };
+    destroy() { destroyed = true; liveEpoch++; workspace.destroy(); if (historyFrame) cancelAnimationFrame(historyFrame); root.replaceChildren(); } };
 }

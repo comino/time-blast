@@ -90,6 +90,15 @@ export class StreamChart {
     this.gridReady = false; this.markers.clear(); if (this.visible) this.grid();
   }
 
+  /** Release a replaced draft while retaining the canvas allocation and observer. */
+  reset(): void {
+    this.work.cancel(); this.sorting = undefined; this.view = undefined;
+    this.batches.length = 0; this.order.clear(); this.cursors.clear(); this.firstBatch = undefined;
+    this.nextBatch = this.nextRow = this.firstRow = 0;
+    this.drawn = this.gridReady = this.settled = false; this.stopped = true; this.repaint = true;
+    this.ctx.fillStyle = BACKGROUND; this.ctx.fillRect(0, 0, this.width, this.height); this.markers.clear();
+  }
+
   append(batch: ColumnBatch): void {
     if (this.stopped) return;
     this.batches.push(batch);

@@ -69,6 +69,8 @@ def run(base_url, screenshot):
             onFocus: () => {}, onConfig: () => {}, onCancel: () => {},
             onWarmModel: () => {}, onDraw: id => calls.draws.push(id)
           });
+          const {DEFAULT_CONFIG}=await import('/src/core/types.ts');
+          ui.setConfig({...DEFAULT_CONFIG,liveQuery:false});
           const context = {id:'test', label:'test', rowCount:3, start:1000,
             end:4000, vessels:['One','Two'], description:'test'};
           const view = id => ({id, prompt:'speed', revision:1,

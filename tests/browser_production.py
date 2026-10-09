@@ -33,6 +33,26 @@ def run(url, screenshot):
         assert "1,209,600" in page.locator('[data-el="dataset-sub"]').inner_text()
         before = len(engines)
         assert before == 1, engines
+        # The deployed default must draw real data without Enter or settings edits.
+        assert page.locator('[data-action="live-query"]').get_attribute('aria-checked') == 'true'
+        page.locator('[data-el="input"]').fill("Compare vessel speeds by hour over the last 24 hours")
+        page.wait_for_function("""() =>
+          document.querySelector('[data-el="result-state"]')?.textContent.trim() === 'COMPLETE' &&
+          document.querySelector('[data-el="points"]')?.textContent.trim() === '144'""")
+        assert page.locator('.result-card[data-live-preview="true"]').count() == 1
+        assert page.locator('[data-history-card]').count() == 0
+        for name in ['inference-latency', 'database-first-latency', 'database-latency', 'render-latency']:
+            assert page.locator(f'[data-el="{name}"]').inner_text() != '—', name
+        assert page.locator('[data-el="database-label"]').inner_text() == 'DUCKDB TOTAL'
+        live_query_meta = page.locator('[data-el="query-meta"]').inner_text()
+        page.locator('[data-el="input"]').press("Enter")
+        page.evaluate('new Promise(requestAnimationFrame)')
+        assert page.locator('.result-card').count() == 1
+        assert page.locator('.result-card[data-live-preview="true"]').count() == 0
+        assert page.locator('[data-el="query-meta"]').inner_text() == live_query_meta
+        assert page.locator('[data-history-card]').count() == 1
+        page.locator('[data-el="input"]').fill("")
+        page.locator('[data-action="clear-canvas"]').click()
         page.evaluate("""() => {
           window.__databaseReloads = 0;
           new MutationObserver(() => {
@@ -43,6 +63,8 @@ def run(url, screenshot):
         }""")
         page.get_by_role("button", name="Runtime settings", exact=True).click()
         page.select_option('[name="inferenceMode"]', "templates")
+        page.locator('[name="liveQuery"]').uncheck()
+        page.locator('[name="liveTranslation"]').uncheck()
         page.get_by_role("button", name="Apply runtime").click()
         page.wait_for_function("""() =>
           document.querySelector('[data-stage="model"] small').textContent === 'Deterministic templates' &&
@@ -57,7 +79,7 @@ def run(url, screenshot):
         page.wait_for_function("""() =>
           document.querySelector('[data-el="result-state"]').textContent.trim() === 'COMPLETE' &&
           document.querySelector('[data-el="points"]').textContent.trim() === '144'""")
-        assert page.locator('[data-el="latency-detail"]').inner_text() == "Prepared result promoted"
+        assert "Prepared result promoted" in page.locator('[data-el="latency-detail"]').inner_text()
         assert page.locator('[data-el="source"]').inner_text() == "LOCAL TEMPLATE"
         page.get_by_role("tab", name="Data", exact=True).click()
         assert page.locator('[data-el="table-body"] tr').count() == 12
@@ -106,7 +128,7 @@ def run(url, screenshot):
         page.wait_for_function("""() =>
           document.querySelector('[data-el="result-state"]').textContent.trim() === 'COMPLETE' &&
           document.querySelector('[data-el="points"]').textContent.trim() === '60,480'""")
-        assert page.locator('[data-el="latency-detail"]').inner_text() == "Prepared result promoted"
+        assert "Prepared result promoted" in page.locator('[data-el="latency-detail"]').inner_text()
         assert page.locator('.result-card').count() == 3
         completed_queries = page.evaluate("window.__translationEvents.filter(e => e === 'query_complete').length")
         page.locator('[data-action="fit"]').click()
@@ -120,6 +142,8 @@ def run(url, screenshot):
         page.wait_for_function("""() => [...document.querySelectorAll('[data-card-el="result-state"]')]
           .every(label => label.textContent.trim() === 'COMPLETE')""")
         assert page.locator('[data-el="latency-detail"]').inner_text() == "Shared result · no new query"
+        for name in ['latency', 'inference-latency', 'database-first-latency', 'database-latency', 'render-latency']:
+            assert page.locator(f'[data-el="{name}"]').inner_text() == '—', 'Copies must not claim new execution timing'
         assert [cards.nth(i).locator('[data-card-el="points"]').inner_text() for i in range(4)] == ["144", "24", "60,480", "144"]
         assert page.evaluate("window.__translationEvents.filter(e => e === 'query_complete').length") == completed_queries
         # New view requests use their own inferred intent and lazy renderer chunks.
@@ -160,7 +184,9 @@ def run(url, screenshot):
         assert not failed_assets, failed_assets
         assert not errors, errors
         print(json.dumps({"url": url, "chromium": browser.version, "dataset_rows": 1_209_600,
-                          "dense_chart_points": 60_480, "live_translation_without_query": True,
+                          "dense_chart_points": 60_480, "default_live_chart_without_enter": True,
+                          "live_pin_without_query": True, "stage_timings_visible": True,
+                          "live_translation_without_query": True,
                           "prepared_whitespace_promoted": True, "database_reloads": 0,
                           "persistent_cards": 4, "presentation_without_new_query": True,
                           "advanced_intents": [mode for mode, _ in advanced], "calendar_switch": True,

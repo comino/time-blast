@@ -60,6 +60,8 @@ with sync_playwright() as p:
         onDraw(id,at){calls.draws.push(id);const timing=requests.get(id)?.timing;if(timing&&timing.firstDrawAt===undefined){timing.firstDrawAt=at;calls.drawTraces.push(id);}},
         onCancel(){calls.cancels++;},onConfig(config){calls.configs.push(config);}
       });
+      const {DEFAULT_CONFIG}=await import('/src/core/types.ts');
+      ui.setConfig({...DEFAULT_CONFIG,liveQuery:false});
       const context={id:'workspace-test',label:'Workspace fixture',rowCount:6,start:1000,end:7000,vessels:['One','Two'],description:'Controlled UI fixture'};
       ui.setDataset(context);
       const submit=prompt=>{const input=document.querySelector('[data-el="input"]');input.value=prompt;input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));return selected();};

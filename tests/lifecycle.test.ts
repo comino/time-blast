@@ -48,7 +48,7 @@ describe('runtime adapter ownership',()=>{
     expect(state.clients[1].draft).toHaveBeenLastCalledWith('Compare vessel wave height by minute',true);
   });
   it('reconfigures live translation without replacing warmed adapters',async()=>{
-    await start();expect(state.coordinatorOptions[0]).toMatchObject({liveTranslation:false,translationMinChars:20});
+    await start();expect(state.coordinatorOptions[0]).toMatchObject({liveTranslation:true,translationMinChars:20});
     state.callbacks.onConfig({...DEFAULT_CONFIG,liveTranslation:true,translationMinChars:24,speculation:false});
     await vi.waitFor(()=>expect(state.clients).toHaveLength(2));
     expect(state.databases).toHaveLength(1);expect(state.models).toHaveLength(1);

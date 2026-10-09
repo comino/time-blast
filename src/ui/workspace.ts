@@ -17,6 +17,7 @@ export class CanvasWorkspace {
   private selected?: ResultCard;
   private active?: ResultCard;
   private pending?: ResultCard;
+  private preview?: ResultCard;
   private counter = 0;
   private width = 1; private height = 1;
   private x = 0; private y = 0; private scale = 1;
@@ -44,6 +45,7 @@ export class CanvasWorkspace {
     this.paintCamera(); this.updateCount();
   }
   private el(name: string): HTMLElement { return this.root.querySelector(`[data-el="${name}"]`)!; }
+  get isLiveActive(): boolean { return !!this.preview && this.active === this.preview; }
   private create(prompt: string): ResultCard {
     const card = new ResultCard(`view-${++this.counter}`, prompt, this.world, {
       select: c => this.select(c), close: c => this.remove(c), duplicate: c => this.duplicate(c), cancel: c => this.cancel(c),
@@ -64,9 +66,40 @@ export class CanvasWorkspace {
     // COMMIT supersedes foreground execution itself and preserves an exact
     // speculative candidate. A full coordinator cancel here would destroy it.
     if (this.active?.busy) this.active.cancel('SUPERSEDED');
+    if (this.preview) this.remove(this.preview);
     const card = this.create(prompt); this.active = this.pending = card;
     this.enforceBudget(card);
     this.callbacks.busy(true); this.callbacks.added(card);
+  }
+  /** Replace only the unpinned live view; saved questions keep their results. */
+  submitLive(prompt: string): boolean {
+    if (this.preview?.prompt === prompt && !this.preview.stopped) return false;
+    if (this.active?.busy) this.active.cancel('SUPERSEDED');
+    let card = this.preview;
+    if (card) {
+      if (card.view) this.byQuery.delete(card.view.id);
+      this.release(card); card.reset(prompt);
+    } else {
+      card = this.create(prompt);
+      const badge = document.createElement('span'); badge.className = 'live-preview-badge'; badge.textContent = 'LIVE'; badge.title = 'Updates while you type · Enter to keep';
+      card.element.querySelector('.card-toolbar')!.prepend(badge);
+    }
+    this.preview = this.active = this.pending = card;
+    card.element.dataset.livePreview = 'true';
+    card.element.setAttribute('aria-label', `Live preview: ${prompt}. Press Enter to keep this view.`);
+    this.enforceBudget(card); this.callbacks.busy(true); return true;
+  }
+  pinLive(prompt: string): boolean {
+    const card = this.preview;
+    if (!card || card.prompt !== prompt || card.stopped) return false;
+    this.preview = undefined; delete card.element.dataset.livePreview;
+    card.element.setAttribute('aria-label', prompt); card.element.querySelector('.live-preview-badge')?.remove();
+    this.callbacks.added(card); this.focus(card); return true;
+  }
+  invalidateLive(remove = false): void {
+    if (!this.preview) return;
+    if (this.preview.busy) this.cancel(this.preview, 'DRAFT CHANGED');
+    if (remove) this.remove(this.preview);
   }
   handle(event: PipelineEvent): void {
     if (event.type === 'start') {
@@ -116,6 +149,10 @@ export class CanvasWorkspace {
     const buffers = batch.retainedBuffers ?? [batch.x.buffer, batch.y.buffer, batch.series.buffer, ...(batch.lat ? [batch.lat.buffer] : []), ...(batch.lon ? [batch.lon.buffer] : [])];
     for (const buffer of buffers) if (!own.has(buffer)) { own.add(buffer); const count = this.retained.get(buffer) ?? 0; if (!count) this.retainedBytes += buffer.byteLength; this.retained.set(buffer, count + 1); }
   }
+  private release(card: ResultCard): void {
+    for (const buffer of this.cardBuffers.get(card) ?? []) { const count = this.retained.get(buffer)! - 1; if (count) this.retained.set(buffer, count); else { this.retained.delete(buffer); this.retainedBytes -= buffer.byteLength; } }
+    this.cardBuffers.get(card)?.clear();
+  }
   private enforceBudget(keep: ResultCard): void {
     let removed = false;
     while (this.cards.length > MAX_CARDS || this.retainedBytes > MAX_BYTES) {
@@ -129,8 +166,9 @@ export class CanvasWorkspace {
     if (!this.cards.includes(card)) return;
     if (card === this.active) { if (card.busy) this.cancel(card); this.active = undefined; this.callbacks.busy(false); }
     if (card === this.pending) this.pending = undefined;
+    if (card === this.preview) this.preview = undefined;
     if (card.view) this.byQuery.delete(card.view.id);
-    for (const buffer of this.cardBuffers.get(card) ?? []) { const count = this.retained.get(buffer)! - 1; if (count) this.retained.set(buffer, count); else { this.retained.delete(buffer); this.retainedBytes -= buffer.byteLength; } }
+    this.release(card);
     this.cardBuffers.delete(card); this.cards.splice(this.cards.indexOf(card), 1); card.destroy();
     if (this.selected === card) { this.selected = undefined; const next = this.cards.at(-1); if (next) this.select(next); }
     this.updateCount();

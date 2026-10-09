@@ -6,7 +6,7 @@ This document describes code in this repository. The other design documents expl
 
 ```mermaid
 flowchart LR
-  Input[Chat input] -->|DRAFT revisions| MC[MessageChannel]
+  Input[Chat input] -->|DRAFT revisions and live/manual COMMIT| MC[MessageChannel]
   MC --> Coordinator[Browser coordinator]
   Coordinator -->|immutable request| Inference[Inference adapter]
   Inference --> Template[Conservative exact grammar]
@@ -23,16 +23,16 @@ flowchart LR
   Remote --> Columns
   Columns --> Stage[Bounded speculative staging]
   Columns --> Canvas[Canvas2D first marker]
-  Stage -->|exact-match Enter| Canvas
+  Stage -->|exact-match run| Canvas
 ```
 
 `src/core/types.ts` defines logical contracts. Their local calls do not require serialization. `main.ts` wires selected placements together and discards events from superseded runtimes. Changing speculation or coordinator placement preserves both warmed adapters. Changing inference preserves the database; changing the database preserves the model and supplies its new context.
 
-`BrowserCoordinator` owns one speculative candidate and one foreground request. An input pause of 180 ms starts speculative work. Enter promotes a matching in-flight or completed candidate, or starts a new job. Identity includes the exact prompt and immutable dataset context, with configuration isolated by the coordinator instance. Only already-staged data counts as a prepared-result hit. An in-flight reuse has a separate trace event. Queued draft/commit messages are fenced by cancellation epochs.
+`BrowserCoordinator` owns one speculative candidate and one foreground request. A commit promotes a matching in-flight or completed candidate, or starts a new job. The UI issues commits automatically with `liveQuery` enabled by default; manual mode issues them on Enter. Identity includes the exact prompt and immutable dataset context, with configuration isolated by the coordinator instance. Only already-staged data counts as a prepared-result hit. An in-flight reuse has a separate trace event. Queued draft/commit messages are fenced by cancellation epochs.
 
-Optional `liveTranslation` changes that trigger to every eligible edit, with no debounce after `translationMinChars` (default 20, after trimming outer spaces). It remains off by default. Composition, shorter input, cancellation and replacement invalidate the old candidate. Native generation has one active task and one removable waiter; canceled warmup waiters are removed immediately. Thus each edit starts a logical request, but a busy model may still need to finish interrupting its prior task before executing the latest one.
+`liveTranslation` is also enabled by default. It prepares every eligible edit with no debounce after `translationMinChars` (default 20, after trimming outer spaces). Disabling it restores the 180 ms speculative pause in manual mode. `liveQuery` uses the same threshold and schedules actual visible execution in a microtask, coalescing synchronous changes without a deliberate typing delay. Composition, shorter input, cancellation and replacement invalidate old work. Native generation has one active task and one removable waiter; canceled warmup waiters are removed immediately. Thus each edit starts a logical request, but a busy model may still need to finish interrupting its prior task before executing the latest one.
 
-With database speculation disabled, live translation stops after validated intent and Rust SQL compilation. The UI reports `SQL prepared before Enter`; Enter reuses that plan/SQL and starts the database, emitting `prepared_sql_promoted`. With database speculation enabled, the candidate may also execute the query and stage results. This policy is independent of model placement, and neither mode performs incremental KV-cache updates.
+With live query off and database speculation disabled, live translation stops after validated intent and Rust SQL compilation. The UI reports `SQL prepared before Enter`; Enter reuses that plan/SQL and starts the database, emitting `prepared_sql_promoted`. With database speculation enabled, the candidate may also execute the query and stage results. Live query commits eligible edits for visible execution regardless of the speculative preparation policy. These policies are independent of model placement, and do not perform incremental KV-cache updates.
 
 The model receives draft snapshots immediately in its worker, but those messages do **not** incrementally mutate a KV cache. Generation starts on a speculative pause or committed miss. Warmup downloads/initializes the model; full prepared inference moves the actual prompt evaluation before Enter. The implementation does not yet predict a sentence suffix, fork model caches, or preload every possible result.
 
@@ -76,7 +76,7 @@ Speculative staging is limited to 4 MiB; foreground data retention to 16 MiB. Th
 
 ## Spatial canvas
 
-`CanvasWorkspace` owns the dotted board, camera, selection, and bounded result history. Each Enter mounts a `ResultCard` with a loading animation before dispatching the commit. The first nonempty batch removes the animation immediately; no reveal transition or camera animation gates the first marker. A later question adds a separate card and supersedes any unfinished foreground query. Superseding the UI does not issue a full coordinator cancellation, which would discard the next exact speculative candidate before it could be promoted.
+`CanvasWorkspace` owns the dotted board, camera, selection, and bounded result history. Live query replaces one unpinned `ResultCard` at its existing position, preserving earlier kept cards. Enter pins the exact current preview without another inference/database request; manual submissions mount a new card. The loading animation appears before dispatch. The first nonempty batch removes it immediately; no reveal transition or camera animation gates the first marker. Draft changes invalidate unfinished preview work before sending the new draft. Runtime readiness gates automatic execution, and Stop suppresses retries until the text changes or the user explicitly submits again.
 
 Each card retains its own immutable query context, column references, indexing state, and drawing completion. The validated intent and renderer registry support ten modes: line, bar, scatter, heatmap, surface, map, density, tracks, seasons, and table. Both strict templates and model output can select them. Mode changes and duplication do not invoke inference or the database. Duplicates share producer batches and buffers while owning their renderer/index state; they do not claim a new Enter-to-draw latency. Chart restores the last graphical mode after the 12-row Data preview. Photos are explicitly unavailable because the current typed result has no image URLs.
 
@@ -149,7 +149,9 @@ ahead of the waiting committed request.
 
 ## Measurement and remaining work
 
-`QueryTiming` records preparation start, commit snapshot creation, validated intent, first batch, first draw submission, and completion. Preparation may predate commit; the UI uses `committedAt` for its latency. A completed prepared result may have a pre-commit database completion timestamp. The first marker is still drawn after Enter. Neither Canvas2D return nor requestAnimationFrame establishes physical presentation time.
+`QueryTiming` records preparation start, inference start/end, SQL compilation completion, commit snapshot creation, database request start, first nonempty batch, first publication to the card, first draw submission, and stream completion. The card exposes inference (or explicitly labeled template translation), database first-batch/full-stream durations, and publication-to-draw duration. Database measurements include adapter admission, execution, transport when remote, decoding, and stream consumption; they are not isolated engine CPU times. No per-point timing or polling loop is added.
+
+Preparation may predate commit; `Run → draw` uses `committedAt`, the automatic/manual dispatch timestamp. It excludes typing and runtime startup. `Data → draw` starts at first publication, so staging time is not misreported as rendering time. A prepared result can have a pre-commit database completion timestamp; the display retains that actual work cost. Stage durations can overlap and must not be summed. Duplicated cards make no new execution-latency claim. Neither Canvas2D return nor requestAnimationFrame establishes physical presentation time.
 
 Current verification includes Rust tests, TypeScript checks/build, unit tests for exact promotion and cancellation, backing-buffer identity, Arrow termination/truncation, strict inference validation, and browser execution against real DuckDB. Browser scripts print their observed engine/browser versions and values. Software GPU inference checks must be reported separately from hardware latency. No p50/p95/p99 or microsecond speed claim follows from these functional checks.
 

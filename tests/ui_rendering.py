@@ -45,6 +45,8 @@ with sync_playwright() as p:
       const append=ColumnOrder.prototype.appendRange;
       ColumnOrder.prototype.appendRange=function(batch,index,from,to){indexed+=to-from;return append.call(this,batch,index,from,to);};
       const ui=createUI(document.querySelector('#root'),{onDraft(){},onCommit(text){commits.push(text);},onFocus(){},onConfig(){},onCancel(){},onWarmModel(){},onDraw(id,at){drawAt=at-origin;}});
+      const {DEFAULT_CONFIG}=await import('/src/core/types.ts');
+      ui.setConfig({...DEFAULT_CONFIG,liveQuery:false});
       const context={id:'test',label:'test',rowCount:100000,start:0,end:100000000,vessels:['One'],description:'test'};
       const view=id=>({id,prompt:'speed',revision:1,plan:{metric:'speed',aggregate:'avg',bucketMinutes:1,windowHours:336,splitByVessel:true,vessel:null,view:'line'},sql:'SELECT',source:'template',context,timing:{startedAt:origin,committedAt:origin,promoted:true,batches:0,points:0,bytes:0}});
       const batch=(n,start=0)=>({x:Float64Array.from({length:n},(_,i)=>(i+start)*1000),y:new Float64Array(n).fill(10),series:new Int32Array(n),lat:Float64Array.from({length:n},(_,i)=>i%100/100),lon:Float64Array.from({length:n},(_,i)=>i%100/100),length:n,byteLength:n*36});

@@ -96,6 +96,28 @@ describe('cooperative chart rendering', () => {
     chart.destroy();
   });
 
+  it('releases live draft buffers and stale frame work while retaining canvas storage', () => {
+    const target = canvas(), draw = vi.fn(), progress = vi.fn();
+    const chart = new StreamChart(target as unknown as HTMLCanvasElement, draw, progress);
+    const old = batch(10000, 0, true);
+    chart.begin(view('old')); chart.append(old); frame(); frame();
+    expect(chart.order.series.size).toBe(1); expect(chart.order.needsSort).toBe(true);
+    const staleFrames = [...frames.values()], dimensions = [target.width, target.height];
+    progress.mockClear(); chart.reset();
+    expect(chart.batches).toHaveLength(0); expect(chart.order.series.size).toBe(0); expect(chart.order.needsSort).toBe(false);
+    expect(frames.size).toBe(0); expect([target.width, target.height]).toEqual(dimensions); expect(overlays).toHaveLength(1);
+    Object.defineProperty(old, 'x', { get() { throw new Error('Released draft accessed'); } });
+    for (const callback of staleFrames) callback(performance.now());
+    chart.append(old); chart.setVisible(false); chart.setVisible(true); settle();
+    expect(chart.batches).toHaveLength(0); expect(progress).not.toHaveBeenCalled(); expect(draw).toHaveBeenCalledOnce();
+    const next = batch(5, 100);
+    chart.begin(view('new')); chart.append(next); settle();
+    expect(chart.batches).toEqual([next]); expect(chart.batches[0]).toBe(next); expect(chart.order.series.get(0)!.refs).toHaveLength(5);
+    expect(progress).toHaveBeenCalledOnce(); expect(progress.mock.calls[0][0].count).toBe(5);
+    expect(draw.mock.calls.map(call => call[0])).toEqual(['old', 'new']); expect(overlays).toHaveLength(1);
+    chart.destroy();
+  });
+
   it('queues arriving batches until a yielded sort completes without losing any references', () => {
     const target = canvas(), chart = new StreamChart(target as unknown as HTMLCanvasElement, () => {});
     chart.begin(view()); chart.append(batch(2048, 0, true)); frame(); frame();

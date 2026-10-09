@@ -84,8 +84,15 @@ export interface QueryCompiler {
 export interface QueryTiming {
   startedAt: number;
   committedAt?: number;
+  /** Adapter wall time starts here; it may precede submission for prepared work. */
+  inferenceStartedAt?: number;
   intentAt?: number;
+  compiledAt?: number;
+  /** Includes adapter admission, execution and streaming, not only engine CPU time. */
+  queryStartedAt?: number;
   firstBatchAt?: number;
+  /** First batch delivered to the renderer, including promotion of staged data. */
+  firstPublishedAt?: number;
   firstDrawAt?: number;
   completedAt?: number;
   promoted: boolean;
@@ -102,6 +109,7 @@ export interface QueryView {
   sql: string;
   source: InferenceResult['source'];
   model?: string;
+  database?: string;
   context: DatasetContext;
   timing: QueryTiming;
 }
@@ -125,13 +133,14 @@ export interface RuntimeConfig {
   coordinatorMode: 'browser' | 'remote';
   coordinatorEndpoint: string;
   speculation: boolean;
+  liveQuery: boolean;
   liveTranslation: boolean;
   translationMinChars: number;
 }
 export const DEFAULT_CONFIG: RuntimeConfig = {
   inferenceMode: 'auto', inferenceEndpoint: '', inferenceDraftEndpoint: '', databaseMode: 'browser',
   databaseEndpoint: '', coordinatorMode: 'browser', coordinatorEndpoint: '', speculation: true,
-  liveTranslation: false, translationMinChars: 20,
+  liveQuery: true, liveTranslation: true, translationMinChars: 20,
   datasetProfile: 'large',
 };
 export const METRIC_LABELS: Record<Metric, { name: string; unit: string }> = {

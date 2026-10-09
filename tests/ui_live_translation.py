@@ -1,4 +1,4 @@
-"""UI-only regression for optional live translation controls and IME dispatch.
+"""UI-only regression for live defaults, independent translation controls and IME dispatch.
 
 Uses a Vite server, no model or database initialization. Configuration stays in
 this UI session; this test does not introduce browser-storage persistence.
@@ -35,12 +35,15 @@ with sync_playwright() as p:
     settings = page.get_by_role('button', name='Runtime settings', exact=True)
     apply = page.get_by_role('button', name='Apply runtime')
     live = page.get_by_role('checkbox', name='Translate on every edit', exact=True)
+    live_query = page.locator('[name="liveQuery"]')
     results = page.get_by_role('checkbox', name='Prepare query results while I type', exact=True)
     threshold = page.get_by_label('Minimum characters', exact=True)
     dataset = page.get_by_label('Browser dataset', exact=True)
     settings.click()
-    assert not live.is_checked()
-    assert results.is_checked()
+    assert live_query.is_checked() and live.is_checked() and results.is_checked()
+    assert threshold.is_visible() and threshold.is_enabled()
+    live_query.uncheck()
+    live.uncheck()
     assert not threshold.is_visible() and threshold.is_disabled()
     assert dataset.input_value() == 'large' and dataset.is_visible()
     page.select_option('[name="databaseMode"]', 'remote')
@@ -64,7 +67,7 @@ with sync_playwright() as p:
     apply.click()
     first = page.evaluate('calls.configs.at(-1)')
     assert first['liveTranslation'] is True and first['translationMinChars'] == 23 and first['speculation'] is False
-    assert first['datasetProfile'] == 'demo'
+    assert first['datasetProfile'] == 'demo' and first['liveQuery'] is False
     assert '23 characters' in page.locator('[data-el="draft-note"]').inner_text()
     page.evaluate("ui.handleEvent({type:'speculation',state:'translated',text:'test',points:0})")
     assert page.locator('[data-el="draft-state"]').inner_text() == 'SQL prepared before Enter'
@@ -105,12 +108,12 @@ with sync_playwright() as p:
     assert page.evaluate('calls.configs.at(-1).translationMinChars') == 4096
     settings.click()
     page.get_by_role('button', name='Restore local defaults').click()
-    assert not live.is_checked() and not threshold.is_visible() and results.is_checked()
+    assert live_query.is_checked() and live.is_checked() and threshold.is_visible() and results.is_checked()
     assert threshold.input_value() == '20'
     assert dataset.input_value() == 'large'
     apply.click()
     final = page.evaluate('calls.configs.at(-1)')
-    assert final['liveTranslation'] is False and final['translationMinChars'] == 20 and final['speculation'] is True
+    assert final['liveQuery'] is True and final['liveTranslation'] is True and final['translationMinChars'] == 20 and final['speculation'] is True
     assert final['datasetProfile'] == 'large'
     badges = page.evaluate('''() => {
       const context={label:'test',rowCount:1209600,start:1788220800000,end:1789430400000,vessels:['One'],description:'test'};
@@ -120,11 +123,12 @@ with sync_playwright() as p:
     }''')
     assert badges == ['SYNTHETIC DATA', 'SYNTHETIC DATA', 'DATASET']
     assert 'by minute' in page.locator('[data-prompt]').first.get_attribute('data-prompt')
-    dense_prompt = page.locator('[data-prompt]').last.get_attribute('data-prompt')
+    dense_example = page.locator('[data-prompt]').filter(has_text='Compare a week of waves')
+    dense_prompt = dense_example.get_attribute('data-prompt')
     assert 'by minute' in dense_prompt and 'last 7 days' in dense_prompt
-    assert 'seven days' in page.locator('[data-prompt]').last.inner_text()
+    assert 'seven days' in dense_example.inner_text()
     assert not errors, errors
-    print(json.dumps({'chromium':browser.version,'optional_default':True,'threshold_bounds':True,
+    print(json.dumps({'chromium':browser.version,'live_query_default':True,'threshold_bounds':True,
                       'independent_results_toggle':True,'sql_only_status':True,'session_controls_preserved':True,
                       'ime_cancellation_signal':True,'browser_dataset_profiles':True,'synthetic_id_allowlist':True,
                       'dense_examples':True,'page_errors':errors},indent=2))

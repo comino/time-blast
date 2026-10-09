@@ -17,13 +17,81 @@ function harness(overrides:{database?:DatabaseAdapter;inference?:InferenceAdapte
   return {coordinator,events,inference,database,compiler};
 }
 beforeEach(()=>vi.stubGlobal('scheduler',{yield:()=>new Promise<void>(resolve=>setTimeout(resolve,0))}));
-afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();});
+afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();vi.restoreAllMocks();});
 const settle=async()=>{for(let i=0;i<10;i++)await Promise.resolve();};
 function queuedTransport() {
   const messages:any[]=[];const port2={onmessage:null as any,close(){}};
   vi.stubGlobal('MessageChannel',class {port1={postMessage:(data:any)=>messages.push(data),close(){}};port2=port2;});
   return ()=>{while(messages.length)port2.onmessage({data:messages.shift()});};
 }
+
+describe('pipeline timing boundaries',()=>{
+  it('separates inference, compilation, first database batch and full database streaming',async()=>{
+    let now=100;vi.spyOn(performance,'now').mockImplementation(()=>now);
+    let finishInference!:(result:InferenceResult)=>void,firstBatch!:()=>void,lastBatch!:()=>void;
+    const first=new Promise<void>(resolve=>{firstBatch=resolve;}),last=new Promise<void>(resolve=>{lastBatch=resolve;});
+    const inference:InferenceAdapter={id:'model',placement:'browser',prepare:async()=>{},dispose(){},observeDraft(){},resolve:()=>new Promise(resolve=>{finishInference=resolve;})};
+    const database:DatabaseAdapter={id:'duckdb-wasm',placement:'browser',prepare:async()=>context,dispose:async()=>{},execute:async function*(){await first;yield batch;await last;yield batch;}};
+    const h=harness({inference,database});vi.mocked(h.compiler.compile).mockImplementation(()=>{now+=3;return 'SQL';});
+    h.coordinator.commit(draft());expect(h.events.some(event=>event.type==='start')).toBe(false);
+    now=112;finishInference({plan,source:'webgpu'});await settle();
+    const start=h.events.find(event=>event.type==='start');expect(start?.type).toBe('start');if(start?.type!=='start')throw new Error('Missing query start');
+    expect(start.view.database).toBe('duckdb-wasm');
+    expect(start.view.timing).toMatchObject({startedAt:100,inferenceStartedAt:100,intentAt:112,compiledAt:115,queryStartedAt:115});
+    expect(start.view.timing.firstBatchAt).toBeUndefined();expect(start.view.timing.firstPublishedAt).toBeUndefined();
+    now=132;firstBatch();await settle();
+    expect(start.view.timing).toMatchObject({firstBatchAt:132,firstPublishedAt:132});
+    expect(start.view.timing.completedAt).toBeUndefined();expect(h.events.filter(event=>event.type==='batch')).toHaveLength(1);
+    h.coordinator.markDraw(start.view.id,140);
+    now=160;lastBatch();await settle();
+    expect(start.view.timing.completedAt).toBe(160);
+    expect(start.view.timing.intentAt!-start.view.timing.inferenceStartedAt!).toBe(12);
+    expect(start.view.timing.compiledAt!-start.view.timing.intentAt!).toBe(3);
+    expect(start.view.timing.firstBatchAt!-start.view.timing.queryStartedAt!).toBe(17);
+    expect(start.view.timing.completedAt!-start.view.timing.queryStartedAt!).toBe(45);
+    expect(start.view.timing.firstDrawAt!-start.view.timing.firstPublishedAt!).toBe(8);
+    expect(h.events.filter(event=>event.type==='complete')).toHaveLength(1);h.coordinator.dispose();
+  });
+  it('excludes the wait for submission from prepared SQL inference and database work',async()=>{
+    let now=50;vi.spyOn(performance,'now').mockImplementation(()=>now);
+    let finishInference!:(result:InferenceResult)=>void,finishQuery!:()=>void;
+    const held=new Promise<void>(resolve=>{finishQuery=resolve;});
+    const inference:InferenceAdapter={id:'model',placement:'remote',prepare:async()=>{},dispose(){},observeDraft(){},resolve:vi.fn(()=>new Promise<InferenceResult>(resolve=>{finishInference=resolve;}))};
+    const database:DatabaseAdapter={id:'clickhouse-http',placement:'remote',prepare:async()=>context,dispose:async()=>{},execute:vi.fn(async function*(){await held;yield batch;})};
+    const h=harness({inference,database,liveTranslation:true,speculation:false});
+    vi.mocked(h.compiler.compile).mockImplementation(()=>{now+=2;return 'SQL';});
+    const d=draft();h.coordinator.observeDraft(d);now=70;finishInference({plan,source:'remote'});await settle();
+    expect(database.execute).not.toHaveBeenCalled();
+    now=500;h.coordinator.commit({...d,sentAt:now});await settle();
+    const start=h.events.find(event=>event.type==='start');if(start?.type!=='start')throw new Error('Missing query start');
+    expect(start.view.timing).toMatchObject({inferenceStartedAt:50,intentAt:70,compiledAt:72,queryStartedAt:500,committedAt:500});
+    now=540;finishQuery();await settle();
+    expect(start.view.timing).toMatchObject({firstBatchAt:540,firstPublishedAt:540,completedAt:540,promoted:false});
+    expect(start.view.timing.intentAt!-start.view.timing.inferenceStartedAt!).toBe(20);
+    expect(start.view.timing.completedAt!-start.view.timing.queryStartedAt!).toBe(40);
+    expect(inference.resolve).toHaveBeenCalledOnce();expect(database.execute).toHaveBeenCalledOnce();h.coordinator.dispose();
+  });
+  it('preserves prepared database timings while measuring publication and drawing after promotion',async()=>{
+    let now=0;vi.spyOn(performance,'now').mockImplementation(()=>now);
+    let firstBatch!:()=>void,lastBatch!:()=>void,finishDrain!:()=>void;
+    const first=new Promise<void>(resolve=>{firstBatch=resolve;}),last=new Promise<void>(resolve=>{lastBatch=resolve;});
+    vi.stubGlobal('scheduler',{yield:()=>new Promise<void>(resolve=>{finishDrain=resolve;})});
+    const database:DatabaseAdapter={id:'duckdb-wasm',placement:'browser',prepare:async()=>context,dispose:async()=>{},execute:async function*(){await first;yield batch;await last;yield batch;}};
+    const h=harness({database,liveTranslation:true});const d=draft();h.coordinator.observeDraft(d);await settle();
+    now=20;firstBatch();await settle();now=40;lastBatch();await settle();
+    expect(h.events.some(event=>event.type==='batch')).toBe(false);
+    now=500;h.coordinator.commit({...d,sentAt:now});
+    const start=h.events.find(event=>event.type==='start');if(start?.type!=='start')throw new Error('Missing query start');
+    expect(start.view.timing).toMatchObject({inferenceStartedAt:0,intentAt:0,compiledAt:0,queryStartedAt:0,firstBatchAt:20,completedAt:40,committedAt:500,firstPublishedAt:500,promoted:true});
+    expect(h.events.filter(event=>event.type==='batch')).toHaveLength(1);expect(h.events.some(event=>event.type==='complete')).toBe(false);
+    h.coordinator.markDraw(start.view.id,510);
+    now=550;finishDrain();await settle();
+    expect(start.view.timing.firstPublishedAt).toBe(500);expect(start.view.timing.completedAt).toBe(40);
+    expect(start.view.timing.firstDrawAt!-start.view.timing.firstPublishedAt!).toBe(10);
+    expect(start.view.timing.completedAt!-start.view.timing.queryStartedAt!).toBe(40);
+    expect(h.events.filter(event=>event.type==='batch')).toHaveLength(2);expect(h.events.filter(event=>event.type==='complete')).toHaveLength(1);h.coordinator.dispose();
+  });
+});
 
 describe('draft preparation and commit correctness',()=>{
   it('keeps the default 180ms speculation pause when live translation is disabled',async()=>{

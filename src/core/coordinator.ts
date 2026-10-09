@@ -120,12 +120,14 @@ export class BrowserCoordinator {
     const {inference,compiler,database,context}=this.options;
     try {
       if(!job.view) {
+        job.timing.inferenceStartedAt=performance.now();
         const result=await inference.resolve(job.draft,job.abort.signal);
         if (job.abort.signal.aborted || this.closed) return;
         job.timing.intentAt=performance.now();
         const sql=compiler.compile(result.plan,context);
+        job.timing.compiledAt=performance.now();
         job.view={id:job.id,prompt:job.draft.text,revision:job.draft.revision,plan:result.plan,sql,
-          source:result.source,model:result.model,context,timing:job.timing};
+          source:result.source,model:result.model,database:database.id,context,timing:job.timing};
         if (job.committed) this.emit({type:'start',view:job.view});
         this.trace('intent_validated',`${result.source} · ${job.id}`);
       }
@@ -137,6 +139,7 @@ export class BrowserCoordinator {
       job.queryStarted=true;
       if(!job.committed)this.emit({type:'speculation',state:'querying',text:job.draft.text,points:0});
       const {sql,plan}=job.view;
+      job.timing.queryStartedAt=performance.now();
       for await (const batch of database.execute({id:job.id,sql,plan,context,signal:job.abort.signal,
         // Admission can occur after Enter. An already-sent remote request needs a
         // service-specific upgrade protocol, which this prototype does not have.
@@ -156,7 +159,10 @@ export class BrowserCoordinator {
         job.retainedBytes+=additional;
         job.timing.firstBatchAt ??= performance.now();
         job.timing.batches++; job.timing.points+=batch.length; job.timing.bytes+=batch.byteLength;
-        if (job.committed) this.emit({type:'batch',id:job.id,batch});
+        if (job.committed) {
+          job.timing.firstPublishedAt ??= performance.now();
+          this.emit({type:'batch',id:job.id,batch});
+        }
         else job.staged.push(batch);
       }
       const completedAt=performance.now();
@@ -185,6 +191,7 @@ export class BrowserCoordinator {
   private publishStaged(job:Job):void {
     const staged=job.staged;job.staged=[];
     if(!staged.length)return;
+    job.timing.firstPublishedAt ??= performance.now();
     this.emit({type:'batch',id:job.id,batch:staged[0]});
     if(staged.length===1)return;
     job.draining=(async()=>{

@@ -49,6 +49,20 @@ python3 tests/browser_production.py --url https://time-blast.46-224-133-201.ssli
 
 These checks preserve the first-point path and bound background work. The historical latency measurements below predate this UI update; a fresh controlled performance comparison is still required before claiming a latency improvement.
 
+## Default live query and stage timing
+
+The live-query update passes **295 unit tests**, TypeScript checking, and the production build. `tests/browser_live_query.py` exercises actual DuckDB with the default settings: typing produces a result without Enter, edits reuse the same preview DOM and primary canvas, Enter keeps it without another query, and later drafts preserve kept cards. Controlled browser fixtures cover startup replay, runtime changes, IME composition, repeated input notifications, Stop, short drafts, same-turn coalescing, stale events, and switching back to manual submission.
+
+Controlled-clock coordinator tests isolate inference, SQL compilation, database first-batch/stream completion, and first publication. Prepared queries retain their original work costs; publishing staged data starts a separate drawing interval. Browser checks verify displayed stage values and distinguish template translation from model inference. A chart reset test proves old batch/index references and callbacks are discarded while canvas allocations survive. These checks do not require a hardware WebGPU model or a live remote service.
+
+All seven local UI/browser suites and the public HTTPS production smoke pass. The deployed smoke verifies the default live result and pinning, visible timing values, manual SQL-only preparation, exact prepared-result promotion, 60,480-point streaming, persistent advanced views, and blank new-execution timings on duplicates. No browser errors or failed assets were observed; the README screenshot reflects this release.
+
+```sh
+python3 tests/browser_live_query.py
+```
+
+The preview reuses its card and primary canvases instead of reconstructing them on every edit. An isolated 120-revision headless check, discarding 20 warmups, observed median empty-preview replacement time fall from 4.9 ms to 0.1 ms (p95 5.7 ms to 0.2 ms). This measures synchronous empty-card maintenance only, with no inference, query, populated renderer, or screen presentation; it is not an end-to-end benchmark.
+
 ## Warm preparation comparison
 
 [`benchmark-browser.json`](benchmark-browser.json) records 20 measured trials per mode and two discarded warmups per mode. The paired order alternated, the same database stayed loaded, all results contained 144 points, and the source was explicitly `LOCAL TEMPLATE`. This run used headless Chromium **151.0.7922.34**, `--disable-gpu`, on a shared Linux aarch64 host with four logical CPUs.

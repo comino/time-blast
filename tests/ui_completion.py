@@ -34,6 +34,8 @@ with sync_playwright() as p:
       CanvasRenderingContext2D.prototype.lineTo=function(x,y){pathMax.set(this,Math.max(pathMax.get(this)??-Infinity,x));return lineTo.call(this,x,y);};
       CanvasRenderingContext2D.prototype.stroke=function(){if(this.canvas.dataset.el==='chart'&&this.strokeStyle==='#ff906c')maxX=Math.max(maxX,pathMax.get(this)??0);return stroke.call(this);};
       const ui=createUI(document.querySelector('#root'),{onDraft(){},onCommit(){},onFocus(){},onConfig(){},onCancel(){cancels++;},onWarmModel(){},onDraw(){draws++;}});
+      const {DEFAULT_CONFIG}=await import('/src/core/types.ts');
+      ui.setConfig({...DEFAULT_CONFIG,liveQuery:false});
       const context={id:'test',label:'test',rowCount:60480,start:0,end:60480000,vessels:['One'],description:'test'};
       const request=id=>({id,prompt:'speed',revision:1,plan:{metric:'speed',aggregate:'avg',bucketMinutes:1,windowHours:336,splitByVessel:true,vessel:null,view:'line'},sql:'SELECT',source:'template',context,
         timing:{startedAt:performance.now(),committedAt:performance.now(),completedAt:123,promoted:false,batches:1,points:60480,bytes:1209600}});

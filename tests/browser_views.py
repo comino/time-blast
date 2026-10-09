@@ -65,6 +65,8 @@ def cold_import_lifecycle(browser, base_url, errors):
             onDraft(){},onFocus(){},onWarmModel(){},onCommit(){},onConfig(){},onCancel(){},
             onDraw(id){calls.draws.push(id);},
           });
+          const {DEFAULT_CONFIG}=await import('/src/core/types.ts');
+          ui.setConfig({...DEFAULT_CONFIG,liveQuery:false});
           const context={id:'cold-renderer',label:'Cold renderer fixture',rowCount:3,start:0,end:180000,vessels:['One'],description:'Controlled lazy loading'};
           ui.setDataset(context);
           const input=document.querySelector('[data-el="input"]');input.value='Cold heatmap';
@@ -117,6 +119,7 @@ def run(base_url):
         page.get_by_role('button', name='Runtime settings', exact=True).click()
         page.locator('[name="inferenceMode"]').select_option('templates')
         page.locator('[name="speculation"]').uncheck()
+        page.locator('[name="liveQuery"]').uncheck()
         page.locator('[name="liveTranslation"]').uncheck()
         page.get_by_role('button', name='Apply runtime').click()
         page.wait_for_function("""() =>
