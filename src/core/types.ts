@@ -1,7 +1,8 @@
 /** Placement-independent contracts. Numeric batches must never become row objects. */
 export type Metric = 'speed' | 'wind' | 'wave_height' | 'water_temp';
 export type Aggregate = 'avg' | 'min' | 'max';
-export type ChartView = 'line' | 'bar';
+export const CHART_VIEWS = ['line', 'bar', 'scatter', 'table', 'heatmap', 'surface', 'map', 'density', 'tracks', 'seasons'] as const;
+export type ChartView = typeof CHART_VIEWS[number];
 export interface QueryPlan {
   metric: Metric;
   aggregate: Aggregate;

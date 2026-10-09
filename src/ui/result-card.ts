@@ -1,23 +1,25 @@
-import { METRIC_LABELS, type ColumnBatch, type QueryTiming, type QueryView } from '../core/types';
-import { SERIES_COLORS, StreamChart, TrackChart, type BatchProgress } from './chart';
+import { METRIC_LABELS, type ChartView, type ColumnBatch, type QueryTiming, type QueryView } from '../core/types';
+import { SERIES_COLORS, StreamChart, type BatchProgress } from './chart';
 import { icon } from './shell';
+import { VIEWS, definition, isPrimary, isAdvanced, unavailableReason, warmRenderer, rendererFactory } from './renderer-registry';
+import type { ResultRenderer } from './renderer-contract';
 
-export type CardMode = 'line' | 'bar' | 'scatter' | 'map' | 'table';
+export type CardMode = ChartView;
 const fmt = new Intl.NumberFormat('en', { maximumFractionDigits: 1 });
 const integer = new Intl.NumberFormat('en');
 const dates = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-const chartModes = new Set<CardMode>(['line', 'bar', 'scatter']);
+const viewOptions = VIEWS.map(view => `<option value="${view.id}">${view.label}</option>`).join('') + '<option disabled>Photos · dataset has no image URLs</option>';
 const glyph = icon('<path d="M4 17 9 10l4 3 7-9M4 4v16h16"/>');
 const markup = `
   <header class="card-header card-drag-handle"><span class="card-glyph">${glyph}</span><div class="card-heading"><h2 class="card-title" data-card-el="plot-title"></h2><p class="card-subtitle" data-card-el="plot-subtitle">Preparing your question…</p></div><div class="card-header-actions"><button class="icon-button" data-card-action="duplicate" aria-label="Duplicate view" title="Duplicate view without a new query" disabled>${icon('<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/>')}</button><button class="icon-button" data-card-action="close" aria-label="Remove view" title="Remove view">${icon('<path d="m6 6 12 12M18 6 6 18"/>')}</button></div></header>
-  <div class="card-toolbar"><select data-card-el="representation" aria-label="Visualization type"><option value="line">Time series</option><option value="bar">Bar chart</option><option value="scatter">Scatter plot</option><option value="map">Vessel tracks</option><option value="table">Data table</option></select><div class="plot-tabs" role="tablist" aria-label="Result view"><button data-card-tab="chart" role="tab" aria-selected="true" class="active">Chart</button><button data-card-tab="table" role="tab" aria-selected="false">Data</button></div><span class="live-indicator" data-card-el="result-state" data-state="loading"><span></span>THINKING</span></div>
+  <div class="card-toolbar"><select data-card-el="representation" aria-label="Visualization type">${viewOptions}</select><div class="plot-tabs" role="tablist" aria-label="Result view"><button data-card-tab="chart" role="tab" aria-selected="true" class="active">Chart</button><button data-card-tab="table" role="tab" aria-selected="false">Data</button></div><span class="live-indicator" data-card-el="result-state" data-state="loading"><span></span>THINKING</span></div>
   <div class="card-body">
     <div class="plot-container" data-card-el="plot-container"><canvas data-card-el="chart" aria-label="Query result chart" role="img"></canvas></div>
-    <div class="track-surface" data-card-el="track-wrap" hidden><canvas data-card-el="track" aria-label="Vessel tracks from query data" role="img"></canvas><span class="track-north">N ↑</span><span class="track-caption">Mean coordinates · schematic tracks</span><div class="track-empty" data-card-el="track-empty" hidden>No coordinates in this result.</div></div>
+    <div class="track-surface advanced-surface" data-card-el="track-wrap" hidden><canvas data-card-el="track" aria-label="Query visualization" role="img"></canvas><div class="view-controls" data-card-el="view-controls" hidden><label data-card-el="rotation-wrap" hidden>Rotate <input data-card-el="rotation" aria-label="Surface rotation" type="range" min="-180" max="180" value="-35" step="5"/></label><label data-card-el="playback-wrap" hidden><button type="button" data-card-action="playback">Play voyage</button><input data-card-el="playback" aria-label="Voyage time" type="range" min="0" max="1000" value="1000" step="1"/><span data-card-el="playback-time"></span></label></div><div class="track-empty" data-card-el="track-empty" hidden>No coordinates in this result.</div></div>
     <div class="data-table-wrap" data-card-el="table-wrap" hidden><table class="data-table"><thead><tr><th>TIME · UTC</th><th>SERIES</th><th data-card-el="value-header">VALUE</th></tr></thead><tbody data-card-el="table-body"></tbody></table><p>First 12 points. Export the complete result below.</p></div>
     <div class="plot-empty card-loading" data-card-el="plot-empty"><div class="loading-orb"><i></i><i></i><i></i><b></b></div><span data-card-el="empty-title">Following your question</span><small data-card-el="empty-detail">Preparing a validated query.</small></div>
   </div>
-  <div class="plot-bottom"><div class="legend" data-card-el="legend"></div><span class="mono" data-card-el="time-range">UTC</span></div>
+  <p class="view-caption" data-card-el="view-caption" hidden></p><div class="plot-bottom"><div class="legend" data-card-el="legend"></div><span class="mono" data-card-el="time-range">UTC</span></div>
   <div class="card-stats"><div><span>MEAN <small data-card-el="mean-unit"></small></span><strong data-card-el="mean">—</strong></div><div><span>POINTS</span><strong data-card-el="points">—</strong></div><div><span>RANGE</span><strong data-card-el="range">—</strong></div><div><span>ENTER → DRAW</span><strong data-card-el="latency">—</strong></div></div>
   <footer class="card-footer result-footer"><button class="detail-button" data-card-action="sql" aria-expanded="false">${icon('<path d="m8 7-5 5 5 5m8-10 5 5-5 5"/>')}<span>Query details</span><span class="source-pill" data-card-el="source">—</span></button><span class="card-batch-count" data-card-el="batch-count">Waiting for data</span><div class="result-actions"><button class="text-button cancel-button" data-card-action="cancel">Stop query</button><button class="icon-button" data-card-action="export" aria-label="Export result as CSV" title="Export result as CSV" disabled>${icon('<path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4"/>')}</button></div></footer>
   <div class="sql-panel" data-card-el="sql-panel" hidden><pre data-card-el="sql">A validated query will appear here.</pre><p data-card-el="query-meta"></p><p data-card-el="latency-detail">First point draw submitted</p></div>
@@ -45,7 +47,13 @@ export class ResultCard {
   total = 0;
   completeReceived = false;
   stopped = false;
-  private track?: TrackChart;
+  private renderer?: ResultRenderer;
+  private rendererMode?: CardMode;
+  private rendererLoading = false;
+  private rendererError = false;
+  private rendererEpoch = 0;
+  private lastChart: CardMode = 'line';
+  private playbackFrame = 0;
   private visible = true;
   private explicitMode = false;
   private copied = false;
@@ -54,7 +62,6 @@ export class ResultCard {
   private destroyed = false;
   private sum = 0; private count = 0;
   private minimum = Infinity; private maximum = -Infinity;
-  private minLat = Infinity; private maxLat = -Infinity; private minLon = Infinity; private maxLon = -Infinity;
   private readonly series = new Set<number>();
   private readonly elements = new Map<string, HTMLElement>();
   private readonly actions = new Map<string, HTMLButtonElement>();
@@ -67,11 +74,15 @@ export class ResultCard {
     this.element.querySelectorAll<HTMLButtonElement>('[data-card-action]').forEach(e => this.actions.set(e.dataset.cardAction!, e));
     this.part('plot-title').textContent = prompt;
     this.chart = new StreamChart(this.part<HTMLCanvasElement>('chart'), (id, at) => this.recordDraw(id, at),
-      p => this.progress(p), reordered => this.track?.indexed(reordered), () => this.updateCompletion());
+      p => this.progress(p), reordered => this.renderer?.indexed(reordered), () => this.updateCompletion(), false);
     this.element.addEventListener('pointerdown', () => callbacks.select(this));
     this.element.addEventListener('focusin', () => callbacks.select(this));
     this.part<HTMLSelectElement>('representation').addEventListener('change', () => this.setMode(this.part<HTMLSelectElement>('representation').value as CardMode));
-    this.element.querySelectorAll<HTMLButtonElement>('[data-card-tab]').forEach(button => button.addEventListener('click', () => this.setMode(button.dataset.cardTab === 'table' ? 'table' : 'line')));
+    this.part('representation').addEventListener('pointerenter', () => { for (const mode of ['heatmap', 'map', 'seasons'] as const) void warmRenderer(mode).catch(() => {}); });
+    this.element.querySelectorAll<HTMLButtonElement>('[data-card-tab]').forEach(button => button.addEventListener('click', () => this.setMode(button.dataset.cardTab === 'table' ? 'table' : this.lastChart)));
+    this.part<HTMLInputElement>('rotation').addEventListener('input', () => this.renderer?.setAngle?.(Number(this.part<HTMLInputElement>('rotation').value)));
+    this.part<HTMLInputElement>('playback').addEventListener('input', () => { this.stopPlayback(); this.setPlayback(Number(this.part<HTMLInputElement>('playback').value) / 1000); });
+    this.actions.get('playback')!.onclick = () => this.togglePlayback();
     this.actions.get('close')!.onclick = () => callbacks.close(this);
     this.actions.get('duplicate')!.onclick = () => callbacks.duplicate(this);
     this.actions.get('cancel')!.onclick = () => callbacks.cancel(this);
@@ -81,7 +92,7 @@ export class ResultCard {
 
   private part<T extends HTMLElement = HTMLElement>(name: string): T { return this.elements.get(name)! as T; }
   get busy(): boolean { return !this.stopped && (!this.completeReceived || !this.settled); }
-  private get settled(): boolean { return !this.total || this.chart.isSettled && (this.mode !== 'map' || !this.visible || !!this.track?.isSettled); }
+  private get settled(): boolean { return !this.total || this.chart.isSettled && (!isAdvanced(this.mode) || !this.visible || this.rendererError || !this.rendererLoading && !!this.renderer?.isSettled); }
   get batches(): readonly ColumnBatch[] { return this.chart.batches; }
   layout(): void { Object.assign(this.element.style, { left: `${this.x}px`, top: `${this.y}px`, width: `${this.width}px`, height: `${this.height}px` }); }
   select(selected: boolean): void {
@@ -101,6 +112,9 @@ export class ResultCard {
     this.part('query-meta').textContent = `${view.id} · revision ${view.revision}${view.model ? ` · ${view.model}` : ''}`;
     this.part('mean-unit').textContent = metric.unit; this.part('value-header').textContent = `${metric.name.toUpperCase()} · ${metric.unit}`;
     this.chart.begin(view);
+    for (const option of this.part<HTMLSelectElement>('representation').options) if (VIEWS.some(v => v.id === option.value)) {
+      const reason = unavailableReason(option.value as CardMode, view); option.disabled = !!reason; option.title = reason ?? '';
+    }
     if (!this.explicitMode) this.mode = view.plan.view;
     this.setMode(this.mode, false);
     this.setState('QUERYING', 'loading'); this.part('empty-title').textContent = 'Listening for the first point'; this.part('empty-detail').textContent = 'Drawing begins as soon as data arrives.';
@@ -108,9 +122,9 @@ export class ResultCard {
   append(batch: ColumnBatch): void {
     if (this.stopped || this.destroyed || this.completeReceived || !this.view) return;
     this.total += batch.length; this.batchCount++;
-    if (batch.length) { this.part('plot-empty').hidden = true; this.element.classList.remove('is-loading'); this.actions.get('export')!.disabled = false; }
+    if (batch.length) { if (!this.rendererLoading) { this.part('plot-empty').hidden = true; this.element.classList.remove('is-loading'); } this.actions.get('export')!.disabled = false; }
     this.chart.append(batch);
-    if (this.mode === 'map') this.track?.append(batch);
+    this.renderer?.append(batch);
     if (this.mode === 'table') { this.renderTable(); if (this.visible && batch.length) this.recordDraw(this.view.id, performance.now()); }
     this.part('points').textContent = integer.format(this.total); this.part('batch-count').textContent = `${this.batchCount} ${this.batchCount === 1 ? 'batch' : 'batches'}`;
     this.setState('STREAMING', 'ready'); this.callbacks.change(this);
@@ -119,15 +133,17 @@ export class ResultCard {
     if (this.stopped || this.completeReceived || !this.view) return;
     this.view.timing = timing; this.completeReceived = true; this.updateTiming();
     this.actions.get('duplicate')!.disabled = false;
-    if (this.mode === 'map') this.part('track-empty').hidden = this.batches.some(b => b.length && b.lat && b.lon);
+    if (definition(this.mode).family === 'geo') this.part('track-empty').hidden = this.batches.some(b => b.length && b.lat && b.lon);
     if (!this.total) { this.element.classList.remove('is-loading'); this.part('empty-title').textContent = 'No matching observations'; this.part('empty-detail').textContent = 'Try a wider time window or another vessel.'; this.part('points').textContent = '0'; }
     this.updateCompletion();
   }
   cancel(label = 'CANCELED'): void {
     if (this.stopped || this.destroyed) return;
-    this.stopped = true; this.chart.stop(); this.track?.stop(); this.element.classList.remove('is-loading');
+    const loadingView = this.rendererLoading;
+    this.stopped = true; this.chart.stop(); this.renderer?.stop(); this.rendererEpoch++; this.rendererLoading = false; this.stopPlayback(); this.element.classList.remove('is-loading');
+    this.part<HTMLSelectElement>('representation').disabled = true;
     this.setState(label, 'quiet'); this.actions.get('cancel')!.hidden = true;
-    if (!this.total) { this.part('empty-title').textContent = 'Question stopped'; this.part('empty-detail').textContent = 'Ask another question to add a fresh view.'; }
+    if (!this.total || loadingView) { this.part('empty-title').textContent = 'Question stopped'; this.part('empty-detail').textContent = 'Ask another question to add a fresh view.'; }
     else this.part('plot-subtitle').textContent += ' · partial result';
     this.callbacks.change(this);
   }
@@ -139,41 +155,90 @@ export class ResultCard {
   setVisible(visible: boolean): void {
     if (this.visible === visible) return;
     this.visible = visible; this.element.classList.toggle('is-offscreen', !visible);
-    this.chart.setVisible(visible && chartModes.has(this.mode)); this.track?.setVisible(visible && this.mode === 'map');
+    if (!visible) this.stopPlayback();
+    this.chart.setVisible(visible && isPrimary(this.mode)); this.renderer?.setVisible(visible && isAdvanced(this.mode));
     if (visible && this.mode === 'table' && this.total && this.view) this.recordDraw(this.view.id, performance.now());
     this.updateCompletion();
   }
   setMode(mode: CardMode, explicit = true): void {
-    if (!['line', 'bar', 'scatter', 'map', 'table'].includes(mode)) return;
+    if (this.stopped || !VIEWS.some(view => view.id === mode)) return;
+    const reason = unavailableReason(mode, this.view);
+    if (reason) { this.part<HTMLSelectElement>('representation').value = this.mode; return; }
+    if (mode !== 'table') this.lastChart = mode;
+    if (this.mode !== mode) this.stopPlayback();
     this.mode = mode; this.explicitMode ||= explicit;
     this.part<HTMLSelectElement>('representation').value = mode;
-    this.part('plot-container').hidden = !chartModes.has(mode); this.part('track-wrap').hidden = mode !== 'map'; this.part('table-wrap').hidden = mode !== 'table';
+    this.part('plot-container').hidden = !isPrimary(mode); this.part('track-wrap').hidden = !isAdvanced(mode); this.part('table-wrap').hidden = mode !== 'table';
+    this.part('view-caption').textContent = definition(mode).caption; this.part('view-caption').hidden = !definition(mode).caption;
+    this.part('view-controls').hidden = mode !== 'surface' && mode !== 'tracks'; this.part('rotation-wrap').hidden = mode !== 'surface'; this.part('playback-wrap').hidden = mode !== 'tracks';
     this.element.querySelectorAll<HTMLButtonElement>('[data-card-tab]').forEach(e => { const active = (mode === 'table') === (e.dataset.cardTab === 'table'); e.classList.toggle('active', active); e.setAttribute('aria-selected', String(active)); });
-    this.chart.setVisible(this.visible && chartModes.has(mode));
-    if (chartModes.has(mode)) this.chart.setRepresentation(mode as 'line' | 'bar' | 'scatter');
-    if (mode === 'map') this.ensureTrack();
-    this.track?.setVisible(this.visible && mode === 'map');
+    this.chart.setVisible(this.visible && isPrimary(mode));
+    if (isPrimary(mode)) this.chart.setRepresentation(mode as 'line' | 'bar' | 'scatter');
+    if (isAdvanced(mode)) this.ensureRenderer(mode);
+    else { this.rendererEpoch++; this.rendererLoading = false; this.renderer?.destroy(); this.renderer = undefined; this.rendererMode = undefined; if (this.total) this.part('plot-empty').hidden = true; }
     if (mode === 'table') { this.renderTable(); if (this.visible && this.total && this.view) this.recordDraw(this.view.id, performance.now()); }
     this.updateCompletion();
   }
-  private ensureTrack(): void {
-    if (this.track || !this.view) return;
-    this.track = new TrackChart(this.part<HTMLCanvasElement>('track'), () => this.updateCompletion(), at => {
-      if (this.view) this.recordDraw(this.view.id, at);
-    });
-    this.track.setVisible(this.visible && this.mode === 'map');
-    this.track.begin(this.chart.batches, this.chart.order);
-    this.track.progress({ sum: 0, count: 0, minimum: Infinity, maximum: -Infinity, series: this.series,
-      minLat: this.minLat, maxLat: this.maxLat, minLon: this.minLon, maxLon: this.maxLon });
-    const batch = this.batches.find(b => b.length && b.lat && b.lon);
-    if (batch) this.track.append(batch);
-    this.track.indexed(true); this.part('track-empty').hidden = !this.completeReceived || !!batch;
+  private ensureRenderer(mode: CardMode): void {
+    if (!this.view || this.destroyed || this.stopped) return;
+    if (this.rendererMode === mode && (this.renderer || this.rendererLoading)) { this.renderer?.setVisible(this.visible); return; }
+    this.renderer?.destroy(); this.renderer = undefined; this.rendererMode = mode; this.rendererLoading = true; this.rendererError = false;
+    const epoch = ++this.rendererEpoch;
+    this.part('track-empty').hidden = true;
+    this.part('plot-empty').hidden = false; this.element.classList.add('is-loading');
+    this.part('empty-title').textContent = `Preparing ${definition(mode).label.toLowerCase()}`;
+    this.part('empty-detail').textContent = 'Reusing query columns. No extra query.';
+    const mount = () => {
+      if (epoch !== this.rendererEpoch || this.destroyed || this.stopped || this.mode !== mode || !this.view) return;
+      const factory = rendererFactory(mode)!;
+      if (this.total) { this.part('plot-empty').hidden = true; this.element.classList.remove('is-loading'); }
+      // Canvas context attributes are immutable. A fresh surface prevents an old
+      // opaque matrix context from hiding a geographic renderer's basemap layer.
+      const previous = this.part<HTMLCanvasElement>('track');
+      const canvas = previous.cloneNode(false) as HTMLCanvasElement;
+      previous.replaceWith(canvas); this.elements.set('track', canvas);
+      this.renderer = factory(canvas, { view: this.view, batches: this.chart.batches, order: this.chart.order }, {
+        draw: at => { if (this.view && epoch === this.rendererEpoch) this.recordDraw(this.view.id, at); },
+        settled: () => { if (epoch === this.rendererEpoch) this.updateCompletion(); },
+      });
+      this.rendererLoading = false;
+      this.renderer.setVisible(this.visible);
+      if (mode === 'surface') this.renderer.setAngle?.(Number(this.part<HTMLInputElement>('rotation').value));
+      if (mode === 'tracks') this.setPlayback(1);
+      const batch = this.batches.find(b => b.length); if (batch) this.renderer.append(batch);
+      this.renderer.indexed(true);
+      if (this.total) { this.part('plot-empty').hidden = true; this.element.classList.remove('is-loading'); }
+      else if (this.completeReceived) { this.element.classList.remove('is-loading'); this.part('empty-title').textContent = 'No matching observations'; this.part('empty-detail').textContent = 'Try a wider time window or another vessel.'; }
+      if (definition(mode).family === 'geo') this.part('track-empty').hidden = !this.completeReceived || this.batches.some(b => b.length && b.lat && b.lon);
+      this.updateCompletion();
+    };
+    const failed = (error: unknown) => {
+      if (epoch !== this.rendererEpoch || this.destroyed || this.stopped) return;
+      this.rendererLoading = false; this.rendererError = true; this.element.classList.remove('is-loading');
+      this.part('plot-empty').hidden = false;
+      this.part('empty-title').textContent = 'View could not load'; this.part('empty-detail').textContent = String(error);
+      this.setState('VIEW ERROR', 'error'); this.updateCompletion();
+    };
+    if (rendererFactory(mode)) { try { mount(); } catch (error) { failed(error); } }
+    else void warmRenderer(mode).then(mount).catch(failed);
+  }
+  private setPlayback(fraction: number): void {
+    this.renderer?.setTimeFraction?.(fraction); this.part<HTMLInputElement>('playback').value = String(Math.round(fraction * 1000));
+    if (this.view) { const end = this.view.context.end, start = Math.max(this.view.context.start, end - this.view.plan.windowHours * 3_600_000); this.part('playback-time').textContent = new Date(start + (end - start) * fraction).toISOString().slice(5, 16).replace('T', ' ') + ' UTC'; }
+  }
+  private stopPlayback(): void { if (this.playbackFrame) cancelAnimationFrame(this.playbackFrame); this.playbackFrame = 0; this.actions.get('playback')!.textContent = 'Play voyage'; }
+  private togglePlayback(): void {
+    if (this.playbackFrame) { this.stopPlayback(); return; }
+    if (!this.renderer || !this.completeReceived || !this.visible || this.stopped) return;
+    const slider = this.part<HTMLInputElement>('playback'); const initial = Number(slider.value) >= 1000 ? 0 : Number(slider.value) / 1000;
+    const started = performance.now() - initial * 12000;
+    this.actions.get('playback')!.textContent = 'Pause';
+    const frame = (at: number) => { const fraction = Math.min(1, (at - started) / 12000); if (this.renderer?.isSettled) this.setPlayback(fraction); if (fraction < 1) this.playbackFrame = requestAnimationFrame(frame); else { this.setPlayback(1); this.stopPlayback(); } };
+    this.playbackFrame = requestAnimationFrame(frame);
   }
   private progress(p: BatchProgress): void {
     this.sum += p.sum; this.count += p.count; this.minimum = Math.min(this.minimum, p.minimum); this.maximum = Math.max(this.maximum, p.maximum);
-    this.minLat = Math.min(this.minLat, p.minLat); this.maxLat = Math.max(this.maxLat, p.maxLat); this.minLon = Math.min(this.minLon, p.minLon); this.maxLon = Math.max(this.maxLon, p.maxLon);
     let changed = false; for (const id of p.series) if (!this.series.has(id)) { this.series.add(id); changed = true; }
-    this.track?.progress(p);
     this.part('mean').textContent = this.count ? fmt.format(this.sum / this.count) : '—';
     this.part('range').textContent = this.count ? `${fmt.format(this.minimum)} — ${fmt.format(this.maximum)}` : '—';
     if (changed) { const legend = this.part('legend'); legend.replaceChildren(); for (const id of this.series) { const span = document.createElement('span'), dot = document.createElement('i'); dot.style.backgroundColor = SERIES_COLORS[Math.abs(id) % SERIES_COLORS.length]; span.append(dot, document.createTextNode(this.seriesName(id))); legend.append(span); } }
@@ -181,7 +246,9 @@ export class ResultCard {
   private updateCompletion(): void {
     if (this.destroyed || this.stopped || !this.completeReceived) return;
     const done = this.settled;
-    this.actions.get('cancel')!.hidden = done; this.setState(done ? this.total ? 'COMPLETE' : 'EMPTY RESULT' : 'DRAWING', done ? 'ready' : 'loading');
+    this.actions.get('cancel')!.hidden = done;
+    if (this.rendererError && isAdvanced(this.mode)) this.setState('VIEW ERROR', 'error');
+    else this.setState(done ? this.total ? 'COMPLETE' : 'EMPTY RESULT' : 'DRAWING', done ? 'ready' : 'loading');
     this.callbacks.change(this);
   }
   private setState(text: string, state: string): void { const label = this.part('result-state'); label.dataset.state = state; label.lastChild!.textContent = text; }
@@ -213,5 +280,5 @@ export class ResultCard {
     for (const batch of source.batches) this.append(batch);
     this.finish(this.view!.timing);
   }
-  destroy(): void { this.destroyed = true; this.chart.destroy(); this.track?.destroy(); this.chart.batches.length = 0; this.chart.order.clear(); this.view = undefined; this.element.remove(); }
+  destroy(): void { this.destroyed = true; this.rendererEpoch++; this.stopPlayback(); this.chart.destroy(); this.renderer?.destroy(); this.renderer = undefined; this.view = undefined; this.element.remove(); }
 }

@@ -1,4 +1,4 @@
-import type { DatasetContext, Draft, QueryPlan } from '../core/types';
+import { CHART_VIEWS, type DatasetContext, type Draft, type QueryPlan } from '../core/types';
 
 export const MAX_PROMPT_CHARS = 4096;
 export const BUCKET_MINUTES = [1, 5, 15, 60, 360, 1440] as const;
@@ -14,7 +14,7 @@ export const QUERY_PLAN_SCHEMA = {
     windowHours: { type: 'integer', minimum: 1, maximum: 336 },
     splitByVessel: { type: 'boolean' },
     vessel: { anyOf: [{ type: 'integer', minimum: 0, maximum: 5 }, { type: 'null' }] },
-    view: { type: 'string', enum: ['line', 'bar'] },
+    view: { type: 'string', enum: CHART_VIEWS },
   },
 };
 
@@ -50,11 +50,14 @@ export function validateQueryPlan(value: unknown, context?: DatasetContext): Que
   if (typeof plan.splitByVessel !== 'boolean') throw new Error('Invalid vessel grouping.');
   if (plan.vessel !== null && (typeof plan.vessel !== 'number' || !Number.isInteger(plan.vessel) ||
       plan.vessel < 0 || plan.vessel > 5 || (context && plan.vessel >= context.vessels.length))) throw new Error('Unknown vessel.');
-  if (plan.view !== 'line' && plan.view !== 'bar') throw new Error('Unsupported chart view.');
+  if (!CHART_VIEWS.includes(plan.view as QueryPlan['view'])) throw new Error('Unsupported chart view.');
+  if (['map', 'density', 'tracks'].includes(plan.view as string) && !plan.splitByVessel) {
+    throw new Error('Geographic views require separate vessel positions. Set splitByVessel to true.');
+  }
   return {
     metric: plan.metric as QueryPlan['metric'], aggregate: plan.aggregate as QueryPlan['aggregate'],
     bucketMinutes: plan.bucketMinutes as number, windowHours: plan.windowHours,
-    splitByVessel: plan.splitByVessel, vessel: plan.vessel as number | null, view: plan.view,
+    splitByVessel: plan.splitByVessel, vessel: plan.vessel as number | null, view: plan.view as QueryPlan['view'],
   };
 }
 
@@ -74,9 +77,15 @@ export function buildSystemPrompt(context: DatasetContext): string {
 Only fields: metric, aggregate, bucketMinutes, windowHours, splitByVessel, vessel, view.
 metric: speed (vessel knots), wind (wind knots), wave_height (metres), water_temp (Celsius).
 aggregate: avg|min|max. bucketMinutes: 1|5|15|60|360|1440. windowHours: integer 1..336.
-splitByVessel: boolean. vessel: null for all or a vessel ID. view: line|bar.
+splitByVessel: boolean. vessel: null for all or a vessel ID. view: ${CHART_VIEWS.join('|')}.
 Default aggregate avg, bucketMinutes 60, windowHours 24, splitByVessel false, vessel null, view line.
 Compare vessels means splitByVessel true. A named vessel means its exact ID.
+Views do not change metric, aggregation, filters or time buckets. They display the same returned samples.
+line/bar/scatter/table: time versus the selected metric; scatter does not compare two metrics.
+heatmap: time by vessel with metric color. surface: time by vessel with metric height; no spatial interpolation. Set splitByVessel true when either asks for vessel or fleet metrics.
+map: geographic bucket-mean positions colored by vessel. tracks: those positions connected in timestamp order. density: counts of returned bucket-mean positions in map cells, not raw-event density or time spent. map/density/tracks always require splitByVessel true; never plot a position averaged across vessels.
+seasons: the returned samples placed by UTC calendar date on a yearly wheel, with vessel rings and metric color. It adds no monthly/seasonal aggregation, missing months, extrapolation or additional years. The dataset covers at most 14 days; do not claim a seasonal pattern.
+Photo galleries, photos, image URLs, extra dimensions and arbitrary chart types are unsupported.
 Only vessel and trailing time-window filters are supported. Do not drop filters, negation, extra metrics, unsupported computations or unknown vessel names.
 If the full request cannot be represented faithfully, return {"error":"unsupported_request"}.
 All relative windows end at the fixed dataset end, not today's date. UTC timestamps.
@@ -85,5 +94,8 @@ Examples:
 Average speed by hour => {"metric":"speed","aggregate":"avg","bucketMinutes":60,"windowHours":24,"splitByVessel":false,"vessel":null,"view":"line"}
 Compare vessel speeds over the last 24 hours => {"metric":"speed","aggregate":"avg","bucketMinutes":60,"windowHours":24,"splitByVessel":true,"vessel":null,"view":"line"}
 Maximum wind by hour => {"metric":"wind","aggregate":"max","bucketMinutes":60,"windowHours":24,"splitByVessel":false,"vessel":null,"view":"line"}
-Show wave height over the last 7 days => {"metric":"wave_height","aggregate":"avg","bucketMinutes":60,"windowHours":168,"splitByVessel":false,"vessel":null,"view":"line"}`;
+Show wave height over the last 7 days => {"metric":"wave_height","aggregate":"avg","bucketMinutes":60,"windowHours":168,"splitByVessel":false,"vessel":null,"view":"line"}
+Show a heatmap of vessel speeds by hour over the last 7 days => {"metric":"speed","aggregate":"avg","bucketMinutes":60,"windowHours":168,"splitByVessel":true,"vessel":null,"view":"heatmap"}
+Compare vessel wave height by hour over the last 7 days as a 3D surface => {"metric":"wave_height","aggregate":"avg","bucketMinutes":60,"windowHours":168,"splitByVessel":true,"vessel":null,"view":"surface"}
+Show a density map of vessel speeds by hour => {"metric":"speed","aggregate":"avg","bucketMinutes":60,"windowHours":24,"splitByVessel":true,"vessel":null,"view":"density"}`;
 }

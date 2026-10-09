@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AdapterStatus, DatasetContext, Draft, QueryPlan } from '../src/core/types';
+import { CHART_VIEWS } from '../src/core/types';
 import { createInferenceAdapter, parseTemplate, parseModelPlan, validateQueryPlan } from '../src/inference';
-import { buildSystemPrompt, validateDraft } from '../src/inference/plan';
+import { buildSystemPrompt, QUERY_PLAN_SCHEMA, validateDraft } from '../src/inference/plan';
 import { GenerationQueue } from '../src/inference/generation';
 import type { WorkerRequest, WorkerResponse } from '../src/inference/messages';
 
@@ -37,12 +38,44 @@ describe('conservative deterministic templates', () => {
   });
 
   it.each([
+    ['Show a heatmap of vessel speeds by hour over the last 7 days', { ...plan, view: 'heatmap', windowHours: 168, splitByVessel: true }],
+    ['Compare vessel wave height by hour over the last 7 days as a 3D surface', { ...plan, metric: 'wave_height', view: 'surface', windowHours: 168, splitByVessel: true }],
+    ['Show a scatter plot of maximum wind by 5 minutes over the last 2 days', { ...plan, metric: 'wind', aggregate: 'max', view: 'scatter', bucketMinutes: 5, windowHours: 48 }],
+    ['Show a data table of minimum water temperature for vessel Borealis by hour', { ...plan, metric: 'water_temp', aggregate: 'min', vessel: 1, view: 'table' }],
+    ['Show a geographic map of vessel speeds by hour over the last 7 days', { ...plan, view: 'map', windowHours: 168, splitByVessel: true }],
+    ['Show a density map of vessel speeds by hour', { ...plan, view: 'density', splitByVessel: true }],
+    ['Show voyage tracks of speed for vessel Aurora by minute', { ...plan, view: 'tracks', vessel: 0, bucketMinutes: 1, splitByVessel: true }],
+    ['Compare vessel water temperature over the last 14 days as a seasonal wheel', { ...plan, metric: 'water_temp', view: 'seasons', windowHours: 336, splitByVessel: true }],
+    ['Plot a surface plot of fleet wave height', { ...plan, metric: 'wave_height', view: 'surface', splitByVessel: true }],
+    ['Show a heatmap of average wind', { ...plan, metric: 'wind', view: 'heatmap' }],
+  ])('selects the requested view without losing the query meaning: %s', (text, expected) => {
+    expect(parseTemplate(text as string, context)).toEqual(expected);
+  });
+
+  it('does not mutate the immutable request or context to normalize visualization wording', () => {
+    const request = Object.freeze(draft('  Show a HEATMAP of vessel speeds by hour over the last 7 days.  ', 11));
+    const before = { ...request };
+    expect(parseTemplate(request.text, context)?.view).toBe('heatmap');
+    expect(request).toEqual(before);
+    expect(request.contextId).toBe(context.id);
+  });
+
+  it.each([
     'Average speed excluding Aurora', 'Average speed where speed > 10', 'Average speed and wind',
     'Not average speed', 'Compare vessel speeds except Borealis', 'Average speed since yesterday',
     'Average speed for vessel Unknown', 'Average speed for vessel 6', 'Maximum wind by 2 minutes',
     'Average speed over the last 0 hours', 'Average speed over the last 337 hours',
     'Average speed over the last 1.5 hours', 'Show wave height over the last 15 days',
     'Average speed by hour; DROP TABLE telemetry',
+    'Show a heatmap of vessel speeds excluding Aurora',
+    'Compare vessel wave height by hour over the last 7 days as a 3D surface where speed > 10',
+    'Show a scatter plot of speed versus wind',
+    'Show a geographic map of vessel speeds except Borealis',
+    'Show a density map of vessel speeds weighted by speed',
+    'Show a seasonal wheel of average water temperature by month',
+    'Show a seasonal wheel of water temperature over the last 2 years',
+    'Show a photo gallery of vessels', 'Show photos of vessel Aurora',
+    'Show a heatmap of wind as a bar chart',
   ])('does not silently discard unsupported meaning: %s', (text) => {
     expect(parseTemplate(text, context)).toBeNull();
   });
@@ -53,11 +86,20 @@ describe('untrusted model plan validation', () => {
     expect(validateQueryPlan(plan, context)).toEqual(plan);
     expect(validateQueryPlan(plan, context)).not.toBe(plan);
   });
+  it.each(CHART_VIEWS)('validates %s as presentation intent without adding query fields', (view) => {
+    const expected = { ...plan, view, splitByVessel: true };
+    expect(parseModelPlan(JSON.stringify(expected), context)).toEqual(expected);
+    expect(QUERY_PLAN_SCHEMA.properties.view.enum).toContain(view);
+  });
+  it.each(['map', 'density', 'tracks'])('rejects %s plans that would average positions across vessels', (view) => {
+    expect(() => validateQueryPlan({ ...plan, view }, context)).toThrow('separate vessel positions');
+  });
   it.each([
     null, [], {}, { ...plan, sql: 'SELECT * FROM telemetry' }, { ...plan, metric: 'fuel' },
     { ...plan, aggregate: 'sum' }, { ...plan, windowHours: '24' }, { ...plan, windowHours: Infinity },
     { ...plan, windowHours: 1.5 }, { ...plan, bucketMinutes: 30 }, { ...plan, splitByVessel: 'false' },
     { ...plan, vessel: 6 }, { ...plan, vessel: -1 }, { ...plan, vessel: 0.5 }, { ...plan, view: 'pie' },
+    { ...plan, view: 'gallery' }, { ...plan, view: 'scatter', secondMetric: 'wind' },
   ])('rejects invalid values without coercion: %j', (value) => {
     expect(() => validateQueryPlan(value, context)).toThrow();
   });
@@ -75,6 +117,14 @@ describe('untrusted model plan validation', () => {
     expect(() => validateDraft(draft('   '), context)).toThrow('Enter a data request');
     expect(buildSystemPrompt(context)).toContain('2026-09-15T00:00:00.000Z');
     expect(buildSystemPrompt(context)).toContain('fixed dataset end');
+  });
+  it('describes view semantics and declines unsupported dimensions rather than changing the data', () => {
+    const prompt = buildSystemPrompt(context);
+    expect(prompt).toContain(CHART_VIEWS.join('|'));
+    expect(prompt).toContain('scatter does not compare two metrics');
+    expect(prompt).toContain('counts of returned bucket-mean positions');
+    expect(prompt).toContain('no monthly/seasonal aggregation');
+    expect(prompt).toContain('Photo galleries, photos, image URLs');
   });
 });
 

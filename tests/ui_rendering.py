@@ -25,6 +25,8 @@ with sync_playwright() as p:
     page.goto(args.base_url.rstrip('/')+'/ui-rendering-harness')
     result = page.evaluate('''async () => {
       const {createUI}=await import('/src/ui/index.ts');
+      const registryURL=performance.getEntriesByType('resource').map(r=>r.name).filter(n=>new URL(n).pathname==='/src/ui/renderer-registry.ts').at(-1);
+      const {warmRenderer}=await import(registryURL||'/src/ui/renderer-registry.ts'); await warmRenderer('tracks');
       // Vite may version imports after an edit. Instrument the exact module used by createUI.
       const orderURL=performance.getEntriesByType('resource').map(r=>r.name).filter(n=>new URL(n).pathname==='/src/ui/order.ts').at(-1);
       const {ColumnOrder}=await import(orderURL||'/src/ui/order.ts');
@@ -59,14 +61,14 @@ with sync_playwright() as p:
       const firstFrame={drawAt,handlerReturned,firstFrameTail,indexedAtReturn,indexedAtFirstFrame,indexedAfterCancel:indexed};
       if(indexedAtReturn||indexedAtFirstFrame||indexed)throw Error('Bulk indexing preceded first rendering opportunity or survived cancellation');
       const counts=[];
-      for(const [id,chunks,n,representation] of [['single',1,4000,'line'],['stream',40,100,'line'],['map-single',1,4000,'map'],['map-stream',40,100,'map'],['hidden',1,4000,'table']]){
+      for(const [id,chunks,n,representation] of [['single',1,4000,'line'],['stream',40,100,'line'],['tracks-single',1,4000,'tracks'],['tracks-stream',40,100,'tracks'],['hidden',1,4000,'table']]){
         origin=performance.now();start(view(id));await settle();
         mode(representation);await settle();
         chartLines=trackLines=0;
         for(let i=0;i<chunks;i++){ui.handleEvent({type:'batch',id,batch:batch(n,i*n)});await settle();}
         counts.push({id,chunks,n,representation,chartLines,trackLines});
         if(representation!=='line'&&chartLines)throw Error('Hidden primary chart drew geometry');
-        if(representation!=='map'&&trackLines)throw Error('Hidden or uncreated track chart drew geometry');
+        if(representation!=='tracks'&&trackLines)throw Error('Hidden or uncreated track chart drew geometry');
       }
       if(counts[1].chartLines>counts[0].chartLines+10||counts[3].trackLines>counts[2].trackLines+10)throw Error('Ordered stream redraws prior geometry');
       mode('line');await settle();
@@ -82,7 +84,7 @@ with sync_playwright() as p:
       const fleetSize=60480,colors=['#ff906c','#74d4c3','#d4c17e','#83b9e3','#e39eaf','#b0c985'];
       const fleetView={...view('six-series'),context:{...context,rowCount:fleetSize,end:604800000,vessels:['A','B','C','D','E','F']},plan:{...view('six-series').plan,windowHours:168}};
       ui.setDataset(fleetView.context);start(fleetView);await settle();
-      const main=document.querySelector('[data-el="chart"]'),track=document.querySelector('[data-el="track"]');
+      const main=document.querySelector('[data-el="chart"]');let track=document.querySelector('[data-el="track"]');
       seriesLines.set(main.getContext('2d'),new Map());seriesLines.set(track.getContext('2d'),new Map());
       const fleet={x:Float64Array.from({length:fleetSize},(_,i)=>Math.floor(i/6)*60000),y:Float64Array.from({length:fleetSize},(_,i)=>10+i%6),series:Int32Array.from({length:fleetSize},(_,i)=>i%6),
         lat:Float64Array.from({length:fleetSize},(_,i)=>Math.floor(i/6)%2),lon:Float64Array.from({length:fleetSize},(_,i)=>Math.floor(i/6)%2),length:fleetSize,byteLength:fleetSize*36};
@@ -90,9 +92,9 @@ with sync_playwright() as p:
       const mainSegments=colors.map(c=>seriesLines.get(main.getContext('2d')).get(c)||0);
       if(mainSegments.some(n=>n!==10079))throw Error('Dense fleet line rendering omitted or repeated a segment');
       if([...seriesLines.get(track.getContext('2d')).values()].some(Boolean))throw Error('Unselected map must not draw geometry');
-      const endpoints=canvas=>markers.get(canvas.parentElement.querySelector('canvas[aria-hidden]').getContext('2d'))||[];
+      const endpoints=canvas=>markers.get([...canvas.parentElement.querySelectorAll('canvas[aria-hidden]')].at(-1).getContext('2d'))||[];
       const mainEndpoints=endpoints(main);
-      mode('map');await settle();
+      mode('tracks');track=document.querySelector('[data-el="track"]');await settle();
       const trackSegments=colors.map(c=>seriesLines.get(track.getContext('2d')).get(c)||0);
       if(trackSegments.some(n=>n!==10079))throw Error('Dense fleet track rendering omitted or repeated a segment');
       const trackEndpoints=endpoints(track);

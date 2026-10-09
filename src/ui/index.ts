@@ -3,6 +3,7 @@ import { CanvasWorkspace } from './workspace';
 import { shell } from './shell';
 import './styles.css';
 import { MAX_PROMPT_CHARS } from '../inference/plan';
+import { prewarmViews } from './renderer-registry';
 
 export interface UICallbacks {
   onDraft(text: string, composing: boolean): void;
@@ -50,7 +51,7 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   }
   // Runtime startup/teardown may stop work without emitting a query terminal event.
   function setBusy(value: boolean): void { if (!value) workspace.cancelActive('RUNTIME CHANGED'); showBusy(value); }
-  function setPrompt(text: string): void { input.value = text; input.focus(); input.setSelectionRange(text.length, text.length); callbacks.onDraft(text, false); }
+  function setPrompt(text: string): void { input.value = text; input.focus(); input.setSelectionRange(text.length, text.length); prewarmViews(text); callbacks.onDraft(text, false); }
   function submit(): void {
     const text = input.value; if (!text.trim() || composing) return;
     workspace.submit(text); callbacks.onCommit(text);
@@ -58,8 +59,8 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   el('composer').addEventListener('submit', e => { e.preventDefault(); submit(); });
   input.addEventListener('focus', () => callbacks.onFocus());
   input.addEventListener('compositionstart', () => { composing = true; callbacks.onDraft(input.value, true); });
-  input.addEventListener('compositionend', () => { composing = false; callbacks.onDraft(input.value, false); });
-  input.addEventListener('input', () => callbacks.onDraft(input.value, composing));
+  input.addEventListener('compositionend', () => { composing = false; prewarmViews(input.value); callbacks.onDraft(input.value, false); });
+  input.addEventListener('input', () => { callbacks.onDraft(input.value, composing); if (!composing) prewarmViews(input.value); });
   input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !composing && e.keyCode !== 229) { e.preventDefault(); submit(); } });
   root.querySelectorAll<HTMLButtonElement>('[data-prompt]').forEach(button => button.addEventListener('click', () => setPrompt(button.dataset.prompt!)));
   root.querySelector<HTMLAnchorElement>('.brand')!.addEventListener('click', e => { e.preventDefault(); input.focus(); });

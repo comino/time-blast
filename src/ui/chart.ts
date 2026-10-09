@@ -70,7 +70,8 @@ export class StreamChart {
   constructor(private canvas: HTMLCanvasElement, private onDraw: (id: string, at: number) => void,
     private onProgress: (progress: BatchProgress) => void = () => {},
     private onIndexed: (reordered: boolean) => void = () => {},
-    private onSettledChange: (id: string, settled: boolean) => void = () => {}) {
+    private onSettledChange: (id: string, settled: boolean) => void = () => {},
+    private coordinateStats = true) {
     const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) throw new Error('Canvas 2D is unavailable in this browser.');
     this.ctx = ctx; this.markers = new Markers(canvas);
@@ -79,7 +80,7 @@ export class StreamChart {
 
   begin(view: QueryView): void {
     this.work.cancel(); this.sorting = undefined;
-    this.view = view; this.display = view.plan.view; this.batches.length = 0; this.order.clear(); this.cursors.clear();
+    this.view = view; this.display = ['line', 'bar', 'scatter'].includes(view.plan.view) ? view.plan.view as ChartRepresentation : 'line'; this.batches.length = 0; this.order.clear(); this.cursors.clear();
     this.nextBatch = 0; this.nextRow = 0; this.drawn = false; this.stopped = false; this.repaint = true;
     this.firstBatch = undefined; this.settled = false;
     this.xPadding = this.display === 'bar' ? view.plan.bucketMinutes * 30_000 : 0;
@@ -179,7 +180,7 @@ export class StreamChart {
           this.low = Math.min(this.low, y); this.high = Math.max(this.high, Number.isFinite(y * 1.05) && y >= 0 ? y * 1.05 : y);
           this.xLow = Math.min(this.xLow, x - this.xPadding); this.xHigh = Math.max(this.xHigh, x + this.xPadding);
         }
-        if (batch.lat && batch.lon && Number.isFinite(batch.lat[i]) && Number.isFinite(batch.lon[i])) {
+        if (this.coordinateStats && batch.lat && batch.lon && Number.isFinite(batch.lat[i]) && Number.isFinite(batch.lon[i])) {
           progress.minLat = Math.min(progress.minLat, batch.lat[i]); progress.maxLat = Math.max(progress.maxLat, batch.lat[i]);
           progress.minLon = Math.min(progress.minLon, batch.lon[i]); progress.maxLon = Math.max(progress.maxLon, batch.lon[i]);
         }

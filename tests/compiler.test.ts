@@ -2,6 +2,7 @@ import {readFile} from 'node:fs/promises';
 import {beforeAll,expect,it,vi} from 'vitest';
 import {WasmQueryCompiler} from '../src/core/compiler';
 import type {DatasetContext,QueryPlan} from '../src/core/types';
+import {CHART_VIEWS} from '../src/core/types';
 const context:DatasetContext={id:'test',label:'test',rowCount:1,start:0,end:86400000,vessels:['A'],description:''};
 const plan:QueryPlan={metric:'speed',aggregate:'avg',bucketMinutes:60,windowHours:24,splitByVessel:false,vessel:null,view:'line'};
 let compiler:WasmQueryCompiler;
@@ -23,4 +24,11 @@ it('rejects wrapped integers and identifiers before the WASM ABI',()=>{
 it('keeps a filtered vessel identity when no split is requested',()=>{
   const sql=compiler.compile({...plan,vessel:3},context);
   expect(sql).toContain('vessel::INTEGER AS series');expect(sql).toContain('AND vessel = 3');
+});
+it.each(CHART_VIEWS)('keeps the Rust ABI and SQL unchanged for %s presentation',view=>{
+  const baseline={...plan,splitByVessel:true};
+  expect(compiler.compile({...baseline,view},context)).toBe(compiler.compile(baseline,context));
+});
+it.each(['map','density','tracks'])('rejects ambiguous fleet positions in %s before compilation',view=>{
+  expect(()=>compiler.compile({...plan,view} as QueryPlan,context)).toThrow('Invalid query intent');
 });

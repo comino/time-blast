@@ -35,6 +35,11 @@ with sync_playwright() as p:
       // loaded module rather than importing a second, unversioned class instance.
       const chartURL=performance.getEntriesByType('resource').find(entry=>new URL(entry.name).pathname==='/src/ui/chart.ts')?.name;
       const {StreamChart}=await import(chartURL??'/src/ui/chart.ts');
+      const registryURL=performance.getEntriesByType('resource').find(entry=>new URL(entry.name).pathname==='/src/ui/renderer-registry.ts')?.name;
+      const {warmRenderer}=await import(registryURL??'/src/ui/renderer-registry.ts');
+      // This harness controls only frame work. Resolve lazy code loading before
+      // replacing rAF; browser_views.py separately exercises cold imports.
+      await Promise.all(['heatmap','map','seasons'].map(warmRenderer));
       const pending=new Map(), appended=[], requests=new Map();
       let next=0, timestamp=performance.now();
       window.requestAnimationFrame=callback=>{pending.set(++next,callback);return next;};
@@ -99,7 +104,7 @@ with sync_playwright() as p:
     # Controls use real browser interactions, so hidden/non-interactive controls fail.
     current = page.locator('.result-card[data-selected="true"]')
     modes = current.locator('select').first
-    for mode in ['bar', 'scatter', 'map', 'table', 'line']:
+    for mode in ['bar', 'scatter', 'heatmap', 'surface', 'map', 'density', 'tracks', 'seasons', 'table', 'line']:
         modes.select_option(mode)
         page.evaluate('workspace.settle()')
         assert page.evaluate('workspace.calls.commits.length===workspace.commitsBeforeModes')
@@ -202,6 +207,21 @@ with sync_playwright() as p:
     }''')
     page.evaluate('''() => {
       const w=workspace;
+      const voyage=w.finish('voyage-cancel','Voyage cancellation',[1,2,3]);
+      const select=w.field(voyage.card,'representation');select.value='tracks';select.dispatchEvent(new Event('change',{bubbles:true}));w.settle();
+      const play=voyage.card.querySelector('[data-card-action="playback"]');play.click();
+      w.assert(play.textContent==='Pause','Voyage must start playback');
+      w.frame();
+      const stop=voyage.card.querySelector('[data-card-action="cancel"]');
+      w.assert(!stop.hidden,'An in-progress voyage redraw must expose cancellation');
+      const before=w.calls.cancels;stop.click();w.settle();
+      w.assert(w.calls.cancels===before+1&&w.state(voyage.card)==='CANCELED','Cancel must freeze the voyage renderer');
+      w.assert(play.textContent==='Play voyage','Cancel must release voyage playback');
+      const value=w.field(voyage.card,'playback').value;w.frame();w.frame();
+      w.assert(w.field(voyage.card,'playback').value===value,'Canceled voyage time must stay frozen');
+    }''')
+    page.evaluate('''() => {
+      const w=workspace;
       for(const mode of ['table','map']){
         const prompt=`Hidden ${mode} question`,id=`hidden-${mode}`,card=w.submit(prompt);
         const select=w.field(card,'representation');select.value=mode;select.dispatchEvent(new Event('change',{bubbles:true}));
@@ -241,9 +261,10 @@ with sync_playwright() as p:
     }''')
     assert not errors, errors
     print(json.dumps({'chromium': browser.version, **initial, **lifecycle, **bounded,
-                      'modesWithoutQuery': True, 'duplicateSharesBuffers': True,
+                      'modesWithoutQuery': 10, 'duplicateSharesBuffers': True,
                       'zoomFitDragResize': True, 'runtimeInvalidation': True,
                       'hiddenTableDrawDeferred': True,
                       'hiddenMapDrawDeferred': True,
+                      'voyageCancellation': True,
                       'removalAndDestroy': True, 'pageErrors': errors}, indent=2))
     browser.close()

@@ -122,6 +122,32 @@ def run(url, screenshot):
         assert page.locator('[data-el="latency-detail"]').inner_text() == "Shared result · no new query"
         assert [cards.nth(i).locator('[data-card-el="points"]').inner_text() for i in range(4)] == ["144", "24", "60,480", "144"]
         assert page.evaluate("window.__translationEvents.filter(e => e === 'query_complete').length") == completed_queries
+        # New view requests use their own inferred intent and lazy renderer chunks.
+        page.locator('[data-action="clear-canvas"]').click()
+        advanced = [
+            ("heatmap", "Show a heatmap of vessel wind by hour over the last 7 days"),
+            ("surface", "Compare vessel wave height by hour over the last 7 days as a 3D surface"),
+            ("tracks", "Show voyage tracks of vessel speeds by hour over the last 7 days"),
+            ("density", "Show a density map of vessel speeds by hour over the last 7 days"),
+        ]
+        for mode, prompt in advanced:
+            page.locator('[data-el="input"]').fill(prompt)
+            page.wait_for_function("document.querySelector('[data-el=\"draft-state\"]').textContent.includes('1,008 points staged')")
+            page.locator('[data-el="input"]').press("Enter")
+            page.wait_for_function("document.querySelector('[data-el=\"result-state\"]').textContent.trim() === 'COMPLETE'")
+            assert page.locator('[data-el="representation"]').input_value() == mode
+            assert page.locator('[data-el="points"]').inner_text() == "1,008"
+            assert page.locator('[data-el="latency"]').inner_text() != "—"
+        assert cards.count() == 4
+        completed_queries = page.evaluate("window.__translationEvents.filter(e => e === 'query_complete').length")
+        page.locator('[data-el="representation"]').select_option("seasons")
+        page.wait_for_function("document.querySelector('[data-el=\"result-state\"]').textContent.trim() === 'COMPLETE'")
+        page.locator('[data-el="representation"]').select_option("density")
+        page.wait_for_function("document.querySelector('[data-el=\"result-state\"]').textContent.trim() === 'COMPLETE'")
+        assert page.evaluate("window.__translationEvents.filter(e => e === 'query_complete').length") == completed_queries
+        page.locator('[data-action="fit"]').click()
+        page.wait_for_function("""() => [...document.querySelectorAll('[data-card-el="result-state"]')]
+          .every(label => label.textContent.trim() === 'COMPLETE')""")
         assert page.evaluate("window.__databaseReloads") == 0
         assert len(engines) == before
         if screenshot:
@@ -137,6 +163,7 @@ def run(url, screenshot):
                           "dense_chart_points": 60_480, "live_translation_without_query": True,
                           "prepared_whitespace_promoted": True, "database_reloads": 0,
                           "persistent_cards": 4, "presentation_without_new_query": True,
+                          "advanced_intents": [mode for mode, _ in advanced], "calendar_switch": True,
                           "http_decoded_engines": len(engines), "page_errors": errors}, indent=2))
         browser.close()
 

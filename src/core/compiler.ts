@@ -1,4 +1,4 @@
-import type { DatasetContext, QueryCompiler, QueryPlan } from './types';
+import { CHART_VIEWS, type DatasetContext, type QueryCompiler, type QueryPlan } from './types';
 
 interface CompilerExports extends WebAssembly.Exports {
   memory: WebAssembly.Memory;
@@ -26,7 +26,8 @@ export class WasmQueryCompiler implements QueryCompiler {
     if (m < 0 || a < 0 || ![1,5,15,60,360,1440].includes(plan.bucketMinutes)
       || !Number.isInteger(plan.windowHours) || plan.windowHours<1 || plan.windowHours>336
       || typeof plan.splitByVessel !== 'boolean' || (plan.vessel !== null && (!Number.isInteger(plan.vessel) || plan.vessel<0 || plan.vessel>5))
-      || !['line','bar'].includes(plan.view)) throw new Error('Invalid query intent.');
+      || !CHART_VIEWS.includes(plan.view)
+      || (['map','density','tracks'].includes(plan.view) && !plan.splitByVessel)) throw new Error('Invalid query intent.');
     const status = this.wasm.compile_query(m,a,plan.bucketMinutes,plan.windowHours,Number(plan.splitByVessel),plan.vessel ?? -1,context.start,context.end);
     const text = new TextDecoder().decode(new Uint8Array(this.wasm.memory.buffer, this.wasm.output_ptr(), this.wasm.output_len()));
     if (status !== 0) throw new Error(text);

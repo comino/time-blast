@@ -29,6 +29,8 @@ The app generates **1,209,600 synthetic vessel readings** directly inside DuckDB
 
 Try **“Compare vessel wave height by minute over the last 7 days”** for **60,480 chart points**, or **“Compare vessel speeds by minute over the last 24 hours”** for **8,640**. Wait for the preparation indicator, then press Enter. The chart reports measured commit-to-first-draw submission, whether prepared data was reused, and the actual point/batch count. Query details expose the generated SQL. This measures software, not photons.
 
+Ask for the presentation directly: **“Show a heatmap of vessel wind by hour over the last 7 days”**, **“Compare vessel wave height by hour over the last 7 days as a 3D surface”**, or **“Show voyage tracks of vessel speeds by hour over the last 7 days”**. Rotate surfaces and scrub or play voyages inside their cards. All ten supported view types are part of the validated inference intent.
+
 Auto inference uses conservative exact templates for recognized requests and a local **Qwen2.5-0.5B** WebGPU model for other wording. Select **Local language model · WebGPU** in Runtime to force real inference even for a template. Initial model download is hundreds of megabytes; loading and model availability are visible. Unsupported WebGPU leaves exact templates usable in Auto mode. Templates are explicitly identified as templates, never presented as model output.
 
 Try “Average speed by hour”, “Maximum wind by hour”, or “Show wave height over the last 7 days”. The narrow intent supports four metrics, avg/min/max, fixed time buckets, trailing windows up to 14 days, and vessel filtering/grouping. Model output is validated and compiled from allowlisted fields; arbitrary generated SQL is never executed. A valid plan can still misunderstand natural language—inspect its meaning before relying on it.
@@ -46,8 +48,11 @@ Default execution stays in your browser. Assets and model weights must download 
 - Arrow numeric columns retain their backing buffers into Canvas2D. The first marker is submitted on the first batch before subsequent chart work. Local data does not get encoded for a fictitious network boundary.
 - Cancellation epochs, exact question/snapshot matching, per-query database connections, bounded queues, staged-memory limits, and explicit failure/completion protect speculation.
 - Every submitted question immediately adds a loading card to a dotted spatial canvas beside chat. Earlier results stay available; drag and resize cards, pan/zoom, or use Fit and Arrange.
-- Switch each result between time series, bars, scatter, schematic vessel tracks, and a small table. View changes and duplication reuse the existing column buffers without another query. Cards expose SQL, CSV export, and measured draw submission; the chat rail includes an event trace.
+- Ten views: time series, bars, scatter, heatmap, rotatable 3D vessel surfaces, geographic maps, density maps, voyage playback, a seasonal wheel, and a small table. Compatible view changes and duplication reuse the existing column buffers without another query. Cards expose SQL, CSV export, and measured draw submission; the chat rail includes an event trace.
+- New renderer code loads on demand and warms while matching chart words are typed. Geographic points do not wait for the bundled coastline. Surface geometry and all returned samples draw in bounded frame slices; no full-result matrix or vertex copy is required.
 - Hidden cards skip geometry drawing. The workspace retains up to eight cards and 64 MiB of unique result buffers, removing older views when necessary; it lives in memory for the current page session.
+
+Geographic views require vessel grouping and show mean coordinates per returned bucket. Density counts those positions, not source readings. The seasonal wheel plots actual UTC calendar samples; this 14-day dataset cannot establish annual patterns. Surfaces use separate vessel ribbons rather than interpolating between categorical vessel IDs. Photo galleries remain unavailable because this dataset has no image URLs.
 
 The current aggregation uses `GROUP BY` and `ORDER BY`: database work may finish before its first result batch becomes available. The renderer consumes batches incrementally, but it cannot make a blocking SQL operator produce a final point early. The next substantial latency improvement is an ordered/time-tiled query path. Likewise, no browser can promise literal end-to-end zero-copy through DuckDB's worker/IPC boundary. See [implementation, limits, and copy accounting](docs/prototype.md).
 
@@ -65,6 +70,7 @@ python3 tests/browser_database.py
 python3 tests/browser_database.py --dataset-profile large
 python3 tests/browser_ui.py
 python3 tests/browser_workspace.py
+python3 tests/browser_views.py
 python3 tests/ui_live_translation.py
 # Requires a real available WebGPU adapter; downloads model weights:
 python3 tests/browser_inference.py

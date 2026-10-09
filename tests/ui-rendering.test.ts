@@ -34,6 +34,15 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('cooperative chart rendering', () => {
+  it('can index shared geometry without scanning unused coordinate statistics', () => {
+    const target = canvas(), progress = vi.fn();
+    const chart = new StreamChart(target as unknown as HTMLCanvasElement, () => {}, progress, () => {}, () => {}, false);
+    const input = batch(100);
+    Object.defineProperty(input, 'lat', { get() { throw new Error('Unused coordinate statistics accessed'); } });
+    chart.begin(view()); chart.append(input); settle();
+    expect(progress).toHaveBeenCalledOnce(); expect(progress.mock.calls[0][0].count).toBe(100);
+    expect(chart.order.series.get(0)!.refs).toHaveLength(100); chart.destroy();
+  });
   it('submits a marker without scanning the batch, leaves the next frame free, and bounds indexing', () => {
     const target = canvas(), draw = vi.fn(), progress = vi.fn();
     const chart = new StreamChart(target as unknown as HTMLCanvasElement, draw, progress);

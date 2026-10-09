@@ -30,6 +30,9 @@ export const shell = `
         <button data-prompt="Compare vessel speeds by minute over the last 24 hours"><span>How fast is the fleet moving?</span>${arrow}<small>Six vessels · one day · by minute</small></button>
         <button data-prompt="Maximum wind by hour"><span>Where did the wind pick up?</span>${arrow}<small>Maximum wind · hourly</small></button>
         <button data-prompt="Compare vessel wave height by minute over the last 7 days"><span>Compare a week of waves</span>${arrow}<small>Six vessels · seven days · by minute</small></button>
+        <button data-prompt="Show a heatmap of vessel wind by hour over the last 7 days"><span>Find patterns in the wind</span>${arrow}<small>Heatmap · time × vessel</small></button>
+        <button data-prompt="Compare vessel wave height by hour over the last 7 days as a 3D surface"><span>Turn a week of waves into a surface</span>${arrow}<small>Rotatable 3D · one ribbon per vessel</small></button>
+        <button data-prompt="Show voyage tracks of vessel speeds by hour over the last 7 days"><span>Replay the fleet’s voyages</span>${arrow}<small>Geographic tracks · UTC playback</small></button>
       </div>
       <div class="message-history" data-el="history" aria-live="polite"></div>
     </div>
