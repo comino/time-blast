@@ -176,6 +176,50 @@ describe('adapter behavior', () => {
     const restart=adapter.prepare(context);expect(workers).toHaveLength(3);
     workers[2].onmessage({data:{type:'ready',id:workers[2].messages[0].id,model:'test'}});await restart;adapter.dispose();
   });
+  it.each(['ModelNotLoadedError','DeviceLostError'])('invalidates a lost engine on %s and permits explicit preparation to recover',async name=>{
+    const workers:any[]=[];const statuses:AdapterStatus[]=[];
+    vi.stubGlobal('navigator',{gpu:{}});
+    vi.stubGlobal('Worker',class {
+      messages:WorkerRequest[]=[];onmessage:any;terminate=vi.fn();
+      constructor(){workers.push(this);}postMessage(message:WorkerRequest){this.messages.push(message);}
+    });
+    const adapter=createInferenceAdapter('webgpu',{onStatus:status=>statuses.push(status)});
+    const preparation=adapter.prepare(context);const first=workers[0];
+    first.onmessage({data:{type:'ready',id:first.messages[0].id,model:'test'}});await preparation;
+    const active=adapter.resolve(draft('Average speed by hour'),signal());
+    const waiting=adapter.resolve(draft('Maximum wind by hour',2),signal());
+    const rejected=Promise.all([expect(active).rejects.toMatchObject({name}),expect(waiting).rejects.toMatchObject({name})]);
+    const request=first.messages.find((message:WorkerRequest)=>message.type==='resolve');
+    first.onmessage({data:{type:'error',id:request.id,name,message:'The model engine was unloaded'}});await rejected;
+    expect(first.terminate).toHaveBeenCalledOnce();expect(statuses.at(-1)?.state).toBe('error');
+    await expect(adapter.resolve(draft('Average speed by hour'),signal())).rejects.toThrow('needs a local language model');
+    const retry=adapter.prepare(context);expect(workers).toHaveLength(2);
+    const second=workers[1];second.onmessage({data:{type:'ready',id:second.messages[0].id,model:'test'}});await retry;
+    first.onmessage({data:{type:'error',id:request.id,name,message:'Late old engine failure'}});
+    const recovered=adapter.resolve(draft('Average speed by hour'),signal());
+    const replacement=second.messages.find((message:WorkerRequest)=>message.type==='resolve');
+    second.onmessage({data:{type:'result',id:replacement.id,result:{source:'webgpu',plan}}});
+    await expect(recovered).resolves.toMatchObject({plan});expect(second.terminate).not.toHaveBeenCalled();adapter.dispose();
+  });
+  it('handles fatal engine errors after their request was canceled but retains workers after semantic errors',async()=>{
+    const workers:any[]=[];vi.stubGlobal('navigator',{gpu:{}});
+    vi.stubGlobal('Worker',class {
+      messages:WorkerRequest[]=[];onmessage:any;terminate=vi.fn();
+      constructor(){workers.push(this);}postMessage(message:WorkerRequest){this.messages.push(message);}
+    });
+    const adapter=createInferenceAdapter('webgpu');const preparation=adapter.prepare(context);const worker=workers[0];
+    worker.onmessage({data:{type:'ready',id:worker.messages[0].id,model:'test'}});await preparation;
+    const unsupported=adapter.resolve(draft('An unsupported data request'),signal());
+    const rejected=expect(unsupported).rejects.toThrow('unsupported');
+    const first=worker.messages.find((message:WorkerRequest)=>message.type==='resolve');
+    worker.onmessage({data:{type:'error',id:first.id,name:'Error',message:'This request is unsupported'}});await rejected;
+    await adapter.prepare(context);expect(workers).toHaveLength(1);expect(worker.terminate).not.toHaveBeenCalled();
+    const controller=new AbortController();const canceled=adapter.resolve(draft('Average speed by hour'),controller.signal);
+    const aborted=expect(canceled).rejects.toMatchObject({name:'AbortError'});controller.abort();await aborted;
+    const last=worker.messages.filter((message:WorkerRequest)=>message.type==='resolve').at(-1);
+    worker.onmessage({data:{type:'error',id:last.id,name:'ModelNotLoadedError',message:'Model was unloaded'}});
+    expect(worker.terminate).toHaveBeenCalledOnce();adapter.dispose();
+  });
   it('forwards every draft before model readiness and discards late canceled worker output', async () => {
     const workers: FakeWorker[] = [];
     class FakeWorker {

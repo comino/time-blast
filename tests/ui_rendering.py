@@ -32,8 +32,13 @@ with sync_playwright() as p:
       window.cancelAnimationFrame=id=>{pending.delete(id);nativeCancel(id);};
       const settle=async()=>{for(let i=0;pending.size&&i<1000;i++)await new Promise(nativeRAF);if(pending.size)throw Error('UI work did not settle');};
       let chartLines=0,trackLines=0,indexed=0,drawAt=0,origin=0,commits=[];
-      const lineTo=CanvasRenderingContext2D.prototype.lineTo;
-      CanvasRenderingContext2D.prototype.lineTo=function(...args){if(this.canvas.dataset.el==='chart')chartLines++;if(this.canvas.dataset.el==='track')trackLines++;return lineTo.apply(this,args);};
+      const prototype=CanvasRenderingContext2D.prototype,pathLines=new WeakMap(),seriesLines=new WeakMap(),markers=new WeakMap();
+      const lineTo=prototype.lineTo,beginPath=prototype.beginPath,stroke=prototype.stroke,clearRect=prototype.clearRect,arc=prototype.arc;
+      prototype.beginPath=function(){pathLines.set(this,0);return beginPath.call(this);};
+      prototype.lineTo=function(...args){if(this.canvas.dataset.el==='chart')chartLines++;if(this.canvas.dataset.el==='track')trackLines++;pathLines.set(this,(pathLines.get(this)||0)+1);return lineTo.apply(this,args);};
+      prototype.stroke=function(){const counts=seriesLines.get(this)||new Map();counts.set(this.strokeStyle,(counts.get(this.strokeStyle)||0)+(pathLines.get(this)||0));seriesLines.set(this,counts);return stroke.call(this);};
+      prototype.clearRect=function(...args){markers.set(this,[]);return clearRect.apply(this,args);};
+      prototype.arc=function(...args){markers.set(this,[...(markers.get(this)||[]),this.fillStyle]);return arc.apply(this,args);};
       const append=ColumnOrder.prototype.appendRange;
       ColumnOrder.prototype.appendRange=function(batch,index,from,to){indexed+=to-from;return append.call(this,batch,index,from,to);};
       const ui=createUI(document.querySelector('#root'),{onDraft(){},onCommit(text){commits.push(text);},onFocus(){},onConfig(){},onCancel(){},onWarmModel(){},onDraw(id,at){drawAt=at-origin;}});
@@ -65,7 +70,25 @@ with sync_playwright() as p:
       const base=document.querySelector('[data-el="chart"]').getBoundingClientRect();
       const overlay=document.querySelector('[data-el="chart"]').parentElement.querySelector('[aria-hidden="true"]').getBoundingClientRect();
       if(base.x!==overlay.x||base.y!==overlay.y||base.width!==overlay.width||base.height!==overlay.height)throw Error('Marker overlay does not align');
-      return {firstFrame,counts,mean:document.querySelector('[data-el="mean"]').textContent,rawCommit:commits.at(-1),overlayAligned:true};
+      const mean=document.querySelector('[data-el="mean"]').textContent;
+
+      const fleetSize=60480,colors=['#ff906c','#74d4c3','#d4c17e','#83b9e3','#e39eaf','#b0c985'];
+      const fleetView={...view('six-series'),context:{...context,rowCount:fleetSize,end:604800000,vessels:['A','B','C','D','E','F']},plan:{...view('six-series').plan,windowHours:168}};
+      ui.setDataset(fleetView.context);ui.handleEvent({type:'start',view:fleetView});await settle();
+      const main=document.querySelector('[data-el="chart"]'),track=document.querySelector('[data-el="track"]');
+      seriesLines.set(main.getContext('2d'),new Map());seriesLines.set(track.getContext('2d'),new Map());
+      const fleet={x:Float64Array.from({length:fleetSize},(_,i)=>Math.floor(i/6)*60000),y:Float64Array.from({length:fleetSize},(_,i)=>10+i%6),series:Int32Array.from({length:fleetSize},(_,i)=>i%6),
+        lat:Float64Array.from({length:fleetSize},(_,i)=>Math.floor(i/6)%2),lon:Float64Array.from({length:fleetSize},(_,i)=>Math.floor(i/6)%2),length:fleetSize,byteLength:fleetSize*36};
+      ui.handleEvent({type:'batch',id:fleetView.id,batch:fleet});ui.handleEvent({type:'complete',id:fleetView.id,timing:fleetView.timing});await settle();
+      const mainSegments=colors.map(c=>seriesLines.get(main.getContext('2d')).get(c)||0),trackSegments=colors.map(c=>seriesLines.get(track.getContext('2d')).get(c)||0);
+      if([...mainSegments,...trackSegments].some(n=>n!==10079))throw Error('Dense fleet rendering omitted or repeated a segment');
+      const endpoints=canvas=>markers.get(canvas.parentElement.querySelector('canvas[aria-hidden]').getContext('2d'))||[];
+      const mainEndpoints=endpoints(main),trackEndpoints=endpoints(track);
+      for(const dots of [mainEndpoints,trackEndpoints])if(dots.length!==6||colors.some(c=>dots.filter(dot=>dot===c).length!==1))throw Error('Each vessel must have exactly one final endpoint marker');
+      if(document.querySelector('[data-el="mean"]').textContent!=='12.5'||document.querySelector('[data-el="legend"]').children.length!==6)throw Error('Dense fleet statistics or legend is incomplete');
+      if(document.querySelector('[data-el="result-state"]').textContent.trim()!=='COMPLETE'||pending.size)throw Error('Dense fleet drawing has not fully settled');
+      const denseFleet={points:fleetSize,mainSegments,trackSegments,mainEndpointCount:mainEndpoints.length,trackEndpointCount:trackEndpoints.length,mean:'12.5',pendingFrames:pending.size};
+      return {firstFrame,counts,mean,rawCommit:commits.at(-1),overlayAligned:true,denseFleet};
     }''')
     if args.screenshot:
         page.screenshot(path=args.screenshot, full_page=True)

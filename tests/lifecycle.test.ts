@@ -2,11 +2,11 @@ import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
 import {DEFAULT_CONFIG} from '../src/core/types';
 
 const state=vi.hoisted(()=>({databases:[] as any[],models:[] as any[],clients:[] as any[],coordinatorOptions:[] as any[],callbacks:undefined as any,
-  statuses:[] as any[],events:[] as any[],busy:[] as boolean[],failConstruct:false,failDispose:false,listeners:new Map<string,Function>()}));
+  statuses:[] as any[],events:[] as any[],busy:[] as boolean[],failConstruct:false,failDispose:false,prepareGate:undefined as Promise<void>|undefined,listeners:new Map<string,Function>()}));
 vi.mock('../src/adapters/duckdb',()=>({DuckDBAdapter:class {
   dispose=vi.fn(async()=>{if(state.failDispose)throw new Error('Disposal failed');});
   context={id:`dataset-${state.databases.length}`,vessels:['A'],start:0,end:1};
-  prepare=vi.fn(async()=>this.context);
+  prepare=vi.fn(async()=>{await state.prepareGate;return this.context;});
   constructor(readonly profile?:string){if(state.failConstruct)throw new Error('Invalid database endpoint');state.databases.push(this);}
 }}));
 vi.mock('../src/adapters/remote-database',async()=>({RemoteDatabaseAdapter:(await import('../src/adapters/duckdb')).DuckDBAdapter}));
@@ -25,7 +25,7 @@ vi.mock('../src/ui',()=>({createUI:(_root:any,callbacks:any)=>{
 }}));
 
 beforeEach(()=>{
-  vi.resetModules();state.databases=[];state.models=[];state.clients=[];state.coordinatorOptions=[];state.statuses=[];state.events=[];state.busy=[];state.failConstruct=false;state.failDispose=false;state.listeners.clear();
+  vi.resetModules();state.databases=[];state.models=[];state.clients=[];state.coordinatorOptions=[];state.statuses=[];state.events=[];state.busy=[];state.failConstruct=false;state.failDispose=false;state.prepareGate=undefined;state.listeners.clear();
   vi.stubGlobal('document',{querySelector:()=>({})});
   vi.stubGlobal('window',{addEventListener:(type:string,callback:Function)=>state.listeners.set(type,callback)});
 });
@@ -33,6 +33,20 @@ afterEach(()=>vi.unstubAllGlobals());
 const start=async()=>{await import('../src/main');await vi.waitFor(()=>expect(state.clients).toHaveLength(1));};
 
 describe('runtime adapter ownership',()=>{
+  it('preserves composing drafts while the initial database is warming',async()=>{
+    let ready!:()=>void;state.prepareGate=new Promise<void>(resolve=>{ready=resolve;});
+    await import('../src/main');
+    state.callbacks.onDraft('Compare vessel wave height by minute',true);
+    expect(state.clients).toHaveLength(0);ready();
+    await vi.waitFor(()=>expect(state.clients).toHaveLength(1));
+    expect(state.clients[0].draft).toHaveBeenLastCalledWith('Compare vessel wave height by minute',true);
+  });
+  it('preserves composing drafts when coordination is reconfigured',async()=>{
+    await start();state.callbacks.onDraft('Compare vessel wave height by minute',true);
+    state.callbacks.onConfig({...DEFAULT_CONFIG,liveTranslation:true,speculation:false});
+    await vi.waitFor(()=>expect(state.clients).toHaveLength(2));
+    expect(state.clients[1].draft).toHaveBeenLastCalledWith('Compare vessel wave height by minute',true);
+  });
   it('reconfigures live translation without replacing warmed adapters',async()=>{
     await start();expect(state.coordinatorOptions[0]).toMatchObject({liveTranslation:false,translationMinChars:20});
     state.callbacks.onConfig({...DEFAULT_CONFIG,liveTranslation:true,translationMinChars:24,speculation:false});

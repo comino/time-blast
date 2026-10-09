@@ -71,10 +71,14 @@ export class BrowserCoordinator {
     if (draft.contextId !== this.options.context.id) {
       this.emit({type:'error',message:'The dataset changed. Please submit the question again.'}); return;
     }
-    clearTimeout(this.timer);
-    // COMMIT is a full immutable snapshot; it never waits for a draft acknowledgement.
-    this.latest=draft;
-    this.options.inference.observeDraft(draft);
+    // Remote ACCEPT can arrive after a later edit. Resolve the immutable submission
+    // without rewinding the model's draft snapshot or that edit's preparation timer.
+    const newerDraft=Boolean(this.latest&&this.latest.revision>draft.revision);
+    if(!newerDraft) {
+      clearTimeout(this.timer);
+      this.latest=draft;
+      this.options.inference.observeDraft(draft);
+    }
     this.cancelForeground();
     const reusable=this.candidate && !this.candidate.abort.signal.aborted && !this.candidate.error
       && this.candidate.draft.text===draft.text && this.candidate.draft.contextId===draft.contextId;
@@ -103,7 +107,7 @@ export class BrowserCoordinator {
       this.trace('commit',`revision ${draft.revision}`);
       void this.run(job);
     }
-    this.emit({type:'speculation',state:'idle',text:'',points:0});
+    if(!newerDraft)this.emit({type:'speculation',state:'idle',text:'',points:0});
   }
 
   private makeJob(draft:Draft,committed:boolean):Job {

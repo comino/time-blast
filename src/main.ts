@@ -14,11 +14,12 @@ let context:DatasetContext|undefined;
 let config={...DEFAULT_CONFIG};
 let generation=0;
 let draftText='';
+let draftComposing=false;
 let databaseKey='';
 let inferenceKey='';
 const compiler=new WasmQueryCompiler();
 const ui=createUI(document.querySelector<HTMLElement>('#app')!,{
-  onDraft(text,composing) { draftText=text; client?.draft(text,composing); },
+  onDraft(text,composing) { draftText=text; draftComposing=composing; client?.draft(text,composing); },
   onCommit(text) {
     if (!client) { ui.handleEvent({type:'error',message:'The dataset is still warming. Try again when DuckDB is ready.'});ui.setBusy(false);return; }
     client.commit(text);
@@ -85,7 +86,6 @@ function connect(selected:RuntimeConfig,own:number,dataset:DatasetContext,db:Dat
   const emit=(event:PipelineEvent)=> {
     if(own!==generation)return;
     ui.handleEvent(event);
-    if(event.type==='complete'||event.type==='error')ui.setBusy(false);
   };
   const options={database:db,inference:model,compiler,context:dataset,emit,speculation:selected.speculation,
     liveTranslation:selected.liveTranslation,translationMinChars:selected.translationMinChars};
@@ -95,7 +95,7 @@ function connect(selected:RuntimeConfig,own:number,dataset:DatasetContext,db:Dat
       client=new LocalCoordinatorClient(new BrowserCoordinator(options),dataset.id);
       ui.setStatus('coordinator',{state:'ready',label:'Local MessageChannel · ready'});
     } else client=new RemoteCoordinatorClient(selected.coordinatorEndpoint,options,status=>{if(own===generation)ui.setStatus('coordinator',status);});
-    if(draftText)client.draft(draftText);
+    if(draftText)client.draft(draftText,draftComposing);
   } catch(error) { client=undefined;emit({type:'error',message:String(error)}); }
 }
 

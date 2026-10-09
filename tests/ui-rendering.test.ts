@@ -4,6 +4,7 @@ import { StreamChart, TrackChart } from '../src/ui/chart';
 
 let frames: Map<number, FrameRequestCallback>, nextFrame: number;
 let overlays: ReturnType<typeof canvas>[];
+let resizes: (() => void)[];
 function frame() { const pending = [...frames.values()], at = performance.now(); frames.clear(); for (const callback of pending) callback(at); }
 function settle() { for (let i = 0; frames.size && i < 500; i++) frame(); expect(frames.size).toBe(0); }
 function canvas() {
@@ -23,10 +24,10 @@ function view(id = 'test'): QueryView {
 }
 beforeEach(() => {
   frames = new Map(); nextFrame = 0;
-  overlays = [];
+  overlays = []; resizes = [];
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { frames.set(++nextFrame, callback); return nextFrame; });
   vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
-  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+  vi.stubGlobal('ResizeObserver', class { constructor(callback: () => void) { resizes.push(callback); } observe() {} disconnect() {} });
   vi.stubGlobal('document', { createElement: () => { const layer = canvas(); overlays.push(layer); return layer; } });
   vi.stubGlobal('window', { devicePixelRatio: 1 });
 });
@@ -95,6 +96,39 @@ describe('cooperative chart rendering', () => {
     expect(times).toHaveLength(2148); expect(times).toEqual([...times].sort((a, b) => a - b));
     expect(new Set(chart.order.series.get(0)!.refs).size).toBe(2148);
     chart.destroy();
+  });
+
+  it('waits for sorted references without polling after a canceled hidden result is resized', () => {
+    const target = canvas(), trackTarget = canvas(), track = new TrackChart(trackTarget as unknown as HTMLCanvasElement);
+    const chart = new StreamChart(target as unknown as HTMLCanvasElement, () => {}, p => track.progress(p), reordered => track.indexed(reordered));
+    chart.begin(view()); track.begin(chart.batches, chart.order);
+    chart.append(batch(4096, 0, true)); frame(); frame();
+    expect(chart.order.needsSort).toBe(true);
+    chart.stop(); track.stop(); chart.setVisible(false);
+    trackTarget.getBoundingClientRect = () => ({ width: 900, height: 268 });
+    resizes[0](); settle();
+    expect(chart.order.needsSort).toBe(true);
+    expect(trackTarget.ctx.lineTo.mock.calls.length).toBeLessThan(100); // grid only; no polling for the canceled sorter
+
+    // Showing the stopped primary finishes ordering its retained partial result,
+    // and the existing indexed notification must wake the track again.
+    trackTarget.ctx.lineTo.mockClear(); chart.setVisible(true); settle();
+    expect(chart.order.needsSort).toBe(false);
+    expect(trackTarget.ctx.lineTo.mock.calls.length).toBeGreaterThanOrEqual(2047);
+    expect(overlays[0].ctx.arc).toHaveBeenCalled();
+    chart.destroy(); track.destroy();
+  });
+
+  it('draws reordered tracks when normal indexing publishes sorted references', () => {
+    const target = canvas(), trackTarget = canvas(), track = new TrackChart(trackTarget as unknown as HTMLCanvasElement);
+    const chart = new StreamChart(target as unknown as HTMLCanvasElement, () => {}, p => track.progress(p), reordered => track.indexed(reordered));
+    chart.begin(view()); track.begin(chart.batches, chart.order);
+    chart.append(batch(4096, 0, true)); settle();
+    expect(chart.order.needsSort).toBe(false);
+    expect(chart.order.series.get(0)!.refs).toHaveLength(4096);
+    expect(trackTarget.ctx.lineTo.mock.calls.length).toBeGreaterThanOrEqual(4095);
+    expect(overlays[0].ctx.arc).toHaveBeenCalled();
+    chart.destroy(); track.destroy();
   });
 
   it('repaints existing geometry when the value domain changes and preserves bars', () => {

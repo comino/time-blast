@@ -23,6 +23,7 @@ export class RemoteCoordinatorClient implements CoordinatorClient {
   private commitId=0;
   private lastPrepared=-1;
   private lastAccepted=-1;
+  private deferredPrepare?:number;
   private timeout:ReturnType<typeof setTimeout>;
   constructor(endpoint:string,private options:CoordinatorOptions,private status:(s:AdapterStatus)=>void) {
     const url=new URL(endpoint,location.href);
@@ -51,12 +52,19 @@ export class RemoteCoordinatorClient implements CoordinatorClient {
           &&message.epoch===this.epoch&&message.revision>this.lastPrepared&&message.revision>this.lastAccepted
           &&message.revision===this.latest?.revision&&message.contextId===options.context.id) {
           this.lastPrepared=message.revision;
-          this.executor.observeDraft(this.latest!);
+          // A newer draft must not run ahead of an immutable submission awaiting
+          // ACCEPT. Keep one permission and admit it after that foreground starts.
+          if(this.committed)this.deferredPrepare=message.revision;
+          else this.executor.observeDraft(this.latest!);
         } else if (message.type==='ACCEPT'&&this.ready&&this.committed
           &&message.epoch===this.epoch&&message.commitId===this.commitId
           &&message.revision===this.committed.revision&&message.contextId===options.context.id) {
           this.lastAccepted=message.revision;
           const draft=this.committed; this.committed=undefined; this.executor.commit(draft);
+          const prepared=this.deferredPrepare;this.deferredPrepare=undefined;
+          if(prepared!==undefined&&prepared>draft.revision&&prepared===this.latest?.revision&&!this.composing) {
+            this.executor.observeDraft(this.latest!);
+          }
         } else if (message.type==='ERROR') {
           this.fail(String(message.message??'Remote coordinator failed').slice(0,1024));
         }
@@ -99,6 +107,7 @@ export class RemoteCoordinatorClient implements CoordinatorClient {
     // Enter supersedes foreground work immediately, even while ACCEPT is in flight.
     this.executor.cancelForeground();
     this.committed=undefined;
+    this.deferredPrepare=undefined;
     this.commitId++;
     if (text.length>MAX_PROMPT_CHARS) {
       this.draft(text);
@@ -111,7 +120,7 @@ export class RemoteCoordinatorClient implements CoordinatorClient {
     if (this.ready) this.send({type:'COMMIT',epoch:this.epoch,commitId:this.commitId,draft:this.committed});
   }
   cancel():void {
-    this.epoch++;this.committed=undefined;this.latest=undefined;this.lastPrepared=-1;this.lastAccepted=-1;
+    this.epoch++;this.committed=undefined;this.latest=undefined;this.lastPrepared=-1;this.lastAccepted=-1;this.deferredPrepare=undefined;
     this.executor.cancel();this.send({type:'CANCEL',epoch:this.epoch});
   }
   markDraw(id:string,at:number):void { this.executor.markDraw(id,at); }

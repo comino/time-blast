@@ -65,7 +65,7 @@ The track is a visualization of generated coordinates, not a navigation map. Glo
 
 Copy accounting:
 
-- Production ships DuckDB engine binaries as gzip assets (about 8–9 MB each) to fit the preview host's 25 MiB per-file limit. The selected engine is expanded into a temporary Blob URL once at startup, then revoked. This adds startup buffer allocation; query/result buffers do not go through this loader. Development loads the raw local engine asset. Production therefore also requires `DecompressionStream` support.
+- Production keeps gzip-packaged DuckDB engines (about 8–9 MB each). The public Caddy host supplies `Content-Encoding: gzip`, so fetch receives Wasm decoded by the browser's HTTP stack. The loader assembles a temporary Blob URL for engine startup, then revokes it; this remains a startup allocation. Hosts serving literal compressed bytes instead use the `DecompressionStream` fallback. Query/result buffers never pass through this loader. Development loads the raw local engine asset.
 - Parquet decoding, table materialization, DuckDB's Wasm/worker output, and Arrow IPC assembly are engine/browser boundaries, not end-to-end zero-copy guarantees.
 - Arrow-to-chart columns are views, retained by reference. No row-object expansion, JSON data conversion, full-table collection, or bulk passage through Rust is on this path.
 - Numeric validity checks walk a batch before publication. The chart walks values to draw/scale. Those are reads, not copies, and are profiling candidates.
@@ -91,7 +91,7 @@ An explicitly configured **draft endpoint** receives coalesced POSTs containing 
 Configure a base HTTP(S) URL:
 
 - `GET {base}/context` returns a validated `DatasetContext` snapshot.
-- `POST {base}/query` accepts `{id, sql, plan, context_id, priority}` and returns Arrow IPC streaming output with the columns above.
+- `POST {base}/query` accepts `{id, sql, plan, context_id, priority}` and returns uncompressed, little-endian Arrow IPC streaming output with the columns above. Other byte orders are rejected rather than copied into swapped buffers.
 - Set `X-Time-Blast-Completion: arrow-eos-v1`. Cross-origin servers must expose this header with `Access-Control-Expose-Headers` and permit the origin/methods through CORS.
 - **Withhold Arrow's explicit end-of-stream marker until database execution has succeeded.** The browser requires both explicit IPC EOS and clean HTTP completion. On database failure, abort/truncate the response instead of appending a false success marker. Early points remain marked incomplete on failure.
 - Return exactly one schema and one stream, with no duplicate/extra columns, dictionary messages, or bytes after EOS. Metadata messages are bounded to 64 KiB. The browser verifies message framing before passing the original result chunks into Arrow; only fragmented metadata needs a bounded assembly buffer. The success marker is the modern eight-byte Arrow EOS at a message boundary.
@@ -117,6 +117,12 @@ Server replies with `READY {version:1}`, `PREPARE {epoch,revision,contextId}`, o
 This reference coordinator client and remote adapters are implemented; production services are not included. The adapter placement tests exercise the four inference/database combinations under remote scheduling using controlled service doubles. They do not claim a deployed remote service or a production ClickHouse integration.
 
 Remote live translation still needs a matching `PREPARE` for each revision; the client advertises its requested policy in HELLO, but cannot make a server grant scheduling permission sooner. Below-threshold and composing drafts cannot be prepared even if the server sends PREPARE. Local SQL-only candidates remain reusable on ACCEPT without an unnecessary database round trip through the coordinator.
+
+When a COMMIT is awaiting ACCEPT, authorization to prepare a newer draft is retained
+but its execution waits. ACCEPT starts the committed request first, then admits the
+still-current authorized draft without rewinding draft state. This avoids losing
+preparation to a delayed acknowledgment or admitting newer speculative inference
+ahead of the waiting committed request.
 
 ## Measurement and remaining work
 

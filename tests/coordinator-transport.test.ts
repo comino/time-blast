@@ -173,6 +173,68 @@ describe('local coordinator transport cancellation', () => {
 });
 
 describe('remote coordinator reply binding', () => {
+  it.each([false,true])('defers newer preparation until an older ACCEPT and then reuses it (database speculation %s)', async speculation => {
+    const h=remote(harness('browser','browser',{liveTranslation:true,speculation}));
+    h.client.commit('Average speed by hour');const older=h.socket.last('COMMIT');
+    const text='Show wave height over the last 7 days';
+    h.client.draft(text);const newer=h.socket.last('DRAFT');
+    h.socket.receive(prepareReply(newer));await settle();
+    expect(h.inference.resolve).not.toHaveBeenCalled();
+    const observed=vi.mocked(h.inference.observeDraft).mock.calls.length;const beforeAccept=h.events.length;
+    h.socket.receive(acceptReply(older));await settle();
+    expect(h.events.filter(event=>event.type==='speculation').at(-1)).toMatchObject({state:speculation?'ready':'translated',text});
+    expect(vi.mocked(h.inference.observeDraft).mock.calls.slice(observed).map(([draft])=>draft.text)).toEqual([text]);
+    expect(h.events.slice(beforeAccept).some(event=>event.type==='speculation'&&(event.state==='idle'||event.state==='canceled'))).toBe(false);
+    h.client.commit(text);h.socket.receive(acceptReply(h.socket.last('COMMIT')));await settle();
+    expect(vi.mocked(h.inference.resolve).mock.calls.map(([draft])=>draft.text)).toEqual([older.draft.text,text]);
+    expect(h.compiler.compile).toHaveBeenCalledTimes(2);
+    expect(h.database.execute).toHaveBeenCalledTimes(2);
+    expect(h.events.some(event=>event.type==='trace'&&event.entry.event===(speculation?'prepared_result_promoted':'prepared_sql_promoted'))).toBe(true);
+  });
+
+  it('admits a newer authorized preparation timer after an older ACCEPT', async () => {
+    const h=remote();
+    h.client.commit('Average speed by hour');const older=h.socket.last('COMMIT');
+    const text='Show wave height over the last 7 days';
+    h.client.draft(text);h.socket.receive(prepareReply(h.socket.last('DRAFT')));
+    expect(h.inference.resolve).not.toHaveBeenCalled();
+    h.socket.receive(acceptReply(older));await settle();
+    expect(vi.mocked(h.inference.resolve).mock.calls.map(([draft])=>draft.text)).toEqual([older.draft.text,text]);
+    expect(h.events.filter(event=>event.type==='speculation').at(-1)).toMatchObject({state:'ready',text});
+  });
+
+  it('starts committed inference before a newer held translation and keeps that translation reusable',async()=>{
+    const base=harness('browser','browser',{liveTranslation:true,speculation:false});
+    const text='Show wave height over the last 7 days';let finish!:(result:InferenceResult)=>void;
+    base.inference.resolve=vi.fn((draft:Draft)=>draft.text===text
+      ?new Promise<InferenceResult>(resolve=>{finish=resolve;})
+      :Promise.resolve({plan,source:'template' as const}));
+    const h=remote(base);h.client.commit('Average speed by hour');const older=h.socket.last('COMMIT');
+    h.client.draft(text);h.socket.receive(prepareReply(h.socket.last('DRAFT')));await settle();
+    expect(h.inference.resolve).not.toHaveBeenCalled();
+    h.socket.receive(acceptReply(older));await settle();
+    expect(vi.mocked(h.inference.resolve).mock.calls.map(([draft])=>draft.text)).toEqual([older.draft.text,text]);
+    expect(h.database.execute).toHaveBeenCalledOnce();
+    expect(h.events.some(event=>event.type==='complete')).toBe(true);
+    finish({plan,source:'template'});await settle();
+    h.client.commit(text);h.socket.receive(acceptReply(h.socket.last('COMMIT')));await settle();
+    expect(h.inference.resolve).toHaveBeenCalledTimes(2);expect(h.database.execute).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps only the latest valid deferred permission and does not duplicate a newer commit',async()=>{
+    const h=remote(harness('browser','browser',{liveTranslation:true,speculation:false}));
+    h.client.commit('Average speed by hour');const older=h.socket.last('COMMIT');
+    h.client.draft('Show wave height over the last 7 days');const obsolete=h.socket.last('DRAFT');
+    h.socket.receive(prepareReply(obsolete));
+    h.client.draft('Compare vessel speeds over the last 24 hours');const latest=h.socket.last('DRAFT');
+    h.socket.receive(prepareReply(latest));h.socket.receive(prepareReply(obsolete));
+    h.client.commit(latest.draft.text);const newer=h.socket.last('COMMIT');
+    h.socket.receive(acceptReply(older));expect(h.inference.resolve).not.toHaveBeenCalled();
+    h.socket.receive(acceptReply(newer));await settle();
+    expect(vi.mocked(h.inference.resolve).mock.calls.map(([draft])=>draft.text)).toEqual([latest.draft.text]);
+    expect(h.database.execute).toHaveBeenCalledOnce();
+  });
+
   it('cancels old foreground inference at COMMIT before the newer ACCEPT arrives', async () => {
     const base = harness();
     let firstSignal!: AbortSignal;

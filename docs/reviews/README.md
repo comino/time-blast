@@ -1,5 +1,9 @@
 # Performance and correctness review
 
+The [second independent review](review-2.md) covers the subsequent live-translation,
+larger-dataset, runtime-recovery and drawing-settlement changes. The evidence
+below records the earlier review and its follow-up; its timings are historical.
+
 Three parallel reviewers examined rendering, inference/speculation, and database
 streaming/transport. Each first reproduced failures independently, then implemented
 focused fixes. A final cross-review of integration caught local commit supersession

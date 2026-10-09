@@ -67,6 +67,7 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   function updateCompletionState(): void {
     if (!current || completedId !== current.id || canceledId === current.id || awaitingStart) return;
     const complete = !total || chart.isSettled;
+    setBusy(!complete);
     setResultState(complete ? total ? 'COMPLETE' : 'EMPTY RESULT' : 'DRAWING', complete ? 'ready' : 'loading');
   }
 
@@ -258,7 +259,7 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
     }
     if (event.type === 'complete') {
       if (event.id !== current?.id || event.id === canceledId) return;
-      current.timing = event.timing; completedId = event.id; updateTiming(event.timing); setBusy(false); updateCompletionState();
+      current.timing = event.timing; completedId = event.id; updateTiming(event.timing); updateCompletionState();
       if (!total) { el('empty-title').textContent = 'No matching observations.'; el('empty-detail').textContent = 'Try a wider time window or another vessel.'; el('points').textContent = '0'; } return;
     }
     if (event.type === 'error') {

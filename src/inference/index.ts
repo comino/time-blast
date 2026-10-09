@@ -141,6 +141,11 @@ export class LocalInferenceAdapter implements InferenceAdapter {
     worker.onmessage = ({ data }: MessageEvent<WorkerResponse>) => {
       if (this.disposed||this.worker!==worker) return;
       if (data.type === 'status') { this.options.onStatus?.(data.status); return; }
+      // WebLLM can unload after device loss without crashing this worker. Invalidate
+      // that engine even when its request was canceled and has no pending listener.
+      if(data.type==='error'&&(data.name==='ModelNotLoadedError'||data.name==='DeviceLostError')) {
+        fail(data.message,data.name);return;
+      }
       const pending = this.pending.get(data.id);
       if (!pending) return;
       this.pending.delete(data.id);
@@ -152,12 +157,13 @@ export class LocalInferenceAdapter implements InferenceAdapter {
         pending.resolve(data.type === 'result' ? data.result : undefined);
       }
     };
-    const fail = (message: string) => {
+    const fail = (message: string, name='Error') => {
       if(this.disposed||this.worker!==worker)return;
       this.failure = message; this.ready = false;
-      this.resetWorker(new Error(message));
+      const error=new Error(message);error.name=name;
+      this.resetWorker(error);
       this.warming=undefined;
-      this.options.onStatus?.({ state: 'error', label: 'Local model worker stopped', detail: message });
+      this.options.onStatus?.({ state: 'error', label: 'Local model stopped', detail: message });
     };
     worker.onerror = (event) => fail(event.message || 'Unable to load the local model worker.');
     worker.onmessageerror = () => fail('Unable to decode a message from the local model worker.');

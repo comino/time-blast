@@ -294,7 +294,9 @@ export class TrackChart {
   }
   private render(deadline: number): boolean {
     if (!this.width || !this.height || !this.order || !Number.isFinite(this.minLat)) return false;
-    if (this.order.needsSort) return true;
+    // The indexer notifies us when sorted references are ready. Polling here can
+    // run forever if cancellation abandoned the sort while the primary is hidden.
+    if (this.order.needsSort) return false;
     if (this.repaint) { this.grid(); this.cursors.clear(); this.repaint = false; }
     const c = this.ctx; let work = 0;
     for (const [series, ordered] of this.order.series) {

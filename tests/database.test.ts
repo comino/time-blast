@@ -1,8 +1,12 @@
+import { createRequire } from 'node:module';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Float64, Int32, makeData, makeVector, Schema, Table, tableFromArrays, tableToIPC, vectorFromArray } from 'apache-arrow';
+import { Field, Float64, Int32, makeData, makeVector, Message, MessageHeader, MetadataVersion, Schema, Table, tableFromArrays, tableToIPC, vectorFromArray } from 'apache-arrow';
+import type { RecordBatch as IPCRecordBatch } from 'apache-arrow/ipc/metadata/message';
+import { Message as FlatbufferMessage } from 'apache-arrow/fb/message';
+import { Schema as FlatbufferSchema } from 'apache-arrow/fb/schema';
 import { accountRetainedBytes, QueryGate, retainArrowBatch, validateArrowSchema } from '../src/adapters/arrow';
 import { RemoteDatabaseAdapter, VerifiedArrowSource, parseDatasetContext } from '../src/adapters/remote-database';
-import type { DatasetContext, QueryRequest } from '../src/core/types';
+import type { ColumnBatch, DatasetContext, QueryRequest } from '../src/core/types';
 
 const context: DatasetContext = {
   id: 'fixture-v1', label: 'Test data', rowCount: 3, start: 0, end: 60_000,
@@ -19,6 +23,63 @@ const request = (signal = new AbortController().signal): QueryRequest => ({
 const eos = new Uint8Array([255, 255, 255, 255, 0, 0, 0, 0]);
 function byteStream(chunks: Uint8Array[]): ReadableStream<Uint8Array> {
   return new ReadableStream({ start(controller) { for (const chunk of chunks) controller.enqueue(chunk); controller.close(); } });
+}
+
+/** Rewrite only a tiny batch's metadata, preserving its original body and EOS. */
+function rewriteRecordBatch(update: (header: IPCRecordBatch, body: Uint8Array) => Uint8Array | void): Uint8Array {
+  const bytes = tableToIPC(fixture(), 'stream');
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const start = 8 + view.getInt32(4, true);
+  const metadataLength = view.getInt32(start + 4, true);
+  const message = Message.decode(bytes.subarray(start + 8, start + 8 + metadataLength));
+  if (!message.isRecordBatch()) throw new Error('Fixture must have one record batch');
+  const header = message.header();
+  const bodyStart = start + 8 + metadataLength;
+  const originalBody = bytes.subarray(bodyStart, bodyStart + message.bodyLength);
+  const body = update(header, originalBody) ?? originalBody;
+  const metadata = Message.encode(Message.from(header, body.byteLength));
+  const paddedLength = Math.ceil(metadata.length / 8) * 8;
+  const rest = bytes.subarray(bodyStart + message.bodyLength);
+  const output = new Uint8Array(start + 8 + paddedLength + body.length + rest.length);
+  output.set(bytes.subarray(0, start));
+  new DataView(output.buffer).setInt32(start, -1, true);
+  new DataView(output.buffer).setInt32(start + 4, paddedLength, true);
+  output.set(metadata, start + 8); output.set(body, start + 8 + paddedLength);
+  output.set(rest, start + 8 + paddedLength + body.length);
+  return output;
+}
+
+function endianFixture(bigEndian: boolean): Uint8Array {
+  // Use Arrow's own installed FlatBuffers builder without adding a runtime dependency.
+  const require = createRequire(import.meta.url);
+  const { Builder } = createRequire(require.resolve('apache-arrow'))('flatbuffers');
+  const table = tableFromArrays({ x: new Float64Array([0]), y: new Float64Array([10]), series: new Int32Array([0]) });
+  const original = tableToIPC(table, 'stream');
+  const recordStart = 8 + new DataView(original.buffer, original.byteOffset).getInt32(4, true);
+  const builder = new Builder(); builder.forceDefaults(true);
+  const fields = FlatbufferSchema.createFieldsVector(builder, table.schema.fields.map(field => Field.encode(builder, field)));
+  FlatbufferSchema.startSchema(builder); FlatbufferSchema.addFields(builder, fields);
+  FlatbufferSchema.addEndianness(builder, bigEndian ? 1 : 0);
+  const schema = FlatbufferSchema.endSchema(builder);
+  FlatbufferMessage.startMessage(builder); FlatbufferMessage.addVersion(builder, MetadataVersion.V5);
+  FlatbufferMessage.addHeaderType(builder, MessageHeader.Schema); FlatbufferMessage.addHeader(builder, schema);
+  FlatbufferMessage.finishMessageBuffer(builder, FlatbufferMessage.endMessage(builder));
+  const metadata: Uint8Array = builder.asUint8Array(), paddedLength = Math.ceil(metadata.length / 8) * 8;
+  const bytes = new Uint8Array(8 + paddedLength + original.length - recordStart);
+  const view = new DataView(bytes.buffer);
+  view.setInt32(0, -1, true); view.setInt32(4, paddedLength, true);
+  bytes.set(metadata, 8); bytes.set(original.subarray(recordStart), 8 + paddedLength);
+  if (bigEndian) {
+    const start = 8 + paddedLength, length = view.getInt32(start + 4, true);
+    const message = Message.decode(bytes.subarray(start + 8, start + 8 + length));
+    if (!message.isRecordBatch()) throw new Error('Fixture must have one record batch');
+    const bodyStart = start + 8 + length;
+    for (let column = 0; column < 3; column++) {
+      const buffer = message.header().buffers[column * 2 + 1], width = column === 2 ? 4 : 8;
+      bytes.subarray(bodyStart + buffer.offset, bodyStart + buffer.offset + width).reverse();
+    }
+  }
+  return bytes;
 }
 
 afterEach(() => { vi.unstubAllGlobals(); });
@@ -101,6 +162,102 @@ describe('single-query admission', () => {
 });
 
 describe('remote terminal verification', () => {
+  it.each([false, true])('checks schema byte order before decoding numeric values (big-endian: %s)', async bigEndian => {
+    const bytes = endianFixture(bigEndian);
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => url.endsWith('/context')
+      ? new Response(JSON.stringify(context)) : new Response(byteStream([bytes]), { headers: {
+        'Content-Type': 'application/vnd.apache.arrow.stream', 'X-Time-Blast-Completion': 'arrow-eos-v1',
+      } })));
+    const adapter = new RemoteDatabaseAdapter('https://example.invalid/db');
+    const batches: ColumnBatch[] = [];
+    const consume = async () => { for await (const batch of adapter.execute(request())) batches.push(batch); };
+    if (bigEndian) {
+      await expect(consume()).rejects.toThrow('little-endian');
+      expect(batches).toHaveLength(0);
+    } else {
+      await consume();
+      expect(batches).toHaveLength(1);
+      expect([...batches[0].y]).toEqual([10]);
+      expect(batches[0].y.buffer).toBe(bytes.buffer);
+    }
+    await adapter.dispose();
+  });
+
+  it.each([
+    ['all fields empty despite advertised rows', (header: IPCRecordBatch) => { for (const node of header.nodes) node.length = 0; }],
+    ['one longer field requiring decoder backfill', (header: IPCRecordBatch) => { header.nodes[0].length++; }],
+    ['one shorter field', (header: IPCRecordBatch) => { header.nodes[0].length--; }],
+    ['negative null count', (header: IPCRecordBatch) => { header.nodes[0].nullCount = -1; }],
+    ['nonzero null count', (header: IPCRecordBatch) => { header.nodes[0].nullCount = 1; }],
+    ['null count larger than the field', (header: IPCRecordBatch) => { header.nodes[0].nullCount = 4; }],
+    ['missing field node', (header: IPCRecordBatch) => { header.nodes.pop(); }],
+    ['extra field node', (header: IPCRecordBatch) => { header.nodes.push(header.nodes[0]); }],
+    ['missing buffer', (header: IPCRecordBatch) => { header.buffers.pop(); }],
+    ['extra buffer', (header: IPCRecordBatch) => { header.buffers.push(header.buffers[0]); }],
+    ['short value buffer', (header: IPCRecordBatch) => { header.buffers[1].length = 16; }],
+    ['value buffer past body end', (header: IPCRecordBatch) => { header.buffers[1].length = 1024; }],
+    ['partial numeric element', (header: IPCRecordBatch) => { header.buffers[5].length = 13; }],
+    ['negative body offset', (header: IPCRecordBatch) => { header.buffers[1].offset = -8; }],
+    ['misaligned body offset', (header: IPCRecordBatch) => { header.buffers[1].offset = 1; }],
+    ['buffer outside body', (header: IPCRecordBatch) => { header.buffers[1].offset = 1024; }],
+    ['validity buffer past body end', (header: IPCRecordBatch) => { header.buffers[0].length = 1024; }],
+  ])('rejects inconsistent batch metadata before yielding to Arrow: %s', async (_name, update) => {
+    const bytes = rewriteRecordBatch(update);
+    const source = new VerifiedArrowSource(byteStream([bytes]), new AbortController().signal);
+    await expect(source.next()).rejects.toThrow(/Arrow (field|record-batch|buffer)/);
+    await source.cancel();
+  });
+
+  it('rejects inconsistent field lengths through the real remote decoder path', async () => {
+    const bytes = rewriteRecordBatch(header => { for (const node of header.nodes) node.length = 0; });
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => url.endsWith('/context')
+      ? new Response(JSON.stringify(context)) : new Response(byteStream([bytes]), { headers: {
+        'Content-Type': 'application/vnd.apache.arrow.stream', 'X-Time-Blast-Completion': 'arrow-eos-v1',
+      } })));
+    const adapter = new RemoteDatabaseAdapter('https://example.invalid/db');
+    let points = 0;
+    await expect((async () => { for await (const batch of adapter.execute(request())) points += batch.length; })())
+      .rejects.toThrow('inconsistent Arrow field lengths');
+    expect(points).toBe(0);
+    await adapter.dispose();
+  });
+
+  it('accepts logical Int32 buffer lengths and optional all-valid bitmaps', async () => {
+    const bytes = rewriteRecordBatch(header => {
+      // The fixture's first timestamp begins with 0x00, but a null count of zero
+      // makes the optional validity buffer immaterial under the Arrow contract.
+      header.buffers[0].length = 1;
+      header.buffers[5].length = 3 * 4;
+    });
+    const source = new VerifiedArrowSource(byteStream([bytes]), new AbortController().signal);
+    await source.finish(); await source.cancel();
+  });
+
+  it('decodes 64-byte-padded primitive buffers without copying result columns', async () => {
+    const bytes = rewriteRecordBatch((header, original) => {
+      const padded = new Uint8Array(header.nodes.length * 64);
+      for (let i = 0; i < header.nodes.length; i++) {
+        const bitmap = header.buffers[i * 2], values = header.buffers[i * 2 + 1];
+        padded.set(original.subarray(values.offset, values.offset + values.length), i * 64);
+        bitmap.offset = values.offset = i * 64; values.length = 64;
+      }
+      return padded;
+    });
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => url.endsWith('/context')
+      ? new Response(JSON.stringify(context)) : new Response(byteStream([bytes]), { headers: {
+        'Content-Type': 'application/vnd.apache.arrow.stream', 'X-Time-Blast-Completion': 'arrow-eos-v1',
+      } })));
+    const adapter = new RemoteDatabaseAdapter('https://example.invalid/db');
+    const batches = [];
+    for await (const batch of adapter.execute(request())) batches.push(batch);
+    expect(batches).toHaveLength(1);
+    expect([...batches[0].y]).toEqual([4, 5, 6]);
+    expect(batches[0].x.buffer).toBe(bytes.buffer);
+    expect(batches[0].y.buffer).toBe(bytes.buffer);
+    expect(batches[0].series.buffer).toBe(bytes.buffer);
+    await adapter.dispose();
+  });
+
   it('passes chunks through unchanged and validates an EOS split across reads', async () => {
     const bytes = tableToIPC(fixture(), 'stream');
     const first = bytes.subarray(0, bytes.length - 8);

@@ -1,4 +1,4 @@
-import { Message, RecordBatchReader } from 'apache-arrow';
+import { Message, MetadataVersion, RecordBatchReader } from 'apache-arrow';
 import type { AdapterStatus, ColumnBatch, DatabaseAdapter, DatasetContext, QueryRequest } from '../core/types';
 import { abortError, accountRetainedBytes, checkAbort, MAX_RESULT_BYTES, MAX_RESULT_ROWS, QueryGate, retainArrowBatch, validateArrowSchema } from './arrow';
 
@@ -9,6 +9,7 @@ const COMPLETION_CONTRACT = 'arrow-eos-v1';
  * GET /context -> immutable DatasetContext JSON.
  * POST /query -> {id, sql, plan, context_id, priority}; response is uncompressed
  * application/vnd.apache.arrow.stream with X-Time-Blast-Completion: arrow-eos-v1.
+ * Primitive result buffers must be little-endian; big-endian schemas are rejected.
  * The bridge MUST withhold the final 8-byte Arrow EOS until source query success,
  * abort/truncate without EOS on any late failure, and close cleanly after EOS.
  * CORS deployments must expose that header. HTTP 200/header alone is NOT success.
@@ -113,6 +114,7 @@ class ArrowStreamFraming {
   private metadataBytes = 0;
   private bodyBytes = 0;
   private schemaSeen = false;
+  private columnWidths: number[] = [];
   private rows = 0;
 
   push(chunk: Uint8Array): void {
@@ -166,12 +168,41 @@ class ArrowStreamFraming {
     }
     if (message.isSchema()) {
       if (this.schemaSeen || message.bodyLength !== 0) throw new Error('Database stream must contain exactly one Arrow schema');
-      validateArrowSchema(message.header());
+      // Arrow 17 discards schema endianness without converting result values.
+      // Refuse unsupported byte order before its schema decoder loses that flag.
+      const metadata = new ArrowMetadata(bytes);
+      const endianness = metadata.field(metadata.header(), 0, 2, true);
+      if (endianness && metadata.view.getInt16(endianness, true) !== 0) {
+        throw new Error('Database stream must use little-endian Arrow buffers');
+      }
+      const schema = message.header();
+      validateArrowSchema(schema);
+      this.columnWidths = schema.fields.map(field => field.name === 'series' ? 4 : 8);
       this.schemaSeen = true;
     } else if (message.isRecordBatch() && this.schemaSeen) {
-      const length = message.header().length;
+      // Arrow decodes these vectors before constructing columns. Check their
+      // FlatBuffer counts first, so even corrupt counts cannot allocate freely.
+      validateRecordBatchVectors(bytes, this.columnWidths.length, message.version);
+      const { length, nodes, buffers } = message.header();
       if (!Number.isSafeInteger(length) || length < 0 || (this.rows += length) > MAX_RESULT_ROWS) {
         throw new Error('Query exceeded the result row budget');
+      }
+      for (let i = 0; i < this.columnWidths.length; i++) {
+        if (nodes[i].length !== length || nodes[i].nullCount !== 0) {
+          throw new Error('Database stream has inconsistent Arrow field lengths or null counts');
+        }
+        for (let bufferIndex = 0; bufferIndex < 2; bufferIndex++) {
+          const buffer = buffers[i * 2 + bufferIndex], optional = bufferIndex === 0;
+          const required = optional ? Math.ceil(length / 8) : length * this.columnWidths[i];
+          // IPC lengths may include alignment padding. The body/transport caps
+          // bound that storage; primitive columns remain views of the body.
+          const sizeValid = optional && buffer.length === 0 ||
+            buffer.length >= required && (optional || buffer.length % this.columnWidths[i] === 0);
+          if (!Number.isSafeInteger(buffer.offset) || buffer.offset < 0 || buffer.offset % 8 !== 0 ||
+            !Number.isSafeInteger(buffer.length) || !sizeValid || buffer.offset + buffer.length > message.bodyLength) {
+            throw new Error('Database stream has invalid Arrow buffer sizes or body ranges');
+          }
+        }
       }
     } else throw new Error('Database stream contains an unsupported Arrow message');
     this.bodyBytes = message.bodyLength;
@@ -181,6 +212,50 @@ class ArrowStreamFraming {
   finish(): void {
     if (this.state !== 'done') throw new Error('Database stream ended without a verified success terminator');
   }
+}
+
+/** Bound the two primitive RecordBatch vectors before Arrow expands them into
+ * objects. A metadata byte cap alone does not bound corrupt FlatBuffer counts. */
+function validateRecordBatchVectors(bytes: Uint8Array, columns: number, version: MetadataVersion): void {
+  const metadata = new ArrowMetadata(bytes), batch = metadata.header();
+  for (let index = 1; index <= 2; index++) {
+    const count = columns * index, stride = index === 2 && version < MetadataVersion.V4 ? 24 : 16;
+    const vector = metadata.indirect(metadata.field(batch, index));
+    if (metadata.view.getUint32(vector, true) !== count) {
+      throw new Error('Database stream has invalid Arrow record-batch metadata');
+    }
+    metadata.range(vector + 4, count * stride);
+  }
+}
+
+/** Bounded access to the few FlatBuffer fields needed before Arrow decoding. */
+class ArrowMetadata {
+  readonly view: DataView;
+  constructor(bytes: Uint8Array) { this.view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength); }
+  private invalid(): Error { return new Error('Database stream has invalid Arrow metadata'); }
+  range(offset: number, length: number): void {
+    if (!Number.isSafeInteger(offset) || offset < 0 || offset + length > this.view.byteLength) throw this.invalid();
+  }
+  indirect(offset: number): number {
+    this.range(offset, 4);
+    const target = offset + this.view.getUint32(offset, true);
+    if (target <= offset) throw this.invalid();
+    this.range(target, 4); return target;
+  }
+  field(table: number, index: number, width = 4, optional = false): number {
+    this.range(table, 4);
+    const vtable = table - this.view.getInt32(table, true);
+    this.range(vtable, 4);
+    const vtableLength = this.view.getUint16(vtable, true), tableLength = this.view.getUint16(vtable + 2, true);
+    this.range(vtable, vtableLength); this.range(table, tableLength);
+    const slot = 4 + index * 2;
+    const offset = vtableLength >= slot + 2 ? this.view.getUint16(vtable + slot, true) : 0;
+    if (tableLength < 4) throw this.invalid();
+    if (!offset && optional) return 0;
+    if (offset < 4 || offset + width > tableLength) throw this.invalid();
+    return table + offset;
+  }
+  header(): number { return this.indirect(this.field(this.indirect(0), 2)); }
 }
 
 /** Strict single-stream framing and clean HTTP completion; result chunks are not copied. */
