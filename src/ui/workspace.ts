@@ -24,10 +24,16 @@ export class CanvasWorkspace {
   private gesture?: { pointer: number; startX: number; startY: number; x: number; y: number; card?: ResultCard; resize: boolean };
   private readonly controller = new AbortController();
   private noticeTimer?: ReturnType<typeof setTimeout>;
+  private fitAfterMobileExpansion = false;
 
   constructor(private root: HTMLElement, private callbacks: WorkspaceCallbacks) {
     this.viewport = this.el('board-viewport'); this.world = this.el('board-world');
-    this.observer = new ResizeObserver(() => { this.width = this.viewport.clientWidth || 1; this.height = this.viewport.clientHeight || 1; this.paintCamera(); });
+    this.observer = new ResizeObserver(() => {
+      this.width = this.viewport.clientWidth || 1; this.height = this.viewport.clientHeight || 1;
+      const fit = this.fitAfterMobileExpansion && this.cards.length > 0;
+      this.fitAfterMobileExpansion = false;
+      if (fit) this.fit(); else this.paintCamera();
+    });
     this.observer.observe(this.viewport); this.width = this.viewport.clientWidth || 1; this.height = this.viewport.clientHeight || 1;
     const signal = this.controller.signal;
     const action = (name: string, fn: () => void) => root.querySelector(`[data-action="${name}"]`)!.addEventListener('click', fn, { signal });
@@ -57,15 +63,20 @@ export class CanvasWorkspace {
     });
     const columns = this.width >= 900 ? 2 : 1;
     card.width = Math.min(548, Math.max(280, (this.width - 24 * (columns + 1)) / columns));
-    card.height = matchMedia('(max-width: 650px)').matches
-      ? Math.min(420, Math.max(380, this.height - 48))
+    const mobile = matchMedia('(max-width: 650px)').matches;
+    card.height = mobile
+      ? 520
       : Math.min(560, Math.max(520, this.height - 48));
     let slot = 0;
     do {
       card.x = 24 + slot % columns * (card.width + 24); card.y = 24 + Math.floor(slot / columns) * (card.height + 24); slot++;
     } while (this.cards.some(c => card.x < c.x + c.width + 12 && card.x + card.width + 12 > c.x && card.y < c.y + c.height + 12 && card.y + card.height + 12 > c.y));
     card.layout();
-    this.cards.push(card); this.cardBuffers.set(card, new Set()); this.select(card); this.focus(card);
+    this.cards.push(card); this.cardBuffers.set(card, new Set());
+    // A populated mobile canvas gains vertical room via CSS. Its existing
+    // ResizeObserver fits once after that change without a synchronous layout read.
+    if (mobile && this.cards.length === 1 && this.height < card.height + 48) this.fitAfterMobileExpansion = true;
+    this.select(card); this.focus(card);
     this.updateCount(); return card;
   }
   submit(prompt: string): void {
@@ -225,7 +236,7 @@ export class CanvasWorkspace {
   private pointerMove(e: PointerEvent): void {
     const g = this.gesture; if (!g || g.pointer !== e.pointerId) return;
     const dx = e.clientX - g.startX, dy = e.clientY - g.startY;
-    if (g.card) { if (g.resize) { g.card.width = Math.max(280, Math.min(1000, g.x + dx / this.scale)); g.card.height = Math.max(350, Math.min(760, g.y + dy / this.scale)); } else { g.card.x = g.x + dx / this.scale; g.card.y = g.y + dy / this.scale; } g.card.layout(); }
+    if (g.card) { if (g.resize) { g.card.width = Math.max(280, Math.min(1000, g.x + dx / this.scale)); g.card.height = Math.max(g.card.minimumHeight, Math.min(760, g.y + dy / this.scale)); } else { g.card.x = g.x + dx / this.scale; g.card.y = g.y + dy / this.scale; } g.card.layout(); }
     else { this.x = g.x + dx; this.y = g.y + dy; }
     this.paintCamera();
   }

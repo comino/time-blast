@@ -20,13 +20,13 @@ const markup = `
     <div class="track-surface advanced-surface" data-card-el="track-wrap" hidden><canvas data-card-el="track" aria-label="Query visualization" role="img"></canvas><div class="view-controls" data-card-el="view-controls" hidden><label data-card-el="rotation-wrap" hidden>Rotate <input data-card-el="rotation" aria-label="Surface rotation" type="range" min="-180" max="180" value="-35" step="5"/></label><label data-card-el="playback-wrap" hidden><button type="button" data-card-action="playback">Play voyage</button><input data-card-el="playback" aria-label="Voyage time" type="range" min="0" max="1000" value="1000" step="1"/><span data-card-el="playback-time"></span></label></div><div class="track-empty" data-card-el="track-empty" hidden>No coordinates in this result.</div></div>
     <div class="data-table-wrap" data-card-el="table-wrap" hidden><table class="data-table"><thead><tr><th>TIME · UTC</th><th>SERIES</th><th data-card-el="value-header">VALUE</th></tr></thead><tbody data-card-el="table-body"></tbody></table><p>First 12 points. Export the complete result below.</p></div>
     <div class="plot-empty card-loading" data-card-el="plot-empty"><div class="loading-orb"><i></i><i></i><i></i><b></b></div><span data-card-el="empty-title">Following your question</span><small data-card-el="empty-detail">Preparing a validated query.</small></div>
+  <div class="sql-panel" data-card-el="sql-panel" hidden><p class="inference-detail" data-card-el="inference-detail" hidden></p><div data-card-el="model-response-detail" hidden><p data-card-el="model-response-label"></p><pre data-card-el="model-response"></pre></div><pre data-card-el="sql">A validated query will appear here.</pre><p data-card-el="query-meta"></p><p data-card-el="latency-detail">First point draw submitted</p></div>
   </div>
   <p class="coverage-note" data-card-el="coverage-note" hidden></p>
   <p class="view-caption" data-card-el="view-caption" hidden></p><div class="plot-bottom"><div class="legend" data-card-el="legend"></div><span class="mono" data-card-el="time-range">UTC</span></div>
   <div class="card-stats"><div><span>MEAN <small data-card-el="mean-unit"></small></span><strong data-card-el="mean">—</strong></div><div><span>POINTS</span><strong data-card-el="points">—</strong></div><div><span>RANGE</span><strong data-card-el="range">—</strong></div><div><span>RUN → DRAW</span><strong data-card-el="latency">—</strong></div></div>
   <div class="card-timings" aria-label="Query latency breakdown"><div title="Time spent resolving the query intent, including model queueing and remote transport when used"><span data-card-el="inference-label">TRANSLATION</span><strong data-card-el="inference-latency">—</strong></div><div title="Database request to first nonempty batch, including queueing and decoding"><span data-card-el="database-first-label">DB → FIRST</span><strong data-card-el="database-first-latency">—</strong></div><div title="Database request to stream completion; includes first-batch time and streaming"><span data-card-el="database-label">DB TOTAL</span><strong data-card-el="database-latency">—</strong></div><div title="First batch delivered to this card to first drawing submission, including renderer readiness"><span>DATA → DRAW</span><strong data-card-el="render-latency">—</strong></div></div>
   <footer class="card-footer result-footer"><button class="detail-button" data-card-action="sql" aria-expanded="false">${icon('<path d="m8 7-5 5 5 5m8-10 5 5-5 5"/>')}<span>Query details</span><span class="source-pill" data-card-el="source">—</span></button><span class="card-batch-count" data-card-el="batch-count">Waiting for data</span><div class="result-actions"><button class="text-button cancel-button" data-card-action="cancel">Stop query</button><button class="icon-button" data-card-action="export" aria-label="Export result as CSV" title="Export result as CSV" disabled>${icon('<path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4"/>')}</button></div></footer>
-  <div class="sql-panel" data-card-el="sql-panel" hidden><p class="inference-detail" data-card-el="inference-detail" hidden></p><div data-card-el="model-response-detail" hidden><p data-card-el="model-response-label"></p><pre data-card-el="model-response"></pre></div><pre data-card-el="sql">A validated query will appear here.</pre><p data-card-el="query-meta"></p><p data-card-el="latency-detail">First point draw submitted</p></div>
   <button class="card-resize-handle" aria-label="Resize view" title="Drag to resize">◢</button>`;
 // Parse static chrome once during module warmup, outside the Enter path.
 const template = document.createElement('template');
@@ -99,7 +99,10 @@ export class ResultCard {
   get busy(): boolean { return !this.stopped && (!this.completeReceived || !this.settled); }
   private get settled(): boolean { return !this.total || this.chart.isSettled && (!isAdvanced(this.mode) || !this.visible || this.rendererError || !this.rendererLoading && !!this.renderer?.isSettled); }
   get batches(): readonly ColumnBatch[] { return this.chart.batches; }
-  layout(): void { Object.assign(this.element.style, { left: `${this.x}px`, top: `${this.y}px`, width: `${this.width}px`, height: `${this.height}px` }); }
+  // Matrix projections need room below their controls and above the category key.
+  // Keep the minimum in the shared geometry model, not only in CSS.
+  get minimumHeight(): number { return definition(this.mode).family === 'matrix' ? 520 : 350; }
+  layout(): void { this.height = Math.max(this.minimumHeight, this.height); Object.assign(this.element.style, { left: `${this.x}px`, top: `${this.y}px`, width: `${this.width}px`, height: `${this.height}px` }); }
   select(selected: boolean): void {
     this.element.dataset.selected = String(selected);
     for (const [name, e] of this.elements) selected ? e.setAttribute('data-el', name) : e.removeAttribute('data-el');
@@ -142,8 +145,9 @@ export class ResultCard {
     if (this.stopped || this.destroyed) return;
     this.view = view;
     const metric = METRIC_LABELS[view.plan.metric];
-    this.part('plot-title').textContent = `${metric.name}${view.plan.splitByVessel ? ' across the fleet' : ''}`;
-    this.part('plot-subtitle').textContent = `${({ avg: 'Average', min: 'Minimum', max: 'Maximum' })[view.plan.aggregate]} · ${view.plan.bucketMinutes} min buckets · ${windowLabel(view.plan.windowHours)}`;
+    const scope = view.plan.vessel !== null ? view.context.vessels[view.plan.vessel] : view.plan.splitByVessel ? 'by vessel' : 'fleet combined';
+    this.part('plot-title').textContent = `${metric.name} · ${scope}`;
+    this.part('plot-subtitle').textContent = `${({ avg: 'Average', min: 'Minimum', max: 'Maximum' })[view.plan.aggregate]} · ${view.plan.bucketMinutes} min buckets · last ${windowLabel(view.plan.windowHours)}`;
     this.part('time-range').textContent = `${dates.format(Math.max(view.context.start, view.context.end - view.plan.windowHours * 3_600_000))} — ${dates.format(view.context.end)} · UTC`;
     const availableHours = (view.context.end - view.context.start) / 3_600_000;
     const coverage = this.part('coverage-note');
@@ -225,6 +229,7 @@ export class ResultCard {
     if (mode !== 'table') this.lastChart = mode;
     if (this.mode !== mode) this.stopPlayback();
     this.mode = mode; this.explicitMode ||= explicit;
+    if (this.height < this.minimumHeight) this.layout();
     this.part<HTMLSelectElement>('representation').value = mode;
     this.part('plot-container').hidden = !isPrimary(mode); this.part('track-wrap').hidden = !isAdvanced(mode); this.part('table-wrap').hidden = mode !== 'table';
     this.part('view-caption').textContent = definition(mode).caption; this.part('view-caption').hidden = !definition(mode).caption;

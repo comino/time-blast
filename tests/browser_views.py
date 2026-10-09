@@ -53,9 +53,14 @@ def cold_import_lifecycle(browser, base_url, errors):
     page.on('pageerror', lambda error: errors.append(str(error)))
     quiet_vite(page)
     held = []
+    def hold_renderer(route):
+        held.append(route)
+        # A Playwright request event can arrive before its route callback runs.
+        # Signal the interception itself, while leaving the module blocked.
+        page.evaluate('(count)=>window.coldRendererIntercepts=count', len(held))
     page.route('**/views-harness', lambda route: route.fulfill(
         status=200, content_type='text/html', body='<div id="root"></div>'))
-    page.route('**/matrix-renderer.ts*', lambda route: held.append(route))
+    page.route('**/matrix-renderer.ts*', hold_renderer)
     page.goto(base_url.rstrip('/') + '/views-harness')
     with page.expect_request('**/matrix-renderer.ts*'):
         state = page.evaluate("""async () => {
@@ -81,9 +86,12 @@ def cold_import_lifecycle(browser, base_url, errors):
             loading:!document.querySelector('[data-el="plot-empty"]').hidden};
         }""")
     assert state == {'state': 'DRAWING', 'draws': 0, 'loading': True}, state
-    assert len(held) == 1, 'Cold renderer module must load only once'
+    page.wait_for_function('window.coldRendererIntercepts>=1')
+    assert len(held) == 1, f'Cold renderer module must load only once; intercepted {len(held)}'
+    assert page.evaluate('coldCalls.draws') == [], 'A held module must not report a draw'
     held[0].continue_()
     settled(page)
+    assert len(held) == 1, f'Cold renderer module must load only once; intercepted {len(held)}'
     assert page.evaluate('coldCalls.draws') == ['cold-matrix']
     assert page.locator('[data-el="plot-empty"]').is_hidden()
     assert page.locator('[data-el="mean"]').inner_text() == '20'

@@ -93,6 +93,20 @@ The correction update passes **427 unit tests**, TypeScript checking and the pro
 
 [Native real-model diagnostics](benchmarks/native-inference-evaluation-2026-10-09.json) record 18 exploratory cases with pinned llama.cpp ARM64 binaries, official Qwen GGUF weights, prompt/schema texts, hashes, raw responses and expected plans. The 0.5B model produced structurally valid but wrong plans for the reported minute/seven-day question under several prompts. A correction following a **synthetically supplied refusal** still returned the wrong bucket/window. The 1.5B model handled the two supported examples but silently dropped a metric from an unsupported combination. No prompt rewrite or model upgrade was shipped on the strength of these trials. GGUF quantization and native grammar differ from WebLLM/MLC: these observations neither reproduce the browser refusal nor establish browser performance or accuracy.
 
+## Mobile matrix geometry and interpreted query scope
+
+The later reliability pass fixes the compact mobile surface limitation described above. Matrix cards now retain a 520-pixel minimum height; a populated mobile canvas gains enough vertical room to fit the first card. Its existing resize observer fits the camera after that expansion, without adding per-batch layout reads. Query details cover only the chart body, leaving statistics, stage timings and controls accessible. Chart headings also identify the interpreted vessel filter or fleet grouping, rather than calling every grouped result a fleet comparison.
+
+`tests/browser_mobile_matrix.py` exercises real DuckDB surface results at 390×844, including the 710-day requested window and its coverage note. The projection height increased from approximately one pixel to 98 pixels in the ordinary case and 64 pixels with the coverage note. Screenshots were visually inspected. The workspace regression and five additional viewport geometry checks from 320×568 through 651×800 pass without page errors or horizontal page overflow. These are layout checks, not latency measurements.
+
+The ten-view browser test also had an independent test-harness race: Playwright's request event can arrive before the Python interception callback records its held import. The test now waits for that explicit interception signal, verifies there is still no drawing, then releases the renderer and checks completion. Eighty isolated repetitions and the full real-DuckDB view suite pass; application rendering behavior was not changed to accommodate the test.
+
+```sh
+python3 tests/browser_mobile_matrix.py
+python3 tests/browser_workspace.py
+python3 tests/browser_views.py
+```
+
 ## Warm preparation comparison
 
 Current default is local WebGPU inference, with templates bypassed. The browser live-query and public deployment scripts deliberately remove WebGPU availability, submit known template wording, and require a model error with no data or database timings. They then explicitly select templates for the existing real DuckDB checks. This verifies absence of silent fallback, not successful model generation. The historical template benchmark below requires an explicit template/Auto selection.
