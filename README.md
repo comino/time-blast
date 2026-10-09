@@ -10,7 +10,59 @@ The application runs in the browser. Inference and database execution can each r
 
 **Data-path requirement:** stream columnar buffers all the way into the chart, draw on the first complete timestamp/value point, and eliminate every avoidable copy. No full-result collection, per-row object conversion, or whole-workspace save may gate the first mark. Account explicitly for engine, browser, and GPU boundaries that still require copying.
 
-**Status:** research and architecture repository. No application, protocol implementation, or measured performance results yet. The choices below are proposals to test. Capability references checked on October 9, 2026; pin actual versions when implementing.
+**Status:** working browser prototype. Embedded DuckDB-Wasm, a Rust/Wasm query compiler, real WebLLM inference, draft transport, speculative execution, and streaming canvas charts are implemented. Remote adapters and their contracts are included; remote services and ClickHouse execution are the next milestone. The design notes below also contain experiments that are not implemented yet.
+
+## Run it
+
+```sh
+pnpm install --frozen-lockfile
+pnpm dev
+```
+
+Open the printed localhost URL. Use Node 22.12+ (or Node 20.19+). The checked-in Wasm compiler and synthetic Parquet dataset make Rust/Python unnecessary to run the app.
+
+The app loads **120,960 synthetic vessel readings** into DuckDB. Start typing **“Compare vessel speeds over the last 24 hours”**, wait for the preparation indicator, then press Enter. The chart reports measured commit-to-first-draw submission, whether prepared data was reused, and the actual point/batch count. Query details expose the generated SQL. This measures software, not photons.
+
+Auto inference uses conservative exact templates for recognized requests and a local **Qwen2.5-0.5B** WebGPU model for other wording. Select **Local language model · WebGPU** in Runtime to force real inference even for a template. Initial model download is hundreds of megabytes; loading and model availability are visible. Unsupported WebGPU leaves exact templates usable in Auto mode. Templates are explicitly identified as templates, never presented as model output.
+
+Try “Average speed by hour”, “Maximum wind by hour”, or “Show wave height over the last 7 days”. The narrow intent supports four metrics, avg/min/max, fixed time buckets, trailing windows up to 14 days, and vessel filtering/grouping. Model output is validated and compiled from allowlisted fields; arbitrary generated SQL is never executed. A valid plan can still misunderstand natural language—inspect its meaning before relying on it.
+
+Default execution stays in your browser. Assets and model weights must download initially; offline-first installation is not implemented. Runtime settings independently select browser or remote coordination, inference, and database adapters. They require services implementing [the prototype contracts](docs/prototype.md); entering an OpenRouter or ClickHouse URL directly does not provide those contracts. No remote API keys are bundled or stored.
+
+![The prototype showing real query results from the bundled synthetic dataset](docs/screenshots/prototype.png)
+
+## What is implemented
+
+- Every input revision crosses a local MessageChannel immediately, then reaches the inference worker. A complete immutable snapshot accompanies Enter.
+- After a 180 ms typing pause, one bounded speculative job resolves the current draft and may query DuckDB. Matching work is promoted without executing it again; stale work is canceled. This predicts the current draft, not future words.
+- Rust/Wasm compiles the intent; DuckDB runs in its own worker; WebLLM runs in another worker. Heavy engines are initialized before submission where possible.
+- Arrow numeric columns retain their backing buffers into Canvas2D. The first marker is submitted on the first batch before subsequent chart work. Local data does not get encoded for a fictitious network boundary.
+- Cancellation epochs, exact question/snapshot matching, per-query database connections, bounded queues, staged-memory limits, and explicit failure/completion protect speculation.
+- A chat and canvas interface includes time series, a schematic of generated vessel tracks, a small table view, SQL details, CSV export, and an event trace.
+
+The current aggregation uses `GROUP BY` and `ORDER BY`: database work may finish before its first result batch becomes available. The renderer consumes batches incrementally, but it cannot make a blocking SQL operator produce a final point early. The next substantial latency improvement is an ordered/time-tiled query path. Likewise, no browser can promise literal end-to-end zero-copy through DuckDB's worker/IPC boundary. See [implementation, limits, and copy accounting](docs/prototype.md).
+
+## Verify or rebuild
+
+```sh
+pnpm test
+pnpm build
+# Only when changing the Rust compiler:
+rustup target add wasm32-unknown-unknown
+pnpm build:wasm
+cargo test --manifest-path crates/query-core/Cargo.toml
+# With Vite running and Python Playwright + Chromium available:
+python3 tests/browser_database.py
+python3 tests/browser_ui.py
+# Requires a real available WebGPU adapter; downloads model weights:
+python3 tests/browser_inference.py
+```
+
+`pnpm-lock.yaml` pins the JavaScript runtime dependencies. `scripts/generate-dataset.py` records how to regenerate the deterministic input. Tests cover buffer identity, streaming termination, cancellation races, promotion, intent validation, and actual compiled Wasm.
+
+Initial [warm template benchmark](docs/benchmark-browser.json), 20 trials per mode: median commit-to-draw submission **26.1 ms without speculation**, **7.3 ms for a prepared hit**. The latter waits for staging before Enter. This is a small headless-browser experiment, not an inference or photon benchmark; [method and limitations](docs/verification.md).
+
+**Verification limit:** the development host's normal Chromium has no WebGPU adapter. An explicit software-WebGPU run loaded real Qwen weights but timed out after 420 seconds without completing a generated plan. DuckDB, templates, the production build, and rendering were browser-tested; a completed hardware-WebGPU inference still needs verification on a GPU-equipped device. See [verification notes](docs/verification.md).
 
 ## The central idea
 
@@ -82,8 +134,8 @@ The next research pass develops the implementation choices:
 - [Rust service and channels](docs/rust-service-and-channels.md): browser TCP limits, socket libraries, WebSocket/WebTransport, and ClickHouse relay design.
 - [Canvas reference](docs/canvas-reference.md): source-based findings from the existing prototype and interactions to preserve.
 
-## First thing to build
+## Next experiments
 
-A controlled latency rig: an input box, a deterministic query adapter, a generated time series, and a canvas that draws one point. Trace every boundary. Prove the incremental ownership/rendering contract with embedded DuckDB-Wasm, then carry it into a Rust service streaming ClickHouse. Add inference and replay identical typing sessions through speculation on and off. Keep the order of individual spikes flexible; no application build begins during the current idea-gathering phase.
+Extend the browser rig with recorded typing replay and latency distributions, then carry its contracts into a Rust service streaming ClickHouse. Compare speculation on/off and exact-template/local-model/remote-model paths using identical requests. Measure kernel or socket changes before declaring a winner.
 
 The first milestone is an honest latency distribution and a correct cancellation/promotion model. The next is a query whose result is ready before Enter. After that, optimize every remaining queue, copy, allocation, batch, and missed frame supported by the measurements.

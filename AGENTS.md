@@ -12,4 +12,4 @@ Time-blast minimizes natural-language request commit to the first correct visibl
 - Pin engine/browser versions and verify optional streaming, cache, snapshot, and cancellation capabilities.
 - Keep benchmark artifacts reproducible; avoid committing credentials, private datasets, or model weights.
 
-This repository currently contains architecture and experiment plans only. There is no application build or test command yet.
+Run `pnpm test` and `pnpm build` for implementation changes. After changing the Rust compiler run `pnpm build:wasm` and `cargo test --manifest-path crates/query-core/Cargo.toml`; commit the rebuilt `public/wasm/query-core.wasm`. Browser smoke scripts in `tests/` require a running local server and Python Playwright. The prototype implementation and remote contracts are described in `docs/prototype.md`; older design notes also include future proposals.

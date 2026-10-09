@@ -1,0 +1,136 @@
+{
+  "recorded_at_utc": "2026-10-09T18:34:37.580765+00:00",
+  "url": "http://localhost:5173",
+  "metric": "App commit timestamp to first Canvas point draw submission (first_draw_submitted trace)",
+  "trace_rounding_ms": 0.01,
+  "question": "Compare vessel speeds by hour over the last 24 hours",
+  "points_per_result": 144,
+  "dataset": {
+    "id": "synthetic-vessels-2026-09-v1",
+    "label": "North Atlantic \u00b7 synthetic vessel telemetry",
+    "rowCount": 120960,
+    "start": 1788220800000,
+    "end": 1789430400000,
+    "vessels": [
+      "Aurora",
+      "Meridian",
+      "Kestrel",
+      "Solstice",
+      "Atlas",
+      "Nomad"
+    ],
+    "description": "Six fictional vessels, one reading per minute, 1\u201314 September 2026 UTC. Deterministic synthetic data; speed and wind in knots, wave height in metres, water temperature in \u00b0C."
+  },
+  "versions": {
+    "@duckdb/duckdb-wasm": "1.32.0",
+    "apache-arrow": "17.0.0",
+    "vite": "8.3.4",
+    "chromium": "151.0.7922.34"
+  },
+  "environment": {
+    "os": "Linux",
+    "architecture": "aarch64",
+    "logical_cpus": 4,
+    "headless": true,
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "device_scale_factor": 1,
+    "chromium_args": [
+      "--no-sandbox",
+      "--disable-gpu"
+    ]
+  },
+  "method": {
+    "inference": "CPU-only deterministic templates; no LLM inference",
+    "database": "Warm DuckDB-Wasm in browser; same loaded synthetic table across modes",
+    "input": "Playwright DOM fill and real browser Enter key dispatch",
+    "speculation_on": "Wait for all 144 points staged before Enter; prepared-hit best case",
+    "speculation_off": "Enter without a prepared candidate; query executes after commit",
+    "order": "Paired trials; alternating OFF/ON and ON/OFF order",
+    "discarded_warmup_trials_per_mode": 2,
+    "p95": "Nearest rank: sorted[ceil(0.95 * n) - 1]",
+    "database_loading_transitions_during_trials": 0
+  },
+  "limitations": [
+    "Draw submission is not presentation, scanout, or photons reaching the eye.",
+    "Headless Chromium launched with --disable-gpu; no hardware-GPU latency claim.",
+    "Uncontrolled shared host, no CPU isolation, thermal control, or power-state control.",
+    "Repeated exact query on a warm synthetic dataset; startup and model latency are excluded.",
+    "Prepared-hit measurements move work before Enter and do not estimate hit rate or total resource cost.",
+    "Small sample, development server, browser automation; results are evidence for this run, not a target guarantee."
+  ],
+  "speculation_off": {
+    "sample_count": 20,
+    "median_ms": 26.1,
+    "p95_ms": 46.9,
+    "min_ms": 16.1,
+    "max_ms": 49,
+    "samples_ms": [
+      49,
+      38.4,
+      36.2,
+      46.9,
+      30.1,
+      34,
+      35.1,
+      18.1,
+      33.3,
+      17.7,
+      27.3,
+      25.7,
+      17.1,
+      19.2,
+      16.1,
+      24.9,
+      26.5,
+      16.2,
+      24,
+      19.7
+    ]
+  },
+  "speculation_on": {
+    "sample_count": 20,
+    "median_ms": 7.3,
+    "p95_ms": 18.1,
+    "min_ms": 3.3,
+    "max_ms": 18.8,
+    "samples_ms": [
+      6.1,
+      18.8,
+      9.4,
+      16.6,
+      18.1,
+      14.7,
+      4,
+      5.5,
+      3.3,
+      18,
+      7.5,
+      14.7,
+      11.2,
+      4.8,
+      4.5,
+      3.8,
+      3.7,
+      17.9,
+      5.4,
+      7.1
+    ]
+  },
+  "median_reduction_ms": 18.8,
+  "page_errors": [],
+  "source_sha256": {
+    "src/main.ts": "1435023bb8d3b996fc100907b0483804ccef12243ca88f3c54e3ac59d52cefcd",
+    "src/core/coordinator.ts": "bf9726d8a070a9acbdfaf7370b836c6df181cdfde1cbed4e2831b3e4f36c5004",
+    "src/adapters/duckdb.ts": "507b429fe579357567d38eb9481c33500c8559ab5a782c3232ea06c782b7b594",
+    "src/adapters/arrow.ts": "eb7ee6c6849c7bb24c06f9325d3f309a020bd8454fe9d94e3735deea2cd998a1",
+    "src/core/compiler.ts": "f0ae6157c3f65a84da6bc4e560050fb2403ba95ca5cdca970592e19906bcd12e",
+    "src/inference/templates.ts": "723325a80d5b550903d22ffe00f6d2b02ef98e6587c759778b0c4624bb479d8b",
+    "src/ui/index.ts": "52d761994e18dcc76ac6a921787fa9ed8d0ed6744b46534dc34a3d8d3184ea9f",
+    "src/ui/chart.ts": "9ffd53f8a1c4a949434718b4b08e922af82448d88470f34533fa991c8f5f2b92",
+    "src/ui/styles.css": "8e3225af744249e4845e1d03b9a3cb811e21eb8b53fcb20b9c5c04f959c1ff00",
+    "public/wasm/query-core.wasm": "d3a20d7338584fec531184544a2d3df94db863f39ff3c31c5d4abef3a61dc0fd"
+  }
+}
