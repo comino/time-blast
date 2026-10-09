@@ -32,6 +32,10 @@ export interface InferenceDiagnostics {
   warmupMs?: number;
   queueMs?: number;
   generationMs?: number;
+  /** One generation, or an initial generation followed by one model correction. */
+  attempts?: number;
+  /** Wall time spent in the second generation, included in generationMs. */
+  repairMs?: number;
   firstTokenMs?: number;
   prefillMs?: number;
   decodeMs?: number;
@@ -49,6 +53,12 @@ export interface InferenceResult {
   model?: string;
   tokens?: number;
   diagnostics?: InferenceDiagnostics;
+}
+/** Bounded generated output for diagnosing a failed model request; never executed. */
+export interface ModelResponseFailure {
+  text: string;
+  truncated: boolean;
+  finishReason?: string;
 }
 export interface AdapterStatus {
   state: 'cold' | 'loading' | 'ready' | 'unavailable' | 'error';
@@ -139,6 +149,7 @@ export interface QueryFailure {
   source?: InferenceResult['source'];
   model?: string;
   inference?: InferenceDiagnostics;
+  response?: ModelResponseFailure;
   database?: string;
 }
 export type PipelineEvent =

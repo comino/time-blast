@@ -189,11 +189,13 @@ export class BrowserCoordinator {
       job.abort.abort();
       job.staged=[]; job.retained.clear();
       if (job.committed && this.foreground===job) {
-        const details=resolved??inferenceFailureDetails(cause);
+        const failedInference=inferenceFailureDetails(cause);
+        const details=resolved??failedInference;
         this.emit({type:'error',id:job.view?job.id:undefined,message:job.error.message,failure:{
           timing:job.timing,phase:job.queryStarted?'query':job.timing.intentAt!==undefined?'compile':'inference',
           source:job.view?.source??details.source,model:job.view?.model??details.model,
           inference:job.view?.inference??details.diagnostics,database:database.id,
+          response:failedInference.response,
         }});
       }
       else if (this.candidate===job) {

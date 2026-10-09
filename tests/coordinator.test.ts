@@ -34,10 +34,12 @@ describe('pipeline timing boundaries',()=>{
     const h=harness({inference});h.coordinator.commit(draft());
     now=260;rejectInference(new InferenceFailure(new Error('The model declined this request.'),{
       source:'webgpu',model:'test-model',diagnostics:{generationMs:140,promptTokens:80,completionTokens:9},
+      response:{text:'{"error":"unsupported_request"}',truncated:false,finishReason:'stop'},
     }));await settle();
     const error=h.events.find(event=>event.type==='error');if(error?.type!=='error')throw new Error('Missing failure');
     expect(error).toMatchObject({message:'The model declined this request.',failure:{phase:'inference',source:'webgpu',model:'test-model',
       inference:{generationMs:140,promptTokens:80,completionTokens:9},database:'test-db',
+      response:{text:'{"error":"unsupported_request"}',truncated:false,finishReason:'stop'},
       timing:{inferenceStartedAt:100,failedAt:260,points:0,batches:0}}});
     expect(error.id).toBeUndefined();expect(error.failure?.timing.intentAt).toBeUndefined();
     expect(error.failure?.timing.queryStartedAt).toBeUndefined();expect(error.failure?.timing.completedAt).toBeUndefined();
@@ -79,7 +81,8 @@ describe('pipeline timing boundaries',()=>{
     const h=harness({inference});h.coordinator.commit(draft());
     if(action==='supersede')h.coordinator.commit(draft('Maximum wind by hour',2));
     else h.coordinator[action]();
-    rejects[0](new InferenceFailure(new Error('Old refusal'),{source:'webgpu',diagnostics:{generationMs:40}}));await settle();
+    rejects[0](new InferenceFailure(new Error('Old refusal'),{source:'webgpu',diagnostics:{generationMs:40},
+      response:{text:'{"error":"unsupported_request"}',truncated:false}}));await settle();
     expect(h.events.some(event=>event.type==='error')).toBe(false);h.coordinator.dispose();
   });
   it('separates inference, compilation, first database batch and full database streaming',async()=>{

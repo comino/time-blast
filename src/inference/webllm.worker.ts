@@ -1,9 +1,10 @@
-import { CreateMLCEngine, prebuiltAppConfig, type MLCEngine } from '@mlc-ai/web-llm';
+import { CreateMLCEngine, prebuiltAppConfig, type ChatCompletionMessageParam, type MLCEngine } from '@mlc-ai/web-llm';
 import type { Draft, InferenceDiagnostics } from '../core/types';
 import { GenerationQueue } from './generation';
 import type { WorkerRequest, WorkerResponse } from './messages';
 import { abortError, buildLocalSystemPrompt, LOCAL_MODEL_RESPONSE_SCHEMA, parseLocalModelPlan, validateDraft } from './plan';
-import { webLLMDiagnostics } from './diagnostics';
+import { combineAttemptDiagnostics, webLLMDiagnostics } from './diagnostics';
+import { readFailureResponse } from './failure';
 
 const scope = self as unknown as {
   onmessage: ((event: MessageEvent<WorkerRequest>) => void) | null;
@@ -45,9 +46,13 @@ scope.onmessage = ({ data }) => {
   if (data.type === 'cancel') { queue.cancel(data.id); return; }
   const id = data.id;
   const queuedAt = performance.now();
-  let admittedAt: number | undefined, generationAt: number | undefined;
-  let diagnostics: InferenceDiagnostics = {}, firstTokenMs: number | undefined;
-  const measured = (): InferenceDiagnostics => ({ ...diagnostics, firstTokenMs,
+  let admittedAt: number | undefined, generationAt: number | undefined, repairAt: number | undefined;
+  let firstTokenMs: number | undefined;
+  const attemptDiagnostics: InferenceDiagnostics[] = [];
+  let text = '', finishReason: string | null | undefined;
+  const measured = (): InferenceDiagnostics => ({ ...combineAttemptDiagnostics(attemptDiagnostics), firstTokenMs,
+    attempts: attemptDiagnostics.length || undefined,
+    repairMs: repairAt === undefined ? undefined : performance.now() - repairAt,
     queueMs: admittedAt === undefined ? undefined : admittedAt - queuedAt,
     warmupMs: admittedAt === undefined ? undefined : (generationAt ?? performance.now()) - admittedAt,
     generationMs: generationAt === undefined ? undefined : performance.now() - generationAt });
@@ -60,33 +65,61 @@ scope.onmessage = ({ data }) => {
       validateDraft(data.draft, data.context);
       // WebLLM 0.2.85's streaming path resets its interrupt flag per generation.
       // Drain the iterator internally: only a finished, validated plan leaves this worker.
-      generationAt = performance.now();
-      const stream = await engine!.chat.completions.create({
-        messages: [{ role: 'system', content: buildLocalSystemPrompt(data.context) }, { role: 'user', content: data.draft.text }],
-        stream: true, stream_options: { include_usage: true }, temperature: 0, max_tokens: 256,
-        response_format: { type: 'json_object', schema: JSON.stringify(LOCAL_MODEL_RESPONSE_SCHEMA) },
-      });
-      let text = '', finishReason: string | null | undefined, tokens: number | undefined;
-      const iterator = stream[Symbol.asyncIterator]();
-      while (true) {
-        const next = iterator.next();
-        if (queue.isCanceled(id)) await engine!.interruptGenerate();
-        const chunk = await next;
-        if (chunk.done) break;
-        const content = chunk.value.choices[0]?.delta.content ?? '';
-        if (content && firstTokenMs === undefined) firstTokenMs = performance.now() - generationAt;
-        text += content;
-        finishReason = chunk.value.choices[0]?.finish_reason ?? finishReason;
-        tokens = chunk.value.usage?.completion_tokens ?? tokens;
-        if (chunk.value.usage) diagnostics = webLLMDiagnostics(chunk.value.usage);
+      let messages: ChatCompletionMessageParam[] = [
+        { role: 'system', content: buildLocalSystemPrompt(data.context) }, { role: 'user', content: data.draft.text },
+      ];
+      for (let attempt = 0; attempt < 2; attempt++) {
+        if (queue.isCanceled(id)) throw abortError();
+        if (attempt === 0) generationAt = performance.now();
+        else repairAt = performance.now();
+        attemptDiagnostics.push({}); text = ''; finishReason = undefined;
+        // Engine failures are outside the validation catch: unavailable devices,
+        // interrupted streams and other runtime faults must never trigger repair.
+        const stream = await engine!.chat.completions.create({
+          messages, stream: true, stream_options: { include_usage: true }, temperature: 0, max_tokens: 256,
+          response_format: { type: 'json_object', schema: JSON.stringify(LOCAL_MODEL_RESPONSE_SCHEMA) },
+        });
+        const iterator = stream[Symbol.asyncIterator]();
+        while (true) {
+          const next = iterator.next();
+          if (queue.isCanceled(id)) await engine!.interruptGenerate();
+          const chunk = await next;
+          if (chunk.done) break;
+          const content = chunk.value.choices[0]?.delta.content ?? '';
+          if (content && firstTokenMs === undefined) firstTokenMs = performance.now() - generationAt!;
+          text += content;
+          finishReason = chunk.value.choices[0]?.finish_reason ?? finishReason;
+          if (chunk.value.usage) attemptDiagnostics[attempt] = webLLMDiagnostics(chunk.value.usage);
+        }
+        if (queue.isCanceled(id)) throw abortError();
+        const incomplete = 'The local model did not complete its query plan.';
+        // Only length truncation can be repaired; abort and unknown finish reasons
+        // do not establish a completed model response to correct.
+        if (finishReason !== 'stop' && finishReason !== 'length') throw new Error(incomplete);
+        try {
+          if (finishReason === 'length') throw new Error(`${incomplete} Output reached the token limit.`);
+          const plan = parseLocalModelPlan(text, data.context);
+          const diagnostics = measured();
+          return { plan, source: 'webgpu' as const, model, tokens: diagnostics.completionTokens, diagnostics };
+        } catch (error) {
+          if (attempt === 1 || (error instanceof Error && error.name === 'AbortError')) throw error;
+          const previous = readFailureResponse({ text })!;
+          messages = [...messages, { role: 'assistant', content: previous.text }, { role: 'user', content:
+            `Your previous response failed validation: ${error instanceof Error ? error.message : String(error)}\n` +
+            (previous.truncated ? 'The previous assistant response was truncated for this correction.\n' : '') +
+            'Re-check the supported capabilities in the system instructions and correct the response for the original complete request. ' +
+            'Preserve its metric, aggregation, grouping, time bucket, time window, filters and view. Do not simplify or silently drop any requirement. ' +
+            'If the entire request is supported, return its correct JSON plan. If it is truly unsupported, return the unsupported_request JSON response. ' +
+            'Return only the JSON response, with no explanation.' }];
+        }
       }
-      if (queue.isCanceled(id)) throw abortError();
-      if (finishReason !== 'stop') throw new Error('The local model did not complete its query plan. Try a simpler request.');
-      return { plan: parseLocalModelPlan(text, data.context), source: 'webgpu' as const, model, tokens,
-        diagnostics: measured() };
+      throw new Error('Model correction did not produce a query plan.');
     }, () => engine?.interruptGenerate()).then((result) => send({ type: 'result', id, result }));
   void task.catch((error: unknown) => send({ type: 'error', id,
     message: error instanceof Error ? error.message : String(error), name: error instanceof Error ? error.name : 'Error',
-    ...(data.type === 'resolve' ? { inference: { source: 'webgpu', model, diagnostics: measured() } } : {}),
+    ...(data.type === 'resolve' ? { inference: { source: 'webgpu', model, diagnostics: measured(),
+      // Only public completion content is retained, never messages or reasoning fields.
+      response: generationAt !== undefined && !(error instanceof Error && error.name === 'AbortError')
+        ? readFailureResponse({ text, finishReason }) : undefined } } : {}),
   }));
 };

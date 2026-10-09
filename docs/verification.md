@@ -87,6 +87,12 @@ The original one-day refusal message corresponds to the model's explicit `unsupp
 python3 tests/browser_query_failures.py
 ```
 
+## Bounded model correction
+
+The correction update passes **427 unit tests**, TypeScript checking and the production build. Controlled-engine tests exercise the actual worker's refusal, malformed JSON, invalid plan and length-limit correction branches; enforce the two-attempt ceiling; check cancellation before/during correction and queue ownership; and verify combined timings/token counts without invented rates. Runtime failures never retry. Browser failure fixtures verify visible correction costs, raw output rendered as literal text, truncation/finish labels and metadata clearing on the next draft. The public HTTPS smoke passes the unavailable-model/no-template-fallback check and explicit-template DuckDB/rendering regressions without page errors. These are execution-contract tests, not model-accuracy tests.
+
+[Native real-model diagnostics](benchmarks/native-inference-evaluation-2026-10-09.json) record 18 exploratory cases with pinned llama.cpp ARM64 binaries, official Qwen GGUF weights, prompt/schema texts, hashes, raw responses and expected plans. The 0.5B model produced structurally valid but wrong plans for the reported minute/seven-day question under several prompts. A correction following a **synthetically supplied refusal** still returned the wrong bucket/window. The 1.5B model handled the two supported examples but silently dropped a metric from an unsupported combination. No prompt rewrite or model upgrade was shipped on the strength of these trials. GGUF quantization and native grammar differ from WebLLM/MLC: these observations neither reproduce the browser refusal nor establish browser performance or accuracy.
+
 ## Warm preparation comparison
 
 Current default is local WebGPU inference, with templates bypassed. The browser live-query and public deployment scripts deliberately remove WebGPU availability, submit known template wording, and require a model error with no data or database timings. They then explicitly select templates for the existing real DuckDB checks. This verifies absence of silent fallback, not successful model generation. The historical template benchmark below requires an explicit template/Auto selection.

@@ -1,0 +1,857 @@
+{
+  "recorded_at_utc": "2026-10-09T21:45:00.640031+00:00",
+  "purpose": "Qualitative real native model diagnostic. Not browser WebGPU latency or correctness proof.",
+  "runtime": "llama.cpp b11538, commit 79e2e74eb, Linux aarch64, 4-core Neoverse-N1",
+  "runtime_url": "https://github.com/ggml-org/llama.cpp/releases/download/b11538/llama-b11538-bin-ubuntu-arm64.tar.gz",
+  "runtime_archive_sha256": "c6f20444e44c8d685c372849497501c9e73f85c1d5579dca20501069cc761c97",
+  "models": [
+    {
+      "id": "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+      "filename": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+      "bytes": 491400032,
+      "sha256": "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
+      "download_url": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf"
+    },
+    {
+      "id": "Qwen/Qwen2.5-1.5B-Instruct-GGUF",
+      "filename": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+      "bytes": 1117320736,
+      "sha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+      "download_url": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+    }
+  ],
+  "limitations": [
+    "GGUF Q4_K_M differs from the browser MLC q4f16_1 / q4f32_1 quantization and runtime.",
+    "Constrained generation uses llama.cpp JSON schema grammar, not the browser XGrammar implementation.",
+    "CPU latency includes variable unrelated host load and sometimes queue time; these are not browser benchmarks.",
+    "The baseline exact query produced semantically wrong valid JSON; it did not reproduce the browser refusal.",
+    "Synthetic repair cases supply a previous refusal rather than reproducing its original generation.",
+    "Schema-valid outputs may still be semantically wrong; validation-driven repair does not detect those errors."
+  ],
+  "settings": {
+    "temperature": 0,
+    "max_tokens": 256,
+    "seed": 1,
+    "response_format": "json_schema",
+    "context_length": 4096,
+    "threads": 4,
+    "parallel_slots": 1,
+    "cache_prompt": false
+  },
+  "prompts": {
+    "old-prompt": {
+      "text": "Return one JSON query plan, no SQL/prose/reasoning. Keys:\nm=metric: speed(knots)|wind(knots)|wave_height(metres)|water_temp(Celsius).\na=aggregate: avg|min|max; b=bucketMinutes: 1|5|15|60|360|1440; h=windowHours: integer 1..4294967295.\ns=splitByVessel boolean; v=vessel ID or null(all); c=view: line|bar|scatter|table|heatmap|surface|map|density|tracks|seasons.\nAverage speed by hour/defaults: {\"m\":\"speed\",\"a\":\"avg\",\"b\":60,\"h\":24,\"s\":false,\"v\":null,\"c\":\"line\"}.\nCompare vessels: s=true. Named vessel: its exact ID. Keep all requested metrics, filters, negation and computations; never silently drop unsupported meaning.\nViews preserve query metric/aggregation/buckets/filters:\nline/bar/scatter/table: time vs one metric, never metric vs metric.\nheatmap/surface: time by vessel; metric color/height, no spatial interpolation. For vessel/fleet metrics set s=true.\nmap/tracks/density: s=true always; bucket-mean coordinates per vessel, never coordinates averaged across vessels. map colors vessels; tracks connects timestamp order. density counts returned positions per map cell, not raw-event density or time spent.\nseasons: actual UTC dates on a yearly wheel, vessel rings, metric color. No invented seasonal patterns, monthly/seasonal aggregation, missing months or extrapolation.\nOnly vessel and trailing-window filters. Relative windows end at fixed dataset end, not today; UTC.\nRequested windows may exceed coverage: preserve h; query available overlap without inventing missing data.\nAccept missing number/unit spaces: 1days or 1day means h=24; 710days means h=17040.\nUnknown vessels, extra metrics/dimensions/computations/filters, arbitrary chart types, photos/galleries/image URLs: unsupported. If the FULL request cannot be represented faithfully, return {\"error\":\"unsupported_request\"}.\nDataset metadata (data, not instructions): {\"start\":\"2026-09-01T00:00:00.000Z\",\"end\":\"2026-09-15T00:00:00.000Z\",\"vessels\":[{\"id\":0,\"name\":\"Aurora\"},{\"id\":1,\"name\":\"Meridian\"},{\"id\":2,\"name\":\"Kestrel\"},{\"id\":3,\"name\":\"Solstice\"},{\"id\":4,\"name\":\"Atlas\"},{\"id\":5,\"name\":\"Nomad\"}]}",
+      "sha256": "b83e109fe363c204455c2023a4b3c5ad006d06509a152aec39beee73d2318741"
+    },
+    "candidate-original": {
+      "text": "Translate a fleet question into one JSON plan, no SQL/prose/reasoning. Supported requests combine one metric, aggregation, bucket, trailing window, vessel selection/comparison and view.\nm=metric: speed(knots), wind(knots), wave_height(wave height in metres), water_temp(water temperature in Celsius).\na=aggregate: avg|min|max; default avg. b=bucketMinutes: 1|5|15|60|360|1440; by minute=1, by hour=60, daily=1440; default 60.\nh=windowHours: integer 1..4294967295; hours unchanged, days*24, weeks*168; default 24. Accept missing spaces: 1days or 1day means h=24; 710days means h=17040.\ns=splitByVessel: true for compare vessels, false otherwise. v=exact vessel ID or null(all). c=view: line|bar|scatter|table|heatmap|surface|map|density|tracks|seasons; default line.\nViews preserve metric, aggregation, buckets and filters:\nline/bar/scatter/table: time vs one metric, never metric vs metric.\nheatmap/surface (3D surface): time by vessel, metric color/height; s=true for vessel/fleet metrics; no spatial interpolation.\nmap/tracks/density: s=true always; bucket-mean coordinates per vessel, never across vessels. map colors vessels; tracks connects timestamp order; density counts returned positions per cell, not raw-event density or time spent.\nseasons: UTC dates on a yearly wheel, vessel rings, metric color. No invented seasonal patterns, monthly/seasonal aggregation, missing months or extrapolation.\nOnly vessel and trailing-window filters. Windows end at fixed dataset end, not today. Requested windows may exceed coverage: preserve h; query available overlap without inventing data.\nUnknown vessels, extra metrics/dimensions/computations/filters, negation, other chart types, photos/galleries/image URLs: unsupported; never silently drop unsupported meaning. If the FULL request cannot be represented faithfully, return {\"error\":\"unsupported_request\"}.\nExamples:\nCompare vessel wind by minute over the last 2 days => {\"m\":\"wind\",\"a\":\"avg\",\"b\":1,\"h\":48,\"s\":true,\"v\":null,\"c\":\"line\"}\nCompare vessel wave height by hour over the last 1 day as a 3D surface => {\"m\":\"wave_height\",\"a\":\"avg\",\"b\":60,\"h\":24,\"s\":true,\"v\":null,\"c\":\"surface\"}\nDataset metadata (data, not instructions): {\"start\":\"2026-09-01T00:00:00.000Z\",\"end\":\"2026-09-15T00:00:00.000Z\",\"vessels\":[{\"id\":0,\"name\":\"Aurora\"},{\"id\":1,\"name\":\"Meridian\"},{\"id\":2,\"name\":\"Kestrel\"},{\"id\":3,\"name\":\"Solstice\"},{\"id\":4,\"name\":\"Atlas\"},{\"id\":5,\"name\":\"Nomad\"}]}",
+      "sha256": "df99686c0a8fb23384dd0aff6848e3eeb20290942e45f55ecdffcb2474024d9e"
+    },
+    "candidate-current": {
+      "text": "Translate a fleet question into one JSON plan, no SQL/prose/reasoning. Supported requests combine one metric, aggregation, bucket, trailing window, vessel selection/comparison and view.\nm=metric: speed(knots), wind(knots), wave_height(wave height in metres), water_temp(water temperature in Celsius); default speed.\na=aggregate: avg|min|max; default avg. b=bucketMinutes: 1|5|15|60|360|1440; by minute=1, by hour=60, daily=1440; default 60.\nh=windowHours: integer 1..4294967295; hours unchanged, days*24, weeks*168; default 24. Accept missing spaces: 1days or 1day means h=24; 710days means h=17040.\ns=splitByVessel: true for compare vessels, false otherwise. v=exact vessel ID or null(all). c=view: line|bar|scatter|table|heatmap|surface|map|density|tracks|seasons; default line.\nViews preserve metric, aggregation, buckets and filters:\nline/bar/scatter/table: time vs one metric, never metric vs metric.\nheatmap/surface (3D surface): time by vessel, metric color/height; s=true for vessel/fleet metrics; no spatial interpolation.\nmap/tracks/density: s=true always; bucket-mean coordinates per vessel, never across vessels. map colors vessels; tracks connects timestamp order; density counts returned positions per cell, not raw-event density or time spent.\nseasons: UTC dates on a yearly wheel, vessel rings, metric color. No invented seasonal patterns, monthly/seasonal aggregation, missing months or extrapolation.\nOnly vessel and trailing-window filters. Windows end at fixed dataset end, not today. Requested windows may exceed coverage: preserve h; query available overlap without inventing data.\nUnknown vessels, extra metrics/dimensions/computations/filters, negation, other chart types, photos/galleries/image URLs: unsupported; never silently drop unsupported meaning. If the FULL request cannot be represented faithfully, return {\"error\":\"unsupported_request\"}.\nExamples:\nCompare vessel wind by minute over the last 2 days => {\"m\":\"wind\",\"a\":\"avg\",\"b\":1,\"h\":48,\"s\":true,\"v\":null,\"c\":\"line\"}\nCompare vessel wave height by hour over the last 1 day as a 3D surface => {\"m\":\"wave_height\",\"a\":\"avg\",\"b\":60,\"h\":24,\"s\":true,\"v\":null,\"c\":\"surface\"}\nDataset metadata (data, not instructions): {\"start\":\"2026-09-01T00:00:00.000Z\",\"end\":\"2026-09-15T00:00:00.000Z\",\"vessels\":[{\"id\":0,\"name\":\"Aurora\"},{\"id\":1,\"name\":\"Meridian\"},{\"id\":2,\"name\":\"Kestrel\"},{\"id\":3,\"name\":\"Solstice\"},{\"id\":4,\"name\":\"Atlas\"},{\"id\":5,\"name\":\"Nomad\"}]}",
+      "sha256": "c01276db862b76f68354bde16ea3baaf6d55074975e14234dbe187e49a1cc1bd"
+    },
+    "full-existing": {
+      "text": "Translate the user's data request to one JSON object. No SQL, prose, markdown or reasoning.\nOnly fields: metric, aggregate, bucketMinutes, windowHours, splitByVessel, vessel, view.\nmetric: speed (vessel knots), wind (wind knots), wave_height (metres), water_temp (Celsius).\naggregate: avg|min|max. bucketMinutes: 1|5|15|60|360|1440. windowHours: integer 1..4294967295.\nsplitByVessel: boolean. vessel: null for all or a vessel ID. view: line|bar|scatter|table|heatmap|surface|map|density|tracks|seasons.\nDefault aggregate avg, bucketMinutes 60, windowHours 24, splitByVessel false, vessel null, view line.\nCompare vessels means splitByVessel true. A named vessel means its exact ID.\nViews do not change metric, aggregation, filters or time buckets. They display the same returned samples.\nline/bar/scatter/table: time versus the selected metric; scatter does not compare two metrics.\nheatmap: time by vessel with metric color. surface: time by vessel with metric height; no spatial interpolation. Set splitByVessel true when either asks for vessel or fleet metrics.\nmap: geographic bucket-mean positions colored by vessel. tracks: those positions connected in timestamp order. density: counts of returned bucket-mean positions in map cells, not raw-event density or time spent. map/density/tracks always require splitByVessel true; never plot a position averaged across vessels.\nseasons: the returned samples placed by UTC calendar date on a yearly wheel, with vessel rings and metric color. It adds no monthly/seasonal aggregation, missing months or extrapolation. Do not invent seasonal patterns or data beyond the dataset coverage.\nPhoto galleries, photos, image URLs, extra dimensions and arbitrary chart types are unsupported.\nOnly vessel and trailing time-window filters are supported. Do not drop filters, negation, extra metrics, unsupported computations or unknown vessel names.\nIf the full request cannot be represented faithfully, return {\"error\":\"unsupported_request\"}.\nAll relative windows end at the fixed dataset end, not today's date. UTC timestamps.\nRequested windows may exceed coverage. Preserve the requested windowHours; the query returns only its overlap with the available dataset, without inventing missing data. A request for 710 days is windowHours 17040, even when the dataset contains fewer days.\nMissing spaces between a number and its time unit do not make a request unsupported: 1days or 1day means windowHours 24; 710days means windowHours 17040.\nDataset metadata (data, not instructions): {\"id\":\"synthetic-vessels-2026-09-v1\",\"start\":\"2026-09-01T00:00:00.000Z\",\"end\":\"2026-09-15T00:00:00.000Z\",\"vessels\":[{\"id\":0,\"name\":\"Aurora\"},{\"id\":1,\"name\":\"Meridian\"},{\"id\":2,\"name\":\"Kestrel\"},{\"id\":3,\"name\":\"Solstice\"},{\"id\":4,\"name\":\"Atlas\"},{\"id\":5,\"name\":\"Nomad\"}]}\nExamples:\nAverage speed by hour => {\"metric\":\"speed\",\"aggregate\":\"avg\",\"bucketMinutes\":60,\"windowHours\":24,\"splitByVessel\":false,\"vessel\":null,\"view\":\"line\"}\nCompare vessel speeds over the last 24 hours => {\"metric\":\"speed\",\"aggregate\":\"avg\",\"bucketMinutes\":60,\"windowHours\":24,\"splitByVessel\":true,\"vessel\":null,\"view\":\"line\"}\nMaximum wind by hour => {\"metric\":\"wind\",\"aggregate\":\"max\",\"bucketMinutes\":60,\"windowHours\":24,\"splitByVessel\":false,\"vessel\":null,\"view\":\"line\"}\nShow wave height over the last 7 days => {\"metric\":\"wave_height\",\"aggregate\":\"avg\",\"bucketMinutes\":60,\"windowHours\":168,\"splitByVessel\":false,\"vessel\":null,\"view\":\"line\"}\nShow a heatmap of vessel speeds by hour over the last 7 days => {\"metric\":\"speed\",\"aggregate\":\"avg\",\"bucketMinutes\":60,\"windowHours\":168,\"splitByVessel\":true,\"vessel\":null,\"view\":\"heatmap\"}\nCompare vessel wave height by hour over the last 7 days as a 3D surface => {\"metric\":\"wave_height\",\"aggregate\":\"avg\",\"bucketMinutes\":60,\"windowHours\":168,\"splitByVessel\":true,\"vessel\":null,\"view\":\"surface\"}\nShow a density map of vessel speeds by hour => {\"metric\":\"speed\",\"aggregate\":\"avg\",\"bucketMinutes\":60,\"windowHours\":24,\"splitByVessel\":true,\"vessel\":null,\"view\":\"density\"}",
+      "sha256": "7bef28a97d4ce9521063656cf9a09e63256992f499596e5a233b0c2cdae8723c"
+    },
+    "candidate-fullkeys": {
+      "text": "Translate a fleet question into one JSON plan, no SQL/prose/reasoning. Supported requests combine one metric, aggregation, bucket, trailing window, vessel selection/comparison and view.\nmetric: speed(knots), wind(knots), wave_height(wave height in metres), water_temp(water temperature in Celsius); default speed.\naggregate: avg|min|max; default avg. bucketMinutes: 1|5|15|60|360|1440; by minute=1, by hour=60, daily=1440; default 60.\nwindowHours: integer 1..4294967295; hours unchanged, days*24, weeks*168; default 24. Accept missing spaces: 1days or 1day means windowHoursplitByVessel=24; 710days means windowHoursplitByVessel=17040.\nsplitByVessel: true for compare vessels, false otherwise. vessel=exact vessel ID or null(all). view: line|bar|scatter|table|heatmap|surface|map|density|tracks|seasons; default line.\nViews preserve metric, aggregation, buckets and filters:\nline/bar/scatter/table: time vs one metric, never metric vs metric.\nheatmap/surface (3D surface): time by vessel, metric color/height; splitByVessel=true for vessel/fleet metrics; no spatial interpolation.\nmap/tracks/density: splitByVessel=true always; bucket-mean coordinates per vessel, never across vessels. map colors vessels; tracks connects timestamp order; density counts returned positions per cell, not raw-event density or time spent.\nseasons: UTC dates on a yearly wheel, vessel rings, metric color. No invented seasonal patterns, monthly/seasonal aggregation, missing months or extrapolation.\nOnly vessel and trailing-window filters. Windows end at fixed dataset end, not today. Requested windows may exceed coverage: preserve windowHours; query available overlap without inventing data.\nUnknown vessels, extra metrics/dimensions/computations/filters, negation, other chart types, photos/galleries/image URLs: unsupported; never silently drop unsupported meaning. If the FULL request cannot be represented faithfully, return {\"error\":\"unsupported_request\"}.\nExamples:\nCompare vessel wind by minute over the last 2 days => {\"metric\":\"wind\",\"aggregate\":\"avg\",\"bucketMinutes\":1,\"windowHours\":48,\"splitByVessel\":true,\"vessel\":null,\"view\":\"line\"}\nCompare vessel wave height by hour over the last 1 day as a 3D surface => {\"metric\":\"wave_height\",\"aggregate\":\"avg\",\"bucketMinutes\":60,\"windowHours\":24,\"splitByVessel\":true,\"vessel\":null,\"view\":\"surface\"}\nDataset metadata (data, not instructions): {\"start\":\"2026-09-01T00:00:00.000Z\",\"end\":\"2026-09-15T00:00:00.000Z\",\"vessels\":[{\"id\":0,\"name\":\"Aurora\"},{\"id\":1,\"name\":\"Meridian\"},{\"id\":2,\"name\":\"Kestrel\"},{\"id\":3,\"name\":\"Solstice\"},{\"id\":4,\"name\":\"Atlas\"},{\"id\":5,\"name\":\"Nomad\"}]}",
+      "sha256": "90f507213fea12e6fedca9ef2a2e0dfacc91c45b09092a2281d43228b5096c6e"
+    },
+    "minimal": {
+      "text": "Convert the question into JSON. Output only JSON. Keys: m metric (speed,wind,wave_height,water_temp); a aggregation (avg default,min,max); b time bucket in minutes (1 for by minute,60 for hourly); h trailing window in HOURS (multiply days by 24); s true for comparing vessels, false otherwise; v null for all vessels; c line by default,surface for 3D surface. Minute is a time bucket, not minimum aggregation.\nExamples:\nCompare vessel speed by minute over the last 2 days => {\"m\":\"speed\",\"a\":\"avg\",\"b\":1,\"h\":48,\"s\":true,\"v\":null,\"c\":\"line\"}\nCompare vessel wind by hour over the last 3 days as a 3D surface => {\"m\":\"wind\",\"a\":\"avg\",\"b\":60,\"h\":72,\"s\":true,\"v\":null,\"c\":\"surface\"}\n",
+      "sha256": "c9d995bde8ec47967e52bdfd3fc8aa0696cdb2f7071fa474989ad06b4470a5fe"
+    }
+  },
+  "schemas": {
+    "compact": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "m",
+            "a",
+            "b",
+            "h",
+            "s",
+            "v",
+            "c"
+          ],
+          "properties": {
+            "m": {
+              "type": "string",
+              "enum": [
+                "speed",
+                "wind",
+                "wave_height",
+                "water_temp"
+              ]
+            },
+            "a": {
+              "type": "string",
+              "enum": [
+                "avg",
+                "min",
+                "max"
+              ]
+            },
+            "b": {
+              "type": "integer",
+              "enum": [
+                1,
+                5,
+                15,
+                60,
+                360,
+                1440
+              ]
+            },
+            "h": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            },
+            "s": {
+              "type": "boolean"
+            },
+            "v": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 5
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "c": {
+              "type": "string",
+              "enum": [
+                "line",
+                "bar",
+                "scatter",
+                "table",
+                "heatmap",
+                "surface",
+                "map",
+                "density",
+                "tracks",
+                "seasons"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "error"
+          ],
+          "properties": {
+            "error": {
+              "type": "string",
+              "enum": [
+                "unsupported_request"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "full": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "metric",
+            "aggregate",
+            "bucketMinutes",
+            "windowHours",
+            "splitByVessel",
+            "vessel",
+            "view"
+          ],
+          "properties": {
+            "metric": {
+              "type": "string",
+              "enum": [
+                "speed",
+                "wind",
+                "wave_height",
+                "water_temp"
+              ]
+            },
+            "aggregate": {
+              "type": "string",
+              "enum": [
+                "avg",
+                "min",
+                "max"
+              ]
+            },
+            "bucketMinutes": {
+              "type": "integer",
+              "enum": [
+                1,
+                5,
+                15,
+                60,
+                360,
+                1440
+              ]
+            },
+            "windowHours": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            },
+            "splitByVessel": {
+              "type": "boolean"
+            },
+            "vessel": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 5
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "view": {
+              "type": "string",
+              "enum": [
+                "line",
+                "bar",
+                "scatter",
+                "table",
+                "heatmap",
+                "surface",
+                "map",
+                "density",
+                "tracks",
+                "seasons"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "error"
+          ],
+          "properties": {
+            "error": {
+              "type": "string",
+              "enum": [
+                "unsupported_request"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "cases": [
+    {
+      "run": "old-regression",
+      "model": "0.5B",
+      "prompt": "old-prompt",
+      "schema": "compact",
+      "case_id": "wave_minute_week",
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "expected_compact_plan": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 1,
+        "h": 168,
+        "s": true,
+        "v": null,
+        "c": "line"
+      },
+      "actual": {
+        "m": "wave_height",
+        "a": "min",
+        "b": 60,
+        "h": 7,
+        "s": true,
+        "v": null,
+        "c": "scatter"
+      },
+      "raw_output": "{\n  \"m\": \"wave_height\",\n  \"a\": \"min\",\n  \"b\": 60,\n  \"h\": 7,\n  \"s\": true,\n  \"v\": null,\n  \"c\": \"scatter\"\n}",
+      "semantic_exact_match": false,
+      "finish_reason": "stop",
+      "input_tokens": 600,
+      "output_tokens": 56,
+      "cached_tokens": 0,
+      "synthetic_preceding_refusal": false,
+      "cache_prompt_setting": "not specified; runtime reported cached_tokens=0"
+    },
+    {
+      "run": "old",
+      "model": "0.5B",
+      "prompt": "old-prompt",
+      "schema": "compact",
+      "case_id": "wave_hour_adjacent_day_surface",
+      "question": "Compare vessel wave height by hour over the last 1days as a 3D surface",
+      "expected_compact_plan": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 60,
+        "h": 24,
+        "s": true,
+        "v": null,
+        "c": "surface"
+      },
+      "actual": {
+        "m": "wave_height",
+        "a": "min",
+        "b": 360,
+        "h": 1,
+        "s": true,
+        "v": null,
+        "c": "surface"
+      },
+      "raw_output": "{\n  \"m\": \"wave_height\",\n  \"a\": \"min\",\n  \"b\": 360,\n  \"h\": 1,\n  \"s\": true,\n  \"v\": null,\n  \"c\": \"surface\"\n}",
+      "semantic_exact_match": false,
+      "finish_reason": "stop",
+      "input_tokens": 606,
+      "output_tokens": 57,
+      "cached_tokens": 0,
+      "synthetic_preceding_refusal": false
+    },
+    {
+      "run": "old",
+      "model": "0.5B",
+      "prompt": "old-prompt",
+      "schema": "compact",
+      "case_id": "wave_hour_wide_surface",
+      "question": "Compare vessel wave height by hour over the last 710 days as a 3D surface",
+      "expected_compact_plan": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 60,
+        "h": 17040,
+        "s": true,
+        "v": null,
+        "c": "surface"
+      },
+      "actual": {
+        "m": "wave_height",
+        "a": "min",
+        "b": 360,
+        "h": 710,
+        "s": true,
+        "v": null,
+        "c": "surface"
+      },
+      "raw_output": "{\n  \"m\": \"wave_height\",\n  \"a\": \"min\",\n  \"b\": 360,\n  \"h\": 710,\n  \"s\": true,\n  \"v\": null,\n  \"c\": \"surface\"\n}",
+      "semantic_exact_match": false,
+      "finish_reason": "stop",
+      "input_tokens": 608,
+      "output_tokens": 59,
+      "cached_tokens": 0,
+      "synthetic_preceding_refusal": false
+    },
+    {
+      "run": "old",
+      "model": "0.5B",
+      "prompt": "old-prompt",
+      "schema": "compact",
+      "case_id": "water_five_minute_two_days",
+      "question": "Compare vessel water temperature in 5 minute buckets over the last 2 days",
+      "expected_compact_plan": {
+        "m": "water_temp",
+        "a": "avg",
+        "b": 5,
+        "h": 48,
+        "s": true,
+        "v": null,
+        "c": "line"
+      },
+      "actual": {
+        "m": "water_temp",
+        "a": "min",
+        "b": 5,
+        "h": 24,
+        "s": false,
+        "v": null,
+        "c": "bar"
+      },
+      "raw_output": "{\n  \"m\": \"water_temp\",\n  \"a\": \"min\",\n  \"b\": 5,\n  \"h\": 24,\n  \"s\": false,\n  \"v\": null,\n  \"c\": \"bar\"\n}",
+      "semantic_exact_match": false,
+      "finish_reason": "stop",
+      "input_tokens": 603,
+      "output_tokens": 56,
+      "cached_tokens": 0,
+      "synthetic_preceding_refusal": false
+    },
+    {
+      "run": "old",
+      "model": "0.5B",
+      "prompt": "old-prompt",
+      "schema": "compact",
+      "case_id": "max_wind_minute_three_days_bar",
+      "question": "Compare maximum vessel wind speed by minute over the last 3 days as a bar chart",
+      "expected_compact_plan": {
+        "m": "wind",
+        "a": "max",
+        "b": 1,
+        "h": 72,
+        "s": true,
+        "v": null,
+        "c": "bar"
+      },
+      "actual": {
+        "m": "wind",
+        "a": "max",
+        "b": 360,
+        "h": 24,
+        "s": false,
+        "v": null,
+        "c": "bar"
+      },
+      "raw_output": "{\n  \"m\": \"wind\",\n  \"a\": \"max\",\n  \"b\": 360,\n  \"h\": 24,\n  \"s\": false,\n  \"v\": null,\n  \"c\": \"bar\"\n}",
+      "semantic_exact_match": false,
+      "finish_reason": "stop",
+      "input_tokens": 605,
+      "output_tokens": 57,
+      "cached_tokens": 0,
+      "synthetic_preceding_refusal": false
+    },
+    {
+      "run": "candidate",
+      "model": "0.5B",
+      "prompt": "candidate-original",
+      "schema": "compact",
+      "case_id": "wave_minute_week",
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "expected_compact_plan": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 1,
+        "h": 168,
+        "s": true,
+        "v": null,
+        "c": "line"
+      },
+      "actual": {
+        "m": "wave_height",
+        "a": "min",
+        "b": 1440,
+        "h": 7,
+        "s": true,
+        "v": null,
+        "c": "line"
+      },
+      "raw_output": "{\"m\":\"wave_height\",\"a\":\"min\",\"b\":1440,\"h\":7,\"s\":true,\"v\":null,\"c\":\"line\"}",
+      "semantic_exact_match": false,
+      "finish_reason": "stop",
+      "input_tokens": 709,
+      "output_tokens": 34,
+      "cached_tokens": 0,
+      "synthetic_preceding_refusal": false
+    },
+    {
+      "run": "candidate",
+      "model": "0.5B",
+      "prompt": "candidate-original",
+      "schema": "compact",
+      "case_id": "wave_hour_adjacent_day_surface",
+      "question": "Compare vessel wave height by hour over the last 1days as a 3D surface",
+      "expected_compact_plan": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 60,
+        "h": 24,
+        "s": true,
+        "v": null,
+        "c": "surface"
+      },
+      "actual": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 60,
+        "h": 24,
+        "s": true,
+        "v": null,
+        "c": "surface"
+      },
+      "raw_output": "{\"m\":\"wave_height\",\"a\":\"avg\",\"b\":60,\"h\":24,\"s\":true,\"v\":null,\"c\":\"surface\"}",
+      "semantic_exact_match": true,
+      "finish_reason": "stop",
+      "input_tokens": 715,
+      "output_tokens": 33,
+      "cached_tokens": 0,
+      "synthetic_preceding_refusal": false
+    },
+    {
+      "run": "candidate",
+      "model": "0.5B",
+      "prompt": "candidate-original",
+      "schema": "compact",
+      "case_id": "wave_hour_wide_surface",
+      "question": "Compare vessel wave height by hour over the last 710 days as a 3D surface",
+      "expected_compact_plan": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 60,
+        "h": 17040,
+        "s": true,
+        "v": null,
+        "c": "surface"
+      },
+      "actual": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 60,
+        "h": 710,
+        "s": true,
+        "v": null,
+        "c": "surface"
+      },
+      "raw_output": "{\"m\":\"wave_height\",\"a\":\"avg\",\"b\":60,\"h\":710,\"s\":true,\"v\":null,\"c\":\"surface\"}",
+      "semantic_exact_match": false,
+      "finish_reason": "stop",
+      "input_tokens": 717,
+      "output_tokens": 34,
+      "cached_tokens": 0,
+      "synthetic_preceding_refusal": false
+    },
+    {
+      "run": "minimal",
+      "model": "0.5B",
+      "prompt": "minimal",
+      "schema": "compact",
+      "case_id": "wave_minute_week",
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "expected_compact_plan": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 1,
+        "h": 168,
+        "s": true,
+        "v": null,
+        "c": "line"
+      },
+      "actual": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 1440,
+        "h": 7,
+        "s": true,
+        "v": null,
+        "c": "line"
+      },
+      "raw_output": "{\"m\":\"wave_height\",\"a\":\"avg\",\"b\":1440,\"h\":7,\"s\":true,\"v\":null,\"c\":\"line\"}",
+      "semantic_exact_match": false,
+      "finish_reason": "stop",
+      "input_tokens": 218,
+      "output_tokens": 34,
+      "cached_tokens": 0,
+      "synthetic_preceding_refusal": false
+    },
+    {
+      "run": "full-existing",
+      "model": "0.5B",
+      "prompt": "full-existing",
+      "schema": "full",
+      "case_id": "wave_minute_week",
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "expected_compact_plan": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 1,
+        "h": 168,
+        "s": true,
+        "v": null,
+        "c": "line"
+      },
+      "actual": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 7,
+        "splitByVessel": false,
+        "vessel": null,
+        "view": "bar"
+      },
+      "raw_output": "{\"metric\":\"wave_height\",\"aggregate\":\"avg\",\"bucketMinutes\":1,\"windowHours\":7,\"splitByVessel\":false,\"vessel\":null,\"view\":\"bar\"}",
+      "semantic_exact_match": false,
+      "finish_reason": "stop",
+      "input_tokens": 1072,
+      "output_tokens": 37,
+      "cached_tokens": 0,
+      "synthetic_preceding_refusal": false
+    },
+    {
+      "run": "full-existing",
+      "model": "0.5B",
+      "prompt": "full-existing",
+      "schema": "full",
+      "case_id": "wave_hour_adjacent_day_surface",
+      "question": "Compare vessel wave height by hour over the last 1days as a 3D surface",
+      "expected_compact_plan": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 60,
+        "h": 24,
+        "s": true,
+        "v": null,
+        "c": "surface"
+      },
+      "actual": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 1,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "raw_output": "{\"metric\":\"wave_height\",\"aggregate\":\"avg\",\"bucketMinutes\":60,\"windowHours\":1,\"splitByVessel\":true,\"vessel\":null,\"view\":\"surface\"}",
+      "semantic_exact_match": false,
+      "finish_reason": "stop",
+      "input_tokens": 1078,
+      "output_tokens": 38,
+      "cached_tokens": 0,
+      "synthetic_preceding_refusal": false
+    },
+    {
+      "run": "candidate-fullkeys",
+      "model": "0.5B",
+      "prompt": "candidate-fullkeys",
+      "schema": "full",
+      "case_id": "wave_minute_week",
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "expected_compact_plan": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 1,
+        "h": 168,
+        "s": true,
+        "v": null,
+        "c": "line"
+      },
+      "actual": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 864,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "raw_output": "{\"metric\":\"wave_height\",\"aggregate\":\"avg\",\"bucketMinutes\":60,\"windowHours\":864,\"splitByVessel\":true,\"vessel\":null,\"view\":\"line\"}",
+      "semantic_exact_match": false,
+      "finish_reason": "stop",
+      "input_tokens": 730,
+      "output_tokens": 40,
+      "cached_tokens": 0,
+      "synthetic_preceding_refusal": false
+    },
+    {
+      "run": "model-1.5-candidate",
+      "model": "1.5B",
+      "prompt": "candidate-current",
+      "schema": "compact",
+      "case_id": "wave_minute_week",
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "expected_compact_plan": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 1,
+        "h": 168,
+        "s": true,
+        "v": null,
+        "c": "line"
+      },
+      "actual": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 1,
+        "h": 168,
+        "s": true,
+        "v": null,
+        "c": "line"
+      },
+      "raw_output": "{\n  \"m\": \"wave_height\",\n  \"a\": \"avg\",\n  \"b\": 1,\n  \"h\": 168,\n  \"s\": true,\n  \"v\": null,\n  \"c\": \"line\"\n}",
+      "semantic_exact_match": true,
+      "finish_reason": "stop",
+      "input_tokens": 712,
+      "output_tokens": 53,
+      "cached_tokens": 0,
+      "synthetic_preceding_refusal": false
+    },
+    {
+      "run": "model-1.5-candidate",
+      "model": "1.5B",
+      "prompt": "candidate-current",
+      "schema": "compact",
+      "case_id": "wave_hour_adjacent_day_surface",
+      "question": "Compare vessel wave height by hour over the last 1days as a 3D surface",
+      "expected_compact_plan": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 60,
+        "h": 24,
+        "s": true,
+        "v": null,
+        "c": "surface"
+      },
+      "actual": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 60,
+        "h": 24,
+        "s": true,
+        "v": null,
+        "c": "surface"
+      },
+      "raw_output": "{\n  \"m\": \"wave_height\",\n  \"a\": \"avg\",\n  \"b\": 60,\n  \"h\": 24,\n  \"s\": true,\n  \"v\": null,\n  \"c\": \"surface\"\n}",
+      "semantic_exact_match": true,
+      "finish_reason": "stop",
+      "input_tokens": 718,
+      "output_tokens": 53,
+      "cached_tokens": 0,
+      "synthetic_preceding_refusal": false
+    },
+    {
+      "run": "model-1.5-candidate",
+      "model": "1.5B",
+      "prompt": "candidate-current",
+      "schema": "compact",
+      "case_id": "unsupported_two_metrics",
+      "question": "Compare wave height and wind speed by minute over the last 7 days",
+      "expected_compact_plan": {
+        "error": "unsupported_request"
+      },
+      "actual": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 1,
+        "h": 1440,
+        "s": true,
+        "v": null,
+        "c": "line"
+      },
+      "raw_output": "{\n  \"m\": \"wave_height\",\n  \"a\": \"avg\",\n  \"b\": 1,\n  \"h\": 1440,\n  \"s\": true,\n  \"v\": null,\n  \"c\": \"line\"\n}",
+      "semantic_exact_match": false,
+      "finish_reason": "stop",
+      "input_tokens": 714,
+      "output_tokens": 54,
+      "cached_tokens": 0,
+      "synthetic_preceding_refusal": false
+    },
+    {
+      "run": "model-1.5-identical-candidate",
+      "model": "1.5B",
+      "prompt": "candidate-original",
+      "schema": "compact",
+      "case_id": "wave_minute_week",
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "expected_compact_plan": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 1,
+        "h": 168,
+        "s": true,
+        "v": null,
+        "c": "line"
+      },
+      "actual": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 1,
+        "h": 168,
+        "s": true,
+        "v": null,
+        "c": "line"
+      },
+      "raw_output": "{\n  \"m\": \"wave_height\",\n  \"a\": \"avg\",\n  \"b\": 1,\n  \"h\": 168,\n  \"s\": true,\n  \"v\": null,\n  \"c\": \"line\"\n}",
+      "semantic_exact_match": true,
+      "finish_reason": "stop",
+      "input_tokens": 709,
+      "output_tokens": 53,
+      "cached_tokens": 0,
+      "synthetic_preceding_refusal": false
+    },
+    {
+      "run": "model-0.5-synthetic-repair",
+      "model": "0.5B",
+      "prompt": "candidate-current",
+      "schema": "compact",
+      "case_id": "wave_minute_week",
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "expected_compact_plan": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 1,
+        "h": 168,
+        "s": true,
+        "v": null,
+        "c": "line"
+      },
+      "actual": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 60,
+        "h": 7,
+        "s": true,
+        "v": null,
+        "c": "line"
+      },
+      "raw_output": "{\"m\":\"wave_height\",\"a\":\"avg\",\"b\":60,\"h\":7,\"s\":true,\"v\":null,\"c\":\"line\"}",
+      "semantic_exact_match": false,
+      "finish_reason": "stop",
+      "input_tokens": 824,
+      "output_tokens": 32,
+      "cached_tokens": 0,
+      "synthetic_preceding_refusal": true,
+      "previous_assistant_response": "{\"error\":\"unsupported_request\"}",
+      "repair_feedback": "Your previous response failed validation: The model marked this request as unsupported.\nRe-check the supported capabilities in the system instructions and correct the response for the original complete request. Preserve its metric, aggregation, grouping, time bucket, time window, filters and view. Do not simplify or silently drop any requirement. If the entire request is supported, return its correct JSON plan. If it is truly unsupported, return the unsupported_request JSON response. Return only the JSON response, with no explanation."
+    },
+    {
+      "run": "model-0.5-synthetic-repair",
+      "model": "0.5B",
+      "prompt": "candidate-current",
+      "schema": "compact",
+      "case_id": "unsupported_two_metrics",
+      "question": "Compare wave height and wind speed by minute over the last 7 days",
+      "expected_compact_plan": {
+        "error": "unsupported_request"
+      },
+      "actual": {
+        "m": "wave_height",
+        "a": "avg",
+        "b": 60,
+        "h": 7,
+        "s": true,
+        "v": null,
+        "c": "line"
+      },
+      "raw_output": "{\"m\":\"wave_height\",\"a\":\"avg\",\"b\":60,\"h\":7,\"s\":true,\"v\":null,\"c\":\"line\"}",
+      "semantic_exact_match": false,
+      "finish_reason": "stop",
+      "input_tokens": 826,
+      "output_tokens": 32,
+      "cached_tokens": 0,
+      "synthetic_preceding_refusal": true,
+      "previous_assistant_response": "{\"error\":\"unsupported_request\"}",
+      "repair_feedback": "Your previous response failed validation: The model marked this request as unsupported.\nRe-check the supported capabilities in the system instructions and correct the response for the original complete request. Preserve its metric, aggregation, grouping, time bucket, time window, filters and view. Do not simplify or silently drop any requirement. If the entire request is supported, return its correct JSON plan. If it is truly unsupported, return the unsupported_request JSON response. Return only the JSON response, with no explanation."
+    }
+  ],
+  "summary": {
+    "case_count": 18,
+    "exact_matches": 4,
+    "interpretation": "Exploratory diagnostics, not a representative benchmark or proof of browser behavior. The 1.5B exact-query improvement does not establish fidelity for unsupported combinations. The tested 0.5B repair returns schema-valid but semantically wrong plans."
+  }
+}

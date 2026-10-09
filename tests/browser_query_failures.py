@@ -111,7 +111,8 @@ def failed_inference_ui(browser, base_url, errors):
         assert(calls.commits.at(-1)===text,'Live edit did not submit');
       };
       const failure={phase:'inference',source:'webgpu',model:'Controlled model',database:'duckdb-wasm',
-        inference:{warmupMs:20,queueMs:10,prefillMs:30,decodeMs:300,promptTokens:88,completionTokens:1},
+        inference:{warmupMs:20,queueMs:10,prefillMs:30,decodeMs:300,promptTokens:88,completionTokens:1,attempts:2,repairMs:110},
+        response:{text:'{"error":"unsupported_request"}',truncated:false,finishReason:'stop'},
         timing:{startedAt:10,committedAt:10,inferenceStartedAt:15,failedAt:365,promoted:false,batches:0,points:0,bytes:0}};
       await edit('Compare vessel wave height by hour over the last 1days as a 3D surface');
       const preview=active();
@@ -122,6 +123,12 @@ def failed_inference_ui(browser, base_url, errors):
       assert(field('source')==='LOCAL MODEL','Failed inference must show the actual source');
       assert(field('inference-detail').includes('88 tokens')&&field('inference-detail').includes('300.0 ms'),
         'Failed model generation telemetry must remain inspectable');
+      assert(field('inference-detail').includes('Model attempts: 2 (one correction)')&&field('inference-detail').includes('Correction pass: 110.0 ms'),
+        'Correction work must remain visible in failed inference telemetry');
+      assert(!part('model-response-detail').hidden&&field('model-response')===failure.response.text,
+        'Failure details must expose the exact generated response');
+      assert(field('model-response-label').includes('finish: stop')&&!field('model-response-label').includes('truncated'),
+        'The response label must report its finish reason and actual truncation state');
       for(const name of ['database-first-latency','database-latency','render-latency','latency'])
         assert(field(name)==='—',`A pre-query failure cannot fabricate ${name}`);
       assert(/inference/i.test(field('plot-subtitle')),'Error subtitle must identify the failed phase');
@@ -138,6 +145,8 @@ def failed_inference_ui(browser, base_url, errors):
       assert(active()===preview,'Retry must reuse the live preview shell');
       assert(field('inference-latency')==='—'&&field('source')==='—'&&field('inference-detail')==='',
         'A fresh request must clear failure timing, source and diagnostic metadata');
+      assert(part('model-response-detail').hidden&&field('model-response')===''&&field('model-response-label')==='',
+        'A fresh request must clear the previous model response');
       assert(active().classList.contains('is-loading'),'A fresh request must resume loading');
       const view={id:'retry',prompt:calls.commits.at(-1),revision:2,sql:'SELECT',source:'template',database:'duckdb-wasm',context,
         plan:{metric:'speed',aggregate:'avg',bucketMinutes:1,windowHours:1,splitByVessel:true,vessel:null,view:'line'},
@@ -154,6 +163,7 @@ def failed_inference_ui(browser, base_url, errors):
       assert(field('inference-latency')==='5.0 ms'&&field('source')==='LOCAL TEMPLATE',
         'Successful retry must use its own timing and source');
       assert(part('inference-detail').hidden,'Successful template result must hide stale model diagnostics');
+      assert(part('model-response-detail').hidden,'Successful results must hide stale failed model output');
       const successfulText=active().textContent;
       ui.handleEvent({type:'error',id:view.id,message:'Late failure after completion',failure});
       assert(active().textContent===successfulText,'Completed results must ignore late failures');
@@ -163,6 +173,7 @@ def failed_inference_ui(browser, base_url, errors):
         failedAt:575,promoted:false,batches:0,points:0,bytes:0};
       ui.handleEvent({type:'error',message:'Controlled compilation failure',failure:{phase:'compile',source:'webgpu',
         model:'Controlled model',database:'duckdb-wasm',inference:{cacheHit:true},timing:compileTiming}});
+      assert(part('model-response-detail').hidden,'Failure before generation must not invent a model response');
       assert(field('plot-subtitle')==='SQL compilation failed','Compilation failure must name its phase');
       assert(field('inference-latency')==='50.0 ms','Compilation failure must preserve completed inference timing');
       assert(field('inference-label')==='PLAN CACHE'&&field('source')==='CACHED MODEL PLAN',
@@ -191,10 +202,19 @@ def failed_inference_ui(browser, base_url, errors):
       assert(failedQueryTiming.completedAt===undefined&&failedQueryTiming.firstDrawAt===undefined,
         'Database failure must not imply stream completion or drawing');
       assert(!active().classList.contains('is-loading'),'Database failure must stop loading');
+
+      await edit('Show wave height by minute over the last 7 days');
+      const malformedResponse={text:'<img data-untrusted-response src=x onerror="window.untrustedResponseExecuted=true">',
+        truncated:true,finishReason:'length'};
+      ui.handleEvent({type:'error',message:'Controlled invalid model response',failure:{...failure,response:malformedResponse}});
+      assert(field('model-response')===malformedResponse.text&&!active().querySelector('[data-untrusted-response]')&&!window.untrustedResponseExecuted,
+        'Generated response must render as literal text, never HTML');
+      assert(field('model-response-label').includes('finish: length')&&field('model-response-label').includes('truncated'),
+        'Truncated generation must be distinguishable from a complete refusal');
       ui.destroy();
       return {preStartInferenceTiming:true,noInventedDatabaseTiming:true,modelDiagnosticsPreserved:true,
         terminalLoadingStopped:true,failedPhaseVisible:true,retryClearsFailure:true,staleAttributedErrorsIgnored:true,
-        compileFailurePreservesInference:true,failedDatabaseLabelsTimeToError:true};
+        compileFailurePreservesInference:true,failedDatabaseLabelsTimeToError:true,rawResponseRenderedAsText:true,responseMetadataClearedOnRetry:true};
     }""")
     page.close()
     return result

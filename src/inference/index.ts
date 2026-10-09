@@ -87,6 +87,7 @@ export class LocalInferenceAdapter implements InferenceAdapter {
       const details = inferenceFailureDetails(error);
       throw new InferenceFailure(error, { source: this.mode === 'templates' ? 'template' : 'webgpu',
         model: details.model ?? this.model ?? this.options.model,
+        response: details.response,
         diagnostics: { ...details.diagnostics, ...(timing.warmupMs === undefined ? {} : {
           warmupMs: timing.warmupMs + (details.diagnostics?.warmupMs ?? 0),
         }) } });
@@ -188,7 +189,7 @@ export class LocalInferenceAdapter implements InferenceAdapter {
           this.pending.delete(data.id);pending.cleanup();
           const error=new Error(data.message);error.name=data.name;
           pending.reject(new InferenceFailure(error,{source:'webgpu',model:data.inference?.model??this.model,
-            diagnostics:data.inference?.diagnostics}));
+            diagnostics:data.inference?.diagnostics,response:data.inference?.response}));
         }
         fail(data.message,data.name);return;
       }
@@ -199,7 +200,7 @@ export class LocalInferenceAdapter implements InferenceAdapter {
       if (data.type === 'error') {
         const error = new Error(data.message); error.name = data.name ?? 'Error';
         pending.reject(new InferenceFailure(error, { source: 'webgpu', model: data.inference?.model ?? this.model,
-          diagnostics: data.inference?.diagnostics }));
+          diagnostics: data.inference?.diagnostics, response: data.inference?.response }));
       } else {
         if (data.type === 'ready') { this.ready = true; this.model = data.model; }
         pending.resolve(data.type === 'result' ? data.result : undefined);

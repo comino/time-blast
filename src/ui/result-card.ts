@@ -26,7 +26,7 @@ const markup = `
   <div class="card-stats"><div><span>MEAN <small data-card-el="mean-unit"></small></span><strong data-card-el="mean">—</strong></div><div><span>POINTS</span><strong data-card-el="points">—</strong></div><div><span>RANGE</span><strong data-card-el="range">—</strong></div><div><span>RUN → DRAW</span><strong data-card-el="latency">—</strong></div></div>
   <div class="card-timings" aria-label="Query latency breakdown"><div title="Time spent resolving the query intent, including model queueing and remote transport when used"><span data-card-el="inference-label">TRANSLATION</span><strong data-card-el="inference-latency">—</strong></div><div title="Database request to first nonempty batch, including queueing and decoding"><span data-card-el="database-first-label">DB → FIRST</span><strong data-card-el="database-first-latency">—</strong></div><div title="Database request to stream completion; includes first-batch time and streaming"><span data-card-el="database-label">DB TOTAL</span><strong data-card-el="database-latency">—</strong></div><div title="First batch delivered to this card to first drawing submission, including renderer readiness"><span>DATA → DRAW</span><strong data-card-el="render-latency">—</strong></div></div>
   <footer class="card-footer result-footer"><button class="detail-button" data-card-action="sql" aria-expanded="false">${icon('<path d="m8 7-5 5 5 5m8-10 5 5-5 5"/>')}<span>Query details</span><span class="source-pill" data-card-el="source">—</span></button><span class="card-batch-count" data-card-el="batch-count">Waiting for data</span><div class="result-actions"><button class="text-button cancel-button" data-card-action="cancel">Stop query</button><button class="icon-button" data-card-action="export" aria-label="Export result as CSV" title="Export result as CSV" disabled>${icon('<path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4"/>')}</button></div></footer>
-  <div class="sql-panel" data-card-el="sql-panel" hidden><p class="inference-detail" data-card-el="inference-detail" hidden></p><pre data-card-el="sql">A validated query will appear here.</pre><p data-card-el="query-meta"></p><p data-card-el="latency-detail">First point draw submitted</p></div>
+  <div class="sql-panel" data-card-el="sql-panel" hidden><p class="inference-detail" data-card-el="inference-detail" hidden></p><div data-card-el="model-response-detail" hidden><p data-card-el="model-response-label"></p><pre data-card-el="model-response"></pre></div><pre data-card-el="sql">A validated query will appear here.</pre><p data-card-el="query-meta"></p><p data-card-el="latency-detail">First point draw submitted</p></div>
   <button class="card-resize-handle" aria-label="Resize view" title="Drag to resize">◢</button>`;
 // Parse static chrome once during module warmup, outside the Enter path.
 const template = document.createElement('template');
@@ -125,6 +125,7 @@ export class ResultCard {
     this.part('sql').textContent = 'A validated query will appear here.'; this.part('query-meta').textContent = '';
     this.part('latency-detail').textContent = 'First point draw submitted';
     this.part('inference-detail').textContent = ''; this.part('inference-detail').hidden = true;
+    this.part('model-response-detail').hidden = true; this.part('model-response').textContent = ''; this.part('model-response-label').textContent = '';
     this.part('coverage-note').textContent = ''; this.part('coverage-note').hidden = true;
     this.part('legend').replaceChildren(); this.part('table-body').replaceChildren();
     this.part('mean-unit').textContent = ''; this.part('time-range').textContent = 'UTC'; this.part('batch-count').textContent = 'Waiting for data';
@@ -203,6 +204,10 @@ export class ResultCard {
       this.part('sql').textContent = 'No executable SQL generated.';
       this.part('query-meta').textContent = failure?.model ?? '';
     }
+    const response = failure?.response;
+    this.part('model-response-detail').hidden = !response;
+    this.part('model-response-label').textContent = response ? `Model response${response.finishReason ? ` · finish: ${response.finishReason}` : ''}${response.truncated ? ' · truncated' : ''}` : '';
+    this.part('model-response').textContent = response ? response.text || '(empty response)' : '';
     this.updateTiming();
   }
   setVisible(visible: boolean): void {
@@ -341,11 +346,12 @@ export class ResultCard {
     } else if (source && source !== 'template') {
       const stages: string[] = [];
       for (const [name, value] of [['Model warmup wait', d?.warmupMs], ['Worker queue', d?.queueMs],
-        ['Generation wall time', d?.generationMs], ['First token', d?.firstTokenMs],
+        ['Generation wall time', d?.generationMs], ['Correction pass', d?.repairMs], ['First token', d?.firstTokenMs],
         ['Prompt processing', d?.prefillMs], ['Token generation', d?.decodeMs],
         ['Grammar setup', d?.grammarInitMs], ['Grammar / token', d?.grammarPerTokenMs]] as const) {
         if (value !== undefined) stages.push(`${name}: ${duration(0, value)}`);
       }
+      if (d?.attempts !== undefined) stages.push(`Model attempts: ${d.attempts}${d.attempts === 2 ? ' (one correction)' : ''}`);
       if (d?.promptTokens !== undefined) stages.push(`Input: ${integer.format(d.promptTokens)} tokens`);
       if (d?.completionTokens !== undefined) stages.push(`Output: ${integer.format(d.completionTokens)} tokens`);
       if (d?.decodeTokensPerSecond !== undefined) stages.push(`Decode: ${fmt.format(d.decodeTokensPerSecond)} tokens/s`);
