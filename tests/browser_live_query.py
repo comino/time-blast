@@ -1,7 +1,8 @@
-"""Default live charts, pinning, cancellation and visible stage timing regression.
+"""Model-only default, live charts, pinning and visible stage timing regression.
 
-Uses actual DuckDB for the product flow and a controlled UI fixture for startup,
-IME, stale-event and exact timing boundaries. This is not a latency benchmark.
+Checks the model-only default with WebGPU deliberately unavailable, then selects
+templates for actual DuckDB flows. Controlled UI fixtures cover startup, IME,
+stale events and exact timing boundaries. No model-generation or latency claim.
 """
 import argparse
 import json
@@ -30,6 +31,8 @@ def actual_duckdb(browser, url, errors, screenshot=None):
     page = browser.new_page(viewport={'width': 1440, 'height': 1000})
     page.set_default_timeout(60_000)
     page.on('pageerror', lambda error: errors.append(str(error)))
+    # Deterministic unavailable-GPU branch; never download weights in this smoke.
+    page.add_init_script('delete Navigator.prototype.gpu;')
     quiet_vite(page)
     page.goto(url, wait_until='domcontentloaded')
     page.locator('[data-stage="database"][data-state="ready"]').wait_for(state='attached')
@@ -45,6 +48,24 @@ def actual_duckdb(browser, url, errors, screenshot=None):
     cards = page.locator('.result-card')
     assert page.locator('[data-action="live-query"]').get_attribute('aria-checked') == 'true'
     assert cards.count() == 0
+    page.get_by_role('button', name='Runtime settings', exact=True).click()
+    assert page.locator('[name="inferenceMode"]').input_value() == 'webgpu'
+    page.locator('[data-action="close-settings"]').click()
+    assert page.evaluate("!('gpu' in navigator)")
+    input_field.fill('Compare vessel speeds by hour over the last 24 hours')
+    page.wait_for_function("document.querySelector('[data-card-el=\"result-state\"]')?.textContent.trim()==='QUERY ERROR'")
+    assert cards.first.locator('[data-card-el="source"]').inner_text() == 'LOCAL MODEL'
+    assert 'WebGPU' in cards.first.locator('[data-card-el="empty-detail"]').inner_text()
+    for field in ['points', 'database-first-latency', 'database-latency']:
+        assert cards.first.locator(f'[data-card-el="{field}"]').inner_text() == '—', field
+    input_field.fill('')
+    page.locator('[data-action="clear-canvas"]').click()
+    page.get_by_role('button', name='Runtime settings', exact=True).click()
+    page.locator('[name="inferenceMode"]').select_option('templates')
+    page.get_by_role('button', name='Apply runtime').click()
+    page.wait_for_function("document.querySelector('[data-stage=\"model\"] small').textContent==='Deterministic templates'")
+    page.locator('[data-stage="coordinator"][data-state="ready"]').wait_for(state='attached')
+    page.evaluate('window.liveEvents=[];window.liveEventTimes=[];')
     input_field.fill('Compare vessel speeds by hour over the last 24 hours')
     settle(page, 144)
     first_work_after_edit = page.evaluate('''() => Math.min(...liveEventTimes
@@ -108,7 +129,8 @@ def actual_duckdb(browser, url, errors, screenshot=None):
     assert not page.locator('.result-card[data-live-preview="true"]').count()
     assert 'Prepared result promoted' in page.locator('[data-el="latency-detail"]').inner_text()
     page.close()
-    return {'default_live_duckdb': True, 'automatic_work_waited_for_two_seconds': True, 'preview_replaces_in_place': True,
+    return {'default_inference_mode': 'webgpu', 'unavailable_webgpu_no_template_fallback': True,
+            'explicit_template_live_duckdb': True, 'automatic_work_waited_for_two_seconds': True, 'preview_replaces_in_place': True,
             'enter_pins_without_query': True, 'pinned_result_preserved': True,
             'short_draft_removes_preview': True, 'manual_preparation_mode': True,
             'observed_stage_timings_not_benchmark': timings}

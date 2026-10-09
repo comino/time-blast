@@ -89,6 +89,8 @@ python3 tests/browser_query_failures.py
 
 ## Warm preparation comparison
 
+Current default is local WebGPU inference, with templates bypassed. The browser live-query and public deployment scripts deliberately remove WebGPU availability, submit known template wording, and require a model error with no data or database timings. They then explicitly select templates for the existing real DuckDB checks. This verifies absence of silent fallback, not successful model generation. The historical template benchmark below requires an explicit template/Auto selection.
+
 [`benchmark-browser.json`](benchmark-browser.json) records 20 measured trials per mode and two discarded warmups per mode. The paired order alternated, the same database stayed loaded, all results contained 144 points, and the source was explicitly `LOCAL TEMPLATE`. This run used headless Chromium **151.0.7922.34**, `--disable-gpu`, on a shared Linux aarch64 host with four logical CPUs.
 
 | Warm template path | Median draw-submission latency | p95 |

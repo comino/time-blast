@@ -19,6 +19,12 @@ def run(base_url, screenshot):
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.goto(base_url, wait_until="domcontentloaded")
         page.locator('[data-stage="database"][data-state="ready"]').wait_for(state='attached', timeout=90_000)
+        # This database/rendering smoke explicitly uses templates; the product
+        # default exercises WebGPU and requires an available local model.
+        page.get_by_role("button", name="Runtime settings", exact=True).click()
+        page.select_option('[name="inferenceMode"]', "templates")
+        page.get_by_role("button", name="Apply runtime").click()
+        page.wait_for_function("document.querySelector('[data-stage=\"model\"] small').textContent === 'Deterministic templates'")
         page.locator("[data-prompt]").first.click()
         page.locator('[data-el="input"]').press("Enter")
         page.locator('[data-el="result-state"]').filter(has_text="COMPLETE").wait_for(timeout=30_000)

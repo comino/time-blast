@@ -166,7 +166,7 @@ export interface RuntimeConfig {
   translationMinChars: number;
 }
 export const DEFAULT_CONFIG: RuntimeConfig = {
-  inferenceMode: 'auto', inferenceEndpoint: '', inferenceDraftEndpoint: '', databaseMode: 'browser',
+  inferenceMode: 'webgpu', inferenceEndpoint: '', inferenceDraftEndpoint: '', databaseMode: 'browser',
   databaseEndpoint: '', coordinatorMode: 'browser', coordinatorEndpoint: '', speculation: true,
   liveQuery: true, liveTranslation: true, translationMinChars: 20,
   datasetProfile: 'large',

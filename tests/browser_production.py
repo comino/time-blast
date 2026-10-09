@@ -1,7 +1,9 @@
 """Verify a built deployment through its public UI and actual HTTP asset path.
 
 python3 tests/browser_production.py --url https://time-blast.46-224-133-201.sslip.io
-Requires Python Playwright and Chromium. No model download or latency claim.
+Requires Python Playwright and Chromium. Checks the model-only default with
+WebGPU deliberately unavailable, then selects templates for actual DuckDB flows.
+No model download, generation or latency claim.
 """
 import argparse
 import json
@@ -16,6 +18,8 @@ def run(url, screenshot):
         page.set_default_timeout(60_000)
         errors, engines, failed_assets = [], [], []
         page.on("pageerror", lambda error: errors.append(str(error)))
+        # Deterministic unavailable-GPU branch; never download weights in this smoke.
+        page.add_init_script('delete Navigator.prototype.gpu;')
 
         def response_seen(response):
             if ".wasm.gz" in response.url:
@@ -33,6 +37,25 @@ def run(url, screenshot):
         assert "1,209,600" in page.locator('[data-el="dataset-sub"]').inner_text()
         before = len(engines)
         assert before == 1, engines
+        page.get_by_role('button', name='Runtime settings', exact=True).click()
+        assert page.locator('[name="inferenceMode"]').input_value() == 'webgpu'
+        page.locator('[data-action="close-settings"]').click()
+        assert page.evaluate("!('gpu' in navigator)")
+        assert page.locator('[data-action="live-query"]').get_attribute('aria-checked') == 'true'
+        page.locator('[data-el="input"]').fill('Compare vessel speeds by hour over the last 24 hours')
+        page.wait_for_function("document.querySelector('[data-el=\"result-state\"]')?.textContent.trim()==='QUERY ERROR'")
+        assert page.locator('[data-el="source"]').inner_text() == 'LOCAL MODEL'
+        assert 'WebGPU' in page.locator('[data-el="empty-detail"]').inner_text()
+        for name in ['points', 'database-first-latency', 'database-latency']:
+            assert page.locator(f'[data-el="{name}"]').inner_text() == '—', name
+        page.locator('[data-el="input"]').fill('')
+        page.locator('[data-action="clear-canvas"]').click()
+        page.get_by_role('button', name='Runtime settings', exact=True).click()
+        page.locator('[name="inferenceMode"]').select_option('templates')
+        page.get_by_role('button', name='Apply runtime').click()
+        page.wait_for_function("document.querySelector('[data-stage=\"model\"] small').textContent==='Deterministic templates'")
+        page.locator('[data-stage="coordinator"][data-state="ready"]').wait_for(state='attached')
+        assert len(engines) == before, 'Selecting templates reloaded DuckDB'
         page.evaluate('''() => {
           window.__typingWork=[];
           document.querySelector('[data-el="input"]').addEventListener('input',()=>{window.__lastTypedAt=performance.now();},true);
@@ -42,7 +65,7 @@ def run(url, screenshot):
               __typingWork.push({name,at:performance.now()});
           }}).observe(document.querySelector('[data-el="trace-list"]'),{childList:true});
         }''')
-        # The deployed default must draw real data without Enter or settings edits.
+        # Explicit templates exercise actual DuckDB and live drawing without Enter.
         assert page.locator('[data-action="live-query"]').get_attribute('aria-checked') == 'true'
         page.locator('[data-el="input"]').fill("Compare vessel speeds by hour over the last 24 hours")
         page.wait_for_function("""() =>
@@ -230,7 +253,9 @@ def run(url, screenshot):
         assert not failed_assets, failed_assets
         assert not errors, errors
         print(json.dumps({"url": url, "chromium": browser.version, "dataset_rows": 1_209_600,
-                          "dense_chart_points": 60_480, "default_live_chart_without_enter": True,
+                          "dense_chart_points": 60_480, "default_inference_mode": "webgpu",
+                          "unavailable_webgpu_no_template_fallback": True,
+                          "explicit_template_live_chart_without_enter": True,
                           "live_pin_without_query": True, "stage_timings_visible": True,
                           "automatic_work_waits_two_seconds": True, "enter_bypasses_typing_pause": True,
                           "live_translation_without_query": True,
