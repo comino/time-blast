@@ -34,8 +34,8 @@ The scripts' module-isolation harnesses use Vite development module URLs. The se
 
 | Warm template path | Median draw-submission latency | p95 |
 | --- | --- | --- |
-| Speculation off | 26.1 ms | 46.9 ms |
-| Prepared result | 7.3 ms | 18.1 ms |
+| Speculation off | 19.6 ms | 35.7 ms |
+| Prepared result | 5.65 ms | 20.8 ms |
 
 The prepared case waits until all points are staged before submitting. It measures the benefit of a successful preparation hit, not hit rate, inference performance, overall GPU/CPU cost, or presentation time. The host was uncontrolled and the sample is small; these are observations, not latency guarantees. Raw samples and hashes of the measured source files are retained in the JSON.
 

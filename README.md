@@ -60,7 +60,7 @@ python3 tests/browser_inference.py
 
 `pnpm-lock.yaml` pins the JavaScript runtime dependencies. `scripts/generate-dataset.py` records how to regenerate the deterministic input. Tests cover buffer identity, streaming termination, cancellation races, promotion, intent validation, and actual compiled Wasm.
 
-Initial [warm template benchmark](docs/benchmark-browser.json), 20 trials per mode: median commit-to-draw submission **26.1 ms without speculation**, **7.3 ms for a prepared hit**. The latter waits for staging before Enter. This is a small headless-browser experiment, not an inference or photon benchmark; [method and limitations](docs/verification.md).
+Initial [warm template benchmark](docs/benchmark-browser.json), 20 trials per mode: median commit-to-draw submission **19.6 ms without speculation**, **5.65 ms for a prepared hit**. The latter waits for staging before Enter. This is a small headless-browser experiment, not an inference or photon benchmark; [method and limitations](docs/verification.md).
 
 **Verification limit:** the development host's normal Chromium has no WebGPU adapter. An explicit software-WebGPU run loaded real Qwen weights but timed out after 420 seconds without completing a generated plan. DuckDB, templates, the production build, and rendering were browser-tested; a completed hardware-WebGPU inference still needs verification on a GPU-equipped device. See [verification notes](docs/verification.md).
 
