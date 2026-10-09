@@ -26,7 +26,7 @@ flowchart LR
   Stage -->|exact-match Enter| Canvas
 ```
 
-`src/core/types.ts` defines logical contracts. Their local calls do not require serialization. `main.ts` wires selected placements together and discards events from superseded runtimes. Changing speculation or coordinator placement preserves the warmed database and inference adapter.
+`src/core/types.ts` defines logical contracts. Their local calls do not require serialization. `main.ts` wires selected placements together and discards events from superseded runtimes. Changing speculation or coordinator placement preserves both warmed adapters. Changing inference preserves the database; changing the database preserves the model and supplies its new context.
 
 `BrowserCoordinator` owns one speculative candidate and one foreground request. An input pause of 180 ms starts speculative work. Enter promotes a matching in-flight or completed candidate, or starts a new job. Identity includes the exact prompt and immutable dataset context, with configuration isolated by the coordinator instance. Only already-staged data counts as a prepared-result hit. An in-flight reuse has a separate trace event. Queued draft/commit messages are fenced by cancellation epochs.
 
@@ -40,7 +40,9 @@ The Rust compiler has no external dependencies. It accepts numerical/enumerated 
 
 The bundled deterministic Parquet file contains 120,960 rows: six fictional vessels, every minute for 14 days from 2026-09-01 inclusive to 2026-09-15 exclusive. Units and schema are in `public/data/context.json`. DuckDB materializes the table at startup, then disables external access and locks configuration. Each query owns its connection. One active query and one waiter bound database admission; cancellation finishes before that query's connection is released.
 
-`connection.send(sql, true)` yields Arrow record batches. `retainArrowBatch` verifies primitive contiguous, non-null columns, then returns typed-array views with their Arrow owner retained. Canvas receives those references directly. Unit tests assert backing-buffer identity, including slices. The first complete point is submitted without waiting for query completion; subsequent drawing and the small table view are scheduled separately.
+`connection.send(sql, true)` yields Arrow record batches. `retainArrowBatch` verifies primitive contiguous, non-null columns, then returns typed-array views with their Arrow owner retained. Canvas receives those references directly. Unit tests assert backing-buffer identity, including slices. The first complete point is submitted without waiting for query completion. Bulk indexing, statistics, and drawing leave the next animation-frame callback free, then run in bounded slices targeting a shared four-millisecond frame budget. This gives rendering an opportunity; it does not prove physical presentation.
+
+Ordered appends draw only new segments while domains remain unchanged. Rescaling, resizing, or reordering requires a redraw. Track extrema are maintained incrementally; hidden time-series charts retain data without drawing geometry. Reference indexes can be sorted cooperatively without repacking producer columns. At large result sizes, bounded slices trade full-chart completion time for responsiveness; measure useful coverage as well as the first marker.
 
 Expected output columns:
 
@@ -62,7 +64,7 @@ Copy accounting:
 - The renderer uses Canvas2D commands; browser rasterization/compositing can perform additional internal copies. There is no claim of shared CPU/GPU storage.
 - CSV export deliberately allocates text when explicitly requested, after result rendering.
 
-Speculative staging is limited to 4 MiB; foreground retention to 16 MiB. The database adapter independently limits rows and bytes. A budget overflow is an explicit error/discard, never silent truncation. Small demo queries often return one batch. Aggregation and sorting are blocking operators: `send` is an incremental output API, not proof that the first final aggregate appears while the source is still being scanned.
+Speculative staging is limited to 4 MiB; foreground data retention to 16 MiB. These budgets charge unique backing allocations, including the full buffer behind a slice and owner validity buffers. Logical payload bytes remain a separate telemetry value. These are data-buffer budgets, not caps on all renderer/index/engine memory. The database adapter independently limits rows and bytes. A budget overflow is an explicit error/discard, never silent truncation. Small demo queries often return one batch. Aggregation and sorting are blocking operators: `send` is an incremental output API, not proof that the first final aggregate appears while the source is still being scanned.
 
 ## Remote inference adapter
 
@@ -84,6 +86,8 @@ Configure a base HTTP(S) URL:
 - `POST {base}/query` accepts `{id, sql, plan, context_id, priority}` and returns Arrow IPC streaming output with the columns above.
 - Set `X-Time-Blast-Completion: arrow-eos-v1`. Cross-origin servers must expose this header with `Access-Control-Expose-Headers` and permit the origin/methods through CORS.
 - **Withhold Arrow's explicit end-of-stream marker until database execution has succeeded.** The browser requires both explicit IPC EOS and clean HTTP completion. On database failure, abort/truncate the response instead of appending a false success marker. Early points remain marked incomplete on failure.
+- Return exactly one schema and one stream, with no duplicate/extra columns, dictionary messages, or bytes after EOS. Metadata messages are bounded to 64 KiB. The browser verifies message framing before passing the original result chunks into Arrow; only fragmented metadata needs a bounded assembly buffer. The success marker is the modern eight-byte Arrow EOS at a message boundary.
+- Priority is read at admission. A request already sent as speculative has no remote priority-upgrade operation in this contract yet.
 
 This is a bridge contract, not the raw ClickHouse HTTP interface. The service must independently validate the intent/SQL, permissions, context freshness and resource budgets. A browser is not an authorization boundary. A future Rust/ClickHouse bridge should preserve Arrow buffers where formats match and supply ordered first-window results deliberately.
 
@@ -100,7 +104,7 @@ Connect using WebSocket subprotocol `time-blast.v1`. All messages are bounded JS
 | `COMMIT` | `epoch`, unique `commitId`, full committed `draft` |
 | `CANCEL` | Incremented `epoch` |
 
-Server replies with `READY {version:1}`, `PREPARE {epoch,revision,contextId}`, or `ACCEPT {epoch,commitId,revision,contextId}`. `ERROR {message}` reports scheduling failure. PREPARE permits one speculative execution for the current non-composing draft. ACCEPT commits exactly the pending immutable snapshot. Stale epochs, revisions, repeated preparation, and previous commit IDs cannot authorize later work. The browser retains and promotes buffers itself. A 10-second readiness timeout and a 64 KiB socket send-queue budget prevent silent indefinite setup/queue growth.
+Server replies with `READY {version:1}`, `PREPARE {epoch,revision,contextId}`, or `ACCEPT {epoch,commitId,revision,contextId}`. `ERROR {message}` reports scheduling failure. PREPARE permits one speculative execution for the current non-composing draft. ACCEPT commits exactly the pending immutable snapshot. Enter immediately cancels the previous foreground, even before ACCEPT, while retaining an exactly matching candidate. Stale epochs, revisions, repeated preparation, and previous commit IDs cannot authorize later work. The browser retains and promotes buffers itself. A 10-second readiness timeout and a 64 KiB socket send-queue budget (existing buffered bytes plus the next UTF-8 message) prevent silent indefinite setup/queue growth. Incoming messages are capped at 16 KiB UTF-8; prompts are checked before transport.
 
 This reference coordinator client and remote adapters are implemented; production services are not included. The adapter placement tests exercise the four inference/database combinations under remote scheduling using controlled service doubles. They do not claim a deployed remote service or a production ClickHouse integration.
 

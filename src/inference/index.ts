@@ -57,9 +57,14 @@ export class LocalInferenceAdapter implements InferenceAdapter {
       // prepare() reports failures while preventing an unobserved stored rejection.
       void this.warming.catch(() => undefined);
     }
-    try { await this.warming; }
+    const attempt=this.warming;
+    try { await attempt; }
     catch (error) {
       this.failure = error instanceof Error ? error.message : String(error);
+      if(this.warming===attempt) {
+        this.warming=undefined;
+        this.resetWorker(new Error(this.failure));
+      }
       if (!this.disposed) this.options.onStatus?.({ state: 'unavailable', label: 'Local model unavailable',
         detail: `${this.failure}${this.mode === 'auto' ? ' Exact templates still work; other requests need a model.' : ''}` });
       if (this.mode === 'webgpu') throw error;
@@ -108,14 +113,21 @@ export class LocalInferenceAdapter implements InferenceAdapter {
 
   private assertLive(): void { if (this.disposed) throw new Error('Inference adapter has been disposed.'); }
 
+  private resetWorker(error:Error):void {
+    this.ready=false;
+    for(const pending of this.pending.values()){pending.cleanup();pending.reject(error);}
+    this.pending.clear();
+    this.worker?.terminate();this.worker=undefined;
+  }
+
   private async warm(): Promise<void> {
     if (typeof navigator === 'undefined' || !('gpu' in navigator)) throw new Error('WebGPU is not exposed by this browser.');
     if (typeof Worker === 'undefined') throw new Error('Web workers are unavailable.');
     this.options.onStatus?.({ state: 'loading', label: 'Starting local WebGPU model', progress: 0,
       detail: 'Downloading model weights when absent from browser cache' });
-    this.worker = new Worker(new URL('./webllm.worker.ts', import.meta.url), { type: 'module', name: 'time-blast-inference' });
-    this.worker.onmessage = ({ data }: MessageEvent<WorkerResponse>) => {
-      if (this.disposed) return;
+    const worker=this.worker = new Worker(new URL('./webllm.worker.ts', import.meta.url), { type: 'module', name: 'time-blast-inference' });
+    worker.onmessage = ({ data }: MessageEvent<WorkerResponse>) => {
+      if (this.disposed||this.worker!==worker) return;
       if (data.type === 'status') { this.options.onStatus?.(data.status); return; }
       const pending = this.pending.get(data.id);
       if (!pending) return;
@@ -129,14 +141,15 @@ export class LocalInferenceAdapter implements InferenceAdapter {
       }
     };
     const fail = (message: string) => {
+      if(this.disposed||this.worker!==worker)return;
       this.failure = message; this.ready = false;
-      for (const pending of this.pending.values()) { pending.cleanup(); pending.reject(new Error(message)); }
-      this.pending.clear();
+      this.resetWorker(new Error(message));
+      this.warming=undefined;
       this.options.onStatus?.({ state: 'error', label: 'Local model worker stopped', detail: message });
     };
-    this.worker.onerror = (event) => fail(event.message || 'Unable to load the local model worker.');
-    this.worker.onmessageerror = () => fail('Unable to decode a message from the local model worker.');
-    if (this.latestDraft) this.worker.postMessage({ type: 'draft', draft: this.latestDraft } satisfies WorkerRequest);
+    worker.onerror = (event) => fail(event.message || 'Unable to load the local model worker.');
+    worker.onmessageerror = () => fail('Unable to decode a message from the local model worker.');
+    if (this.latestDraft) worker.postMessage({ type: 'draft', draft: this.latestDraft } satisfies WorkerRequest);
     await this.request({ type: 'prepare', model: this.options.model });
   }
 

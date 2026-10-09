@@ -14,6 +14,10 @@ The application runs in the browser. Inference and database execution can each r
 
 ## Run it
 
+Open the [live browser prototype](https://time-blast.46-224-133-201.sslip.io).
+The public demo uses synthetic data; the source repository remains private.
+HTTPS hosting and repeatable deployment are described in [deploy/README.md](deploy/README.md).
+
 ```sh
 pnpm install --frozen-lockfile
 pnpm dev
@@ -126,6 +130,8 @@ These are benchmark candidates, not claims that one language, transport, or GPU 
 5. [Browser and transport](docs/browser-and-transport.md): networking, memory movement, rendering, and browser limits.
 6. [Experiments](docs/experiments.md): latency definitions, trace design, benchmark matrix, and falsifiable tests.
 7. [Roadmap and optimization backlog](docs/roadmap.md): what to build first and how far to push it.
+
+The implemented prototype also has a [three-agent performance and correctness review](docs/reviews/README.md), with reproduced failures, regression checks, and explicit remaining limits.
 
 The next research pass develops the implementation choices:
 

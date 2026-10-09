@@ -79,6 +79,18 @@ describe('untrusted model plan validation', () => {
 });
 
 describe('generation ownership and cancellation', () => {
+  it('bounds admission and immediately releases canceled waiters behind a stalled task',async()=>{
+    const queue=new GenerationQueue();const body=deferred<string>();
+    const active=queue.run('active',()=>body.promise,()=>{});await Promise.resolve();
+    for(let i=0;i<100;i++) {
+      const waiting=queue.run(`wait-${i}`,async()=> 'obsolete',()=>{});
+      await expect(queue.run(`overflow-${i}`,async()=> 'overflow',()=>{})).rejects.toThrow('queue is full');
+      queue.cancel(`wait-${i}`);
+      await expect(waiting).rejects.toMatchObject({name:'AbortError'});
+    }
+    const latest=queue.run('latest',async()=> 'current',()=>{});
+    body.resolve('done');await active;await expect(latest).resolves.toBe('current');
+  });
   it('waits for the old stop acknowledgment and never lets an old cancel interrupt the next generation', async () => {
     const queue = new GenerationQueue();
     const firstBody = deferred<string>();
@@ -125,6 +137,24 @@ describe('generation ownership and cancellation', () => {
 });
 
 describe('adapter behavior', () => {
+  it('retries failed preparation with a fresh worker and retains a successful worker',async()=>{
+    const workers:any[]=[];
+    class Worker {
+      messages:WorkerRequest[]=[];onmessage:any;onerror:any;terminate=vi.fn();
+      constructor(){workers.push(this);}postMessage(message:WorkerRequest){this.messages.push(message);}
+    }
+    vi.stubGlobal('navigator',{gpu:{}});vi.stubGlobal('Worker',Worker);
+    const adapter=createInferenceAdapter('webgpu');const first=adapter.prepare(context);
+    const rejected=expect(first).rejects.toThrow('Temporary download failure');
+    workers[0].onmessage({data:{type:'error',id:workers[0].messages[0].id,message:'Temporary download failure'}});await rejected;
+    const retry=adapter.prepare(context);expect(workers).toHaveLength(2);expect(workers[0].terminate).toHaveBeenCalledTimes(1);
+    workers[1].onmessage({data:{type:'ready',id:workers[1].messages[0].id,model:'test'}});await retry;
+    workers[0].onerror({message:'Late failure from replaced worker'});
+    await adapter.prepare(context);expect(workers).toHaveLength(2);
+    workers[1].onerror({message:'Device lost'});
+    const restart=adapter.prepare(context);expect(workers).toHaveLength(3);
+    workers[2].onmessage({data:{type:'ready',id:workers[2].messages[0].id,model:'test'}});await restart;adapter.dispose();
+  });
   it('forwards every draft before model readiness and discards late canceled worker output', async () => {
     const workers: FakeWorker[] = [];
     class FakeWorker {

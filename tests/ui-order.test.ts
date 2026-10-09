@@ -31,4 +31,16 @@ describe('chart column ordering', () => {
     const next = batch([1], [2]); batches.push(next); order.append(next);
     expect(order.series.get(2)!.refs).toEqual([0]);
   });
+
+  it('keeps published references intact when cooperative sorting is abandoned', () => {
+    const current = batch(Array.from({ length: 40 }, (_, i) => 40 - i), new Array(40).fill(0));
+    const batches = [current], order = new ColumnOrder(batches); order.append(current);
+    const refs = order.series.get(0)!.refs, original = [...refs], sorting = order.sortSteps(10);
+    for (let i = 0; i < 6; i++) expect(sorting.next().done).toBe(false);
+    expect(order.series.get(0)!.refs).toBe(refs); expect(refs).toEqual(original);
+    sorting.return(undefined);
+    for (const _ of order.sortSteps(10)) { /* bounded restart after cancellation */ }
+    const times = order.series.get(0)!.refs.map(ref => current.x[ref]);
+    expect(times).toEqual([...current.x].sort((a, b) => a - b));
+  });
 });

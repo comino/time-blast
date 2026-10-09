@@ -1,0 +1,20 @@
+time-blast.46-224-133-201.sslip.io {
+	root * /srv/time-blast/current
+
+	# The build ships compressed DuckDB engines. Decode in the HTTP stack so
+	# fetchEngineWasm can use the response directly, avoiding a JS decompression.
+	@engine path /assets/*.wasm.gz
+	header @engine Content-Type application/wasm
+	header @engine Content-Encoding gzip
+
+	@hashed path /assets/*
+	header @hashed Cache-Control "public, max-age=31536000, immutable"
+	@mutable not path /assets/*
+	header @mutable Cache-Control "no-cache"
+	header X-Content-Type-Options nosniff
+
+	encode zstd gzip
+	file_server {
+		precompressed gzip
+	}
+}

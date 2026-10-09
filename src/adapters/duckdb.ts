@@ -5,7 +5,7 @@ import ehWasm from '@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url';
 import ehWorker from '@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?url';
 import contextJSON from '../../public/data/context.json';
 import type { AdapterStatus, ColumnBatch, DatabaseAdapter, DatasetContext, QueryRequest } from '../core/types';
-import { abortError, checkAbort, MAX_RESULT_BYTES, MAX_RESULT_ROWS, QueryGate, retainArrowBatch } from './arrow';
+import { abortError, accountRetainedBytes, checkAbort, MAX_RESULT_BYTES, MAX_RESULT_ROWS, QueryGate, retainArrowBatch } from './arrow';
 import { fetchEngineWasm } from './engine-asset';
 
 export const SYNTHETIC_CONTEXT: DatasetContext = Object.freeze({
@@ -96,11 +96,12 @@ export class DuckDBAdapter implements DatabaseAdapter {
       reader = await connection.send(request.sql, true);
       if (!reader) throw new Error('DuckDB worker stopped before producing a result');
       let rows = 0, bytes = 0;
+      const retained = new WeakSet<ArrayBufferLike>();
       for await (const record of reader) {
         checkAbort(request.signal);
         if (stopped || this.disposed) throw abortError();
         const batch = retainArrowBatch(record, context.vessels.length);
-        rows += batch.length; bytes += batch.byteLength;
+        rows += batch.length; bytes += accountRetainedBytes(batch, retained);
         if (rows > MAX_RESULT_ROWS || bytes > MAX_RESULT_BYTES) throw new Error('Query exceeded the result budget');
         if (batch.length) yield batch;
       }

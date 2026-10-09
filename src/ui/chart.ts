@@ -1,135 +1,178 @@
 import { METRIC_LABELS, type ColumnBatch, type QueryView } from '../core/types';
 import { ColumnOrder } from './order';
 import { barLayout } from './bar-layout';
+import { FrameWork } from './frame-work';
 
 export const SERIES_COLORS = ['#ff906c', '#74d4c3', '#d4c17e', '#83b9e3', '#e39eaf', '#b0c985'];
 const BACKGROUND = '#171b1c';
+const CHUNK = 2048;
 const number = new Intl.NumberFormat('en', { maximumFractionDigits: 1 });
 const time = new Intl.DateTimeFormat('en', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' });
 const day = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
-/** Retains producer buffers. Drawing never expands columns into row objects. */
+export interface BatchProgress {
+  sum: number; count: number; minimum: number; maximum: number; series: Set<number>;
+  minLat: number; maxLat: number; minLon: number; maxLon: number;
+}
+interface Cursor { count: number; x: number; y: number; hasPoint: boolean }
+const cursor = (): Cursor => ({ count: 0, x: 0, y: 0, hasPoint: false });
+
+/** End markers live separately so appending a segment never leaves an old endpoint dot. */
+class Markers {
+  private canvas = document.createElement('canvas');
+  readonly ctx = this.canvas.getContext('2d')!;
+  constructor(canvas: HTMLCanvasElement) {
+    this.canvas.setAttribute('aria-hidden', 'true');
+    this.canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none';
+    canvas.parentElement!.append(this.canvas);
+  }
+  resize(width: number, height: number, dpr: number): void {
+    this.canvas.width = Math.round(width * dpr); this.canvas.height = Math.round(height * dpr);
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  clear(): void { this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height); }
+  dot(x: number, y: number, series: number, radius = 3.5): void {
+    this.ctx.beginPath(); this.ctx.fillStyle = SERIES_COLORS[Math.abs(series) % SERIES_COLORS.length];
+    this.ctx.arc(x, y, radius, 0, Math.PI * 2); this.ctx.fill();
+  }
+  destroy(): void { this.canvas.remove(); }
+}
+
+/** Retains producer buffers; indexing and drawing run in cancelable, bounded slices. */
 export class StreamChart {
   readonly batches: ColumnBatch[] = [];
   readonly order = new ColumnOrder(this.batches);
   private readonly ctx: CanvasRenderingContext2D;
+  private readonly markers: Markers;
   private readonly observer: ResizeObserver;
+  private readonly work = new FrameWork(deadline => this.advance(deadline));
+  private readonly cursors = new Map<number, Cursor>();
   private view?: QueryView;
-  private width = 0;
-  private height = 0;
-  private frame = 0;
-  private drawn = false;
-  private stopped = false;
-  private visible = true;
-  private low = 0;
-  private high = 40;
-  private xLow = 0;
-  private xHigh = 1;
-  private xPadding = 0;
+  private width = 0; private height = 0; private dpr = 0;
+  private drawn = false; private stopped = false; private visible = true;
+  private firstBatch?: ColumnBatch;
+  private firstRow = 0;
+  private nextBatch = 0; private nextRow = 0;
+  private sorting?: Generator<void>;
+  private repaint = true;
+  private gridReady = false;
+  private low = 0; private high = 40; private xLow = 0; private xHigh = 1; private xPadding = 0;
   private readonly pad = { left: 53, right: 22, top: 26, bottom: 38 };
 
-  constructor(private canvas: HTMLCanvasElement, private onDraw: (id: string, at: number) => void) {
+  constructor(private canvas: HTMLCanvasElement, private onDraw: (id: string, at: number) => void,
+    private onProgress: (progress: BatchProgress) => void = () => {},
+    private onIndexed: (reordered: boolean) => void = () => {}) {
     const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) throw new Error('Canvas 2D is unavailable in this browser.');
-    this.ctx = ctx;
-    this.observer = new ResizeObserver(() => this.resize());
-    this.observer.observe(canvas);
-    this.resize();
+    this.ctx = ctx; this.markers = new Markers(canvas);
+    this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(canvas); this.resize();
   }
 
   begin(view: QueryView): void {
-    this.view = view;
-    this.batches.length = 0;
-    this.order.clear();
-    this.drawn = false;
-    this.stopped = false;
+    this.work.cancel(); this.sorting = undefined;
+    this.view = view; this.batches.length = 0; this.order.clear(); this.cursors.clear();
+    this.nextBatch = 0; this.nextRow = 0; this.drawn = false; this.stopped = false; this.repaint = true;
+    this.firstBatch = undefined;
     this.xPadding = view.plan.view === 'bar' ? view.plan.bucketMinutes * 30_000 : 0;
     this.xLow = Math.max(view.context.start, view.context.end - view.plan.windowHours * 3_600_000) - this.xPadding;
     this.xHigh = view.context.end + this.xPadding;
     [this.low, this.high] = { speed: [0, 40], wind: [0, 60], wave_height: [0, 8], water_temp: [-2, 35] }[view.plan.metric];
-    this.grid();
+    this.gridReady = false; this.markers.clear(); if (this.visible) this.grid();
   }
 
   append(batch: ColumnBatch): void {
     if (this.stopped) return;
     this.batches.push(batch);
-    // Submit the first marker before walking the batch or scheduling continuation.
-    this.firstMarker(batch);
-    this.order.append(batch);
-    for (let i = 0; i < batch.length; i++) {
-      if (!Number.isFinite(batch.x[i]) || !Number.isFinite(batch.y[i])) continue;
-      this.low = Math.min(this.low, batch.y[i]);
-      this.high = Math.max(this.high, batch.y[i] * (batch.y[i] >= 0 ? 1.05 : 1));
-      this.xLow = Math.min(this.xLow, batch.x[i] - this.xPadding);
-      this.xHigh = Math.max(this.xHigh, batch.x[i] + this.xPadding);
-    }
-    this.schedule();
+    // Validated producer batches begin with a complete point. Invalid test inputs are scanned later.
+    this.firstMarker(batch, 0);
+    this.work.schedule();
   }
 
-  private firstMarker(batch: ColumnBatch): void {
-    if (this.stopped || !this.visible || this.drawn || !this.view || !this.width || !this.height) return;
-    for (let i = 0; i < batch.length; i++) {
-      if (!Number.isFinite(batch.x[i]) || !Number.isFinite(batch.y[i])) continue;
-      this.low = Math.min(this.low, batch.y[i]);
-      this.high = Math.max(this.high, batch.y[i]);
-      this.xLow = Math.min(this.xLow, batch.x[i] - this.xPadding);
-      this.xHigh = Math.max(this.xHigh, batch.x[i] + this.xPadding);
-      this.grid();
-      const offset = this.view.plan.view === 'bar' ? this.bar(batch.series[i]).offset : 0;
-      this.dot(this.x(batch.x[i]) + offset, this.y(batch.y[i]), batch.series[i]);
-      this.drawn = true;
-      this.onDraw(this.view.id, performance.now());
-      return;
-    }
+  private firstMarker(batch: ColumnBatch, i: number): void {
+    if (this.stopped || !this.visible || this.drawn || !this.view || !this.width || !this.height ||
+      i >= batch.length || !Number.isFinite(batch.x[i]) || !Number.isFinite(batch.y[i])) return;
+    const low = this.low, high = this.high, xLow = this.xLow, xHigh = this.xHigh;
+    this.low = Math.min(this.low, batch.y[i]); this.high = Math.max(this.high, batch.y[i]);
+    this.xLow = Math.min(this.xLow, batch.x[i] - this.xPadding); this.xHigh = Math.max(this.xHigh, batch.x[i] + this.xPadding);
+    if (!this.gridReady || low !== this.low || high !== this.high || xLow !== this.xLow || xHigh !== this.xHigh) this.grid();
+    const offset = this.view.plan.view === 'bar' ? this.bar(batch.series[i]).offset : 0;
+    this.markers.dot(this.x(batch.x[i]) + offset, this.y(batch.y[i]), batch.series[i]);
+    this.firstBatch = batch; this.firstRow = i;
+    this.drawn = true; this.onDraw(this.view.id, performance.now());
   }
 
   private resize(): void {
-    const box = this.canvas.getBoundingClientRect();
-    if (box.width < 1 || box.height < 1) return;
-    this.width = box.width;
-    this.height = box.height;
-    const dpr = window.devicePixelRatio || 1;
-    this.canvas.width = Math.round(box.width * dpr);
-    this.canvas.height = Math.round(box.height * dpr);
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    for (const batch of this.batches) {
-      this.firstMarker(batch);
-      if (this.drawn) break;
-    }
-    this.render();
+    const box = this.canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    if (box.width < 1 || box.height < 1 || box.width === this.width && box.height === this.height && dpr === this.dpr) return;
+    this.width = box.width; this.height = box.height; this.dpr = dpr;
+    this.canvas.width = Math.round(box.width * dpr); this.canvas.height = Math.round(box.height * dpr);
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0); this.markers.resize(this.width, this.height, dpr);
+    this.repaint = true;
+    if (this.stopped && this.order.needsSort) this.sorting = this.order.sortSteps();
+    if (this.visible) { this.grid(); this.work.schedule(); }
   }
 
   setVisible(visible: boolean): void {
+    if (visible && !this.visible) this.gridReady = false;
     this.visible = visible;
-    if (visible && !this.drawn) for (const batch of this.batches) {
-      this.firstMarker(batch);
-      if (this.drawn) break;
+    if (visible) {
+      this.repaint = true;
+      if (this.stopped && this.order.needsSort) this.sorting = this.order.sortSteps();
+      if (this.batches.length) this.firstMarker(this.batches[0], 0);
+      this.work.schedule();
     }
   }
 
-  private x(value: number): number {
-    return this.pad.left + (value - this.xLow) / Math.max(1, this.xHigh - this.xLow) * (this.width - this.pad.left - this.pad.right);
+  private advance(deadline: number): boolean {
+    if (!this.view) return false;
+    if (this.sorting) {
+      do { if (this.sorting.next().done) { this.sorting = undefined; this.repaint = true; this.onIndexed(true); break; } }
+      while (performance.now() < deadline);
+    } else if (!this.stopped && this.nextBatch < this.batches.length) {
+      const batch = this.batches[this.nextBatch], from = this.nextRow, to = Math.min(batch.length, from + CHUNK);
+      this.order.appendRange(batch, this.nextBatch, from, to);
+      const progress: BatchProgress = { sum: 0, count: 0, minimum: Infinity, maximum: -Infinity, series: new Set(),
+        minLat: Infinity, maxLat: -Infinity, minLon: Infinity, maxLon: -Infinity };
+      const oldLow = this.low, oldHigh = this.high, oldXLow = this.xLow, oldXHigh = this.xHigh;
+      for (let i = from; i < to; i++) {
+        const x = batch.x[i], y = batch.y[i];
+        progress.series.add(batch.series[i]);
+        if (Number.isFinite(y)) { progress.sum += y; progress.count++; progress.minimum = Math.min(progress.minimum, y); progress.maximum = Math.max(progress.maximum, y); }
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+          this.firstMarker(batch, i);
+          this.low = Math.min(this.low, y); this.high = Math.max(this.high, Number.isFinite(y * 1.05) && y >= 0 ? y * 1.05 : y);
+          this.xLow = Math.min(this.xLow, x - this.xPadding); this.xHigh = Math.max(this.xHigh, x + this.xPadding);
+        }
+        if (batch.lat && batch.lon && Number.isFinite(batch.lat[i]) && Number.isFinite(batch.lon[i])) {
+          progress.minLat = Math.min(progress.minLat, batch.lat[i]); progress.maxLat = Math.max(progress.maxLat, batch.lat[i]);
+          progress.minLon = Math.min(progress.minLon, batch.lon[i]); progress.maxLon = Math.max(progress.maxLon, batch.lon[i]);
+        }
+      }
+      this.repaint ||= oldLow !== this.low || oldHigh !== this.high || oldXLow !== this.xLow || oldXHigh !== this.xHigh;
+      this.nextRow = to;
+      if (to === batch.length) { this.nextBatch++; this.nextRow = 0; }
+      this.onProgress(progress);
+      if (this.order.needsSort) this.sorting = this.order.sortSteps(); else this.onIndexed(false);
+    }
+    if (this.visible && !this.sorting && performance.now() < deadline) this.render(deadline);
+    return !this.stopped && this.nextBatch < this.batches.length || !!this.sorting || this.visible && this.needsPaint();
   }
 
-  private y(value: number): number {
-    return this.height - this.pad.bottom - (value - this.low) / Math.max(0.001, this.high - this.low) * (this.height - this.pad.top - this.pad.bottom);
+  private needsPaint(): boolean {
+    if (!this.width || !this.height) return false;
+    if (this.repaint) return true;
+    for (const [id, series] of this.order.series) if ((this.cursors.get(id)?.count ?? 0) < series.refs.length) return true;
+    return false;
   }
-
+  private x(value: number): number { return this.pad.left + (value - this.xLow) / Math.max(1, this.xHigh - this.xLow) * (this.width - this.pad.left - this.pad.right); }
+  private y(value: number): number { return this.height - this.pad.bottom - (value - this.low) / Math.max(0.001, this.high - this.low) * (this.height - this.pad.top - this.pad.bottom); }
   private bar(series: number) {
     const { plan, context } = this.view!;
     const grouped = plan.splitByVessel && plan.vessel === null;
-    const bucketPixels = plan.bucketMinutes * 60_000 / Math.max(1, this.xHigh - this.xLow) * (this.width - this.pad.left - this.pad.right);
-    return barLayout(bucketPixels, grouped ? series : 0, grouped ? context.vessels.length : 1);
+    return barLayout(plan.bucketMinutes * 60_000 / Math.max(1, this.xHigh - this.xLow) * (this.width - this.pad.left - this.pad.right), grouped ? series : 0, grouped ? context.vessels.length : 1);
   }
-
-  private dot(x: number, y: number, series: number): void {
-    this.ctx.beginPath();
-    this.ctx.fillStyle = SERIES_COLORS[Math.abs(series) % SERIES_COLORS.length];
-    this.ctx.arc(x, y, 3.5, 0, Math.PI * 2);
-    this.ctx.fill();
-  }
-
   private grid(): void {
+    this.gridReady = true;
     const c = this.ctx;
     c.fillStyle = BACKGROUND;
     c.fillRect(0, 0, this.width, this.height);
@@ -155,92 +198,113 @@ export class StreamChart {
     }
   }
 
-  private schedule(): void {
-    if (!this.frame) this.frame = requestAnimationFrame(() => { this.frame = 0; this.render(); });
-  }
-
-  private render(): void {
-    this.grid();
-    if (!this.view) return;
+  private render(deadline: number): void {
+    if (!this.visible || !this.view || !this.width || !this.height) return;
+    if (this.repaint) { this.grid(); this.cursors.clear(); this.repaint = false; }
     const c = this.ctx;
-    this.order.sort();
     c.save(); c.beginPath(); c.rect(this.pad.left - 4, this.pad.top - 4, this.width - this.pad.left - this.pad.right + 8, this.height - this.pad.top - this.pad.bottom + 8); c.clip();
+    let work = 0;
     for (const [series, ordered] of this.order.series) {
-      let lastX = 0, lastY = 0, hasPoint = false;
-      c.beginPath();
-      const color = SERIES_COLORS[Math.abs(series) % SERIES_COLORS.length];
-      const bar = this.view.plan.view === 'bar' ? this.bar(series) : undefined;
-      for (const ref of ordered.refs) {
-        const index = this.order.batchIndex(ref), batch = this.batches[index], i = this.order.rowIndex(ref, index);
-        const t = batch.x[i], value = batch.y[i];
-        if (!Number.isFinite(t) || !Number.isFinite(value)) continue;
-        const x = this.x(t) + (bar?.offset ?? 0), y = this.y(value);
+      const state = this.cursors.get(series) ?? cursor(); this.cursors.set(series, state);
+      const color = SERIES_COLORS[Math.abs(series) % SERIES_COLORS.length], bar = this.view.plan.view === 'bar' ? this.bar(series) : undefined;
+      c.beginPath(); if (state.hasPoint) c.moveTo(state.x, state.y);
+      while (state.count < ordered.refs.length && work < CHUNK) {
+        const ref = ordered.refs[state.count++], index = this.order.batchIndex(ref), batch = this.batches[index], i = this.order.rowIndex(ref, index);
+        work++;
+        if (!Number.isFinite(batch.x[i]) || !Number.isFinite(batch.y[i])) continue;
+        const x = this.x(batch.x[i]) + (bar?.offset ?? 0), y = this.y(batch.y[i]);
         if (bar) {
           c.fillStyle = color; c.globalAlpha = 0.78;
           const baseline = this.y(Math.max(this.low, Math.min(this.high, 0)));
           c.fillRect(x - bar.width / 2, Math.min(y, baseline), bar.width, Math.max(1, Math.abs(baseline - y))); c.globalAlpha = 1;
-        } else if (hasPoint) c.lineTo(x, y);
-        else c.moveTo(x, y);
-        lastX = x; lastY = y; hasPoint = true;
+        } else if (state.hasPoint) c.lineTo(x, y); else c.moveTo(x, y);
+        state.x = x; state.y = y; state.hasPoint = true;
+        if (work % 128 === 0 && performance.now() >= deadline) break;
       }
-      if (this.view.plan.view === 'line') { c.strokeStyle = color; c.lineWidth = 1.7; c.stroke(); }
-      if (hasPoint) this.dot(lastX, lastY, series);
+      if (!bar) { c.strokeStyle = color; c.lineWidth = 1.7; c.stroke(); }
+      if (work >= CHUNK || performance.now() >= deadline) break;
     }
-    c.restore();
+    c.restore(); this.markers.clear();
+    let hasMarker = false;
+    for (const [series, state] of this.cursors) if (state.hasPoint) { this.markers.dot(state.x, state.y, series); hasMarker = true; }
+    // Cancellation can freeze the result before indexing; preserve its submitted point on resize/show.
+    if (!hasMarker && this.firstBatch) {
+      const b = this.firstBatch, i = this.firstRow, offset = this.view.plan.view === 'bar' ? this.bar(b.series[i]).offset : 0;
+      this.markers.dot(this.x(b.x[i]) + offset, this.y(b.y[i]), b.series[i]);
+    }
   }
 
-  stop(): void { this.stopped = true; if (this.frame) cancelAnimationFrame(this.frame); this.frame = 0; }
-  destroy(): void { this.observer.disconnect(); this.stop(); }
+  stop(): void { this.stopped = true; this.work.cancel(); this.sorting = undefined; }
+  destroy(): void { this.observer.disconnect(); this.stop(); this.markers.destroy(); }
 }
 
 export class TrackChart {
-  private ctx: CanvasRenderingContext2D;
-  private observer: ResizeObserver;
+  private readonly ctx: CanvasRenderingContext2D;
+  private readonly markers: Markers;
+  private readonly observer: ResizeObserver;
+  private readonly work = new FrameWork(deadline => this.render(deadline));
+  private readonly cursors = new Map<number, Cursor>();
   private batches: readonly ColumnBatch[] = [];
   private order?: ColumnOrder;
-  private frame = 0;
+  private width = 0; private height = 0; private dpr = 0;
+  private minLat = Infinity; private maxLat = -Infinity; private minLon = Infinity; private maxLon = -Infinity;
+  private repaint = true;
   constructor(private canvas: HTMLCanvasElement) {
-    this.ctx = canvas.getContext('2d', { alpha: false })!;
-    this.observer = new ResizeObserver(() => this.schedule());
-    this.observer.observe(canvas);
+    this.ctx = canvas.getContext('2d', { alpha: false })!; this.markers = new Markers(canvas);
+    this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(canvas); this.resize();
   }
-  update(batches: readonly ColumnBatch[], order: ColumnOrder): void { this.batches = batches; this.order = order; this.schedule(); }
-  private schedule(): void {
-    if (!this.frame) this.frame = requestAnimationFrame(() => { this.frame = 0; this.render(); });
+  begin(batches: readonly ColumnBatch[], order: ColumnOrder): void {
+    this.work.cancel(); this.batches = batches; this.order = order; this.cursors.clear();
+    this.minLat = this.minLon = Infinity; this.maxLat = this.maxLon = -Infinity;
+    this.repaint = true; this.markers.clear(); this.grid();
   }
-  private render(): void {
-    const { width, height } = this.canvas.getBoundingClientRect();
-    if (!width || !height) return;
-    const ratio = window.devicePixelRatio || 1;
-    this.canvas.width = width * ratio; this.canvas.height = height * ratio;
-    const c = this.ctx; c.setTransform(ratio, 0, 0, ratio, 0, 0);
-    c.fillStyle = BACKGROUND; c.fillRect(0, 0, width, height);
-    c.strokeStyle = '#28332f'; c.lineWidth = 1;
+  progress(p: BatchProgress): void {
+    const a = this.minLat, b = this.maxLat, c = this.minLon, d = this.maxLon;
+    this.minLat = Math.min(a, p.minLat); this.maxLat = Math.max(b, p.maxLat);
+    this.minLon = Math.min(c, p.minLon); this.maxLon = Math.max(d, p.maxLon);
+    this.repaint ||= a !== this.minLat || b !== this.maxLat || c !== this.minLon || d !== this.maxLon;
+  }
+  indexed(reordered: boolean): void { this.repaint ||= reordered; this.work.schedule(); }
+  private resize(): void {
+    const { width, height } = this.canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    if (!width || !height || width === this.width && height === this.height && dpr === this.dpr) return;
+    this.width = width; this.height = height; this.dpr = dpr;
+    this.canvas.width = Math.round(width * dpr); this.canvas.height = Math.round(height * dpr);
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0); this.markers.resize(width, height, dpr);
+    this.repaint = true; this.work.schedule();
+  }
+  private grid(): void {
+    const c = this.ctx, { width, height } = this;
+    c.fillStyle = BACKGROUND; c.fillRect(0, 0, width, height); c.strokeStyle = '#28332f'; c.lineWidth = 1;
     for (let x = 28; x < width; x += 45) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, height); c.stroke(); }
     for (let y = 22; y < height; y += 36) { c.beginPath(); c.moveTo(0, y); c.lineTo(width, y); c.stroke(); }
-    let minLat = Infinity, maxLat = -Infinity, minLon = Infinity, maxLon = -Infinity;
-    for (const b of this.batches) if (b.lat && b.lon) for (let i = 0; i < b.length; i++) {
-      if (!Number.isFinite(b.lat[i]) || !Number.isFinite(b.lon[i])) continue;
-      minLat = Math.min(minLat, b.lat[i]); maxLat = Math.max(maxLat, b.lat[i]);
-      minLon = Math.min(minLon, b.lon[i]); maxLon = Math.max(maxLon, b.lon[i]);
-    }
-    if (!Number.isFinite(minLat)) return;
-    if (!this.order) return;
-    this.order.sort();
+  }
+  private render(deadline: number): boolean {
+    if (!this.width || !this.height || !this.order || !Number.isFinite(this.minLat)) return false;
+    if (this.order.needsSort) return true;
+    if (this.repaint) { this.grid(); this.cursors.clear(); this.repaint = false; }
+    const c = this.ctx; let work = 0;
     for (const [series, ordered] of this.order.series) {
-      let lastX = 0, lastY = 0, hasPoint = false;
-      c.beginPath();
-      for (const ref of ordered.refs) {
-        const index = this.order.batchIndex(ref), b = this.batches[index], i = this.order.rowIndex(ref, index);
+      const state = this.cursors.get(series) ?? cursor(); this.cursors.set(series, state);
+      c.beginPath(); if (state.hasPoint) c.moveTo(state.x, state.y);
+      while (state.count < ordered.refs.length && work < CHUNK) {
+        const ref = ordered.refs[state.count++], index = this.order.batchIndex(ref), b = this.batches[index], i = this.order.rowIndex(ref, index);
+        work++;
         if (!b.lat || !b.lon || !Number.isFinite(b.lat[i]) || !Number.isFinite(b.lon[i])) continue;
-        const x = 25 + (b.lon[i] - minLon) / Math.max(0.001, maxLon - minLon) * (width - 50);
-        const y = height - 22 - (b.lat[i] - minLat) / Math.max(0.001, maxLat - minLat) * (height - 44);
-        if (hasPoint) c.lineTo(x, y); else c.moveTo(x, y);
-        lastX = x; lastY = y; hasPoint = true;
+        const x = 25 + (b.lon[i] - this.minLon) / Math.max(0.001, this.maxLon - this.minLon) * (this.width - 50);
+        const y = this.height - 22 - (b.lat[i] - this.minLat) / Math.max(0.001, this.maxLat - this.minLat) * (this.height - 44);
+        if (state.hasPoint) c.lineTo(x, y); else c.moveTo(x, y);
+        state.x = x; state.y = y; state.hasPoint = true;
+        if (work % 128 === 0 && performance.now() >= deadline) break;
       }
       c.strokeStyle = SERIES_COLORS[Math.abs(series) % SERIES_COLORS.length]; c.lineWidth = 1.1; c.stroke();
-      if (hasPoint) { c.fillStyle = c.strokeStyle; c.beginPath(); c.arc(lastX, lastY, 3, 0, Math.PI * 2); c.fill(); }
+      if (work >= CHUNK || performance.now() >= deadline) break;
     }
+    this.markers.clear();
+    for (const [series, state] of this.cursors) if (state.hasPoint) this.markers.dot(state.x, state.y, series, 3);
+    for (const [id, series] of this.order.series) if ((this.cursors.get(id)?.count ?? 0) < series.refs.length) return true;
+    return false;
   }
-  destroy(): void { this.observer.disconnect(); if (this.frame) cancelAnimationFrame(this.frame); }
+  stop(): void { this.work.cancel(); }
+  destroy(): void { this.observer.disconnect(); this.stop(); this.markers.destroy(); }
 }

@@ -1,5 +1,5 @@
-import {afterEach,describe,expect,it,vi} from 'vitest';
-import {BrowserCoordinator} from '../src/core/coordinator';
+import {afterEach,beforeEach,describe,expect,it,vi} from 'vitest';
+import {BrowserCoordinator,LocalCoordinatorClient} from '../src/core/coordinator';
 import type {ColumnBatch,DatabaseAdapter,DatasetContext,Draft,InferenceAdapter,InferenceResult,PipelineEvent,QueryCompiler,QueryPlan} from '../src/core/types';
 
 const context:DatasetContext={id:'snapshot-1',label:'Test',rowCount:2,start:0,end:86_400_000,vessels:['A'],description:'Test'};
@@ -14,10 +14,64 @@ function harness(overrides:{database?:DatabaseAdapter;inference?:InferenceAdapte
   const coordinator=new BrowserCoordinator({inference,database,compiler,context,emit:e=>events.push(e),speculation:true,debounceMs:10,speculativeBytes:overrides.speculativeBytes});
   return {coordinator,events,inference,database,compiler};
 }
-afterEach(()=>vi.useRealTimers());
+beforeEach(()=>vi.stubGlobal('scheduler',{yield:()=>new Promise<void>(resolve=>setTimeout(resolve,0))}));
+afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();});
 const settle=async()=>{for(let i=0;i<10;i++)await Promise.resolve();};
+function queuedTransport() {
+  const messages:any[]=[];const port2={onmessage:null as any,close(){}};
+  vi.stubGlobal('MessageChannel',class {port1={postMessage:(data:any)=>messages.push(data),close(){}};port2=port2;});
+  return ()=>{while(messages.length)port2.onmessage({data:messages.shift()});};
+}
 
 describe('draft preparation and commit correctness',()=>{
+  it('supersedes the foreground at Enter before the replacement commit is delivered',async()=>{
+    const deliver=queuedTransport();let finish!:(result:InferenceResult)=>void;let active:AbortSignal|undefined;let calls=0;
+    const inference:InferenceAdapter={id:'held',placement:'browser',prepare:async()=>{},dispose(){},observeDraft(){},resolve:(_draft,signal)=>{
+      if(++calls===1){active=signal;return new Promise(resolve=>{finish=resolve;});}
+      return Promise.resolve({plan,source:'template'});
+    }};
+    const h=harness({inference});const client=new LocalCoordinatorClient(h.coordinator,context.id);
+    client.commit('Average speed by hour');deliver();
+    client.commit('Maximum wind by hour');expect(active?.aborted).toBe(true);
+    finish({plan,source:'template'});await settle();
+    expect(h.events.some(e=>e.type==='start'||e.type==='batch'||e.type==='complete')).toBe(false);
+    deliver();await settle();expect(h.events.filter(e=>e.type==='start').map(e=>e.type==='start'&&e.view.prompt)).toEqual(['Maximum wind by hour']);client.dispose();
+  });
+  it('ignores a superseded queued commit even when its data was already prepared',async()=>{
+    vi.useFakeTimers();const deliver=queuedTransport();const h=harness();const d=draft();
+    h.coordinator.observeDraft(d);await vi.advanceTimersByTimeAsync(15);
+    const client=new LocalCoordinatorClient(h.coordinator,context.id);client.commit(d.text);client.commit('Maximum wind by hour');deliver();await settle();
+    expect(h.events.filter(e=>e.type==='start').map(e=>e.type==='start'&&e.view.prompt)).toEqual(['Maximum wind by hour']);client.dispose();
+  });
+  it('keeps exact prepared data across synchronous local commit fencing',async()=>{
+    vi.useFakeTimers();const deliver=queuedTransport();const h=harness();const d=draft();
+    h.coordinator.observeDraft(d);await vi.advanceTimersByTimeAsync(15);
+    const client=new LocalCoordinatorClient(h.coordinator,context.id);client.commit(d.text);client.commit(d.text);deliver();
+    expect(h.database.execute).toHaveBeenCalledTimes(1);
+    expect(h.events.filter(e=>e.type==='complete'&&e.timing.promoted)).toHaveLength(1);client.dispose();
+  });
+  it('rejects oversized local snapshots before MessageChannel copies them',()=>{
+    const postMessage=vi.fn();
+    vi.stubGlobal('MessageChannel',class {port1={postMessage,close(){}};port2={onmessage:null,close(){}};});
+    const h=harness();const client=new LocalCoordinatorClient(h.coordinator,context.id);
+    client.draft('x'.repeat(4097));client.commit('x'.repeat(4097));
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(postMessage.mock.calls[0][0]).toMatchObject({type:'DRAFT',draft:{text:''},composing:true});
+    expect(h.inference.resolve).not.toHaveBeenCalled();
+    expect(h.events.filter(e=>e.type==='error')).toHaveLength(2);client.dispose();
+  });
+  it('invalidates earlier queued drafts after an oversized paste',async()=>{
+    vi.useFakeTimers();let channel:any;
+    vi.stubGlobal('MessageChannel',class {
+      messages:any[]=[];port1={postMessage:(message:any)=>this.messages.push(message),close(){}};port2={onmessage:null as any,close(){}};
+      constructor(){channel=this;}
+    });
+    const h=harness();const client=new LocalCoordinatorClient(h.coordinator,context.id);
+    client.draft('Average speed by hour');client.draft('x'.repeat(4097));
+    for(const data of channel.messages)channel.port2.onmessage({data});
+    await vi.advanceTimersByTimeAsync(30);
+    expect(h.inference.resolve).not.toHaveBeenCalled();client.dispose();
+  });
   it('promotes exact prepared work without copying or executing again',async()=>{
     vi.useFakeTimers(); const h=harness();const d=draft();
     h.coordinator.observeDraft(d);await vi.advanceTimersByTimeAsync(15);
@@ -77,5 +131,66 @@ describe('draft preparation and commit correctness',()=>{
     h.coordinator.cancel();finish();await settle();
     expect(h.events.filter(e=>e.type==='batch')).toHaveLength(1);
     expect(h.events.some(e=>e.type==='complete')).toBe(false);h.coordinator.dispose();
+  });
+  it('keeps exact whitespace snapshots reusable and upgrades priority before admission',async()=>{
+    vi.useFakeTimers();let finish!:()=>void;let request:any;
+    const held=new Promise<void>(r=>{finish=r;});
+    const database:DatabaseAdapter={id:'held',placement:'remote',prepare:async()=>context,dispose:async()=>{},execute:async function*(value){request=value;await held;yield batch;}};
+    const h=harness({database});const d=draft(' Average speed by hour ');
+    h.coordinator.observeDraft(d);await vi.advanceTimersByTimeAsync(15);
+    expect(request.priority).toBe('speculative');h.coordinator.commit(d);
+    expect(request.priority).toBe('committed');finish();await settle();
+    expect(h.inference.resolve).toHaveBeenCalledTimes(1);h.coordinator.dispose();
+  });
+  it('counts unique backing allocations rather than visible column slices',async()=>{
+    vi.useFakeTimers();const backing=new ArrayBuffer(1024);
+    const sliced={...batch,x:new Float64Array(backing,0,2),y:new Float64Array(backing,16,2),series:new Int32Array(backing,32,2),retainedBuffers:[backing]};
+    const database:DatabaseAdapter={id:'slice',placement:'browser',prepare:async()=>context,dispose:async()=>{},execute:async function*(){yield sliced;yield sliced;}};
+    const h=harness({database,speculativeBytes:1024});h.coordinator.observeDraft(draft());await vi.advanceTimersByTimeAsync(15);
+    expect(h.events.some(e=>e.type==='speculation'&&e.state==='ready')).toBe(true);h.coordinator.dispose();
+    const tooSmall=harness({database,speculativeBytes:1023});tooSmall.coordinator.observeDraft(draft());await vi.advanceTimersByTimeAsync(15);
+    expect(tooSmall.events.some(e=>e.type==='speculation'&&e.state==='ready')).toBe(false);
+    expect(tooSmall.events.some(e=>e.type==='trace'&&e.entry.event==='speculation_discarded')).toBe(true);tooSmall.coordinator.dispose();
+  });
+  it('yields staged batches after the first and fences the drain on cancellation',async()=>{
+    vi.useFakeTimers();const database:DatabaseAdapter={id:'many',placement:'browser',prepare:async()=>context,dispose:async()=>{},execute:async function*(){yield batch;yield batch;yield batch;}};
+    const h=harness({database});const d=draft();h.coordinator.observeDraft(d);await vi.advanceTimersByTimeAsync(15);
+    h.coordinator.commit(d);
+    expect(h.events.filter(e=>e.type==='batch')).toHaveLength(1);
+    expect(h.events.some(e=>e.type==='complete')).toBe(false);
+    h.coordinator.cancel();await vi.runAllTimersAsync();
+    expect(h.events.filter(e=>e.type==='batch')).toHaveLength(1);
+    expect(h.events.some(e=>e.type==='complete')).toBe(false);h.coordinator.dispose();
+  });
+  it('keeps live batches behind staged batches and completes after draining',async()=>{
+    vi.useFakeTimers();let finish!:()=>void;const held=new Promise<void>(r=>{finish=r;});
+    const second={...batch,y:new Float64Array([22,24])},third={...batch,y:new Float64Array([32,34])};
+    const database:DatabaseAdapter={id:'stream',placement:'browser',prepare:async()=>context,dispose:async()=>{},execute:async function*(){yield batch;yield second;await held;yield third;}};
+    const h=harness({database});const d=draft();h.coordinator.observeDraft(d);await vi.advanceTimersByTimeAsync(15);
+    h.coordinator.commit(d);finish();await settle();
+    expect(h.events.filter(e=>e.type==='batch')).toHaveLength(1);
+    await vi.runAllTimersAsync();
+    expect(h.events.filter(e=>e.type==='batch').map(e=>e.type==='batch'&&e.batch)).toEqual([batch,second,third]);
+    expect(h.events.filter(e=>e.type==='complete')).toHaveLength(1);h.coordinator.dispose();
+  });
+  it('uses reusable MessageChannel tasks when scheduler.yield is absent',async()=>{
+    vi.useFakeTimers();vi.stubGlobal('scheduler',undefined);const channels:any[]=[];
+    vi.stubGlobal('MessageChannel',class {
+      values:number[]=[];port1={postMessage:(id:number)=>this.values.push(id),close:vi.fn()};port2={onmessage:null as any,close:vi.fn()};
+      constructor(){channels.push(this);}
+    });
+    const database:DatabaseAdapter={id:'many',placement:'browser',prepare:async()=>context,dispose:async()=>{},execute:async function*(){for(let i=0;i<70;i++)yield batch;}};
+    const h=harness({database});const d=draft();h.coordinator.observeDraft(d);await vi.advanceTimersByTimeAsync(15);h.coordinator.commit(d);
+    expect(h.events.filter(e=>e.type==='batch')).toHaveLength(1);expect(channels).toHaveLength(1);
+    const channel=channels[0];channel.port2.onmessage({data:channel.values.shift()});await settle();
+    expect(h.events.filter(e=>e.type==='batch')).toHaveLength(33);
+    h.coordinator.cancel();channel.port2.onmessage({data:channel.values.shift()});await settle();
+    expect(h.events.filter(e=>e.type==='batch')).toHaveLength(33);h.coordinator.dispose();expect(channel.port1.close).toHaveBeenCalledOnce();
+  });
+  it('cancelForeground preserves a prepared candidate for later acceptance',async()=>{
+    vi.useFakeTimers();const h=harness();const d=draft();h.coordinator.observeDraft(d);await vi.advanceTimersByTimeAsync(15);
+    h.coordinator.cancelForeground();h.coordinator.commit(d);
+    expect(h.database.execute).toHaveBeenCalledTimes(1);
+    expect(h.events.some(e=>e.type==='complete'&&e.timing.promoted)).toBe(true);h.coordinator.dispose();
   });
 });

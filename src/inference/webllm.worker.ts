@@ -31,7 +31,7 @@ async function prepare(requested?: string): Promise<void> {
       } }),
     });
     send({ type: 'status', status: { state: 'ready', label: 'Local WebGPU model ready', progress: 1, detail: model } });
-  })();
+  })().catch(error=>{initializing=undefined;throw error;});
   return initializing;
 }
 

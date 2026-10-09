@@ -17,6 +17,7 @@ import os
 from pathlib import Path
 import platform
 import statistics
+import subprocess
 
 from playwright.async_api import async_playwright
 
@@ -55,9 +56,8 @@ def versions():
 
 
 def source_hashes():
-    files = ["src/main.ts", "src/core/coordinator.ts", "src/adapters/duckdb.ts",
-             "src/adapters/arrow.ts", "src/core/compiler.ts", "src/inference/templates.ts",
-             "src/ui/index.ts", "src/ui/chart.ts", "src/ui/styles.css", "public/wasm/query-core.wasm"]
+    files = sorted(str(path.relative_to(ROOT)) for path in (ROOT / "src").rglob("*") if path.is_file())
+    files += ["public/wasm/query-core.wasm", "public/data/context.json", "pnpm-lock.yaml", "vite.config.ts", "scripts/benchmark-browser.py"]
     return {name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in files}
 
 
@@ -143,6 +143,8 @@ async def benchmark(args):
             return {
                 "recorded_at_utc": datetime.now(timezone.utc).isoformat(),
                 "url": args.url,
+                "build_mode": args.build_mode,
+                "source_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
                 "metric": "App commit timestamp to first Canvas point draw submission (first_draw_submitted trace)",
                 "trace_rounding_ms": 0.01,
                 "question": QUESTION,
@@ -170,7 +172,7 @@ async def benchmark(args):
                     "Uncontrolled shared host, no CPU isolation, thermal control, or power-state control.",
                     "Repeated exact query on a warm synthetic dataset; startup and model latency are excluded.",
                     "Prepared-hit measurements move work before Enter and do not estimate hit rate or total resource cost.",
-                    "Small sample, development server, browser automation; results are evidence for this run, not a target guarantee.",
+                    f"Small sample, {args.build_mode} build, browser automation; results are evidence for this run, not a target guarantee.",
                 ],
                 "speculation_off": off,
                 "speculation_on": on,
@@ -185,6 +187,7 @@ async def benchmark(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default="http://localhost:5173", help="Running app URL")
+    parser.add_argument("--build-mode", choices=["development", "production"], default="development", help="Build served at --url")
     parser.add_argument("--chromium", help="Optional Chromium executable path")
     parser.add_argument("--trials", type=int, default=20, help="Recorded trials per speculation mode")
     parser.add_argument("--warmup", type=int, default=2, help="Discarded warmup trials per mode")

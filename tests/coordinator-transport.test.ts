@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BrowserCoordinator, LocalCoordinatorClient, type CoordinatorOptions } from '../src/core/coordinator';
 import { RemoteCoordinatorClient } from '../src/core/remote-coordinator';
+import { MAX_PROMPT_CHARS } from '../src/inference/plan';
 import type { AdapterStatus, ColumnBatch, DatabaseAdapter, DatasetContext, Draft, InferenceAdapter,
   InferenceResult, PipelineEvent, QueryCompiler, QueryPlan, QueryRequest } from '../src/core/types';
 
@@ -170,6 +171,56 @@ describe('local coordinator transport cancellation', () => {
 });
 
 describe('remote coordinator reply binding', () => {
+  it('cancels old foreground inference at COMMIT before the newer ACCEPT arrives', async () => {
+    const base = harness();
+    let firstSignal!: AbortSignal;
+    let finish!: (result: InferenceResult) => void;
+    base.inference.resolve = vi.fn((_draft: Draft, signal: AbortSignal) => {
+      firstSignal = signal;
+      return new Promise<InferenceResult>(resolve => { finish = resolve; });
+    });
+    const h = remote(base);
+    h.client.commit('Average speed by hour');
+    h.socket.receive(acceptReply(h.socket.last('COMMIT')));
+    h.client.commit('Maximum wind by hour');
+    expect(firstSignal.aborted).toBe(true);
+    finish({ plan, source: 'template' }); await settle();
+    expect(h.database.execute).not.toHaveBeenCalled();
+    expect(h.events.some(event => ['start', 'batch', 'complete'].includes(event.type))).toBe(false);
+  });
+
+  it('fences late database batches and completion immediately on a newer COMMIT', async () => {
+    const base = harness(); let release!: () => void; let firstSignal!: AbortSignal;
+    const pending = new Promise<void>(resolve => { release = resolve; });
+    base.database.execute = vi.fn(async function* (request: QueryRequest) {
+      firstSignal = request.signal; yield batch; await pending; yield batch;
+    });
+    const h = remote(base);
+    h.client.commit('Average speed by hour');
+    h.socket.receive(acceptReply(h.socket.last('COMMIT'))); await settle();
+    expect(h.events.filter(event => event.type === 'batch')).toHaveLength(1);
+    h.client.commit('Maximum wind by hour');
+    expect(firstSignal.aborted).toBe(true);
+    release(); await settle();
+    expect(h.events.filter(event => event.type === 'batch')).toHaveLength(1);
+    expect(h.events.some(event => event.type === 'complete')).toBe(false);
+  });
+
+  it('discards a mismatched candidate on COMMIT even without a preceding DRAFT', async () => {
+    const base = harness(); let signal!: AbortSignal;
+    base.inference.resolve = vi.fn((_draft: Draft, candidateSignal: AbortSignal) => {
+      signal = candidateSignal;
+      return new Promise<InferenceResult>(() => {});
+    });
+    const h = remote(base);
+    h.client.draft('Average speed by hour');
+    h.socket.receive(prepareReply(h.socket.last('DRAFT'))); await settle();
+    h.client.commit('Maximum wind by hour');
+    expect(signal.aborted).toBe(true);
+    h.socket.receive(prepareReply({ draft: { revision: 1, contextId: context.id }, epoch: 0 }));
+    await settle(); expect(h.inference.resolve).toHaveBeenCalledTimes(1);
+  });
+
   it('ignores PREPARE from a canceled epoch, including after an identical draft is resubmitted', async () => {
     const h = remote();
     h.client.draft('Average speed by hour');
@@ -296,6 +347,69 @@ describe('remote coordinator reply binding', () => {
     h.client.commit('Average speed by hour');
     h.socket.receive(acceptReply(h.socket.last('COMMIT'))); await settle();
     expect(h.database.execute).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('remote coordinator control budgets', () => {
+  it('invalidates a prior candidate when a pasted draft exceeds the prompt limit', async () => {
+    const base = harness(); let signal!: AbortSignal;
+    base.inference.resolve = vi.fn((_draft: Draft, candidateSignal: AbortSignal) => {
+      signal = candidateSignal; return new Promise<InferenceResult>(() => {});
+    });
+    const h = remote(base);
+    h.client.draft('Average speed by hour'); const previous = h.socket.last('DRAFT');
+    h.socket.receive(prepareReply(previous)); await settle();
+    h.client.draft('x'.repeat(MAX_PROMPT_CHARS + 1));
+    expect(signal.aborted).toBe(true);
+    h.socket.receive(prepareReply(previous)); await settle();
+    expect(h.inference.resolve).toHaveBeenCalledTimes(1);
+    expect(h.socket.last('DRAFT')).toBe(previous);
+  });
+
+  it('bounds invalid pasted drafts and rejects oversized commits without losing recovery', async () => {
+    const h = remote();
+    h.client.commit('Average speed by hour'); const old = h.socket.last('COMMIT');
+    const sent = h.socket.sent.length;
+    h.client.draft('x'.repeat(1_000_000));
+    h.client.commit('x'.repeat(1_000_000));
+    expect(h.socket.sent).toHaveLength(sent);
+    const observed = vi.mocked(h.inference.observeDraft).mock.calls.at(-1)![0];
+    expect(observed.text).toBe('');
+    expect(h.events.some(event => event.type === 'error' && event.message.includes('4096'))).toBe(true);
+    h.socket.receive(acceptReply(old)); await settle();
+    expect(h.inference.resolve).not.toHaveBeenCalled();
+    h.client.commit('Maximum wind by hour');
+    h.socket.receive(acceptReply(h.socket.last('COMMIT'))); await settle();
+    expect(h.database.execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('accounts UTF-8 bytes and the next frame at the exact send-queue boundary', () => {
+    const h = remote(); const text = '海'.repeat(MAX_PROMPT_CHARS);
+    h.client.draft(text);
+    const payload = JSON.stringify(h.socket.last('DRAFT'));
+    const bytes = new TextEncoder().encode(payload).byteLength;
+    expect(bytes).toBeGreaterThan(payload.length);
+    h.socket.bufferedAmount = 65_536 - bytes;
+    const sent = h.socket.sent.length;
+    h.client.draft(text);
+    expect(h.socket.sent).toHaveLength(sent + 1);
+    h.socket.bufferedAmount++;
+    h.client.draft(text);
+    expect(h.socket.sent).toHaveLength(sent + 1);
+    expect(h.statuses.at(-1)?.detail).toContain('send queue exceeded');
+  });
+
+  it('rejects a single oversized HELLO before transmission', () => {
+    const base = harness(); base.options.context = { ...context, description: '海'.repeat(30_000) };
+    const h = remote(base);
+    expect(h.socket.sent).toHaveLength(0);
+    expect(h.statuses.at(-1)?.detail).toContain('send queue exceeded');
+  });
+
+  it('bounds incoming messages by UTF-8 bytes, not JavaScript character count', () => {
+    const h = remote();
+    h.socket.receive({ type: 'ERROR', message: '海'.repeat(6000) });
+    expect(h.statuses.at(-1)?.detail).toBe('Invalid coordinator message.');
   });
 });
 

@@ -1,5 +1,5 @@
 import { DEFAULT_CONFIG, METRIC_LABELS, type AdapterStatus, type DatasetContext, type PipelineEvent, type QueryTiming, type QueryView, type RuntimeConfig } from '../core/types';
-import { SERIES_COLORS, StreamChart, TrackChart } from './chart';
+import { SERIES_COLORS, StreamChart, TrackChart, type BatchProgress } from './chart';
 import { shell } from './shell';
 import './styles.css';
 import { MAX_PROMPT_CHARS } from '../inference/plan';
@@ -45,8 +45,19 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   const chart = new StreamChart(el<HTMLCanvasElement>('chart'), (id, at) => {
     callbacks.onDraw(id, at);
     if (current?.id === id) { current.timing.firstDrawAt = at; updateTiming(current.timing); }
-  });
+  }, updateProgress, reordered => track.indexed(reordered));
   const track = new TrackChart(el<HTMLCanvasElement>('track'));
+
+  function updateProgress(progress: BatchProgress): void {
+    sum += progress.sum; count += progress.count;
+    minimum = Math.min(minimum, progress.minimum); maximum = Math.max(maximum, progress.maximum);
+    let legendChanged = false;
+    for (const series of progress.series) if (!seenSeries.has(series)) { seenSeries.add(series); legendChanged = true; }
+    track.progress(progress);
+    el('mean').textContent = count ? fmt.format(sum / count) : '—';
+    el('range').textContent = count ? `${fmt.format(minimum)} — ${fmt.format(maximum)}` : '—';
+    if (legendChanged) renderLegend();
+  }
 
   function scrollHistory(): void {
     if (!historyFrame) historyFrame = requestAnimationFrame(() => {
@@ -63,7 +74,7 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
     input.value = text; input.focus(); input.setSelectionRange(text.length, text.length); callbacks.onDraft(text, false);
   }
   function submit(): void {
-    const text = input.value.trim(); if (!text || composing) return;
+    const text = input.value; if (!text.trim() || composing) return;
     el('empty-title').textContent = 'Following your question…';
     if (!current) el('empty-detail').textContent = 'Preparing a validated query.';
     awaitingStart = true; setBusy(true); callbacks.onCommit(text);
@@ -77,7 +88,7 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   root.querySelectorAll<HTMLButtonElement>('[data-prompt]').forEach(button => button.addEventListener('click', () => setPrompt(button.dataset.prompt!)));
   root.querySelector<HTMLAnchorElement>('.brand')!.addEventListener('click', e => { e.preventDefault(); input.focus(); });
   action('cancel').addEventListener('click', () => {
-    awaitingStart = false; canceledId = current?.id; chart.stop(); callbacks.onCancel(); setBusy(false); setResultState('CANCELED', 'quiet');
+    awaitingStart = false; canceledId = current?.id; chart.stop(); track.stop(); callbacks.onCancel(); setBusy(false); setResultState('CANCELED', 'quiet');
     if (!total) { el('plot-empty').hidden = false; el('empty-title').textContent = 'Query canceled.'; el('empty-detail').textContent = 'Your next question starts a fresh result.'; }
     else el('plot-subtitle').textContent = 'Canceled · partial result';
   });
@@ -184,7 +195,7 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
     }
     if (event.type === 'start') {
       current = event.view; awaitingStart = false; canceledId = undefined; sum = 0; count = 0; total = 0; batchCount = 0; minimum = Infinity; maximum = -Infinity; seenSeries.clear();
-      chart.begin(current); setTab('chart'); track.update(chart.batches, chart.order); setBusy(true); setResultState('QUERYING', 'loading');
+      chart.begin(current); setTab('chart'); track.begin(chart.batches, chart.order); setBusy(true); setResultState('QUERYING', 'loading');
       renderLegend(); el('table-body').replaceChildren();
       const metric = METRIC_LABELS[current.plan.metric];
       el('plot-title').textContent = `${metric.name}${current.plan.splitByVessel ? ' across the fleet' : ''}`;
@@ -202,13 +213,12 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
     }
     if (event.type === 'batch') {
       if (event.id !== current?.id || event.id === canceledId) return;
-      chart.append(event.batch); track.update(chart.batches, chart.order); batchCount++; let legendChanged = false;
-      for (let i = 0; i < event.batch.length; i++) { const value = event.batch.y[i]; if (Number.isFinite(value)) { sum += value; count++; minimum = Math.min(minimum, value); maximum = Math.max(maximum, value); } const series = event.batch.series[i]; if (!seenSeries.has(series)) { seenSeries.add(series); legendChanged = true; } }
+      chart.append(event.batch); batchCount++;
       total += event.batch.length;
       if (total) { el('plot-empty').hidden = true; action<HTMLButtonElement>('export').disabled = false; }
       if (event.batch.lat && event.batch.lon && event.batch.length) el('track-empty').hidden = true;
-      el('mean').textContent = count ? fmt.format(sum / count) : '—'; el('points').textContent = integer.format(total); el('range').textContent = count ? `${fmt.format(minimum)} — ${fmt.format(maximum)}` : '—'; el('batch-count').textContent = `${batchCount} ${batchCount === 1 ? 'batch' : 'batches'} received`;
-      setResultState('STREAMING', 'ready'); if (legendChanged) renderLegend(); if (!el('table-wrap').hidden && !tableFrame) tableFrame = requestAnimationFrame(renderTable); return;
+      el('points').textContent = integer.format(total); el('batch-count').textContent = `${batchCount} ${batchCount === 1 ? 'batch' : 'batches'} received`;
+      setResultState('STREAMING', 'ready'); if (!el('table-wrap').hidden && !tableFrame) tableFrame = requestAnimationFrame(renderTable); return;
     }
     if (event.type === 'complete') {
       if (event.id !== current?.id || event.id === canceledId) return;

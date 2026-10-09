@@ -55,6 +55,8 @@ export interface ColumnBatch {
   lon?: Float64Array;
   length: number;
   byteLength: number;
+  /** Backing allocations retained by this batch; budgets count each buffer once. */
+  retainedBuffers?: readonly ArrayBufferLike[];
   /** Keeps the producer's immutable backing allocation alive. */
   owner?: unknown;
 }

@@ -14,6 +14,8 @@ let context:DatasetContext|undefined;
 let config={...DEFAULT_CONFIG};
 let generation=0;
 let draftText='';
+let databaseKey='';
+let inferenceKey='';
 const compiler=new WasmQueryCompiler();
 const ui=createUI(document.querySelector<HTMLElement>('#app')!,{
   onDraft(text,composing) { draftText=text; client?.draft(text,composing); },
@@ -23,14 +25,7 @@ const ui=createUI(document.querySelector<HTMLElement>('#app')!,{
   },
   onFocus() { void warmModel(); },
   onConfig(next) {
-    const previous=config;config=next;ui.setConfig(config);
-    const sameAdapters=previous.databaseMode===next.databaseMode&&previous.databaseEndpoint===next.databaseEndpoint
-      &&previous.inferenceMode===next.inferenceMode&&previous.inferenceEndpoint===next.inferenceEndpoint
-      &&previous.inferenceDraftEndpoint===next.inferenceDraftEndpoint;
-    if(sameAdapters&&database&&inference&&context) {
-      client?.dispose();
-      connect(next,generation,context,database,inference);
-    } else void initialize();
+    config=next;ui.setConfig(config);void initialize();
   },
   onCancel() { client?.cancel(); },
   onWarmModel() { void warmModel(); },
@@ -39,34 +34,42 @@ const ui=createUI(document.querySelector<HTMLElement>('#app')!,{
 
 async function warmModel():Promise<void> {
   if (!inference||!context) return;
-  try { await inference.prepare(context); }
-  catch (error) { ui.setStatus('model',{state:'unavailable',label:'Model unavailable',detail:String(error)}); }
+  const model=inference;
+  try { await model.prepare(context); }
+  catch (error) { if(model===inference)ui.setStatus('model',{state:'unavailable',label:'Model unavailable',detail:String(error)}); }
 }
 
 async function initialize():Promise<void> {
   const own=++generation;
   const selected={...config};
+  const nextDatabaseKey=JSON.stringify([selected.databaseMode,selected.databaseEndpoint]);
+  const nextInferenceKey=JSON.stringify([selected.inferenceMode,selected.inferenceEndpoint,selected.inferenceDraftEndpoint]);
+  const keepDatabase=databaseKey===nextDatabaseKey&&Boolean(database&&context);
+  const keepInference=inferenceKey===nextInferenceKey&&Boolean(inference);
   client?.dispose();client=undefined;
-  inference?.dispose();inference=undefined;
-  const previous=database;database=undefined;context=undefined;
+  if(!keepInference){inference?.dispose();inference=undefined;}
+  const previous=keepDatabase?undefined:database;
+  if(!keepDatabase){database=undefined;context=undefined;}
   ui.setBusy(false);
   ui.setStatus('coordinator',{state:'loading',label:'Preparing execution path'});
   ui.setStatus('compiler',{state:'loading',label:'Loading Rust/Wasm compiler'});
-  ui.setStatus('model',{state:'cold',label:'Waiting for dataset context'});
-  await previous?.dispose();
-  if (own!==generation) return;
-  const db=selected.databaseMode==='browser'?new DuckDBAdapter():new RemoteDatabaseAdapter(selected.databaseEndpoint);
-  database=db;
+  if(!keepInference)ui.setStatus('model',{state:'cold',label:'Waiting for dataset context'});
   try {
+    await previous?.dispose();
+    if (own!==generation) return;
+    const db=database??(selected.databaseMode==='browser'?new DuckDBAdapter():new RemoteDatabaseAdapter(selected.databaseEndpoint));
+    database=db;
+    databaseKey=nextDatabaseKey;
     const [dataset]=await Promise.all([
       db.prepare(status=>{if(own===generation)ui.setStatus('database',status);}),
       compiler.prepare().then(()=>{if(own===generation)ui.setStatus('compiler',{state:'ready',label:'Rust/Wasm query compiler'});}),
     ]);
-    if (own!==generation) { await db.dispose();return; }
+    if (own!==generation) return;
     context=dataset;ui.setDataset(dataset);
-    const model=createInferenceAdapter(selected.inferenceMode,{endpoint:selected.inferenceEndpoint,draftEndpoint:selected.inferenceDraftEndpoint,
-      onStatus:status=>{if(own===generation)ui.setStatus('model',status);}});
+    const model:InferenceAdapter=inference??createInferenceAdapter(selected.inferenceMode,{endpoint:selected.inferenceEndpoint,draftEndpoint:selected.inferenceDraftEndpoint,
+      onStatus:status=>{if(model===inference)ui.setStatus('model',status);}});
     inference=model;
+    inferenceKey=nextInferenceKey;
     // prepare establishes context synchronously; a slow model download never gates template queries.
     void model.prepare(dataset).catch(error=>{if(own===generation)ui.setStatus('model',{state:'unavailable',label:'Model unavailable',detail:String(error)});});
     connect(selected,own,dataset,db,model);
@@ -97,5 +100,8 @@ function connect(selected:RuntimeConfig,own:number,dataset:DatasetContext,db:Dat
 
 ui.setConfig(config);
 void initialize();
-window.addEventListener('pagehide',()=>{generation++;client?.dispose();inference?.dispose();void database?.dispose();});
+window.addEventListener('pagehide',()=>{
+  generation++;client?.dispose();client=undefined;inference?.dispose();inference=undefined;
+  void database?.dispose();database=undefined;context=undefined;
+});
 window.addEventListener('pageshow',event=>{if(event.persisted)void initialize();});

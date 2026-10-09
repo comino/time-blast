@@ -1,9 +1,11 @@
 import type {ColumnBatch, DatabaseAdapter, DatasetContext, Draft, InferenceAdapter, PipelineEvent, QueryCompiler, QueryTiming, QueryView} from './types';
+import {MAX_PROMPT_CHARS} from '../inference/plan';
 
 type Emit = (event:PipelineEvent)=>void;
 interface Job {
   id:string; draft:Draft; abort:AbortController; timing:QueryTiming;
   view?:QueryView; staged:ColumnBatch[]; committed:boolean; settled:boolean; error?:Error;
+  retained:Set<ArrayBufferLike>; retainedBytes:number; draining?:Promise<void>;
 }
 export interface CoordinatorOptions {
   database:DatabaseAdapter; inference:InferenceAdapter; compiler:QueryCompiler; context:DatasetContext;
@@ -18,13 +20,23 @@ export class BrowserCoordinator {
   private latest?:Draft;
   private closed=false;
   private counter=0;
+  private yieldChannel?:MessageChannel;
+  private yieldCounter=0;
+  private yields=new Map<number,()=>void>();
   private readonly session=crypto.randomUUID().slice(0,8);
   constructor(private readonly options:CoordinatorOptions) {}
   private emit(event:PipelineEvent) { if (!this.closed) this.options.emit(event); }
   private trace(event:string,detail:string) { this.emit({type:'trace',entry:{at:performance.now(),event,detail}}); }
 
+  validatePrompt(text:string):boolean {
+    if(text.length<=MAX_PROMPT_CHARS)return true;
+    clearTimeout(this.timer);this.dropCandidate('Draft exceeds the request limit');
+    this.emit({type:'error',message:`Requests must be at most ${MAX_PROMPT_CHARS} characters.`});return false;
+  }
+
   observeDraft(draft:Draft,composing=false):void {
     if (this.closed || (this.latest && draft.revision < this.latest.revision)) return;
+    if(!this.validatePrompt(draft.text))return;
     if (draft.contextId !== this.options.context.id) return;
     this.latest=draft;
     this.options.inference.observeDraft(draft);
@@ -44,6 +56,7 @@ export class BrowserCoordinator {
 
   commit(draft:Draft):void {
     if (this.closed || !draft.text.trim()) return;
+    if(!this.validatePrompt(draft.text))return;
     if (draft.contextId !== this.options.context.id) {
       this.emit({type:'error',message:'The dataset changed. Please submit the question again.'}); return;
     }
@@ -51,7 +64,7 @@ export class BrowserCoordinator {
     // COMMIT is a full immutable snapshot; it never waits for a draft acknowledgement.
     this.latest=draft;
     this.options.inference.observeDraft(draft);
-    this.foreground?.abort.abort();
+    this.cancelForeground();
     const reusable=this.candidate && !this.candidate.abort.signal.aborted && !this.candidate.error
       && this.candidate.draft.text===draft.text && this.candidate.draft.contextId===draft.contextId;
     let job:Job;
@@ -68,10 +81,9 @@ export class BrowserCoordinator {
       if (job.view) {
         job.view.revision=draft.revision;
         this.emit({type:'start',view:job.view});
-        for (const batch of job.staged) this.emit({type:'batch',id:job.id,batch});
-        job.staged=[];
+        this.publishStaged(job);
       }
-      if (job.settled) this.emit({type:'complete',id:job.id,timing:job.timing});
+      if (job.settled) void this.completePromoted(job);
     } else {
       this.dropCandidate('Commit did not match prepared work');
       job=this.makeJob(draft,true);
@@ -84,7 +96,7 @@ export class BrowserCoordinator {
 
   private makeJob(draft:Draft,committed:boolean):Job {
     const now=performance.now();
-    return {id:`${this.session}-${++this.counter}`,draft,abort:new AbortController(),committed,settled:false,staged:[],
+    return {id:`${this.session}-${++this.counter}`,draft,abort:new AbortController(),committed,settled:false,staged:[],retained:new Set(),retainedBytes:0,
       timing:{startedAt:now,committedAt:committed?draft.sentAt:undefined,promoted:false,batches:0,points:0,bytes:0}};
   }
 
@@ -101,22 +113,33 @@ export class BrowserCoordinator {
       else this.emit({type:'speculation',state:'querying',text:job.draft.text,points:0});
       this.trace('intent_validated',`${result.source} · ${job.id}`);
       for await (const batch of database.execute({id:job.id,sql,plan:result.plan,context,signal:job.abort.signal,
-        priority:job.committed?'committed':'speculative'})) {
+        // Admission can occur after Enter. An already-sent remote request needs a
+        // service-specific upgrade protocol, which this prototype does not have.
+        get priority() { return job.committed?'committed' as const:'speculative' as const; }})) {
+        if (job.draining) await job.draining;
         if (job.abort.signal.aborted || this.closed) return;
         if (!batch.length) continue;
         const max=job.committed?(this.options.resultBytes??16*1024*1024):(this.options.speculativeBytes??4*1024*1024);
-        if (job.timing.bytes+batch.byteLength>max) throw new Error(job.committed
+        const buffers=new Set(batch.retainedBuffers??[batch.x.buffer,batch.y.buffer,batch.series.buffer,
+          ...(batch.lat?[batch.lat.buffer]:[]),...(batch.lon?[batch.lon.buffer]:[])]);
+        let additional=0;
+        for(const buffer of buffers)if(!job.retained.has(buffer))additional+=buffer.byteLength;
+        if (job.retainedBytes+additional>max) throw new Error(job.committed
           ?'Result exceeded the 16 MiB drawing budget. Choose a shorter window or wider bucket.'
           :'Speculative result exceeded its memory budget.');
+        for(const buffer of buffers)job.retained.add(buffer);
+        job.retainedBytes+=additional;
         job.timing.firstBatchAt ??= performance.now();
         job.timing.batches++; job.timing.points+=batch.length; job.timing.bytes+=batch.byteLength;
         if (job.committed) this.emit({type:'batch',id:job.id,batch});
         else job.staged.push(batch);
       }
+      const completedAt=performance.now();
+      if (job.draining) await job.draining;
       if (job.abort.signal.aborted || this.closed) return;
       job.settled=true;
-      job.timing.completedAt=performance.now();
-      if (job.committed) this.emit({type:'complete',id:job.id,timing:job.timing});
+      job.timing.completedAt=completedAt;
+      if (job.committed) {this.emit({type:'complete',id:job.id,timing:job.timing});job.retained.clear();}
       else this.emit({type:'speculation',state:'ready',text:job.draft.text,points:job.timing.points});
       this.trace('query_complete',`${job.timing.points.toLocaleString()} points · ${job.timing.batches} batches`);
     } catch (cause) {
@@ -124,7 +147,7 @@ export class BrowserCoordinator {
       job.error=cause instanceof Error?cause:new Error(String(cause));
       job.settled=true;
       job.abort.abort();
-      job.staged=[];
+      job.staged=[]; job.retained.clear();
       if (job.committed && this.foreground===job) this.emit({type:'error',id:job.view?job.id:undefined,message:job.error.message});
       else if (this.candidate===job) {
         this.candidate=undefined;
@@ -132,6 +155,52 @@ export class BrowserCoordinator {
         this.trace('speculation_discarded',job.error.message);
       }
     }
+  }
+
+  private publishStaged(job:Job):void {
+    const staged=job.staged;job.staged=[];
+    if(!staged.length)return;
+    this.emit({type:'batch',id:job.id,batch:staged[0]});
+    if(staged.length===1)return;
+    job.draining=(async()=>{
+      let i=1;
+      while(i<staged.length) {
+        await this.yieldTask(job.abort.signal);
+        const deadline=performance.now()+4;let count=0;
+        do {
+          if(this.closed||job.abort.signal.aborted||this.foreground!==job)return;
+          this.emit({type:'batch',id:job.id,batch:staged[i++]});
+        } while(i<staged.length&&++count<32&&performance.now()<deadline);
+      }
+    })().finally(()=>{job.draining=undefined;});
+  }
+  private yieldTask(signal:AbortSignal):Promise<void> {
+    if(signal.aborted||this.closed)return Promise.resolve();
+    return new Promise(resolve=>{
+      const id=++this.yieldCounter;
+      const finish=()=>{this.yields.delete(id);signal.removeEventListener('abort',finish);resolve();};
+      this.yields.set(id,finish);signal.addEventListener('abort',finish,{once:true});
+      const scheduler=(globalThis as typeof globalThis&{scheduler?:{yield?:()=>Promise<void>}}).scheduler;
+      if(scheduler?.yield) {void scheduler.yield().then(finish,finish);return;}
+      if(!this.yieldChannel) {
+        this.yieldChannel=new MessageChannel();
+        this.yieldChannel.port2.onmessage=({data})=>this.yields.get(data)?.();
+      }
+      this.yieldChannel.port1.postMessage(id);
+    });
+  }
+  private async completePromoted(job:Job):Promise<void> {
+    if(job.draining)await job.draining;
+    if(!this.closed&&!job.abort.signal.aborted&&this.foreground===job) {
+      this.emit({type:'complete',id:job.id,timing:job.timing});job.retained.clear();
+    }
+  }
+
+  /** Supersede only submitted work; an exact speculative candidate can still promote. */
+  cancelForeground():void {
+    this.foreground?.abort.abort();
+    this.foreground?.retained.clear();
+    this.foreground=undefined;
   }
 
   markDraw(id:string,at:number):void {
@@ -142,14 +211,18 @@ export class BrowserCoordinator {
   }
   private dropCandidate(reason:string) {
     if (!this.candidate) return;
-    this.candidate.abort.abort(); this.candidate.staged=[]; this.candidate=undefined;
+    this.candidate.abort.abort(); this.candidate.staged=[]; this.candidate.retained.clear(); this.candidate=undefined;
     this.emit({type:'speculation',state:'canceled',text:reason,points:0});
   }
   cancel():void {
-    clearTimeout(this.timer); this.dropCandidate('Canceled'); this.foreground?.abort.abort();
+    clearTimeout(this.timer); this.dropCandidate('Canceled'); this.cancelForeground();
     this.trace('canceled','Pending work canceled');
   }
-  dispose():void { this.cancel(); this.closed=true; }
+  dispose():void {
+    this.cancel();this.closed=true;
+    this.yieldChannel?.port1.close();this.yieldChannel?.port2.close();
+    for(const finish of this.yields.values())finish();
+  }
 }
 
 export interface CoordinatorClient {
@@ -180,10 +253,17 @@ export class LocalCoordinatorClient implements CoordinatorClient {
     return {revision:this.revision,text,contextId:this.contextId,sentAt:performance.now()};
   }
   draft(text:string,composing=false):void {
-    if (!this.closed) this.channel.port1.postMessage({type:'DRAFT',epoch:this.epoch,draft:this.snapshot(text),composing});
+    if(this.closed)return;
+    const valid=this.coordinator.validatePrompt(text);
+    // An empty invalidation is bounded and follows older queued drafts in FIFO order.
+    this.channel.port1.postMessage({type:'DRAFT',epoch:this.epoch,draft:this.snapshot(valid?text:''),composing:valid?composing:true});
   }
   commit(text:string):void {
-    if (!this.closed) this.channel.port1.postMessage({type:'COMMIT',epoch:this.epoch,draft:this.snapshot(text)});
+    if(this.closed||!text.trim()||!this.coordinator.validatePrompt(text))return;
+    // Enter supersedes foreground work synchronously, before queued transport runs.
+    // Fence older queued snapshots without discarding an exact staged candidate.
+    this.coordinator.cancelForeground();this.epoch++;
+    this.channel.port1.postMessage({type:'COMMIT',epoch:this.epoch,draft:this.snapshot(text)});
   }
   cancel():void { this.epoch++; this.coordinator.cancel(); }
   markDraw(id:string,at:number):void { this.coordinator.markDraw(id,at); }

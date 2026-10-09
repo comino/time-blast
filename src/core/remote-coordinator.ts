@@ -1,5 +1,9 @@
 import {BrowserCoordinator,type CoordinatorClient,type CoordinatorOptions} from './coordinator';
 import type {AdapterStatus,Draft} from './types';
+import {MAX_PROMPT_CHARS} from '../inference/plan';
+
+const MAX_SOCKET_BYTES=65_536;
+const controlEncoder=new TextEncoder();
 
 /** Remote scheduling, direct data delivery. A server never needs to bounce local
  * Arrow buffers through a network to decide which draft to prepare or accept. */
@@ -32,7 +36,7 @@ export class RemoteCoordinatorClient implements CoordinatorClient {
     this.socket.onmessage=({data})=> {
       if(this.disposed)return;
       try {
-        if (typeof data!=='string'||data.length>16_384) throw new Error('Invalid coordinator message.');
+        if (typeof data!=='string'||data.length>16_384||controlEncoder.encode(data).byteLength>16_384) throw new Error('Invalid coordinator message.');
         const message=JSON.parse(data);
         if (message.type==='READY'&&message.version===1) {
           clearTimeout(this.timeout);
@@ -58,9 +62,12 @@ export class RemoteCoordinatorClient implements CoordinatorClient {
     this.socket.onclose=()=> { if (!this.disposed) this.fail('Remote coordinator disconnected.'); };
   }
   private send(message:unknown):void {
-    if (this.socket.readyState!==WebSocket.OPEN) return;
-    if (this.socket.bufferedAmount>65_536) { this.fail('Coordinator send queue exceeded its budget.'); return; }
-    this.socket.send(JSON.stringify(message));
+    if (this.disposed||this.socket.readyState!==WebSocket.OPEN) return;
+    const payload=JSON.stringify(message);
+    if (payload.length>MAX_SOCKET_BYTES||this.socket.bufferedAmount+controlEncoder.encode(payload).byteLength>MAX_SOCKET_BYTES) {
+      this.fail('Coordinator send queue exceeded its budget.'); return;
+    }
+    this.socket.send(payload);
   }
   private snapshot(text:string):Draft {
     if (text!==this.lastText) { this.revision++; this.lastText=text; }
@@ -68,6 +75,12 @@ export class RemoteCoordinatorClient implements CoordinatorClient {
   }
   draft(text:string,composing=false):void {
     if (this.disposed) return;
+    if (text.length>MAX_PROMPT_CHARS) {
+      // Invalidate the old candidate, but neither retain nor transmit an unbounded paste.
+      this.latest=undefined;
+      this.executor.observeDraft(this.snapshot(''),true);
+      return;
+    }
     this.latest=this.snapshot(text); this.composing=composing;
     // Inference context receives edits immediately even before scheduling permission.
     // Observe with scheduling suppressed: invalidate stale work immediately,
@@ -77,8 +90,18 @@ export class RemoteCoordinatorClient implements CoordinatorClient {
   }
   commit(text:string):void {
     if (this.disposed||!text.trim()) return;
-    this.committed=this.snapshot(text);
+    // Enter supersedes foreground work immediately, even while ACCEPT is in flight.
+    this.executor.cancelForeground();
+    this.committed=undefined;
     this.commitId++;
+    if (text.length>MAX_PROMPT_CHARS) {
+      this.draft(text);
+      this.options.emit({type:'error',message:`Requests must be at most ${MAX_PROMPT_CHARS} characters.`});
+      return;
+    }
+    this.latest=this.committed=this.snapshot(text); this.composing=false;
+    // Preserve an exact candidate; discard mismatched speculation before server latency.
+    this.executor.observeDraft(this.committed,true);
     if (this.ready) this.send({type:'COMMIT',epoch:this.epoch,commitId:this.commitId,draft:this.committed});
   }
   cancel():void {
