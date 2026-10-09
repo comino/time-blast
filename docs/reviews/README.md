@@ -38,6 +38,15 @@ python3 tests/ui_rendering.py --base-url http://127.0.0.1:5173
 python3 tests/browser_production.py --url https://time-blast.46-224-133-201.sslip.io
 ```
 
+A separate [warm production-build sample](../benchmark-review-browser.json) at
+source `7429a62` used 20 paired trials per mode, after two warmups. Median
+commit-to-first-draw submission was **22.3 ms without speculation** and **5.8 ms
+for a prepared hit**; nearest-rank p95 was 31.3 ms and 17.7 ms respectively.
+The prepared case waits for all 144 points before Enter. This measures templates
+on warm DuckDB, with no LLM, no observed hit-rate estimate and no photon claim.
+The earlier benchmark used a different Chromium/build combination and is not a
+controlled before/after comparison with this sample.
+
 The next substantial database experiment is an exact first time bucket/tile
 followed by the remaining query against the same snapshot. Current whole-window
 aggregation and sorting can still block the first result. Remote services,
