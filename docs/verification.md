@@ -29,6 +29,23 @@ python3 tests/browser_ui.py
 
 The scripts' module-isolation harnesses use Vite development module URLs. The separate production-build smoke exercised the built application's DOM and real adapters directly.
 
+## Spatial canvas restoration
+
+The canvas update passes **209 unit tests**, TypeScript checking, and the production build. The UI, live-translation, drawing-completion, renderer, and new workspace browser regressions pass on Chromium **145.0.7632.0**. The workspace regression uses controlled batches and animation frames; its assertions establish event ordering and ownership, not wall-clock speed.
+
+The new checks verify that a loading card exists before commit dispatch, the first mark precedes bulk indexing, consecutive questions retain independent views, all five representations and duplication avoid a new query, duplicate views receive the exact original batches, and hidden views submit no premature first-draw timing. Camera, drag, resize, deletion, eight-card eviction, duplication at capacity, stale events, cancellation, and disposal are exercised through the UI. A 60,480-point rendering fixture still draws every segment of all six series; no sampling was introduced by the spatial layout.
+
+The public production smoke initializes **1,209,600 rows** in real DuckDB, promotes a prepared request with trailing whitespace, prepares SQL on edits without executing a query, renders **60,480 points**, and keeps four independent cards using line, bar, scatter, and schematic track views. Presentation changes issue no new query and runtime changes do not reload DuckDB. HTTP-decoded engine loading and browser errors remain checked. The screenshot in the README comes from this deployed-build smoke.
+
+```sh
+python3 tests/browser_workspace.py
+python3 tests/ui_rendering.py
+python3 tests/ui_completion.py
+python3 tests/browser_production.py --url https://time-blast.46-224-133-201.sslip.io
+```
+
+These checks preserve the first-point path and bound background work. The historical latency measurements below predate this UI update; a fresh controlled performance comparison is still required before claiming a latency improvement.
+
 ## Warm preparation comparison
 
 [`benchmark-browser.json`](benchmark-browser.json) records 20 measured trials per mode and two discarded warmups per mode. The paired order alternated, the same database stayed loaded, all results contained 144 points, and the source was explicitly `LOCAL TEMPLATE`. This run used headless Chromium **151.0.7922.34**, `--disable-gpu`, on a shared Linux aarch64 host with four logical CPUs.

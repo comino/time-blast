@@ -140,6 +140,170 @@ describe('cooperative chart rendering', () => {
     chart.destroy();
   });
 
+  it('switches display types using the same indexed producer buffers without changing the query', () => {
+    const target = canvas(), progress = vi.fn(), draw = vi.fn();
+    const chart = new StreamChart(target as unknown as HTMLCanvasElement, draw, progress);
+    const request = view(), input = batch(100);
+    chart.begin(request); chart.append(input); settle();
+    const refs = chart.order.series.get(0)!.refs;
+    progress.mockClear(); target.ctx.arc.mockClear();
+    chart.setRepresentation('scatter');
+    expect(chart.isSettled).toBe(false); expect(target.ctx.arc).not.toHaveBeenCalled();
+    settle();
+    expect(target.ctx.arc).toHaveBeenCalledTimes(100); expect(chart.isSettled).toBe(true);
+    target.ctx.fillRect.mockClear(); chart.setRepresentation('bar'); settle();
+    expect(target.ctx.fillRect).toHaveBeenCalledTimes(101); // background and each bar
+    expect(chart.batches[0]).toBe(input); expect(chart.batches[0].x).toBe(input.x);
+    expect(chart.order.series.get(0)!.refs).toBe(refs); expect(progress).not.toHaveBeenCalled();
+    expect(draw).toHaveBeenCalledOnce(); expect(request.plan.view).toBe('line');
+    const next = view('next'); next.plan.view = 'bar'; chart.begin(next);
+    expect(chart.representation).toBe('bar');
+    chart.destroy();
+  });
+
+  it('bounds scatter work after its immediate first marker and cancels remaining points', () => {
+    const target = canvas(), draw = vi.fn();
+    const chart = new StreamChart(target as unknown as HTMLCanvasElement, draw);
+    chart.begin(view()); chart.setRepresentation('scatter'); chart.append(batch(10000));
+    expect(draw).toHaveBeenCalledOnce(); expect(target.ctx.arc).not.toHaveBeenCalled();
+    frame(); expect(target.ctx.arc).not.toHaveBeenCalled();
+    frame(); expect(target.ctx.arc.mock.calls.length).toBeLessThanOrEqual(2048);
+    expect(chart.isSettled).toBe(false);
+    const drawn = target.ctx.arc.mock.calls.length;
+    chart.stop(); settle(); expect(target.ctx.arc).toHaveBeenCalledTimes(drawn);
+    expect(chart.isSettled).toBe(false); chart.destroy();
+  });
+
+  it('defers hidden representation changes and paints each retained point once when shown', () => {
+    const target = canvas(), chart = new StreamChart(target as unknown as HTMLCanvasElement, () => {});
+    chart.begin(view()); chart.append(batch(100)); settle(); chart.setVisible(false);
+    target.ctx.arc.mockClear(); chart.setRepresentation('scatter'); settle();
+    expect(target.ctx.arc).not.toHaveBeenCalled(); expect(chart.isSettled).toBe(true);
+    chart.setVisible(true); settle();
+    expect(target.ctx.arc).toHaveBeenCalledTimes(100); expect(chart.isSettled).toBe(true);
+    target.ctx.arc.mockClear(); chart.setRepresentation('scatter'); settle();
+    expect(target.ctx.arc).not.toHaveBeenCalled(); chart.destroy();
+  });
+
+  it('submits a track marker before indexing and settles only after shared geometry is painted', () => {
+    const target = canvas(), trackTarget = canvas(), trackSettled = vi.fn();
+    const track = new TrackChart(trackTarget as unknown as HTMLCanvasElement, trackSettled);
+    const chart = new StreamChart(target as unknown as HTMLCanvasElement, () => {}, p => track.progress(p), reordered => track.indexed(reordered));
+    chart.setVisible(false); chart.begin(view()); track.begin(chart.batches, chart.order);
+    const input = batch(6000); chart.append(input);
+    expect(track.append(input)).toBe(true); expect(overlays[0].ctx.arc).toHaveBeenCalledOnce();
+    expect(chart.order.series.size).toBe(0); expect(track.isSettled).toBe(false);
+    frame(); expect(chart.order.series.size).toBe(0); expect(track.isSettled).toBe(false);
+    settle(); expect(chart.batches[0]).toBe(input);
+    expect(chart.isSettled).toBe(true); expect(track.isSettled).toBe(true);
+    expect(trackSettled.mock.calls.at(-1)).toEqual([true]);
+    chart.destroy(); track.destroy();
+  });
+
+  it('does not schedule hidden track geometry and resumes retained coordinates when shown', () => {
+    const target = canvas(), trackTarget = canvas();
+    const track = new TrackChart(trackTarget as unknown as HTMLCanvasElement);
+    const chart = new StreamChart(target as unknown as HTMLCanvasElement, () => {}, p => track.progress(p), reordered => track.indexed(reordered));
+    track.setVisible(false); chart.begin(view()); track.begin(chart.batches, chart.order);
+    trackTarget.ctx.lineTo.mockClear();
+    const input = batch(100); chart.append(input); expect(track.append(input)).toBe(false); settle();
+    expect(trackTarget.ctx.lineTo).not.toHaveBeenCalled(); expect(overlays[0].ctx.arc).not.toHaveBeenCalled();
+    track.setVisible(true); expect(track.isSettled).toBe(false); settle();
+    expect(trackTarget.ctx.lineTo.mock.calls.length).toBeGreaterThanOrEqual(99);
+    expect(overlays[0].ctx.arc).toHaveBeenCalled(); expect(track.isSettled).toBe(true);
+    const next = batch(6000, 100); chart.append(next); track.append(next);
+    chart.stop(); track.stop(); const lines = trackTarget.ctx.lineTo.mock.calls.length; settle();
+    expect(trackTarget.ctx.lineTo).toHaveBeenCalledTimes(lines); expect(track.isSettled).toBe(false);
+    chart.destroy(); track.destroy();
+  });
+
+  it('reports the first track draw exactly once when a hidden result becomes visible', () => {
+    const target = canvas(), trackTarget = canvas(), draw = vi.fn();
+    const track = new TrackChart(trackTarget as unknown as HTMLCanvasElement, () => {}, draw);
+    const chart = new StreamChart(target as unknown as HTMLCanvasElement, () => {}, p => track.progress(p), reordered => track.indexed(reordered));
+    track.setVisible(false); chart.begin(view()); track.begin(chart.batches, chart.order);
+    const input = batch(100); chart.append(input); expect(track.append(input)).toBe(false); settle();
+    expect(draw).not.toHaveBeenCalled(); expect(overlays[0].ctx.arc).not.toHaveBeenCalled();
+    const shownAt = performance.now(); track.setVisible(true);
+    expect(draw).toHaveBeenCalledOnce(); expect(draw.mock.calls[0][0]).toBeGreaterThanOrEqual(shownAt);
+    expect(overlays[0].ctx.arc).toHaveBeenCalledOnce(); settle();
+    track.setVisible(false); track.setVisible(true); settle();
+    expect(draw).toHaveBeenCalledOnce(); chart.destroy(); track.destroy();
+  });
+
+  it('reports a zero-size track first draw after resize makes its marker drawable', () => {
+    const target = canvas(), trackTarget = Object.assign(canvas(), { clientWidth: 0, clientHeight: 0 }), draw = vi.fn();
+    const track = new TrackChart(trackTarget as unknown as HTMLCanvasElement, () => {}, draw);
+    const chart = new StreamChart(target as unknown as HTMLCanvasElement, () => {}, p => track.progress(p), reordered => track.indexed(reordered));
+    chart.begin(view()); track.begin(chart.batches, chart.order);
+    const input = batch(100); chart.append(input); expect(track.append(input)).toBe(false); settle();
+    expect(draw).not.toHaveBeenCalled(); expect(overlays[0].ctx.arc).not.toHaveBeenCalled();
+    const resizedAt = performance.now(); trackTarget.clientWidth = 800; trackTarget.clientHeight = 268;
+    resizes[0](); settle();
+    expect(draw).toHaveBeenCalledOnce(); expect(draw.mock.calls[0][0]).toBeGreaterThanOrEqual(resizedAt);
+    expect(overlays[0].ctx.arc).toHaveBeenCalled();
+    trackTarget.clientWidth = 900; resizes[0](); settle();
+    expect(draw).toHaveBeenCalledOnce(); chart.destroy(); track.destroy();
+  });
+
+  it('preserves a canceled track first marker when its unindexed result is shown again', () => {
+    const target = canvas(), trackTarget = canvas();
+    const track = new TrackChart(trackTarget as unknown as HTMLCanvasElement);
+    const chart = new StreamChart(target as unknown as HTMLCanvasElement, () => {}, p => track.progress(p), reordered => track.indexed(reordered));
+    chart.begin(view()); track.begin(chart.batches, chart.order);
+    const input = batch(6000); chart.append(input); track.append(input); chart.stop(); track.stop();
+    track.setVisible(false); track.setVisible(true); settle();
+    expect(chart.order.series.size).toBe(0); expect(overlays[0].ctx.arc).toHaveBeenCalledTimes(2);
+    expect(track.isSettled).toBe(false); chart.destroy(); track.destroy();
+  });
+
+  it('uses logical canvas dimensions even when the canvas camera scales its screen rectangle', () => {
+    const target = Object.assign(canvas(), { clientWidth: 800, clientHeight: 268 });
+    const trackTarget = Object.assign(canvas(), { clientWidth: 800, clientHeight: 268 });
+    target.getBoundingClientRect = trackTarget.getBoundingClientRect = () => ({ width: 1600, height: 536 });
+    const chart = new StreamChart(target as unknown as HTMLCanvasElement, () => {});
+    const track = new TrackChart(trackTarget as unknown as HTMLCanvasElement);
+    expect(target.width).toBe(800); expect(trackTarget.width).toBe(800);
+    chart.begin(view()); track.begin(chart.batches, chart.order); settle();
+    target.ctx.setTransform.mockClear(); trackTarget.ctx.setTransform.mockClear();
+    target.getBoundingClientRect = trackTarget.getBoundingClientRect = () => ({ width: 400, height: 134 });
+    for (const resize of resizes) resize();
+    expect(target.ctx.setTransform).not.toHaveBeenCalled(); expect(trackTarget.ctx.setTransform).not.toHaveBeenCalled();
+    expect(frames.size).toBe(0); chart.destroy(); track.destroy();
+  });
+
+  it('does not repaint when viewport updates keep a chart visible', () => {
+    const target = canvas(), trackTarget = canvas();
+    const track = new TrackChart(trackTarget as unknown as HTMLCanvasElement);
+    const chart = new StreamChart(target as unknown as HTMLCanvasElement, () => {}, p => track.progress(p), reordered => track.indexed(reordered));
+    chart.begin(view()); track.begin(chart.batches, chart.order);
+    const input = batch(100); chart.append(input); track.append(input); settle();
+    target.ctx.lineTo.mockClear(); trackTarget.ctx.lineTo.mockClear();
+    for (let i = 0; i < 10; i++) { chart.setVisible(true); track.setVisible(true); }
+    expect(frames.size).toBe(0); expect(chart.isSettled).toBe(true); expect(track.isSettled).toBe(true);
+    expect(target.ctx.lineTo).not.toHaveBeenCalled(); expect(trackTarget.ctx.lineTo).not.toHaveBeenCalled();
+    chart.destroy(); track.destroy();
+  });
+
+  it('retains a stopped result but releases every producer owner and bitmap when destroyed', () => {
+    const target = canvas(), trackTarget = canvas();
+    const track = new TrackChart(trackTarget as unknown as HTMLCanvasElement);
+    const chart = new StreamChart(target as unknown as HTMLCanvasElement, () => {}, p => track.progress(p), reordered => track.indexed(reordered));
+    chart.begin(view()); track.begin(chart.batches, chart.order);
+    const input = batch(6000); chart.append(input); track.append(input); frame(); frame();
+    chart.stop(); track.stop();
+    expect(chart.batches[0]).toBe(input); expect(chart.order.series.size).toBe(1);
+    expect(Reflect.get(chart, 'firstBatch')).toBe(input); expect(Reflect.get(track, 'firstBatch')).toBe(input);
+    chart.destroy(); track.destroy(); settle();
+    expect(chart.batches).toHaveLength(0); expect(chart.order.series.size).toBe(0);
+    for (const key of ['firstBatch', 'view', 'sorting']) expect(Reflect.get(chart, key)).toBeUndefined();
+    for (const key of ['firstBatch', 'order']) expect(Reflect.get(track, key)).toBeUndefined();
+    expect(Reflect.get(track, 'batches')).toHaveLength(0);
+    for (const renderer of [chart, track]) expect(Reflect.get(renderer, 'cursors').size).toBe(0);
+    for (const surface of [target, trackTarget, ...overlays]) { expect(surface.width).toBe(0); expect(surface.height).toBe(0); }
+    expect(input.x).toHaveLength(6000); // shared buffers owned by another card are untouched
+  });
+
   it('reports settlement only after indexing and painting, and invalidates it on redraw', () => {
     const target = canvas(), settled = vi.fn();
     const chart = new StreamChart(target as unknown as HTMLCanvasElement, () => {}, () => {}, () => {}, settled);

@@ -4,11 +4,17 @@ import { barLayout } from './bar-layout';
 import { FrameWork } from './frame-work';
 
 export const SERIES_COLORS = ['#ff906c', '#74d4c3', '#d4c17e', '#83b9e3', '#e39eaf', '#b0c985'];
-const BACKGROUND = '#171b1c';
+export type ChartRepresentation = 'line' | 'bar' | 'scatter';
+const BACKGROUND = '#0d1b24';
 const CHUNK = 2048;
 const number = new Intl.NumberFormat('en', { maximumFractionDigits: 1 });
 const time = new Intl.DateTimeFormat('en', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' });
 const day = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+// Camera transforms change the screen-space rectangle, not the bitmap's logical dimensions.
+const canvasSize = (canvas: HTMLCanvasElement) => ({
+  width: canvas.clientWidth ?? canvas.getBoundingClientRect().width,
+  height: canvas.clientHeight ?? canvas.getBoundingClientRect().height,
+});
 
 export interface BatchProgress {
   sum: number; count: number; minimum: number; maximum: number; series: Set<number>;
@@ -35,7 +41,7 @@ class Markers {
     this.ctx.beginPath(); this.ctx.fillStyle = SERIES_COLORS[Math.abs(series) % SERIES_COLORS.length];
     this.ctx.arc(x, y, radius, 0, Math.PI * 2); this.ctx.fill();
   }
-  destroy(): void { this.canvas.remove(); }
+  destroy(): void { this.canvas.width = 0; this.canvas.height = 0; this.canvas.remove(); }
 }
 
 /** Retains producer buffers; indexing and drawing run in cancelable, bounded slices. */
@@ -48,6 +54,7 @@ export class StreamChart {
   private readonly work = new FrameWork(deadline => this.advance(deadline));
   private readonly cursors = new Map<number, Cursor>();
   private view?: QueryView;
+  private display: ChartRepresentation = 'line';
   private width = 0; private height = 0; private dpr = 0;
   private drawn = false; private stopped = false; private visible = true;
   private firstBatch?: ColumnBatch;
@@ -72,10 +79,10 @@ export class StreamChart {
 
   begin(view: QueryView): void {
     this.work.cancel(); this.sorting = undefined;
-    this.view = view; this.batches.length = 0; this.order.clear(); this.cursors.clear();
+    this.view = view; this.display = view.plan.view; this.batches.length = 0; this.order.clear(); this.cursors.clear();
     this.nextBatch = 0; this.nextRow = 0; this.drawn = false; this.stopped = false; this.repaint = true;
     this.firstBatch = undefined; this.settled = false;
-    this.xPadding = view.plan.view === 'bar' ? view.plan.bucketMinutes * 30_000 : 0;
+    this.xPadding = this.display === 'bar' ? view.plan.bucketMinutes * 30_000 : 0;
     this.xLow = Math.max(view.context.start, view.context.end - view.plan.windowHours * 3_600_000) - this.xPadding;
     this.xHigh = view.context.end + this.xPadding;
     [this.low, this.high] = { speed: [0, 40], wind: [0, 60], wave_height: [0, 8], water_temp: [-2, 35] }[view.plan.metric];
@@ -91,6 +98,23 @@ export class StreamChart {
     this.work.schedule();
   }
 
+  get representation(): ChartRepresentation { return this.display; }
+
+  /** Change only the presentation; retain producer columns, the query plan, and indexed references. */
+  setRepresentation(representation: ChartRepresentation): void {
+    if (representation === this.display) return;
+    this.display = representation;
+    if (!this.view) return;
+    const padding = representation === 'bar' ? this.view.plan.bucketMinutes * 30_000 : 0;
+    this.xLow += this.xPadding - padding; this.xHigh += padding - this.xPadding; this.xPadding = padding;
+    this.repaint = true;
+    if (this.visible) {
+      this.setSettled(false);
+      if (this.stopped && this.order.needsSort) this.sorting = this.order.sortSteps();
+      this.work.schedule();
+    }
+  }
+
   private firstMarker(batch: ColumnBatch, i: number): void {
     if (this.stopped || !this.visible || this.drawn || !this.view || !this.width || !this.height ||
       i >= batch.length || !Number.isFinite(batch.x[i]) || !Number.isFinite(batch.y[i])) return;
@@ -98,14 +122,14 @@ export class StreamChart {
     this.low = Math.min(this.low, batch.y[i]); this.high = Math.max(this.high, batch.y[i]);
     this.xLow = Math.min(this.xLow, batch.x[i] - this.xPadding); this.xHigh = Math.max(this.xHigh, batch.x[i] + this.xPadding);
     if (!this.gridReady || low !== this.low || high !== this.high || xLow !== this.xLow || xHigh !== this.xHigh) this.grid();
-    const offset = this.view.plan.view === 'bar' ? this.bar(batch.series[i]).offset : 0;
+    const offset = this.display === 'bar' ? this.bar(batch.series[i]).offset : 0;
     this.markers.dot(this.x(batch.x[i]) + offset, this.y(batch.y[i]), batch.series[i]);
     this.firstBatch = batch; this.firstRow = i;
     this.drawn = true; this.onDraw(this.view.id, performance.now());
   }
 
   private resize(): void {
-    const box = this.canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    const box = canvasSize(this.canvas), dpr = window.devicePixelRatio || 1;
     if (box.width < 1 || box.height < 1 || box.width === this.width && box.height === this.height && dpr === this.dpr) return;
     this.width = box.width; this.height = box.height; this.dpr = dpr;
     this.canvas.width = Math.round(box.width * dpr); this.canvas.height = Math.round(box.height * dpr);
@@ -117,6 +141,7 @@ export class StreamChart {
   }
 
   setVisible(visible: boolean): void {
+    if (visible === this.visible) return;
     if (visible && !this.visible) this.gridReady = false;
     this.visible = visible;
     if (visible) {
@@ -219,8 +244,8 @@ export class StreamChart {
     let work = 0;
     for (const [series, ordered] of this.order.series) {
       const state = this.cursors.get(series) ?? cursor(); this.cursors.set(series, state);
-      const color = SERIES_COLORS[Math.abs(series) % SERIES_COLORS.length], bar = this.view.plan.view === 'bar' ? this.bar(series) : undefined;
-      c.beginPath(); if (state.hasPoint) c.moveTo(state.x, state.y);
+      const color = SERIES_COLORS[Math.abs(series) % SERIES_COLORS.length], bar = this.display === 'bar' ? this.bar(series) : undefined;
+      c.beginPath(); if (state.hasPoint && this.display === 'line') c.moveTo(state.x, state.y);
       while (state.count < ordered.refs.length && work < CHUNK) {
         const ref = ordered.refs[state.count++], index = this.order.batchIndex(ref), batch = this.batches[index], i = this.order.rowIndex(ref, index);
         work++;
@@ -230,11 +255,14 @@ export class StreamChart {
           c.fillStyle = color; c.globalAlpha = 0.78;
           const baseline = this.y(Math.max(this.low, Math.min(this.high, 0)));
           c.fillRect(x - bar.width / 2, Math.min(y, baseline), bar.width, Math.max(1, Math.abs(baseline - y))); c.globalAlpha = 1;
+        } else if (this.display === 'scatter') {
+          c.moveTo(x + 2, y); c.arc(x, y, 2, 0, Math.PI * 2);
         } else if (state.hasPoint) c.lineTo(x, y); else c.moveTo(x, y);
         state.x = x; state.y = y; state.hasPoint = true;
         if (work % 128 === 0 && performance.now() >= deadline) break;
       }
-      if (!bar) { c.strokeStyle = color; c.lineWidth = 1.7; c.stroke(); }
+      if (this.display === 'scatter') { c.fillStyle = color; c.globalAlpha = 0.72; c.fill(); c.globalAlpha = 1; }
+      else if (!bar) { c.strokeStyle = color; c.lineWidth = 1.7; c.stroke(); }
       if (work >= CHUNK || performance.now() >= deadline) break;
     }
     c.restore(); this.markers.clear();
@@ -242,13 +270,18 @@ export class StreamChart {
     for (const [series, state] of this.cursors) if (state.hasPoint) { this.markers.dot(state.x, state.y, series); hasMarker = true; }
     // Cancellation can freeze the result before indexing; preserve its submitted point on resize/show.
     if (!hasMarker && this.firstBatch) {
-      const b = this.firstBatch, i = this.firstRow, offset = this.view.plan.view === 'bar' ? this.bar(b.series[i]).offset : 0;
+      const b = this.firstBatch, i = this.firstRow, offset = this.display === 'bar' ? this.bar(b.series[i]).offset : 0;
       this.markers.dot(this.x(b.x[i]) + offset, this.y(b.y[i]), b.series[i]);
     }
   }
 
   stop(): void { this.stopped = true; this.work.cancel(); this.sorting = undefined; }
-  destroy(): void { this.observer.disconnect(); this.stop(); this.markers.destroy(); }
+  destroy(): void {
+    this.observer.disconnect(); this.stop(); this.markers.destroy();
+    this.firstBatch = undefined; this.view = undefined; this.batches.length = 0;
+    this.order.clear(); this.cursors.clear(); this.sorting = undefined;
+    this.canvas.width = 0; this.canvas.height = 0;
+  }
 }
 
 export class TrackChart {
@@ -262,14 +295,52 @@ export class TrackChart {
   private width = 0; private height = 0; private dpr = 0;
   private minLat = Infinity; private maxLat = -Infinity; private minLon = Infinity; private maxLon = -Infinity;
   private repaint = true;
-  constructor(private canvas: HTMLCanvasElement) {
+  private visible = true; private stopped = false; private settled = false; private drawn = false;
+  private firstBatch?: ColumnBatch;
+  constructor(private canvas: HTMLCanvasElement, private onSettledChange: (settled: boolean) => void = () => {},
+    private onDraw: (at: number) => void = () => {}) {
     this.ctx = canvas.getContext('2d', { alpha: false })!; this.markers = new Markers(canvas);
     this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(canvas); this.resize();
   }
   begin(batches: readonly ColumnBatch[], order: ColumnOrder): void {
     this.work.cancel(); this.batches = batches; this.order = order; this.cursors.clear();
     this.minLat = this.minLon = Infinity; this.maxLat = this.maxLon = -Infinity;
-    this.repaint = true; this.markers.clear(); this.grid();
+    this.stopped = false; this.drawn = false; this.firstBatch = undefined;
+    this.repaint = true; this.settled = true; this.markers.clear(); if (this.visible) this.grid();
+  }
+  /** Submit the leading coordinate before shared indexing; no second batch list or point scan. */
+  append(batch: ColumnBatch): boolean {
+    if (this.stopped) return false;
+    if (this.visible) this.setSettled(false);
+    if (this.firstBatch || !batch.length || !batch.lat || !batch.lon ||
+      !Number.isFinite(batch.lat[0]) || !Number.isFinite(batch.lon[0])) return false;
+    this.firstBatch = batch;
+    this.minLat = Math.min(this.minLat, batch.lat[0]); this.maxLat = Math.max(this.maxLat, batch.lat[0]);
+    this.minLon = Math.min(this.minLon, batch.lon[0]); this.maxLon = Math.max(this.maxLon, batch.lon[0]);
+    this.repaint = true;
+    return this.firstMarker();
+  }
+  private firstMarker(): boolean {
+    const batch = this.firstBatch;
+    if (this.drawn || !this.visible || !this.width || !this.height || !batch) return false;
+    this.markers.dot(this.x(batch.lon![0]), this.y(batch.lat![0]), batch.series[0], 3);
+    this.recordDraw(); return true;
+  }
+  private recordDraw(): void {
+    if (this.drawn) return;
+    this.drawn = true;
+    if (!this.stopped) this.onDraw(performance.now());
+  }
+  setVisible(visible: boolean): void {
+    if (visible === this.visible) return;
+    this.visible = visible;
+    if (!visible) { this.work.cancel(); this.setSettled(true); return; }
+    this.repaint = true; this.setSettled(false); this.firstMarker(); this.work.schedule();
+  }
+  get isSettled(): boolean { return this.settled && !this.stopped; }
+  private setSettled(value: boolean): void {
+    if (this.stopped || value === this.settled) return;
+    this.settled = value; this.onSettledChange(value);
   }
   progress(p: BatchProgress): void {
     const a = this.minLat, b = this.maxLat, c = this.minLon, d = this.maxLon;
@@ -277,15 +348,21 @@ export class TrackChart {
     this.minLon = Math.min(c, p.minLon); this.maxLon = Math.max(d, p.maxLon);
     this.repaint ||= a !== this.minLat || b !== this.maxLat || c !== this.minLon || d !== this.maxLon;
   }
-  indexed(reordered: boolean): void { this.repaint ||= reordered; this.work.schedule(); }
+  indexed(reordered: boolean): void {
+    this.repaint ||= reordered;
+    if (this.visible) { this.setSettled(false); this.work.schedule(); }
+  }
   private resize(): void {
-    const { width, height } = this.canvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    const { width, height } = canvasSize(this.canvas), dpr = window.devicePixelRatio || 1;
     if (!width || !height || width === this.width && height === this.height && dpr === this.dpr) return;
     this.width = width; this.height = height; this.dpr = dpr;
     this.canvas.width = Math.round(width * dpr); this.canvas.height = Math.round(height * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0); this.markers.resize(width, height, dpr);
-    this.repaint = true; this.work.schedule();
+    this.repaint = true;
+    if (this.visible) { this.setSettled(false); this.work.schedule(); }
   }
+  private x(lon: number): number { return 25 + (lon - this.minLon) / Math.max(0.001, this.maxLon - this.minLon) * (this.width - 50); }
+  private y(lat: number): number { return this.height - 22 - (lat - this.minLat) / Math.max(0.001, this.maxLat - this.minLat) * (this.height - 44); }
   private grid(): void {
     const c = this.ctx, { width, height } = this;
     c.fillStyle = BACKGROUND; c.fillRect(0, 0, width, height); c.strokeStyle = '#28332f'; c.lineWidth = 1;
@@ -293,7 +370,9 @@ export class TrackChart {
     for (let y = 22; y < height; y += 36) { c.beginPath(); c.moveTo(0, y); c.lineTo(width, y); c.stroke(); }
   }
   private render(deadline: number): boolean {
-    if (!this.width || !this.height || !this.order || !Number.isFinite(this.minLat)) return false;
+    if (!this.visible || !this.width || !this.height || !this.order || !Number.isFinite(this.minLat)) {
+      this.setSettled(true); return false;
+    }
     // The indexer notifies us when sorted references are ready. Polling here can
     // run forever if cancellation abandoned the sort while the primary is hidden.
     if (this.order.needsSort) return false;
@@ -306,8 +385,7 @@ export class TrackChart {
         const ref = ordered.refs[state.count++], index = this.order.batchIndex(ref), b = this.batches[index], i = this.order.rowIndex(ref, index);
         work++;
         if (!b.lat || !b.lon || !Number.isFinite(b.lat[i]) || !Number.isFinite(b.lon[i])) continue;
-        const x = 25 + (b.lon[i] - this.minLon) / Math.max(0.001, this.maxLon - this.minLon) * (this.width - 50);
-        const y = this.height - 22 - (b.lat[i] - this.minLat) / Math.max(0.001, this.maxLat - this.minLat) * (this.height - 44);
+        const x = this.x(b.lon[i]), y = this.y(b.lat[i]);
         if (state.hasPoint) c.lineTo(x, y); else c.moveTo(x, y);
         state.x = x; state.y = y; state.hasPoint = true;
         if (work % 128 === 0 && performance.now() >= deadline) break;
@@ -316,10 +394,21 @@ export class TrackChart {
       if (work >= CHUNK || performance.now() >= deadline) break;
     }
     this.markers.clear();
-    for (const [series, state] of this.cursors) if (state.hasPoint) this.markers.dot(state.x, state.y, series, 3);
-    for (const [id, series] of this.order.series) if ((this.cursors.get(id)?.count ?? 0) < series.refs.length) return true;
+    let hasMarker = false;
+    for (const [series, state] of this.cursors) if (state.hasPoint) {
+      this.markers.dot(state.x, state.y, series, 3); this.recordDraw(); hasMarker = true;
+    }
+    if (!hasMarker && this.firstBatch) {
+      this.markers.dot(this.x(this.firstBatch.lon![0]), this.y(this.firstBatch.lat![0]), this.firstBatch.series[0], 3); this.recordDraw();
+    }
+    for (const [id, series] of this.order.series) if ((this.cursors.get(id)?.count ?? 0) < series.refs.length) { this.setSettled(false); return true; }
+    this.setSettled(true);
     return false;
   }
-  stop(): void { this.work.cancel(); }
-  destroy(): void { this.observer.disconnect(); this.stop(); this.markers.destroy(); }
+  stop(): void { this.stopped = true; this.work.cancel(); }
+  destroy(): void {
+    this.observer.disconnect(); this.stop(); this.markers.destroy();
+    this.batches = []; this.order = undefined; this.firstBatch = undefined; this.cursors.clear();
+    this.canvas.width = 0; this.canvas.height = 0;
+  }
 }

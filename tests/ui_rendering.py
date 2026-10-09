@@ -25,8 +25,9 @@ with sync_playwright() as p:
     page.goto(args.base_url.rstrip('/')+'/ui-rendering-harness')
     result = page.evaluate('''async () => {
       const {createUI}=await import('/src/ui/index.ts');
-      const {ColumnOrder}=await import('/src/ui/order.ts');
-      const {StreamChart,TrackChart}=await import('/src/ui/chart.ts');
+      // Vite may version imports after an edit. Instrument the exact module used by createUI.
+      const orderURL=performance.getEntriesByType('resource').map(r=>r.name).filter(n=>new URL(n).pathname==='/src/ui/order.ts').at(-1);
+      const {ColumnOrder}=await import(orderURL||'/src/ui/order.ts');
       const nativeRAF=requestAnimationFrame.bind(window), nativeCancel=cancelAnimationFrame.bind(window), pending=new Set();
       window.requestAnimationFrame=fn=>{const id=nativeRAF(time=>{pending.delete(id);fn(time);});pending.add(id);return id;};
       window.cancelAnimationFrame=id=>{pending.delete(id);nativeCancel(id);};
@@ -45,50 +46,61 @@ with sync_playwright() as p:
       const context={id:'test',label:'test',rowCount:100000,start:0,end:100000000,vessels:['One'],description:'test'};
       const view=id=>({id,prompt:'speed',revision:1,plan:{metric:'speed',aggregate:'avg',bucketMinutes:1,windowHours:336,splitByVessel:true,vessel:null,view:'line'},sql:'SELECT',source:'template',context,timing:{startedAt:origin,committedAt:origin,promoted:true,batches:0,points:0,bytes:0}});
       const batch=(n,start=0)=>({x:Float64Array.from({length:n},(_,i)=>(i+start)*1000),y:new Float64Array(n).fill(10),series:new Int32Array(n),lat:Float64Array.from({length:n},(_,i)=>i%100/100),lon:Float64Array.from({length:n},(_,i)=>i%100/100),length:n,byteLength:n*36});
+      const input=document.querySelector('[data-el="input"]');
+      const submit=text=>{input.value=text;input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));};
+      const start=value=>{submit(value.prompt);ui.handleEvent({type:'start',view:value});};
+      const mode=value=>{const select=document.querySelector('[data-el="representation"]');select.value=value;select.dispatchEvent(new Event('change',{bubbles:true}));};
       ui.setDataset(context);await settle();
       const large=batch(100000);indexed=0;origin=performance.now();
-      ui.handleEvent({type:'start',view:view('large')});ui.handleEvent({type:'batch',id:'large',batch:large});
+      start(view('large'));ui.handleEvent({type:'batch',id:'large',batch:large});
       const handlerReturned=performance.now()-origin, indexedAtReturn=indexed;
       await new Promise(nativeRAF);const firstFrameTail=performance.now()-origin,indexedAtFirstFrame=indexed;
       document.querySelector('[data-action="cancel"]').click();await settle();
       const firstFrame={drawAt,handlerReturned,firstFrameTail,indexedAtReturn,indexedAtFirstFrame,indexedAfterCancel:indexed};
       if(indexedAtReturn||indexedAtFirstFrame||indexed)throw Error('Bulk indexing preceded first rendering opportunity or survived cancellation');
       const counts=[];
-      for(const [id,chunks,n,hidden] of [['single',1,4000,false],['stream',40,100,false],['hidden',1,4000,true]]){
-        origin=performance.now();ui.handleEvent({type:'start',view:view(id)});await settle();
-        if(hidden)document.querySelector('[data-tab="table"]').click();
+      for(const [id,chunks,n,representation] of [['single',1,4000,'line'],['stream',40,100,'line'],['map-single',1,4000,'map'],['map-stream',40,100,'map'],['hidden',1,4000,'table']]){
+        origin=performance.now();start(view(id));await settle();
+        mode(representation);await settle();
         chartLines=trackLines=0;
         for(let i=0;i<chunks;i++){ui.handleEvent({type:'batch',id,batch:batch(n,i*n)});await settle();}
-        counts.push({id,chunks,n,hidden,chartLines,trackLines});
-        if(hidden&&chartLines)throw Error('Hidden chart drew geometry');
+        counts.push({id,chunks,n,representation,chartLines,trackLines});
+        if(representation!=='line'&&chartLines)throw Error('Hidden primary chart drew geometry');
+        if(representation!=='map'&&trackLines)throw Error('Hidden or uncreated track chart drew geometry');
       }
-      if(counts[1].chartLines>counts[0].chartLines+10||counts[1].trackLines>counts[0].trackLines+10)throw Error('Ordered stream redraws prior geometry');
-      document.querySelector('[data-tab="chart"]').click();await settle();
-      const input=document.querySelector('[data-el="input"]');input.value='  Average speed by hour  ';
-      input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
-      if(commits.at(-1)!==input.value)throw Error('Commit changed exact draft text');
-      const base=document.querySelector('[data-el="chart"]').getBoundingClientRect();
-      const overlay=document.querySelector('[data-el="chart"]').parentElement.querySelector('[aria-hidden="true"]').getBoundingClientRect();
+      if(counts[1].chartLines>counts[0].chartLines+10||counts[3].trackLines>counts[2].trackLines+10)throw Error('Ordered stream redraws prior geometry');
+      mode('line');await settle();
+      const mainBeforeNext=document.querySelector('[data-el="chart"]');
+      const base=mainBeforeNext.getBoundingClientRect();
+      const overlay=mainBeforeNext.parentElement.querySelector('[aria-hidden="true"]').getBoundingClientRect();
       if(base.x!==overlay.x||base.y!==overlay.y||base.width!==overlay.width||base.height!==overlay.height)throw Error('Marker overlay does not align');
       const mean=document.querySelector('[data-el="mean"]').textContent;
+      submit('  Average speed by hour  ');
+      const rawCommit=commits.at(-1);
+      if(rawCommit!==input.value)throw Error('Commit changed exact draft text');
 
       const fleetSize=60480,colors=['#ff906c','#74d4c3','#d4c17e','#83b9e3','#e39eaf','#b0c985'];
       const fleetView={...view('six-series'),context:{...context,rowCount:fleetSize,end:604800000,vessels:['A','B','C','D','E','F']},plan:{...view('six-series').plan,windowHours:168}};
-      ui.setDataset(fleetView.context);ui.handleEvent({type:'start',view:fleetView});await settle();
+      ui.setDataset(fleetView.context);start(fleetView);await settle();
       const main=document.querySelector('[data-el="chart"]'),track=document.querySelector('[data-el="track"]');
       seriesLines.set(main.getContext('2d'),new Map());seriesLines.set(track.getContext('2d'),new Map());
       const fleet={x:Float64Array.from({length:fleetSize},(_,i)=>Math.floor(i/6)*60000),y:Float64Array.from({length:fleetSize},(_,i)=>10+i%6),series:Int32Array.from({length:fleetSize},(_,i)=>i%6),
         lat:Float64Array.from({length:fleetSize},(_,i)=>Math.floor(i/6)%2),lon:Float64Array.from({length:fleetSize},(_,i)=>Math.floor(i/6)%2),length:fleetSize,byteLength:fleetSize*36};
       ui.handleEvent({type:'batch',id:fleetView.id,batch:fleet});ui.handleEvent({type:'complete',id:fleetView.id,timing:fleetView.timing});await settle();
-      const mainSegments=colors.map(c=>seriesLines.get(main.getContext('2d')).get(c)||0),trackSegments=colors.map(c=>seriesLines.get(track.getContext('2d')).get(c)||0);
-      if([...mainSegments,...trackSegments].some(n=>n!==10079))throw Error('Dense fleet rendering omitted or repeated a segment');
+      const mainSegments=colors.map(c=>seriesLines.get(main.getContext('2d')).get(c)||0);
+      if(mainSegments.some(n=>n!==10079))throw Error('Dense fleet line rendering omitted or repeated a segment');
+      if([...seriesLines.get(track.getContext('2d')).values()].some(Boolean))throw Error('Unselected map must not draw geometry');
       const endpoints=canvas=>markers.get(canvas.parentElement.querySelector('canvas[aria-hidden]').getContext('2d'))||[];
-      const mainEndpoints=endpoints(main),trackEndpoints=endpoints(track);
+      const mainEndpoints=endpoints(main);
+      mode('map');await settle();
+      const trackSegments=colors.map(c=>seriesLines.get(track.getContext('2d')).get(c)||0);
+      if(trackSegments.some(n=>n!==10079))throw Error('Dense fleet track rendering omitted or repeated a segment');
+      const trackEndpoints=endpoints(track);
       for(const dots of [mainEndpoints,trackEndpoints])if(dots.length!==6||colors.some(c=>dots.filter(dot=>dot===c).length!==1))throw Error('Each vessel must have exactly one final endpoint marker');
       if(document.querySelector('[data-el="mean"]').textContent!=='12.5'||document.querySelector('[data-el="legend"]').children.length!==6)throw Error('Dense fleet statistics or legend is incomplete');
       if(document.querySelector('[data-el="result-state"]').textContent.trim()!=='COMPLETE'||pending.size)throw Error('Dense fleet drawing has not fully settled');
       const denseFleet={points:fleetSize,mainSegments,trackSegments,mainEndpointCount:mainEndpoints.length,trackEndpointCount:trackEndpoints.length,mean:'12.5',pendingFrames:pending.size};
-      return {firstFrame,counts,mean,rawCommit:commits.at(-1),overlayAligned:true,denseFleet};
+      return {firstFrame,counts,mean,rawCommit,overlayAligned:true,denseFleet};
     }''')
     if args.screenshot:
         page.screenshot(path=args.screenshot, full_page=True)

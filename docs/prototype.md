@@ -74,6 +74,18 @@ Copy accounting:
 
 Speculative staging is limited to 4 MiB; foreground data retention to 16 MiB. These budgets charge unique backing allocations, including the full buffer behind a slice and owner validity buffers. Logical payload bytes remain a separate telemetry value. These are data-buffer budgets, not caps on all renderer/index/engine memory. The database adapter independently limits rows and bytes. A budget overflow is an explicit error/discard, never silent truncation. Small demo queries often return one batch. Aggregation and sorting are blocking operators: `send` is an incremental output API, not proof that the first final aggregate appears while the source is still being scanned.
 
+## Spatial canvas
+
+`CanvasWorkspace` owns the dotted board, camera, selection, and bounded result history. Each Enter mounts a `ResultCard` with a loading animation before dispatching the commit. The first nonempty batch removes the animation immediately; no reveal transition or camera animation gates the first marker. A later question adds a separate card and supersedes any unfinished foreground query. Superseding the UI does not issue a full coordinator cancellation, which would discard the next exact speculative candidate before it could be promoted.
+
+Each card retains its own immutable query context, column references, indexing state, and drawing completion. Time series, bars, scatter, schematic tracks, and a 12-row table are alternate presentations of that same result. Mode changes and duplication do not invoke inference or the database. Duplicates share the producer batches and buffers while owning their own renderer/index state; they do not claim a new Enter-to-draw latency. Track views depict mean generated coordinates, not geographic basemaps. Photo galleries, surfaces, and heatmaps from the reference prototype are not implemented for this schema.
+
+Cards support drag, resize, duplicate, remove, SQL inspection, and explicit CSV export. Background drag or wheel pans the board; buttons or Ctrl/Command-wheel zoom it. Fit and Arrange adjust the camera/layout. Camera motion uses a CSS transform; canvas backing dimensions use unscaled layout size, so zooming does not reallocate the numerical result or resize the bitmap. Visibility changes are computed from card rectangles without scanning the DOM on every incoming batch. Offscreen cards and inactive representations skip geometry; bounded indexing/statistics can still complete. Removing a card disposes its render tasks, indexes, references, and canvas backing stores.
+
+The workspace keeps at most eight cards and 64 MiB of unique result backing allocations. Shared buffers across duplicate cards are charged once, and a slice charges its entire backing allocation. Oldest eligible views are removed with a visible notice. These are result retention limits, separate from the per-query/staging budgets and from engine, renderer-index, and bitmap memory. History is in-memory only and is lost on reload. Chat history links retain card IDs rather than keeping removed result objects alive.
+
+`tests/browser_workspace.py` verifies immediate loading/first drawing, independent cards and stale-event rejection, shared buffers, all five modes without new queries, real camera/drag/resize gestures, cancellation and speculation preservation, offscreen first-draw telemetry, eviction-safe duplication, and cleanup. `tests/browser_production.py` additionally exercises multiple real DuckDB results and presentation changes through the deployed build.
+
 ## Remote inference adapter
 
 Configure an HTTP(S) inference endpoint. POST JSON:

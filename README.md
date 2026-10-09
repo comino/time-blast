@@ -45,7 +45,9 @@ Default execution stays in your browser. Assets and model weights must download 
 - Rust/Wasm compiles the intent; DuckDB runs in its own worker; WebLLM runs in another worker. Heavy engines are initialized before submission where possible.
 - Arrow numeric columns retain their backing buffers into Canvas2D. The first marker is submitted on the first batch before subsequent chart work. Local data does not get encoded for a fictitious network boundary.
 - Cancellation epochs, exact question/snapshot matching, per-query database connections, bounded queues, staged-memory limits, and explicit failure/completion protect speculation.
-- A chat and canvas interface includes time series, a schematic of generated vessel tracks, a small table view, SQL details, CSV export, and an event trace.
+- Every submitted question immediately adds a loading card to a dotted spatial canvas beside chat. Earlier results stay available; drag and resize cards, pan/zoom, or use Fit and Arrange.
+- Switch each result between time series, bars, scatter, schematic vessel tracks, and a small table. View changes and duplication reuse the existing column buffers without another query. Cards expose SQL, CSV export, and measured draw submission; the chat rail includes an event trace.
+- Hidden cards skip geometry drawing. The workspace retains up to eight cards and 64 MiB of unique result buffers, removing older views when necessary; it lives in memory for the current page session.
 
 The current aggregation uses `GROUP BY` and `ORDER BY`: database work may finish before its first result batch becomes available. The renderer consumes batches incrementally, but it cannot make a blocking SQL operator produce a final point early. The next substantial latency improvement is an ordered/time-tiled query path. Likewise, no browser can promise literal end-to-end zero-copy through DuckDB's worker/IPC boundary. See [implementation, limits, and copy accounting](docs/prototype.md).
 
@@ -62,6 +64,7 @@ cargo test --manifest-path crates/query-core/Cargo.toml
 python3 tests/browser_database.py
 python3 tests/browser_database.py --dataset-profile large
 python3 tests/browser_ui.py
+python3 tests/browser_workspace.py
 python3 tests/ui_live_translation.py
 # Requires a real available WebGPU adapter; downloads model weights:
 python3 tests/browser_inference.py

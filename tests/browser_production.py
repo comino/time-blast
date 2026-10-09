@@ -107,6 +107,21 @@ def run(url, screenshot):
           document.querySelector('[data-el="result-state"]').textContent.trim() === 'COMPLETE' &&
           document.querySelector('[data-el="points"]').textContent.trim() === '60,480'""")
         assert page.locator('[data-el="latency-detail"]').inner_text() == "Prepared result promoted"
+        assert page.locator('.result-card').count() == 3
+        completed_queries = page.evaluate("window.__translationEvents.filter(e => e === 'query_complete').length")
+        page.locator('[data-action="fit"]').click()
+        cards = page.locator('.result-card')
+        cards.nth(1).locator('[data-card-el="representation"]').select_option("bar")
+        cards.nth(2).locator('[data-card-el="representation"]').select_option("scatter")
+        cards.nth(0).locator('[data-card-action="duplicate"]').click()
+        assert cards.count() == 4
+        cards.nth(3).locator('[data-card-el="representation"]').select_option("map")
+        page.locator('[data-action="fit"]').click()
+        page.wait_for_function("""() => [...document.querySelectorAll('[data-card-el="result-state"]')]
+          .every(label => label.textContent.trim() === 'COMPLETE')""")
+        assert page.locator('[data-el="latency-detail"]').inner_text() == "Shared result · no new query"
+        assert [cards.nth(i).locator('[data-card-el="points"]').inner_text() for i in range(4)] == ["144", "24", "60,480", "144"]
+        assert page.evaluate("window.__translationEvents.filter(e => e === 'query_complete').length") == completed_queries
         assert page.evaluate("window.__databaseReloads") == 0
         assert len(engines) == before
         if screenshot:
@@ -121,6 +136,7 @@ def run(url, screenshot):
         print(json.dumps({"url": url, "chromium": browser.version, "dataset_rows": 1_209_600,
                           "dense_chart_points": 60_480, "live_translation_without_query": True,
                           "prepared_whitespace_promoted": True, "database_reloads": 0,
+                          "persistent_cards": 4, "presentation_without_new_query": True,
                           "http_decoded_engines": len(engines), "page_errors": errors}, indent=2))
         browser.close()
 

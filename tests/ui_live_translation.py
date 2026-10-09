@@ -120,7 +120,9 @@ with sync_playwright() as p:
     }''')
     assert badges == ['SYNTHETIC DATA', 'SYNTHETIC DATA', 'DATASET']
     assert 'by minute' in page.locator('[data-prompt]').first.get_attribute('data-prompt')
-    assert '60,480 chart points' in page.locator('[data-prompt]').last.inner_text()
+    dense_prompt = page.locator('[data-prompt]').last.get_attribute('data-prompt')
+    assert 'by minute' in dense_prompt and 'last 7 days' in dense_prompt
+    assert 'seven days' in page.locator('[data-prompt]').last.inner_text()
     assert not errors, errors
     print(json.dumps({'chromium':browser.version,'optional_default':True,'threshold_bounds':True,
                       'independent_results_toggle':True,'sql_only_status':True,'session_controls_preserved':True,

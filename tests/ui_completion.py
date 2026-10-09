@@ -39,7 +39,8 @@ with sync_playwright() as p:
         timing:{startedAt:performance.now(),committedAt:performance.now(),completedAt:123,promoted:false,batches:1,points:60480,bytes:1209600}});
       const batch=n=>({x:Float64Array.from({length:n},(_,i)=>i*1000),y:Float64Array.from({length:n},(_,i)=>i<n/2?10:30),series:new Int32Array(n),length:n,byteLength:n*20});
       const state=()=>document.querySelector('[data-el="result-state"]').textContent.trim();
-      const start=(id,n=60480)=>{const view=request(id);ui.handleEvent({type:'start',view});ui.handleEvent({type:'batch',id,batch:batch(n)});return view;};
+      const submit=text=>{const input=document.querySelector('[data-el="input"]');input.value=text;input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));};
+      const start=(id,n=60480)=>{const view=request(id);submit(view.prompt);ui.handleEvent({type:'start',view});ui.handleEvent({type:'batch',id,batch:batch(n)});return view;};
       const complete=view=>ui.handleEvent({type:'complete',id:view.id,timing:view.timing});
       ui.setDataset(context);settle();
       const large=start('large');complete(large);
@@ -66,10 +67,15 @@ with sync_playwright() as p:
       input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
       settle();complete(pendingStart);
       assert(!document.querySelector('[data-action="cancel"]').hidden,'Old drawing completion must not clear a pending request');
-      const failed=start('failed');complete(failed);ui.handleEvent({type:'error',id:'failed',message:'Result failed'});settle();
+      const failed=start('failed');ui.handleEvent({type:'error',id:'failed',message:'Result failed'});complete(failed);settle();
       assert(state()==='QUERY ERROR','Renderer completion must not replace an error');
       assert(document.querySelector('[data-action="cancel"]').hidden,'A failed request must remain idle after drawing settles');
 
+      const terminal=start('terminal',2);complete(terminal);settle();
+      const terminalPoints=document.querySelector('[data-el="points"]').textContent;
+      ui.handleEvent({type:'batch',id:'terminal',batch:batch(3)});
+      ui.handleEvent({type:'error',id:'terminal',message:'Late error'});settle();
+      assert(state()==='COMPLETE'&&document.querySelector('[data-el="points"]').textContent===terminalPoints,'Terminal results must reject late data and errors');
       const hidden=start('hidden');document.querySelector('[data-tab="table"]').click();complete(hidden);settle();
       assert(state()==='COMPLETE','Hidden chart may complete after summaries are indexed');
       document.querySelector('[data-tab="chart"]').click();assert(state()==='DRAWING','Showing a pending chart redraw must report DRAWING');
@@ -84,7 +90,7 @@ with sync_playwright() as p:
         ui.destroy();return true;
       };
       return {largePoints:60480,firstMarkerImmediate:true,completeWaitsForDrawingAndStatistics:true,
-        cancellationAndReplacementSafe:true,errorPreserved:true,hiddenAndRestoredStates:true,completionTimingUnchanged:true};
+        cancellationAndReplacementSafe:true,errorPreserved:true,terminalEventsRejected:true,hiddenAndRestoredStates:true,completionTimingUnchanged:true};
     }''')
     stop = page.locator('[data-action="cancel"]')
     assert stop.is_visible(), 'DRAWING must expose a visible stop button'

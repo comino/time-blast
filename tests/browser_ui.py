@@ -18,7 +18,7 @@ def run(base_url, screenshot):
         errors = []
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.goto(base_url, wait_until="domcontentloaded")
-        page.locator('[data-stage="database"][data-state="ready"]').wait_for(timeout=90_000)
+        page.locator('[data-stage="database"][data-state="ready"]').wait_for(state='attached', timeout=90_000)
         page.locator("[data-prompt]").first.click()
         page.locator('[data-el="input"]').press("Enter")
         page.locator('[data-el="result-state"]').filter(has_text="COMPLETE").wait_for(timeout=30_000)
@@ -28,15 +28,16 @@ def run(base_url, screenshot):
         if screenshot:
             Path(screenshot).parent.mkdir(parents=True, exist_ok=True)
             page.screenshot(path=screenshot, full_page=True)
-        page.get_by_role("tab", name="Data", exact=True).click()
+        page.locator('[data-tab="table"]').click()
         assert page.locator('[data-el="table-body"] tr').count() == 12
-        page.get_by_role("tab", name="Chart", exact=True).click()
-        page.get_by_role("button", name="Query details").click()
+        page.locator('[data-tab="chart"]').click()
+        page.locator('[data-action="sql"]').click()
         assert page.locator('[data-el="sql-panel"]').is_visible()
+        page.locator('.pipeline-summary').click()
         page.get_by_role("button", name="Inspect pipeline").click()
         assert "first_draw_submitted" in page.locator('[data-el="trace-list"]').inner_text()
         with page.expect_download() as download:
-            page.get_by_role("button", name="Export result as CSV").click()
+            page.locator('[data-action="export"]').click()
         assert download.value.suggested_filename.endswith(".csv")
         page.set_viewport_size({"width": 390, "height": 844})
         assert not page.evaluate("document.documentElement.scrollWidth > innerWidth")
@@ -48,7 +49,7 @@ def run(base_url, screenshot):
         page.get_by_role("button", name="Apply runtime").click()
         assert "draft endpoint" in page.locator('[data-el="runtime-error"]').inner_text()
         page.get_by_role("button", name="Close runtime settings", exact=True).click()
-        page.get_by_role("button", name="Dataset", exact=True).click()
+        page.locator('[data-action="dataset"]').click()
         assert page.locator('[data-el="dataset-dialog"]').is_visible()
         page.get_by_role("button", name="Close dataset details", exact=True).click()
         assert not errors, errors
@@ -77,7 +78,9 @@ def run(base_url, screenshot):
               committedAt:performance.now(),promoted:false,batches:0,points:0,bytes:0}});
           const batch = {x:new Float64Array([3000,1000,2000]),
             y:new Float64Array([3,1,2]),series:new Int32Array([0,0,0]),length:3,byteLength:60};
-          ui.setDataset(context);
+          const input = document.querySelector('[data-el="input"]');
+          const submit = text => { input.value=text; input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true})); };
+          ui.setDataset(context);submit('speed');
           ui.handleEvent({type:'start',view:view('first')});
           ui.handleEvent({type:'batch',id:'first',batch});
           await new Promise(requestAnimationFrame);
@@ -87,25 +90,26 @@ def run(base_url, screenshot):
           ui.handleEvent({type:'complete',id:'first',timing:view('first').timing});
           const canceledPoints = document.querySelector('[data-el="points"]').textContent;
           const canceledState = document.querySelector('[data-el="result-state"]').textContent;
-          const input = document.querySelector('[data-el="input"]'); input.value='speed';
+          const commitsBeforeIme = calls.commits.length; input.value='speed';
           input.dispatchEvent(new CompositionEvent('compositionstart'));
           input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,isComposing:true}));
-          const imeCommits = calls.commits.length;
+          const imeCommits = calls.commits.length - commitsBeforeIme;
           input.dispatchEvent(new CompositionEvent('compositionend'));
           input.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
-          ui.handleEvent({type:'error',id:'new-unstarted-id',message:'A new error'});
+          const imeCommitted = calls.commits.length - commitsBeforeIme;
+          ui.handleEvent({type:'error',message:'A new error'});
           const preStartError = document.querySelector('[data-el="history"]').textContent.includes('A new error');
-          ui.handleEvent({type:'start',view:view('next')});
+          submit('speed');ui.handleEvent({type:'start',view:view('next')});
           ui.handleEvent({type:'batch',id:'first',batch});
           const stalePoints = document.querySelector('[data-el="points"]').textContent;
           ui.handleEvent({type:'batch',id:'next',batch});
           await new Promise(requestAnimationFrame);
           return {firstDraws,canceledPoints,canceledState,imeCommits,
-            commits:calls.commits.length,preStartError,stalePoints,draws:calls.draws};
+            commits:calls.commits.length,imeCommitted,preStartError,stalePoints,draws:calls.draws};
         }""")
         assert result["firstDraws"] == 1
         assert result["canceledPoints"] == "3" and "CANCELED" in result["canceledState"]
-        assert result["imeCommits"] == 0 and result["commits"] == 1
+        assert result["imeCommits"] == 0 and result["imeCommitted"] == 1 and result["commits"] == 3
         assert result["preStartError"] and result["stalePoints"] == "—"
         assert result["draws"] == ["first", "next"]
         browser.close()

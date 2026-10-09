@@ -1,5 +1,5 @@
-import { DEFAULT_CONFIG, METRIC_LABELS, type AdapterStatus, type DatasetContext, type PipelineEvent, type QueryTiming, type QueryView, type RuntimeConfig } from '../core/types';
-import { SERIES_COLORS, StreamChart, TrackChart, type BatchProgress } from './chart';
+import { DEFAULT_CONFIG, type AdapterStatus, type DatasetContext, type PipelineEvent, type RuntimeConfig } from '../core/types';
+import { CanvasWorkspace } from './workspace';
 import { shell } from './shell';
 import './styles.css';
 import { MAX_PROMPT_CHARS } from '../inference/plan';
@@ -14,83 +14,46 @@ export interface UICallbacks {
   onDraw(id: string, at: number): void;
 }
 type Component = 'database' | 'model' | 'compiler' | 'coordinator';
-const fmt = new Intl.NumberFormat('en', { maximumFractionDigits: 1 });
 const integer = new Intl.NumberFormat('en');
 const date = new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 const syntheticDatasetIds = new Set(['synthetic-vessels-2026-09-v1', 'synthetic-vessels-2026-09-6s-v1']);
 
 export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   root.innerHTML = shell;
-  const elements = new Map<string, HTMLElement>(), actions = new Map<string, HTMLElement>();
-  const el = <T extends HTMLElement = HTMLElement>(name: string): T => {
-    let element = elements.get(name);
-    if (!element) { element = root.querySelector<HTMLElement>(`[data-el="${name}"]`)!; elements.set(name, element); }
-    return element as T;
-  };
-  const action = <T extends HTMLElement = HTMLButtonElement>(name: string): T => {
-    let element = actions.get(name);
-    if (!element) { element = root.querySelector<HTMLElement>(`[data-action="${name}"]`)!; actions.set(name, element); }
-    return element as T;
-  };
-  const input = el<HTMLTextAreaElement>('input');
-  input.maxLength = MAX_PROMPT_CHARS;
+  const el = <T extends HTMLElement = HTMLElement>(name: string): T => root.querySelector(`[data-el="${name}"]`)!;
+  const action = <T extends HTMLElement = HTMLButtonElement>(name: string): T => root.querySelector(`[data-action="${name}"]`)!;
+  const input = el<HTMLTextAreaElement>('input'); input.maxLength = MAX_PROMPT_CHARS;
   const runtimeForm = el<HTMLFormElement>('runtime-form');
   (runtimeForm.elements.namedItem('translationMinChars') as HTMLInputElement).max = String(MAX_PROMPT_CHARS);
-  const runtimeDialog = el<HTMLDialogElement>('runtime-dialog');
-  const datasetDialog = el<HTMLDialogElement>('dataset-dialog');
+  const runtimeDialog = el<HTMLDialogElement>('runtime-dialog'), datasetDialog = el<HTMLDialogElement>('dataset-dialog');
   let config: RuntimeConfig = { ...DEFAULT_CONFIG };
-  let context: DatasetContext | undefined, current: QueryView | undefined;
-  let canceledId: string | undefined;
-  let completedId: string | undefined;
-  let composing = false, awaitingStart = false, modelLoading = false, sum = 0, count = 0, total = 0, minimum = Infinity, maximum = -Infinity, batchCount = 0;
-  let tableFrame = 0, historyFrame = 0;
-  const seenSeries = new Set<number>();
-  const chart = new StreamChart(el<HTMLCanvasElement>('chart'), (id, at) => {
-    callbacks.onDraw(id, at);
-    if (current?.id === id) { current.timing.firstDrawAt = at; updateTiming(current.timing); }
-  }, updateProgress, reordered => track.indexed(reordered), id => {
-    if (id === current?.id) updateCompletionState();
+  let context: DatasetContext | undefined;
+  let composing = false, modelLoading = false, historyFrame = 0;
+  const workspace = new CanvasWorkspace(root, {
+    cancel: () => callbacks.onCancel(), busy: value => showBusy(value), draw: (id, at) => callbacks.onDraw(id, at),
+    added(card) {
+      const id = card.id, prompt = card.prompt;
+      const item = document.createElement('button'); item.className = 'history-question'; item.textContent = prompt;
+      item.title = 'Focus this view on the canvas'; item.dataset.historyCard = id;
+      item.addEventListener('click', () => workspace.focusById(id));
+      el('history').append(item); while (el('history').children.length > 16) el('history').firstElementChild!.remove();
+      scrollHistory();
+    },
   });
-  const track = new TrackChart(el<HTMLCanvasElement>('track'));
-
-  function updateProgress(progress: BatchProgress): void {
-    sum += progress.sum; count += progress.count;
-    minimum = Math.min(minimum, progress.minimum); maximum = Math.max(maximum, progress.maximum);
-    let legendChanged = false;
-    for (const series of progress.series) if (!seenSeries.has(series)) { seenSeries.add(series); legendChanged = true; }
-    track.progress(progress);
-    el('mean').textContent = count ? fmt.format(sum / count) : '—';
-    el('range').textContent = count ? `${fmt.format(minimum)} — ${fmt.format(maximum)}` : '—';
-    if (legendChanged) renderLegend();
-  }
-
-  function updateCompletionState(): void {
-    if (!current || completedId !== current.id || canceledId === current.id || awaitingStart) return;
-    const complete = !total || chart.isSettled;
-    setBusy(!complete);
-    setResultState(complete ? total ? 'COMPLETE' : 'EMPTY RESULT' : 'DRAWING', complete ? 'ready' : 'loading');
-  }
-
   function scrollHistory(): void {
-    if (!historyFrame) historyFrame = requestAnimationFrame(() => {
-      historyFrame = 0; const history = el('chat-scroll'); history.scrollTop = history.scrollHeight;
-    });
+    if (!historyFrame) historyFrame = requestAnimationFrame(() => { historyFrame = 0; const history = el('chat-scroll'); history.scrollTop = history.scrollHeight; });
   }
-
-  function setBusy(value: boolean): void {
-    action('cancel').hidden = !value;
+  function showBusy(value: boolean): void {
+    action('cancel-active').hidden = !value;
     el('submit').setAttribute('aria-label', value ? 'Run a new question' : 'Run question');
     el('composer').classList.toggle('working', value);
   }
-  function setPrompt(text: string): void {
-    input.value = text; input.focus(); input.setSelectionRange(text.length, text.length); callbacks.onDraft(text, false);
-  }
+  // Runtime startup/teardown may stop work without emitting a query terminal event.
+  function setBusy(value: boolean): void { if (!value) workspace.cancelActive('RUNTIME CHANGED'); showBusy(value); }
+  function setPrompt(text: string): void { input.value = text; input.focus(); input.setSelectionRange(text.length, text.length); callbacks.onDraft(text, false); }
   function submit(): void {
     const text = input.value; if (!text.trim() || composing) return;
-    completedId = undefined;
-    el('empty-title').textContent = 'Following your question…';
-    if (!current) el('empty-detail').textContent = 'Preparing a validated query.';
-    awaitingStart = true; setBusy(true); callbacks.onCommit(text);
+    workspace.submit(text); callbacks.onCommit(text);
   }
   el('composer').addEventListener('submit', e => { e.preventDefault(); submit(); });
   input.addEventListener('focus', () => callbacks.onFocus());
@@ -100,19 +63,7 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   input.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !composing && e.keyCode !== 229) { e.preventDefault(); submit(); } });
   root.querySelectorAll<HTMLButtonElement>('[data-prompt]').forEach(button => button.addEventListener('click', () => setPrompt(button.dataset.prompt!)));
   root.querySelector<HTMLAnchorElement>('.brand')!.addEventListener('click', e => { e.preventDefault(); input.focus(); });
-  action('cancel').addEventListener('click', () => {
-    awaitingStart = false; completedId = undefined; canceledId = current?.id; chart.stop(); track.stop(); callbacks.onCancel(); setBusy(false); setResultState('CANCELED', 'quiet');
-    if (!total) { el('plot-empty').hidden = false; el('empty-title').textContent = 'Query canceled.'; el('empty-detail').textContent = 'Your next question starts a fresh result.'; }
-    else el('plot-subtitle').textContent = 'Canceled · partial result';
-  });
-
-  function setTab(tab: string): void {
-    root.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(button => { const selected = button.dataset.tab === tab; button.classList.toggle('active', selected); button.setAttribute('aria-selected', String(selected)); });
-    el('plot-container').hidden = tab !== 'chart'; el('table-wrap').hidden = tab !== 'table'; if (tab === 'table') renderTable();
-    chart.setVisible(tab === 'chart');
-  }
-  root.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach(button => button.addEventListener('click', () => setTab(button.dataset.tab!)));
-  action('sql').addEventListener('click', () => { el('sql-panel').hidden = !el('sql-panel').hidden; action('sql').setAttribute('aria-expanded', String(!el('sql-panel').hidden)); });
+  action('cancel-active').addEventListener('click', () => workspace.cancelActive());
   action('trace').addEventListener('click', () => { el('trace-panel').hidden = !el('trace-panel').hidden; action('trace').setAttribute('aria-expanded', String(!el('trace-panel').hidden)); });
   action('dataset').addEventListener('click', () => datasetDialog.showModal());
   action('close-dataset').addEventListener('click', () => datasetDialog.close());
@@ -120,8 +71,8 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   action('close-settings').addEventListener('click', () => runtimeDialog.close());
   for (const dialog of [runtimeDialog, datasetDialog]) dialog.addEventListener('click', e => { if (e.target === dialog) { const b = dialog.getBoundingClientRect(); if (e.clientX < b.left || e.clientX > b.right || e.clientY < b.top || e.clientY > b.bottom) dialog.close(); } });
   action('warm-model').addEventListener('click', () => callbacks.onWarmModel());
-
   function setConfig(next: RuntimeConfig): void {
+    if (JSON.stringify(next) !== JSON.stringify(config)) workspace.cancelActive('RUNTIME CHANGED');
     config = { ...next };
     const local = next.coordinatorMode === 'browser' && next.databaseMode === 'browser' && next.inferenceMode !== 'remote';
     el('placement').lastChild!.textContent = local ? ' LOCAL FIRST' : ' HYBRID RUNTIME';
@@ -205,20 +156,6 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
     if (component === 'database') { el('dataset-dot').dataset.state = status.state; if (!context || status.state !== 'ready') el('dataset-sub').textContent = status.label; }
     if (component === 'model') { modelLoading = status.state === 'loading'; const progress = status.progress === undefined ? '' : ` · ${Math.round(status.progress <= 1 ? status.progress * 100 : status.progress)}%`; el('model-progress').textContent = status.label + progress; updateEndpointFields(); }
   }
-  function setResultState(text: string, state: string): void { const label = el('result-state'); label.dataset.state = state; label.lastChild!.textContent = text; }
-  function updateTiming(timing: QueryTiming): void {
-    const start = timing.committedAt;
-    if (start !== undefined && timing.firstDrawAt !== undefined) { const elapsed = Math.max(0, timing.firstDrawAt - start); el('latency').textContent = elapsed < 1000 ? `${elapsed.toFixed(1)} ms` : `${(elapsed / 1000).toFixed(2)} s`; el('latency-detail').textContent = timing.promoted ? 'Prepared result promoted' : 'First point draw submitted'; }
-  }
-  function renderTable(): void {
-    tableFrame = 0; const body = el('table-body'); body.replaceChildren(); let rows = 0;
-    for (const b of chart.batches) { for (let i = 0; i < b.length && rows < 12; i++, rows++) { const row = document.createElement('tr'); for (const value of [new Date(b.x[i]).toISOString().replace('T', ' ').slice(0, 16), seriesName(b.series[i]), Number.isFinite(b.y[i]) ? fmt.format(b.y[i]) : '—']) { const td = document.createElement('td'); td.textContent = value; row.append(td); } body.append(row); } if (rows === 12) break; }
-  }
-  function seriesName(id: number): string { const vessel = current && !current.plan.splitByVessel && current.plan.vessel !== null ? current.plan.vessel : id; return current && (current.plan.splitByVessel || current.plan.vessel !== null) ? (current.context.vessels[vessel] || `Series ${vessel + 1}`) : 'Fleet'; }
-  function renderLegend(): void {
-    const legend = el('legend'); legend.replaceChildren();
-    for (const id of seenSeries) { const item = document.createElement('span'), dot = document.createElement('i'); dot.style.backgroundColor = SERIES_COLORS[Math.abs(id) % SERIES_COLORS.length]; item.append(dot, document.createTextNode(seriesName(id))); legend.append(item); }
-  }
   function handleEvent(event: PipelineEvent): void {
     if (event.type === 'draft') { el('revision').textContent = `r.${event.revision}`; return; }
     if (event.type === 'speculation') {
@@ -230,51 +167,13 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
     if (event.type === 'trace') {
       el('trace-empty').hidden = true; const li = document.createElement('li'), name = document.createElement('span'), detail = document.createElement('span'); name.textContent = event.entry.event; detail.textContent = event.entry.detail; li.append(name, detail); el('trace-list').prepend(li); while (el('trace-list').children.length > 12) el('trace-list').lastElementChild!.remove(); return;
     }
-    if (event.type === 'start') {
-      current = event.view; awaitingStart = false; canceledId = undefined; completedId = undefined; sum = 0; count = 0; total = 0; batchCount = 0; minimum = Infinity; maximum = -Infinity; seenSeries.clear();
-      chart.begin(current); setTab('chart'); track.begin(chart.batches, chart.order); setBusy(true); setResultState('QUERYING', 'loading');
-      renderLegend(); el('table-body').replaceChildren();
-      const metric = METRIC_LABELS[current.plan.metric];
-      el('plot-title').textContent = `${metric.name}${current.plan.splitByVessel ? ' across the fleet' : ''}`;
-      el('plot-subtitle').textContent = `${({ avg: 'Average', min: 'Minimum', max: 'Maximum' })[current.plan.aggregate]} · ${current.plan.bucketMinutes < 60 ? `${current.plan.bucketMinutes} minute` : `${current.plan.bucketMinutes / 60} hour`} buckets · last ${current.plan.windowHours < 48 ? `${current.plan.windowHours} hours` : `${current.plan.windowHours / 24} days`}`;
-      el('time-range').textContent = `${date.format(Math.max(current.context.start, current.context.end - current.plan.windowHours * 3_600_000))} — ${date.format(current.context.end)} · UTC`;
-      el('sql').textContent = current.sql; el('source').textContent = ({ template: 'LOCAL TEMPLATE', webgpu: 'LOCAL MODEL', remote: 'REMOTE MODEL' })[current.source];
-      el('query-meta').textContent = `${current.id} · revision ${current.revision}${current.model ? ` · ${current.model}` : ''}`;
-      el('empty-title').textContent = 'Listening for the first point…'; el('empty-detail').textContent = 'The chart draws as batches arrive.';
-      el('plot-empty').hidden = false; el('track-empty').hidden = false;
-      for (const key of ['mean', 'points', 'range', 'latency']) el(key).textContent = '—';
-      el('mean-unit').textContent = metric.unit; el('batch-count').textContent = 'Waiting for the first batch'; el('latency-detail').textContent = 'First correct point submitted'; el('value-header').textContent = `${metric.name.toUpperCase()} · ${metric.unit}`;
-      action<HTMLButtonElement>('export').disabled = true;
-      const bubble = document.createElement('button'); bubble.className = 'history-question'; bubble.textContent = current.prompt; bubble.title = 'Click to edit this question'; bubble.addEventListener('click', () => setPrompt(event.view.prompt)); el('history').append(bubble); while (el('history').children.length > 8) el('history').firstElementChild!.remove();
-      scrollHistory(); return;
-    }
-    if (event.type === 'batch') {
-      if (event.id !== current?.id || event.id === canceledId) return;
-      chart.append(event.batch); batchCount++;
-      total += event.batch.length;
-      if (total) { el('plot-empty').hidden = true; action<HTMLButtonElement>('export').disabled = false; }
-      if (event.batch.lat && event.batch.lon && event.batch.length) el('track-empty').hidden = true;
-      el('points').textContent = integer.format(total); el('batch-count').textContent = `${batchCount} ${batchCount === 1 ? 'batch' : 'batches'} received`;
-      setResultState('STREAMING', 'ready'); if (!el('table-wrap').hidden && !tableFrame) tableFrame = requestAnimationFrame(renderTable); return;
-    }
-    if (event.type === 'complete') {
-      if (event.id !== current?.id || event.id === canceledId) return;
-      current.timing = event.timing; completedId = event.id; updateTiming(event.timing); updateCompletionState();
-      if (!total) { el('empty-title').textContent = 'No matching observations.'; el('empty-detail').textContent = 'Try a wider time window or another vessel.'; el('points').textContent = '0'; } return;
-    }
-    if (event.type === 'error') {
-      if (event.id && (event.id === canceledId || current && event.id !== current.id && !awaitingStart)) return;
-      awaitingStart = false; completedId = undefined;
-      setBusy(false); setResultState('QUERY ERROR', 'error'); const message = document.createElement('div'); message.className = 'error-message'; message.setAttribute('role', 'alert'); message.textContent = event.message; el('history').append(message); scrollHistory();
-      if (!total) { el('plot-empty').hidden = false; el('empty-title').textContent = 'This question needs another pass.'; el('empty-detail').textContent = event.message; } else el('plot-subtitle').textContent = `Incomplete result · ${event.message}`;
+    workspace.handle(event);
+    if (event.type === 'error' && !event.id) {
+      const message = document.createElement('div'); message.className = 'error-message'; message.setAttribute('role', 'alert'); message.textContent = event.message;
+      el('history').append(message); scrollHistory();
     }
   }
-  action('export').addEventListener('click', () => {
-    if (!current || !total) return;
-    const chunks: string[] = ['timestamp_utc,series,value\n'];
-    for (const b of chart.batches) { let chunk = ''; for (let i = 0; i < b.length; i++) chunk += `${new Date(b.x[i]).toISOString()},"${seriesName(b.series[i]).replaceAll('"', '""')}",${Number.isFinite(b.y[i]) ? b.y[i] : ''}\n`; chunks.push(chunk); }
-    const url = URL.createObjectURL(new Blob(chunks, { type: 'text/csv;charset=utf-8' })); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `time-blast-${current.plan.metric}.csv`; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-  });
   setConfig(config);
-  return { setDataset, setStatus, setConfig, handleEvent, setBusy, setPrompt, destroy() { chart.destroy(); track.destroy(); if (tableFrame) cancelAnimationFrame(tableFrame); if (historyFrame) cancelAnimationFrame(historyFrame); root.replaceChildren(); } };
+  return { setDataset, setStatus, setConfig, handleEvent, setBusy, setPrompt,
+    destroy() { workspace.destroy(); if (historyFrame) cancelAnimationFrame(historyFrame); root.replaceChildren(); } };
 }
