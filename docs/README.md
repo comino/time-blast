@@ -10,6 +10,7 @@ background, and where it conflicts with the vision, the vision wins.
 |---|---|
 | [vision.md](vision.md) | Purpose, metric, architecture principles, what to unlearn. **Canonical.** |
 | [status.md](status.md) | What is deployed and running right now, and the next steps |
+| [plan-batch-1.md](plan-batch-1.md) | The current batch of work toward the vision |
 | [../deploy/README.md](../deploy/README.md) | Operating and updating the live demo |
 | [backend-prototype.md](backend-prototype.md) | The running Rust inference service (its protocol is one of the ones to unify) |
 | [prototype.md](prototype.md) | Browser implementation as it exists: adapters, cancellation, streaming, canvas |
