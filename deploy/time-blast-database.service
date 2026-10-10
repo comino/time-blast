@@ -1,0 +1,38 @@
+# DRAFT, not deployed. Remote database node (tb1 over WebSocket in front of ClickHouse).
+# See docs/batch-1/remote-database.md. Caddy would proxy /api/database/* to 127.0.0.1:8788
+# (like /api/inference/*); the browser opens wss://<host>/api/database/session.
+#
+# /etc/time-blast/database.env:
+#   TIME_BLAST_DB_BIND=127.0.0.1:8788
+#   TIME_BLAST_CLICKHOUSE_URL=http://127.0.0.1:8123
+#   TIME_BLAST_CLICKHOUSE_DATABASE=time_blast
+#   TIME_BLAST_CLICKHOUSE_USER=time_blast_reader      # readonly profile, SELECT on time_blast.* only
+#   TIME_BLAST_CLICKHOUSE_PASSWORD=…
+#   TIME_BLAST_DB_NAME=vessels
+#   TIME_BLAST_DB_DESCRIPTION=Synthetic vessel telemetry: …
+#   TIME_BLAST_ALLOWED_ORIGINS=https://time-blast.46-224-133-201.sslip.io
+[Unit]
+Description=time-blast database node (tb1 over WebSocket, ClickHouse)
+After=network-online.target clickhouse-server.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=fred
+Group=fred
+EnvironmentFile=/etc/time-blast/database.env
+ExecStart=/srv/time-blast/backend/time-blast-database
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LimitNOFILE=4096
+# Results stream through: at most a few in-flight Arrow messages (≤ 16 MiB each) per session.
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target
