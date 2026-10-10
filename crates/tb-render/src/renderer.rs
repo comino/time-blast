@@ -499,6 +499,9 @@ impl Renderer {
                 let y1 = (plot[1] + plot[3] + m).min(canvas[1]).ceil();
                 s.pass.scissor(x0 as u32, y0 as u32, (x1 - x0).max(0.0) as u32, (y1 - y0).max(0.0) as u32);
                 f.draw(r.view, &mut DrawFrame { pass: &mut s.pass, plot, canvas, dpr: s.dpr, axes: &axes });
+                if f.wants_frame() {
+                    s.dirty = true;
+                }
             }
             s.uniform.sync(&mut gpu, &s.pass.uniforms, KIND_UNIFORM, true);
             gpu.words.extend_from_slice(&[op::PASS, s.id, s.uniform.id, 0, 0, 0, 0]);

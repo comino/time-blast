@@ -53,7 +53,14 @@ pub struct AxesOut {
 /// Series palette (legacy `SERIES_COLORS`): mid-saturation, readable on dark and light cards.
 pub const PALETTE: [[u8; 3]; 6] = [[0xff, 0x90, 0x6c], [0x74, 0xd4, 0xc3], [0xd4, 0xc1, 0x7e], [0x83, 0xb9, 0xe3], [0xe3, 0x9e, 0xaf], [0xb0, 0xc9, 0x85]];
 
+/// Legend colour flag: `LEGEND_RGB | 0xRRGGBB` is an explicit colour instead of a palette index
+/// (colour-scale legends such as density or value maps).
+pub const LEGEND_RGB: usize = 1 << 30;
+
 pub fn palette_hex(i: usize) -> String {
+    if i & LEGEND_RGB != 0 {
+        return format!("#{:06x}", i & 0xff_ffff);
+    }
     let c = PALETTE[i % PALETTE.len()];
     format!("#{:02x}{:02x}{:02x}", c[0], c[1], c[2])
 }
@@ -223,6 +230,7 @@ mod tests {
         let j = a.to_json();
         assert!(j.contains("\"label\":\"2026\""), "{j}");
         assert!(j.contains("\"legend\":[{\"label\":\"a\\\"b\",\"color\":\"#74d4c3\"}]"), "{j}");
+        assert_eq!(palette_hex(LEGEND_RGB | 0x0a0b0c), "#0a0b0c");
         let mut grid = Vec::new();
         a.grid(2.0, &mut grid);
         assert_eq!(grid.len(), a.y.len() + 1 + a.x.len());

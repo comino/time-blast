@@ -225,6 +225,8 @@ export class Renderer implements RendererNode {
     const t2 = performance.now();
     const submitted = this.now();
     x.tb_frame_done();
+    // A view may defer work past the first draw (geo basemap): keep frames coming while asked.
+    if (x.tb_needs_frame()) this.schedule();
     if (length) {
       this.metrics.frames++;
       this.metrics.lastFrame = { build: t1 - t0, replay: t2 - t1, ...this.backend.stats };

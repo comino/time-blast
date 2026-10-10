@@ -52,6 +52,11 @@ pub trait Family {
     }
     /// Destroy GPU buffers.
     fn release(&mut self, gpu: &mut Gpu);
+    /// Asked after `draw`: true schedules another frame for this slot (work deliberately
+    /// deferred off the first-draw path, e.g. static basemap geometry).
+    fn wants_frame(&self) -> bool {
+        false
+    }
 }
 
 pub struct FamilyDef {
