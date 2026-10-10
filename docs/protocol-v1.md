@@ -87,7 +87,7 @@ unknown kinds, truncated frames, and nonzero reserved stamp fields.
 | 0x01 | `HELLO` | any → peer | `{"node": "<role>", "name": "...", "version": 1}` |
 | 0x02 | `READY` | peer → any | `{"node": "<role>", "name": "...", "model"?: "..."}` |
 | 0x03 | `CONTEXT` | database → coordinator → inference | `DatasetContext` (below); header `context` = its id |
-| 0x04 | `STATUS` | any → UI | `{"component", "state": "cold|loading|ready|error", "label", "detail"?, "progress"?}` |
+| 0x04 | `STATUS` | any → UI | `{"component": "database|inference|renderer|coordinator", "state": "cold|loading|ready|error", "label", "detail"?, "progress"?}` |
 | 0x05 | `ERROR` | any | `{"code", "message", "detail"?}`; header `request` names the failed request or 0 |
 | 0x06 | `CONFIG` | UI → coordinator | `CoordinatorConfig` (below) |
 
@@ -97,15 +97,22 @@ unknown kinds, truncated frames, and nonzero reserved stamp fields.
 |---|---|---|---|---|
 | 0x10 | `DRAFT` | UI → coordinator | revision, context | UTF-8 text. Flag `0x01 COMPOSING` |
 | 0x11 | `COMMIT` | UI → coordinator | revision, context | UTF-8 text (always the full text; Enter) |
-| 0x12 | `CANCEL` | any → any | epoch = **new** epoch; request (0 = everything) | empty |
+| 0x12 | `CANCEL` | any → any | request = 0: cancel everything, epoch = **new** epoch. request ≠ 0: cancel that request only, epoch unchanged | empty |
 | 0x18 | `INFER` | coordinator → inference | request, revision, context | UTF-8 question text |
 | 0x19 | `SQL_DELTA` | inference → coordinator | request | UTF-8 fragment of the SQL being generated |
 | 0x1A | `SQL` | inference → coordinator | request | UTF-8 complete SQL. Flag `0x01 CACHED` (inference-side cache) |
-| 0x1B | `INFER_STATS` | inference → coordinator → UI | request | JSON `{model, promptTokens, completionTokens, cachedTokens?, costUsd?, attempts}` |
+| 0x1B | `INFER_STATS` | inference → coordinator → UI | request | JSON `{model, promptTokens, completionTokens, cachedTokens?, reasoningTokens?, costUsd?, attempts, cancelled?}`; also sent for cancelled requests that reached the provider |
 | 0x20 | `EXEC` | coordinator → database | request, context | UTF-8 SQL. Flag `0x01 SPECULATIVE` |
 | 0x21 | `RESULT_SCHEMA` | database → renderer (+ header-only → coordinator) | request | Arrow IPC encapsulated **schema** message |
 | 0x22 | `BATCH` | database → renderer (+ header-only → coordinator) | request | Arrow IPC encapsulated **record batch** message |
 | 0x23 | `DONE` | database → coordinator, renderer | request | `u64 rows, u64 bytes` (16 bytes) |
+
+A cancelled request gets neither `DONE` nor `ERROR` from the database. Database `ERROR` codes:
+`sql_rejected` (guard: not exactly one read-only query), `sql_error`, `timeout`, `result_limit`,
+`queue_full`, `dataset`.
+
+Arrow types from DuckDB: `TIMESTAMP` arrives as a microsecond Timestamp (int64 / BigInt64),
+`COUNT(*)` and other integer aggregates as Int64. Consumers must not assume Float64.
 
 Concatenating the `RESULT_SCHEMA` payload, every `BATCH` payload and an Arrow end-of-stream
 marker gives a valid Arrow IPC stream. On in-process links, `RESULT_SCHEMA` and `BATCH` carry the
@@ -117,7 +124,7 @@ decoded Arrow `Schema` / `RecordBatch` objects instead of bytes.
 |---|---|---|---|---|
 | 0x30 | `BIND` | coordinator → renderer, UI | request, revision | `u32 slot` |
 | 0x31 | `UNBIND` | coordinator → renderer, UI | request | `u32 slot` |
-| 0x32 | `DRAWN` | renderer → coordinator | request | `u32 slot, u32 points` + stamp `FIRST_DRAW_SUBMITTED` |
+| 0x32 | `DRAWN` | renderer → coordinator | request | `u32 slot, u32 points` + stamp `FIRST_DRAW_SUBMITTED`. May repeat; a later DRAWN can carry `FIRST_PRESENTED` |
 | 0x33 | `RESULT` | coordinator → UI | request, revision, context | JSON `{slot, sql, columns: [{name, type, role}], view, cached}` once per bound request |
 | 0x34 | `TIMING` | coordinator → UI | request, revision | empty; the stamps carry the request's full stage ledger |
 | 0x35 | `KEEP` | coordinator → UI | request, revision | `u32 slot`: the committed result keeps this slot; the UI pins its card and registers a new live slot |
@@ -127,8 +134,10 @@ decoded Arrow `Schema` / `RecordBatch` objects instead of bytes.
 - **revision**: monotonic per editor, assigned by the UI. A newer revision supersedes older ones.
 - **request**: assigned by the coordinator, monotonic u32, never reused in a session. One request
   covers one translation and its execution.
-- **epoch**: `CANCEL` carries the new epoch. Every node drops request-scoped frames whose epoch is
-  below its current epoch.
+- **epoch**: a full `CANCEL` (request 0) carries the new epoch; a targeted `CANCEL` keeps it.
+  Every node drops request-scoped frames whose epoch is below its current epoch. **Every reply
+  echoes the epoch of the frame that caused it** (INFER → SQL_DELTA/SQL/INFER_STATS/ERROR,
+  EXEC → RESULT_SCHEMA/BATCH/DONE/ERROR, BIND → DRAWN).
 - **context**: the dataset context id. Loading new data creates a new context. Frames for another
   context are dropped.
 - **slot**: a render target (a card canvas), registered by the UI **before** results exist, so a
@@ -226,7 +235,7 @@ Roles: `time`, `category`, `series`, `value`, `measure`, `lat`, `lon`.
 | 4 | `INFER_SENT` | coordinator |
 | 5 | `INFER_RECEIVED` | inference node |
 | 6 | `PROVIDER_REQUEST` | inference node, when calling an upstream provider |
-| 7 | `FIRST_TOKEN` | inference node |
+| 7 | `FIRST_TOKEN` | inference node, with node 6 (provider), on the inference node's clock |
 | 8 | `SQL_FIRST_DELTA` | inference node |
 | 9 | `SQL_COMPLETE` | inference node |
 | 10 | `SQL_RECEIVED` | coordinator |

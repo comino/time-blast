@@ -31,6 +31,8 @@ export interface CoordinatorCore {
   /** Feed one frame received on `link`. `now` is Unix ms. Payloads are copied into
    * Wasm memory; RESULT_SCHEMA/BATCH must arrive HEADER_ONLY. */
   input(link: LinkId, frame: Frame<Uint8Array>, now: number): void;
+  /** Same as `input` for a frame that is still encoded (e.g. straight from a MessagePort). */
+  inputEncoded(link: LinkId, bytes: Uint8Array, now: number): void;
   /** Advance timers (latency dial, deadlines). */
   tick(now: number): void;
   /** Frames the coordinator wants sent, in order. Draining clears the outbox. */
@@ -39,6 +41,21 @@ export interface CoordinatorCore {
   nextDeadline(): number | null;
   dispose(): void;
 }
+
+/** protocol-v1 `CoordinatorConfig`. Every field optional; a CONFIG updates only what it names. */
+export interface CoordinatorConfig {
+  live?: boolean;
+  minChars?: number;
+  inferencePolicy?: 'latest' | 'restart';
+  latencyDialMs?: number | null;
+  translationCache?: boolean;
+  speculate?: boolean;
+  /** Adds already-attached slots to the coordinator's pool. */
+  freeSlots?: number[];
+}
+
+/** STATUS frame `component` values. */
+export type StatusComponent = 'database' | 'inference' | 'renderer' | 'coordinator';
 
 // ───────────────────────── database node (owner: engine/database agent) ─────────────────────────
 
@@ -82,10 +99,13 @@ export interface RendererNode {
   detach(slot: number): void;
   /** null = automatic choice from column roles. */
   setView(slot: number, view: ViewName | null): void;
-  /** View-specific interaction: surface rotation, track playback position, … */
+  /** View-specific interaction. Names: `rotation` (surface, degrees −180..180),
+   * `playback` (tracks, 0..1 of the time range). */
   setParam(slot: number, name: string, value: number): void;
   /** BIND/UNBIND, RESULT_SCHEMA, BATCH, DONE frames. Emits DRAWN to the coordinator. */
   handle(frame: LocalFrame): void;
+  /** Build an export of the slot's current result and post `{type:'export'}` to the UI. */
+  export(slot: number, format: 'csv'): void;
   /** Views available for a slot's current result, for the UI's view picker. */
   views(slot: number): ViewName[];
 }
@@ -121,7 +141,8 @@ export type UiToEngine =
 
 export type InferencePlacement =
   | { kind: 'remote'; endpoint: string }
-  | { kind: 'webgpu'; model: string };
+  | { kind: 'webgpu'; model: WebGpuModel };
+export type WebGpuModel = 'qwen-0.5b' | 'qwen-1.5b' | 'qwen3-4b';
 
 /** Engine worker → main thread. STATUS, RESULT, TIMING, KEEP, BIND, UNBIND, ERROR and
  * INFER_STATS arrive as frames; the rest is UI data. */
@@ -135,6 +156,7 @@ export type EngineToUi =
 
 /** Text is the boring part: the renderer computes tick positions, the UI draws labels in DOM. */
 export interface AxisTicks {
+  /** `at`: CSS pixels from the canvas's top-left corner (same frame as `plot`). */
   x: Array<{ at: number; label: string }>;
   y: Array<{ at: number; label: string }>;
   /** Plot area in CSS pixels relative to the canvas. */

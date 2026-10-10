@@ -1,21 +1,15 @@
-//! Direct pooled OpenAI-compatible streaming HTTP. No agent framework or SQL execution.
-use crate::plan::{
-    self, DatasetContext, Draft, ErrorKind, InferenceDiagnostics, InferenceError,
-    InferenceResponse, ModelResponseFailure,
-};
+//! Direct pooled OpenAI-compatible streaming HTTP (OpenRouter or any Chat Completions
+//! endpoint). Dropping the future returned by [`Provider::stream`] drops the response body,
+//! which resets the HTTP/2 stream (or closes the HTTP/1 connection) upstream immediately.
 use futures_util::StreamExt;
 use reqwest::{Client, header};
 use serde_json::{Value, json};
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
-};
-use tokio::sync::Semaphore;
-use tokio_util::sync::CancellationToken;
+use std::{sync::Arc, time::Duration};
+use tokio::sync::{Semaphore, SemaphorePermit};
 
 const MAX_STREAM_BYTES: usize = 1_048_576;
 const MAX_FRAME_BYTES: usize = 65_536;
-const MAX_COMPLETION_TOKENS: u32 = 256;
+pub const MAX_OUTPUT_BYTES: usize = 32_768;
 
 /// OpenRouter's unified effort values. Availability is model-specific: `none`
 /// disables reasoning only on models that allow it; `minimal` still reasons.
@@ -36,8 +30,25 @@ pub struct ProviderConfig {
     pub openrouter: bool,
     pub reasoning_effort: Option<ReasoningEffort>,
     pub temperature: Option<f64>,
+    pub max_tokens: u32,
     pub timeout: Duration,
     pub max_concurrent: usize,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ProviderError {
+    pub code: &'static str,
+    pub message: String,
+}
+
+pub fn error(code: &'static str, message: impl Into<String>) -> ProviderError {
+    ProviderError {
+        code,
+        message: message.into(),
+    }
+}
+fn upstream(message: impl Into<String>) -> ProviderError {
+    error("upstream", message)
 }
 
 #[derive(Clone)]
@@ -48,7 +59,25 @@ struct Inner {
     client: Client,
     config: ProviderConfig,
     slots: Semaphore,
-    response_format: Value,
+}
+
+#[derive(Default, Debug, Clone, PartialEq)]
+pub struct Usage {
+    pub prompt_tokens: Option<u64>,
+    pub completion_tokens: Option<u64>,
+    pub cached_tokens: Option<u64>,
+    pub reasoning_tokens: Option<u64>,
+    pub cost_usd: Option<f64>,
+}
+
+#[derive(Default, Debug)]
+pub struct Completion {
+    pub content: String,
+    pub finish_reason: Option<String>,
+    pub refused: bool,
+    pub tool_call: bool,
+    pub model: Option<String>,
+    pub usage: Usage,
 }
 
 impl Provider {
@@ -64,6 +93,7 @@ impl Provider {
             || config.model.len() > 200
             || config.max_concurrent == 0
             || config.max_concurrent > 1024
+            || config.max_tokens == 0
             || config.timeout.is_zero()
             || (!config.openrouter && config.reasoning_effort.is_some())
             || config
@@ -96,21 +126,20 @@ impl Provider {
             .build()
             .map_err(|_| "Could not create provider HTTP client.")?;
         let slots = Semaphore::new(config.max_concurrent);
-        let response_format = json!({"type":"json_schema","json_schema":{
-            "name":"time_blast_query","strict":true,"schema":plan::response_schema()
-        }});
         Ok(Self {
             inner: Arc::new(Inner {
                 client,
                 config,
                 slots,
-                response_format,
             }),
         })
     }
 
-    /// Establish DNS/TCP/TLS and a reusable provider connection without buying a
-    /// generation. Any HTTP status proves transport only, not model readiness.
+    pub fn config(&self) -> &ProviderConfig {
+        &self.inner.config
+    }
+
+    /// Establish DNS/TCP/TLS and a reusable connection without buying a generation.
     pub async fn warm_connection(&self) -> Result<(), String> {
         let limit = self.inner.config.timeout.min(Duration::from_secs(3));
         match tokio::time::timeout(
@@ -124,154 +153,46 @@ impl Provider {
         }
     }
 
-    pub async fn infer(
-        &self,
-        context: &DatasetContext,
-        draft: &Draft,
-        cancel: CancellationToken,
-    ) -> Result<InferenceResponse, InferenceError> {
-        let start = Instant::now();
-        context
-            .validate()
-            .and_then(|_| draft.validate(context))
-            .map_err(InferenceError::new)?;
-        if cancel.is_cancelled() {
-            return Err(InferenceError::with_kind(
-                ErrorKind::Canceled,
-                "Inference canceled.",
-            ));
-        }
-        // Reject saturation instead of accumulating an unbounded speculative queue.
-        let _slot = self.inner.slots.try_acquire().map_err(|_| {
-            InferenceError::with_kind(
-                ErrorKind::Busy,
-                "Inference is busy; try again after the current request.",
-            )
-        })?;
-        let mut diagnostics = InferenceDiagnostics {
-            queue_ms: Some(ms(start.elapsed())),
-            ..Default::default()
-        };
-        let generation_start = Instant::now();
-        let mut repair_start = None;
-        let remaining = self.inner.config.timeout.saturating_sub(start.elapsed());
-        let result = tokio::select! {
-            biased;
-            _ = cancel.cancelled() => Err(InferenceError::with_kind(ErrorKind::Canceled, "Inference canceled.")),
-            result = tokio::time::timeout(remaining, self.infer_inner(context, draft, &mut diagnostics, &mut repair_start, generation_start)) => {
-                match result { Ok(result) => result, Err(_) => Err(InferenceError::with_kind(ErrorKind::Timeout, "Inference exceeded its total deadline.")) }
-            }
-        };
-        diagnostics.generation_ms = Some(ms(generation_start.elapsed()));
-        diagnostics.repair_ms = repair_start.map(|start: Instant| ms(start.elapsed()));
-        match result {
-            Ok(mut response) => {
-                response.tokens = diagnostics.completion_tokens;
-                response.diagnostics = diagnostics;
-                Ok(response)
-            }
-            Err(mut error) => {
-                error.model = Some(self.inner.config.model.clone());
-                error.diagnostics = Some(diagnostics);
-                Err(error)
-            }
-        }
+    /// Reserve one of the process-wide upstream slots, or fail fast.
+    pub fn slot(&self) -> Result<SemaphorePermit<'_>, ProviderError> {
+        self.inner
+            .slots
+            .try_acquire()
+            .map_err(|_| error("busy", "All upstream slots are busy."))
     }
 
-    async fn infer_inner(
-        &self,
-        context: &DatasetContext,
-        draft: &Draft,
-        diagnostics: &mut InferenceDiagnostics,
-        repair_start: &mut Option<Instant>,
-        generation_start: Instant,
-    ) -> Result<InferenceResponse, InferenceError> {
-        let mut messages = vec![
-            json!({"role":"system","content":plan::system_prompt(context)}),
-            json!({"role":"user","content":draft.text}),
-        ];
-        for attempt in 1..=2 {
-            diagnostics.attempts = Some(attempt);
-            if attempt == 2 {
-                *repair_start = Some(Instant::now());
-            }
-            let output = self
-                .generate(&messages, diagnostics, generation_start)
-                .await?;
-            add_count(&mut diagnostics.prompt_tokens, output.prompt_tokens);
-            add_count(&mut diagnostics.completion_tokens, output.completion_tokens);
-            let validation = if output.refused {
-                Err("The model refused this request.".to_string())
-            } else if output.finish_reason.as_deref() != Some("stop") {
-                Err(format!(
-                    "The model did not finish a complete answer (finish reason: {}).",
-                    output.finish_reason.as_deref().unwrap_or("missing")
-                ))
-            } else if output.tool_call {
-                Err("The model attempted a tool call; return only the query JSON.".to_string())
-            } else {
-                plan::parse_model_plan(&output.content, context)
-            };
-            match validation {
-                Ok(plan) => {
-                    return Ok(InferenceResponse {
-                        plan,
-                        model: output
-                            .model
-                            .unwrap_or_else(|| self.inner.config.model.clone()),
-                        tokens: None,
-                        diagnostics: InferenceDiagnostics::default(),
-                    });
-                }
-                Err(message) if attempt == 1 => {
-                    messages.push(json!({"role":"assistant","content":output.content}));
-                    messages.push(json!({"role":"user","content":format!("Your previous answer failed validation: {message} Correct it once for the ORIGINAL request, preserving every supported requirement. Return the complete result wrapper JSON only; if unsupported, return {{\"result\":{{\"error\":\"unsupported_request\"}}}}.")}));
-                }
-                Err(message) => {
-                    let mut error = InferenceError::with_kind(ErrorKind::InvalidModel, message);
-                    error.response = Some(ModelResponseFailure {
-                        text: output.content,
-                        truncated: output.finish_reason.as_deref() == Some("length"),
-                        finish_reason: output.finish_reason,
-                    });
-                    return Err(error);
-                }
-            }
-        }
-        unreachable!("one initial generation and at most one correction")
-    }
-
-    async fn generate(
-        &self,
-        messages: &[Value],
-        diagnostics: &mut InferenceDiagnostics,
-        generation_start: Instant,
-    ) -> Result<StreamOutput, InferenceError> {
-        let mut request = json!({"model":self.inner.config.model,"messages":messages,
-            "max_tokens":MAX_COMPLETION_TOKENS,"stream":true,"stream_options":{"include_usage":true},
-            "response_format":self.inner.response_format});
-        if let Some(temperature) = self.inner.config.temperature {
+    pub fn request_body(&self, messages: &[Value]) -> Value {
+        let config = &self.inner.config;
+        let mut request = json!({"model":config.model,"messages":messages,
+            "max_tokens":config.max_tokens,"stream":true,"stream_options":{"include_usage":true}});
+        if let Some(temperature) = config.temperature {
             request["temperature"] = json!(temperature);
         }
-        if self.inner.config.openrouter {
+        if config.openrouter {
             request["provider"] = json!({"sort":"latency","require_parameters":true});
-            // Leave model defaults untouched unless explicitly configured.
-            // Omitting reasoning is not a promise that a model will not think.
-            if let Some(effort) = self.inner.config.reasoning_effort {
+            if let Some(effort) = config.reasoning_effort {
                 request["reasoning"] = json!({"effort":effort});
             }
         }
+        request
+    }
+
+    /// Stream one completion. `on_content` sees every content fragment as it arrives.
+    pub async fn stream(
+        &self,
+        messages: &[Value],
+        mut on_content: impl FnMut(&str),
+    ) -> Result<Completion, ProviderError> {
         let response = self
             .inner
             .client
             .post(&self.inner.config.endpoint)
-            .json(&request)
+            .json(&self.request_body(messages))
             .send()
             .await
             .map_err(|_| upstream("Could not reach the inference provider."))?;
         if !response.status().is_success() {
-            // Provider bodies and reqwest errors may contain credentials/URLs or
-            // arbitrary echoed input. Return only the bounded status code.
+            // Provider bodies may echo credentials or input. Return only the status.
             return Err(upstream(format!(
                 "Inference provider returned HTTP {}.",
                 response.status().as_u16()
@@ -296,10 +217,7 @@ impl Provider {
         while let Some(chunk) = stream.next().await {
             let chunk =
                 chunk.map_err(|_| upstream("The inference provider stream was interrupted."))?;
-            decoder.feed(&chunk)?;
-            if diagnostics.first_token_ms.is_none() && !decoder.output.content.is_empty() {
-                diagnostics.first_token_ms = Some(ms(generation_start.elapsed()));
-            }
+            decoder.feed(&chunk, &mut on_content)?;
             if decoder.done {
                 break;
             }
@@ -308,31 +226,7 @@ impl Provider {
     }
 }
 
-fn ms(duration: Duration) -> f64 {
-    duration.as_secs_f64() * 1000.0
-}
-fn add_count(target: &mut Option<u64>, value: Option<u64>) {
-    if let Some(value) = value {
-        *target = Some(target.unwrap_or(0).saturating_add(value));
-    }
-}
-fn upstream(message: impl Into<String>) -> InferenceError {
-    InferenceError::with_kind(ErrorKind::Upstream, message)
-}
-
-#[derive(Default, Debug)]
-struct StreamOutput {
-    content: String,
-    finish_reason: Option<String>,
-    refused: bool,
-    tool_call: bool,
-    model: Option<String>,
-    prompt_tokens: Option<u64>,
-    completion_tokens: Option<u64>,
-}
-
-/// Byte-wise line framing handles CR/LF and split UTF-8 without ever decoding an
-/// incomplete code point. Limits apply before allocation, including comments.
+/// Byte-wise SSE line framing: handles CR/LF and split UTF-8; limits apply before allocation.
 #[derive(Default)]
 struct SseDecoder {
     line: Vec<u8>,
@@ -341,15 +235,16 @@ struct SseDecoder {
     total_bytes: usize,
     previous_cr: bool,
     done: bool,
-    output: StreamOutput,
+    output: Completion,
 }
 
 impl SseDecoder {
-    fn feed(&mut self, bytes: &[u8]) -> Result<(), InferenceError> {
-        self.total_bytes = self
-            .total_bytes
-            .checked_add(bytes.len())
-            .ok_or_else(|| upstream("Provider stream exceeded its size limit."))?;
+    fn feed(
+        &mut self,
+        bytes: &[u8],
+        on_content: &mut impl FnMut(&str),
+    ) -> Result<(), ProviderError> {
+        self.total_bytes = self.total_bytes.saturating_add(bytes.len());
         if self.total_bytes > MAX_STREAM_BYTES {
             return Err(upstream("Provider stream exceeded its size limit."));
         }
@@ -365,7 +260,7 @@ impl SseDecoder {
             }
             if byte == b'\n' || byte == b'\r' {
                 self.previous_cr = byte == b'\r';
-                self.line_complete()?;
+                self.line_complete(on_content)?;
             } else {
                 self.line.push(byte);
             }
@@ -373,12 +268,12 @@ impl SseDecoder {
         Ok(())
     }
 
-    fn line_complete(&mut self) -> Result<(), InferenceError> {
+    fn line_complete(&mut self, on_content: &mut impl FnMut(&str)) -> Result<(), ProviderError> {
         if self.line.is_empty() {
             if !self.data.is_empty() {
-                self.data.pop(); // Remove the SSE-added final newline.
+                self.data.pop(); // the SSE-added final newline
                 let data = std::mem::take(&mut self.data);
-                self.event(&data)?;
+                self.event(&data, on_content)?;
                 self.data = data;
                 self.data.clear();
             }
@@ -400,7 +295,11 @@ impl SseDecoder {
         Ok(())
     }
 
-    fn event(&mut self, data: &[u8]) -> Result<(), InferenceError> {
+    fn event(
+        &mut self,
+        data: &[u8],
+        on_content: &mut impl FnMut(&str),
+    ) -> Result<(), ProviderError> {
         if data.is_empty() {
             return Ok(());
         }
@@ -421,24 +320,21 @@ impl SseDecoder {
                 self.output.model = Some(model.to_owned());
             }
         }
-        if let Some(usage) = value.get("usage").filter(|v| !v.is_null()) {
-            self.output.prompt_tokens = usage
-                .get("prompt_tokens")
-                .and_then(Value::as_u64)
-                .filter(|n| *n <= 9_007_199_254_740_991);
-            self.output.completion_tokens = usage
-                .get("completion_tokens")
-                .and_then(Value::as_u64)
-                .filter(|n| *n <= 9_007_199_254_740_991);
+        if let Some(usage) = value.get("usage").filter(|v| v.is_object()) {
+            self.output.usage = parse_usage(usage);
         }
-        let choices = value
-            .get("choices")
-            .and_then(Value::as_array)
-            .ok_or_else(|| upstream("Provider event is missing completion choices."))?;
+        let Some(choices) = value.get("choices").and_then(Value::as_array) else {
+            // Usage-only events may omit choices entirely.
+            return if value.get("usage").is_some() {
+                Ok(())
+            } else {
+                Err(upstream("Provider event is missing completion choices."))
+            };
+        };
         if choices.is_empty() {
             return Ok(());
         }
-        if choices.len() != 1 || choices[0].get("index").and_then(Value::as_u64) != Some(0) {
+        if choices.len() != 1 || choices[0].get("index").and_then(Value::as_u64).unwrap_or(0) != 0 {
             return Err(upstream("Provider returned unexpected completion choices."));
         }
         let choice = &choices[0];
@@ -447,18 +343,18 @@ impl SseDecoder {
                 let content = content
                     .as_str()
                     .ok_or_else(|| upstream("Provider returned a non-text completion."))?;
-                if !content.is_empty() && self.output.finish_reason.is_some() {
-                    return Err(upstream("Provider continued content after completion."));
+                if !content.is_empty() {
+                    if self.output.finish_reason.is_some() {
+                        return Err(upstream("Provider continued content after completion."));
+                    }
+                    if self.output.content.len() + content.len() > MAX_OUTPUT_BYTES {
+                        return Err(upstream("Model output exceeded its size limit."));
+                    }
+                    self.output.content.push_str(content);
+                    on_content(content);
                 }
-                if self.output.content.len() + content.len() > plan::MAX_MODEL_BYTES {
-                    return Err(upstream("Model output exceeded the plan size limit."));
-                }
-                self.output.content.push_str(content);
             }
-            if let Some(refusal) = delta.get("refusal").filter(|v| !v.is_null()) {
-                let refusal = refusal
-                    .as_str()
-                    .ok_or_else(|| upstream("Provider returned an invalid refusal."))?;
+            if let Some(refusal) = delta.get("refusal").and_then(Value::as_str) {
                 self.output.refused |= !refusal.is_empty();
             }
             self.output.tool_call |= delta.get("tool_calls").is_some_and(|v| !v.is_null())
@@ -469,25 +365,23 @@ impl SseDecoder {
                 .as_str()
                 .filter(|r| r.len() <= 64)
                 .ok_or_else(|| upstream("Provider returned an invalid completion reason."))?;
-            if let Some(previous) = self.output.finish_reason.as_deref() {
-                // OpenRouter includes the same completion marker again in its
-                // final usage event. Accept that metadata-only repetition; a
-                // changed reason, further content, or bare duplicate is invalid.
-                if previous != reason || !value.get("usage").is_some_and(Value::is_object) {
+            match self.output.finish_reason.as_deref() {
+                // OpenRouter repeats the same marker in its final usage event.
+                Some(previous)
+                    if previous != reason || !value.get("usage").is_some_and(Value::is_object) =>
+                {
                     return Err(upstream(
                         "Provider repeated or changed its completion marker.",
                     ));
                 }
-            } else {
-                self.output.finish_reason = Some(reason.to_string());
+                Some(_) => {}
+                None => self.output.finish_reason = Some(reason.to_string()),
             }
         }
         Ok(())
     }
 
-    fn finish(self) -> Result<StreamOutput, InferenceError> {
-        // A valid-looking JSON prefix, [DONE] without a choice finish, or a lost
-        // TCP stream never becomes executable. Length/refusal are corrected once.
+    fn finish(self) -> Result<Completion, ProviderError> {
         if !self.line.is_empty() || !self.data.is_empty() || self.output.finish_reason.is_none() {
             return Err(upstream(
                 "Provider stream ended without a complete terminal response.",
@@ -497,17 +391,31 @@ impl SseDecoder {
     }
 }
 
+fn count(value: Option<&Value>) -> Option<u64> {
+    value
+        .and_then(Value::as_u64)
+        .filter(|n| *n <= 9_007_199_254_740_991)
+}
+
+/// OpenAI/OpenRouter usage: `prompt_tokens_details.cached_tokens` and, on OpenRouter,
+/// `cost` in USD credits. Missing fields stay None; nothing is estimated.
+fn parse_usage(usage: &Value) -> Usage {
+    Usage {
+        prompt_tokens: count(usage.get("prompt_tokens")),
+        completion_tokens: count(usage.get("completion_tokens")),
+        cached_tokens: count(usage.pointer("/prompt_tokens_details/cached_tokens")),
+        reasoning_tokens: count(usage.pointer("/completion_tokens_details/reasoning_tokens")),
+        cost_usd: usage
+            .get("cost")
+            .and_then(Value::as_f64)
+            .filter(|c| c.is_finite() && *c >= 0.0),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::{
-        Json, Router,
-        extract::State,
-        response::{IntoResponse, Response},
-        routing::post,
-        serve::ListenerExt,
-    };
-    use std::{collections::VecDeque, sync::Mutex};
+
     fn event(value: Value) -> String {
         format!("data: {}\n\n", value)
     }
@@ -517,593 +425,155 @@ mod tests {
     fn terminal(reason: &str) -> String {
         event(json!({"choices":[{"index":0,"delta":{},"finish_reason":reason}]}))
     }
+    fn decode(raw: &str, step: usize) -> (Result<Completion, ProviderError>, Vec<String>) {
+        let mut seen = Vec::new();
+        let mut decoder = SseDecoder::default();
+        for part in raw.as_bytes().chunks(step) {
+            if let Err(e) = decoder.feed(part, &mut |c: &str| seen.push(c.to_string())) {
+                return (Err(e), seen);
+            }
+        }
+        (decoder.finish(), seen)
+    }
+
     #[test]
     fn fragmented_utf8_crlf_comments_and_usage_are_streamed() {
         let raw = format!(
-            ": keepalive\r\n\r\n{}{}{}data: [DONE]\r\n\r\n",
-            event(chunk("船")),
+            ": keepalive\r\n\r\n{}{}{}{}data: [DONE]\r\n\r\n",
+            event(chunk("SELECT '船'")),
+            event(chunk(" AS x")),
             terminal("stop"),
-            event(json!({"choices":[],"usage":{"prompt_tokens":12,"completion_tokens":4}}))
+            event(
+                json!({"choices":[],"usage":{"prompt_tokens":1200,"completion_tokens":4,
+                "prompt_tokens_details":{"cached_tokens":1024},"cost":0.0000512,
+                "completion_tokens_details":{"reasoning_tokens":0}}})
+            )
         );
-        let mut decoder = SseDecoder::default();
-        for byte in raw.as_bytes() {
-            decoder.feed(&[*byte]).unwrap();
-        }
-        let output = decoder.finish().unwrap();
-        assert_eq!(output.content, "船");
-        assert_eq!(output.completion_tokens, Some(4));
+        let (output, seen) = decode(&raw, 1);
+        let output = output.unwrap();
+        assert_eq!(output.content, "SELECT '船' AS x");
+        assert_eq!(seen, vec!["SELECT '船'", " AS x"]);
+        assert_eq!(
+            output.usage,
+            Usage {
+                prompt_tokens: Some(1200),
+                completion_tokens: Some(4),
+                cached_tokens: Some(1024),
+                reasoning_tokens: Some(0),
+                cost_usd: Some(0.0000512)
+            }
+        );
     }
+
     #[test]
-    fn incomplete_or_nonterminal_json_never_executes() {
-        for raw in [
-            event(chunk("{}")),
-            format!("{}data: [DONE]\n\n", event(chunk("{}"))),
-            terminal("stop").trim_end().to_owned(),
-        ] {
-            let mut decoder = SseDecoder::default();
-            decoder.feed(raw.as_bytes()).unwrap();
-            assert!(decoder.finish().is_err());
-        }
-        let mut decoder = SseDecoder::default();
-        decoder.feed(terminal("stop").as_bytes()).unwrap();
-        assert!(decoder.finish().is_ok());
-    }
-    #[test]
-    fn stream_error_and_post_terminal_content_fail() {
-        for raw in [
-            event(json!({"error":{"message":"private upstream details"}})),
-            format!("{}{}", terminal("stop"), event(chunk("x"))),
-            "data: invalid\n\n".into(),
-        ] {
-            assert!(SseDecoder::default().feed(raw.as_bytes()).is_err());
-        }
-    }
-    #[test]
-    fn openrouter_final_usage_may_repeat_same_empty_terminal_choice() {
+    fn openrouter_final_usage_may_repeat_the_terminal_choice() {
         let usage = event(
-            json!({"choices":[{"index":0,"delta":{"content":"","role":"assistant"},"finish_reason":"stop","native_finish_reason":"stop"}],"usage":{"prompt_tokens":18,"completion_tokens":5}}),
+            json!({"choices":[{"index":0,"delta":{"content":"","role":"assistant"},
+            "finish_reason":"stop"}],"usage":{"prompt_tokens":18,"completion_tokens":5,"cost":0.00001}}),
         );
         let raw = format!(
             "{}{}{}data: [DONE]\n\n",
-            event(chunk("{\"ok\":true}")),
+            event(chunk("SELECT 1")),
             terminal("stop"),
             usage
         );
-        let mut decoder = SseDecoder::default();
-        for part in raw.as_bytes().chunks(7) {
-            decoder.feed(part).unwrap();
-        }
-        let output = decoder.finish().unwrap();
+        let (output, _) = decode(&raw, 7);
+        let output = output.unwrap();
         assert_eq!(output.finish_reason.as_deref(), Some("stop"));
-        assert_eq!(output.content, "{\"ok\":true}");
-        assert_eq!(output.prompt_tokens, Some(18));
-        assert_eq!(output.completion_tokens, Some(5));
-    }
-    #[test]
-    fn final_usage_cannot_change_reason_resume_content_or_mask_errors() {
-        for final_event in [
-            json!({"choices":[{"index":0,"delta":{},"finish_reason":"length"}],"usage":{}}),
-            json!({"choices":[{"index":0,"delta":{"content":"x"},"finish_reason":"stop"}],"usage":{}}),
-            json!({"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}),
-            json!({"error":{"message":"failed"},"choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{}}),
-        ] {
-            let raw = format!("{}{}", terminal("stop"), event(final_event));
-            assert!(SseDecoder::default().feed(raw.as_bytes()).is_err());
-        }
-        let raw = format!(
-            "{}{}",
-            terminal("length"),
-            event(json!({"choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{}}))
+        assert_eq!(output.usage.cost_usd, Some(0.00001));
+        assert_eq!(
+            output.usage.cached_tokens, None,
+            "missing usage is never fabricated"
         );
-        assert!(SseDecoder::default().feed(raw.as_bytes()).is_err());
     }
+
+    #[test]
+    fn incomplete_streams_errors_and_post_terminal_content_fail() {
+        for raw in [
+            event(chunk("SELECT 1")),
+            format!("{}data: [DONE]\n\n", event(chunk("SELECT 1"))),
+            event(json!({"error":{"message":"private upstream details"}})),
+            format!("{}{}", terminal("stop"), event(chunk("x"))),
+            "data: invalid\n\n".into(),
+            format!(
+                "{}{}",
+                terminal("stop"),
+                event(
+                    json!({"choices":[{"index":0,"delta":{},"finish_reason":"length"}],"usage":{}})
+                )
+            ),
+        ] {
+            let (output, _) = decode(&raw, 3);
+            match output {
+                Err(e) => assert!(!e.message.contains("private")),
+                Ok(_) => panic!("accepted {raw:?}"),
+            }
+        }
+    }
+
     #[test]
     fn byte_and_output_limits_are_enforced() {
         assert!(
-            SseDecoder::default()
-                .feed(&vec![b':'; MAX_FRAME_BYTES + 1])
+            decode(&":".repeat(MAX_FRAME_BYTES + 1), MAX_FRAME_BYTES + 1)
+                .0
                 .is_err()
         );
         assert!(
-            SseDecoder::default()
-                .feed(&vec![b'\n'; MAX_STREAM_BYTES + 1])
+            decode(&event(chunk(&"x".repeat(MAX_OUTPUT_BYTES + 1))), 1 << 20)
+                .0
                 .is_err()
         );
-        assert!(
-            SseDecoder::default()
-                .feed(event(chunk(&"x".repeat(plan::MAX_MODEL_BYTES + 1))).as_bytes())
-                .is_err()
-        );
-        assert!(SseDecoder::default().feed(b"data: \xff\n\n").is_err());
+        let mut d = SseDecoder::default();
+        assert!(d.feed(b"data: \xff\n\n", &mut |_: &str| {}).is_err());
     }
+
     #[test]
-    fn length_refusal_and_tool_calls_are_marked_for_validation() {
-        let mut decoder = SseDecoder::default();
-        decoder
-            .feed(
-                format!(
-                    "{}{}",
-                    event(
-                        json!({"choices":[{"index":0,"delta":{"refusal":"no","tool_calls":[]}}]})
-                    ),
-                    terminal("length")
-                )
-                .as_bytes(),
-            )
-            .unwrap();
-        let output = decoder.finish().unwrap();
-        assert!(output.refused);
-        assert!(output.tool_call);
+    fn length_refusal_and_tool_calls_are_marked() {
+        let raw = format!(
+            "{}{}",
+            event(json!({"choices":[{"index":0,"delta":{"refusal":"no","tool_calls":[]}}]})),
+            terminal("length")
+        );
+        let output = decode(&raw, 64).0.unwrap();
+        assert!(output.refused && output.tool_call);
         assert_eq!(output.finish_reason.as_deref(), Some("length"));
     }
 
-    struct Reply {
-        body: String,
-        status: axum::http::StatusCode,
-        delay: Duration,
-    }
-    impl Reply {
-        fn completion(content: Value, reason: &str) -> Self {
-            Self {
-                body: format!(
-                    "{}{}{}data: [DONE]\n\n",
-                    event(chunk(&content.to_string())),
-                    terminal(reason),
-                    event(
-                        json!({"choices":[],"usage":{"prompt_tokens":40,"completion_tokens":20}})
-                    )
-                ),
-                status: axum::http::StatusCode::OK,
-                delay: Duration::ZERO,
-            }
+    fn config(
+        openrouter: bool,
+        effort: Option<ReasoningEffort>,
+        temperature: Option<f64>,
+    ) -> ProviderConfig {
+        ProviderConfig {
+            endpoint: "http://127.0.0.1:9/v1/chat/completions".into(),
+            model: "m".into(),
+            api_key: None,
+            openrouter,
+            reasoning_effort: effort,
+            temperature,
+            max_tokens: 300,
+            timeout: Duration::from_secs(1),
+            max_concurrent: 1,
         }
-    }
-    struct MockState {
-        replies: Mutex<VecDeque<Reply>>,
-        requests: Mutex<Vec<Value>>,
-    }
-    struct Mock {
-        state: Arc<MockState>,
-        task: tokio::task::JoinHandle<()>,
-        endpoint: String,
-    }
-    impl Drop for Mock {
-        fn drop(&mut self) {
-            self.task.abort();
-        }
-    }
-    impl Mock {
-        async fn new(replies: Vec<Reply>) -> Self {
-            async fn handler(
-                State(state): State<Arc<MockState>>,
-                Json(body): Json<Value>,
-            ) -> Response {
-                state.requests.lock().unwrap().push(body);
-                let reply = state.replies.lock().unwrap().pop_front();
-                let Some(reply) = reply else {
-                    return axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response();
-                };
-                tokio::time::sleep(reply.delay).await;
-                (
-                    reply.status,
-                    [(header::CONTENT_TYPE, "text/event-stream")],
-                    reply.body,
-                )
-                    .into_response()
-            }
-            let state = Arc::new(MockState {
-                replies: Mutex::new(replies.into()),
-                requests: Mutex::new(vec![]),
-            });
-            let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-            let endpoint = format!("http://{}/completions", listener.local_addr().unwrap());
-            let app = Router::new()
-                .route("/completions", post(handler))
-                .with_state(state.clone());
-            let task = tokio::spawn(async move {
-                axum::serve(
-                    listener.tap_io(|socket| {
-                        socket.set_nodelay(true).unwrap();
-                    }),
-                    app,
-                )
-                .await
-                .unwrap();
-            });
-            Self {
-                state,
-                task,
-                endpoint,
-            }
-        }
-        fn config(&self, timeout: Duration) -> ProviderConfig {
-            ProviderConfig {
-                endpoint: self.endpoint.clone(),
-                model: "test-nonthinking".into(),
-                api_key: None,
-                openrouter: true,
-                reasoning_effort: None,
-                temperature: Some(0.0),
-                timeout,
-                max_concurrent: 1,
-            }
-        }
-        fn provider(&self, timeout: Duration) -> Provider {
-            Provider::new(self.config(timeout)).unwrap()
-        }
-        async fn wait_requests(&self, count: usize) {
-            tokio::time::timeout(Duration::from_secs(2), async {
-                loop {
-                    if self.state.requests.lock().unwrap().len() >= count {
-                        break;
-                    }
-                    tokio::task::yield_now().await;
-                }
-            })
-            .await
-            .unwrap();
-        }
-    }
-    fn context() -> DatasetContext {
-        DatasetContext {
-            id: "demo".into(),
-            label: "demo".into(),
-            row_count: 100,
-            start: 0,
-            end: 86400000,
-            vessels: vec!["Aurora".into(), "Meridian".into()],
-            description: String::new(),
-        }
-    }
-    fn draft() -> Draft {
-        Draft {
-            revision: 1,
-            text: "Compare vessel wave height by minute over the last 7 days".into(),
-            context_id: "demo".into(),
-            sent_at: 0.0,
-        }
-    }
-    fn valid_plan() -> Value {
-        json!({"result":{"metric":"wave_height","aggregate":"avg","bucketMinutes":1,"windowHours":168,"splitByVessel":true,"vessel":null,"view":"line"}})
     }
 
-    #[tokio::test]
-    async fn real_http_uses_owned_schema_and_returns_validated_diagnostics() {
-        let mock = Mock::new(vec![Reply::completion(valid_plan(), "stop")]).await;
-        let response = mock
-            .provider(Duration::from_secs(2))
-            .infer(&context(), &draft(), CancellationToken::new())
-            .await
-            .unwrap();
-        assert_eq!(response.plan.window_hours, 168);
-        assert_eq!(response.tokens, Some(20));
-        assert_eq!(response.diagnostics.attempts, Some(1));
-        assert!(response.diagnostics.first_token_ms.is_some());
-        assert!(
-            response.diagnostics.generation_ms.unwrap()
-                >= response.diagnostics.first_token_ms.unwrap()
-        );
-        let requests = mock.state.requests.lock().unwrap();
-        let request = &requests[0];
+    #[test]
+    fn request_body_streams_bounded_and_deterministic() {
+        let p = Provider::new(config(true, Some(ReasoningEffort::None), Some(0.0))).unwrap();
+        let body = p.request_body(&[json!({"role":"user","content":"q"})]);
+        assert_eq!(body["stream"], true);
+        assert_eq!(body["max_tokens"], 300);
+        assert_eq!(body["temperature"], 0.0);
+        assert_eq!(body["reasoning"], json!({"effort":"none"}));
         assert_eq!(
-            request["provider"],
+            body["provider"],
             json!({"sort":"latency","require_parameters":true})
         );
-        assert_eq!(
-            request["response_format"]["json_schema"]["schema"],
-            plan::response_schema()
-        );
-        assert_eq!(request["stream"], true);
-        assert_eq!(request["temperature"], 0.0);
-        assert!(request.get("reasoning").is_none());
-    }
-
-    #[tokio::test]
-    async fn configured_reasoning_effort_is_sent_unchanged_on_initial_and_repair_requests() {
-        for (effort, value) in [
-            (ReasoningEffort::None, "none"),
-            (ReasoningEffort::Minimal, "minimal"),
-            (ReasoningEffort::Low, "low"),
-            (ReasoningEffort::Medium, "medium"),
-            (ReasoningEffort::High, "high"),
-        ] {
-            let mock = Mock::new(vec![
-                Reply::completion(json!({"result":{}}), "stop"),
-                Reply::completion(valid_plan(), "stop"),
-            ])
-            .await;
-            let mut config = mock.config(Duration::from_secs(2));
-            config.reasoning_effort = Some(effort);
-            let result = Provider::new(config)
-                .unwrap()
-                .infer(&context(), &draft(), CancellationToken::new())
-                .await
-                .unwrap();
-            assert_eq!(result.diagnostics.attempts, Some(2));
-            let requests = mock.state.requests.lock().unwrap();
-            assert_eq!(requests.len(), 2);
-            for request in requests.iter() {
-                assert_eq!(request["reasoning"], json!({"effort":value}));
-                assert_eq!(request["provider"]["require_parameters"], true);
-            }
-        }
-    }
-
-    #[tokio::test]
-    async fn temperature_can_be_omitted_or_configured_for_any_provider() {
-        for openrouter in [false, true] {
-            for temperature in [None, Some(0.5)] {
-                let mock = Mock::new(vec![Reply::completion(valid_plan(), "stop")]).await;
-                let mut config = mock.config(Duration::from_secs(2));
-                config.openrouter = openrouter;
-                config.temperature = temperature;
-                Provider::new(config)
-                    .unwrap()
-                    .infer(&context(), &draft(), CancellationToken::new())
-                    .await
-                    .unwrap();
-                let requests = mock.state.requests.lock().unwrap();
-                assert_eq!(
-                    requests[0].get("temperature"),
-                    temperature.map(|value| json!(value)).as_ref()
-                );
-                assert!(requests[0].get("reasoning").is_none());
-            }
-        }
-    }
-
-    #[tokio::test]
-    async fn direct_provider_configuration_rejects_invalid_reasoning_and_temperature() {
-        let mock = Mock::new(vec![]).await;
-        let mut config = mock.config(Duration::from_secs(2));
-        config.openrouter = false;
-        config.reasoning_effort = Some(ReasoningEffort::None);
-        assert!(Provider::new(config).is_err());
-        for value in [f64::NAN, f64::INFINITY, -0.1, 2.1] {
-            let mut config = mock.config(Duration::from_secs(2));
-            config.temperature = Some(value);
-            assert!(Provider::new(config).is_err());
-        }
-        assert!(mock.state.requests.lock().unwrap().is_empty());
-    }
-
-    #[tokio::test]
-    async fn first_token_waits_for_content_instead_of_headers_role_or_comments() {
-        async fn handler() -> Response {
-            let segments = vec![
-                (
-                    Duration::ZERO,
-                    format!(
-                        ": provider ready\n\n{}",
-                        event(
-                            json!({"choices":[{"index":0,"delta":{"role":"assistant","content":""}}]})
-                        )
-                    ),
-                ),
-                (
-                    Duration::from_millis(60),
-                    event(chunk(&valid_plan().to_string())),
-                ),
-                (
-                    Duration::from_millis(40),
-                    format!("{}data: [DONE]\n\n", terminal("stop")),
-                ),
-            ];
-            let stream =
-                futures_util::stream::unfold(segments.into_iter(), |mut segments| async move {
-                    let (delay, text) = segments.next()?;
-                    tokio::time::sleep(delay).await;
-                    Some((Ok::<_, std::convert::Infallible>(text), segments))
-                });
-            (
-                [(header::CONTENT_TYPE, "text/event-stream")],
-                axum::body::Body::from_stream(stream),
-            )
-                .into_response()
-        }
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let endpoint = format!("http://{}/completions", listener.local_addr().unwrap());
-        let task = tokio::spawn(async move {
-            axum::serve(
-                listener.tap_io(|socket| {
-                    socket.set_nodelay(true).unwrap();
-                }),
-                Router::new().route("/completions", post(handler)),
-            )
-            .await
-            .unwrap();
-        });
-        let provider = Provider::new(ProviderConfig {
-            endpoint,
-            model: "test".into(),
-            api_key: None,
-            openrouter: false,
-            reasoning_effort: None,
-            temperature: Some(0.0),
-            timeout: Duration::from_secs(3),
-            max_concurrent: 1,
-        })
-        .unwrap();
-        let response = provider
-            .infer(&context(), &draft(), CancellationToken::new())
-            .await
-            .unwrap();
-        task.abort();
-        let first = response.diagnostics.first_token_ms.unwrap();
-        assert!(
-            first >= 55.0,
-            "first content arrived after a60ms delay, measured {first}"
-        );
-        assert!(response.diagnostics.generation_ms.unwrap() - first >= 35.0);
-        assert_eq!(
-            response.tokens, None,
-            "Missing provider usage must not be fabricated."
-        );
-    }
-
-    #[tokio::test]
-    async fn corrects_model_validation_once_with_exact_error_and_cumulative_usage() {
-        let mut invalid = valid_plan();
-        invalid["result"]["view"] = json!("map");
-        invalid["result"]["splitByVessel"] = json!(false);
-        let mock = Mock::new(vec![
-            Reply::completion(invalid, "stop"),
-            Reply::completion(valid_plan(), "stop"),
-        ])
-        .await;
-        let response = mock
-            .provider(Duration::from_secs(2))
-            .infer(&context(), &draft(), CancellationToken::new())
-            .await
-            .unwrap();
-        assert_eq!(response.diagnostics.attempts, Some(2));
-        assert_eq!(response.diagnostics.prompt_tokens, Some(80));
-        assert_eq!(response.tokens, Some(40));
-        assert!(
-            response.diagnostics.repair_ms.unwrap() <= response.diagnostics.generation_ms.unwrap()
-        );
-        let requests = mock.state.requests.lock().unwrap();
-        assert_eq!(requests.len(), 2);
-        assert!(
-            requests[1]["messages"][3]["content"]
-                .as_str()
-                .unwrap()
-                .contains("Geographic views require splitByVessel true")
-        );
-    }
-
-    #[tokio::test]
-    async fn even_valid_json_at_length_limit_must_be_corrected() {
-        let mock = Mock::new(vec![
-            Reply::completion(valid_plan(), "length"),
-            Reply::completion(valid_plan(), "stop"),
-        ])
-        .await;
-        let response = mock
-            .provider(Duration::from_secs(2))
-            .infer(&context(), &draft(), CancellationToken::new())
-            .await
-            .unwrap();
-        assert_eq!(response.diagnostics.attempts, Some(2));
-    }
-
-    #[tokio::test]
-    async fn numeric_bucket_outside_allowlist_gets_one_correction() {
-        let mut invalid = valid_plan();
-        invalid["result"]["bucketMinutes"] = json!(2);
-        let mock = Mock::new(vec![
-            Reply::completion(invalid, "stop"),
-            Reply::completion(valid_plan(), "stop"),
-        ])
-        .await;
-        let response = mock
-            .provider(Duration::from_secs(2))
-            .infer(&context(), &draft(), CancellationToken::new())
-            .await
-            .unwrap();
-        assert_eq!(response.plan.bucket_minutes, 1);
-        assert_eq!(response.diagnostics.attempts, Some(2));
-        let requests = mock.state.requests.lock().unwrap();
-        assert!(
-            requests[1]["messages"][3]["content"]
-                .as_str()
-                .unwrap()
-                .contains("Unsupported time bucket.")
-        );
-    }
-
-    #[tokio::test]
-    async fn second_invalid_answer_reports_bounded_response_without_third_attempt() {
-        let refusal = json!({"result":{"error":"unsupported_request"}});
-        let mock = Mock::new(vec![
-            Reply::completion(refusal.clone(), "stop"),
-            Reply::completion(refusal, "stop"),
-        ])
-        .await;
-        let error = mock
-            .provider(Duration::from_secs(2))
-            .infer(&context(), &draft(), CancellationToken::new())
-            .await
-            .unwrap_err();
-        assert_eq!(error.kind, ErrorKind::InvalidModel);
-        assert_eq!(error.diagnostics.unwrap().attempts, Some(2));
-        assert!(error.response.unwrap().text.contains("unsupported_request"));
-        assert_eq!(mock.state.requests.lock().unwrap().len(), 2);
-    }
-
-    #[tokio::test]
-    async fn provider_status_and_lost_stream_never_retry_or_echo_private_errors() {
-        for reply in [
-            Reply {
-                body: "private credential".into(),
-                status: axum::http::StatusCode::UNAUTHORIZED,
-                delay: Duration::ZERO,
-            },
-            Reply {
-                body: event(chunk(&valid_plan().to_string())),
-                status: axum::http::StatusCode::OK,
-                delay: Duration::ZERO,
-            },
-        ] {
-            let mock = Mock::new(vec![reply]).await;
-            let error = mock
-                .provider(Duration::from_secs(2))
-                .infer(&context(), &draft(), CancellationToken::new())
-                .await
-                .unwrap_err();
-            assert_eq!(error.kind, ErrorKind::Upstream);
-            assert!(!error.message.contains("private credential"));
-            assert_eq!(mock.state.requests.lock().unwrap().len(), 1);
-        }
-    }
-
-    #[tokio::test]
-    async fn cancellation_releases_admission_without_waiting_for_upstream() {
-        let mut reply = Reply::completion(valid_plan(), "stop");
-        reply.delay = Duration::from_secs(10);
-        let mock = Mock::new(vec![reply, Reply::completion(valid_plan(), "stop")]).await;
-        let provider = mock.provider(Duration::from_secs(20));
-        let cancel = CancellationToken::new();
-        let task = {
-            let provider = provider.clone();
-            let cancel = cancel.clone();
-            tokio::spawn(async move { provider.infer(&context(), &draft(), cancel).await })
-        };
-        mock.wait_requests(1).await;
-        assert_eq!(
-            provider
-                .infer(&context(), &draft(), CancellationToken::new())
-                .await
-                .unwrap_err()
-                .kind,
-            ErrorKind::Busy
-        );
-        cancel.cancel();
-        assert_eq!(task.await.unwrap().unwrap_err().kind, ErrorKind::Canceled);
-        assert!(
-            provider
-                .infer(&context(), &draft(), CancellationToken::new())
-                .await
-                .is_ok()
-        );
-    }
-
-    #[tokio::test]
-    async fn one_total_deadline_covers_initial_attempt_and_repair() {
-        let mut first =
-            Reply::completion(json!({"result":{"error":"unsupported_request"}}), "stop");
-        first.delay = Duration::from_millis(60);
-        let mut second = Reply::completion(valid_plan(), "stop");
-        second.delay = Duration::from_millis(100);
-        let mock = Mock::new(vec![first, second]).await;
-        let error = mock
-            .provider(Duration::from_millis(120))
-            .infer(&context(), &draft(), CancellationToken::new())
-            .await
-            .unwrap_err();
-        assert_eq!(error.kind, ErrorKind::Timeout);
-        assert_eq!(error.diagnostics.as_ref().unwrap().attempts, Some(2));
-        assert!(error.diagnostics.unwrap().repair_ms.is_some());
-        assert_eq!(mock.state.requests.lock().unwrap().len(), 2);
+        assert!(body.get("response_format").is_none());
+        let p = Provider::new(config(false, None, None)).unwrap();
+        let body = p.request_body(&[]);
+        assert!(body.get("temperature").is_none() && body.get("provider").is_none());
+        assert!(Provider::new(config(false, Some(ReasoningEffort::Low), None)).is_err());
+        assert!(Provider::new(config(true, None, Some(f64::NAN))).is_err());
     }
 }
