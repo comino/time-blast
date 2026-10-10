@@ -1,0 +1,24 @@
+{
+  "id": 4294967295,
+  "name": "edge \"cases\"",
+  "dialect": "clickhouse",
+  "tables": [
+    {
+      "name": "Mixed Case",
+      "rows": 0,
+      "columns": [
+        {"name": "day", "type": "DATE", "min": "2020-01-01", "max": "2020-12-31"},
+        {"name": "größe", "type": "DOUBLE", "min": 1e-7, "max": 1e21},
+        {"name": "n", "type": "BIGINT", "min": -12.0, "max": 123456789012},
+        {"name": "flag", "type": "BOOLEAN"},
+        {"name": "label", "type": "VARCHAR", "distinct": 2, "values": ["it's", "tab\there"]},
+        {"name": "f", "type": "FLOAT", "min": 0.1, "max": 5e-324}
+      ],
+      "sample": [
+        ["2020-01-01", 1.5e300, 3, true, "a \"quoted\" ünïcödé string that is definitely longer than sixty-four code points 🚢🚢", null],
+        ["2020-01-02", -0.0, 4.0, false, "x\ny", 0.30000000000000004]
+      ]
+    },
+    {"name": "empty", "rows": 0, "columns": []}
+  ]
+}

@@ -1140,6 +1140,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "tb-protocol"
+version = "0.1.0"
+
+[[package]]
 name = "thiserror"
 version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1189,6 +1193,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "tb-protocol",
  "tokio",
  "tokio-util",
 ]

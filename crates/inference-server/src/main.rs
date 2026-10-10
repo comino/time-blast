@@ -1,7 +1,10 @@
 mod config;
-mod plan;
+mod infer;
+mod prompt;
 mod provider;
 mod service;
+mod session;
+mod sql;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

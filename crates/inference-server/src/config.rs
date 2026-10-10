@@ -8,6 +8,12 @@ pub struct Config {
     pub allowed_origins: Vec<String>,
     pub requests_per_minute: u32,
     pub requests_per_day: u32,
+    /// Process-wide spend ceiling per rolling day, from provider-reported cost.
+    pub daily_budget_usd: f64,
+    /// Concurrent upstream translations per WebSocket session.
+    pub session_concurrency: usize,
+    /// Entries in the process-wide (prompt prefix, question) → SQL cache; 0 disables it.
+    pub cache_entries: usize,
 }
 
 impl Config {
@@ -80,12 +86,27 @@ impl Config {
                 timeout: Duration::from_secs(
                     number("TIME_BLAST_TIMEOUT_SECONDS", 25, 1, 30)? as u64
                 ),
-                max_concurrent: number("TIME_BLAST_MAX_CONCURRENT", 4, 1, 32)? as usize,
+                max_concurrent: number("TIME_BLAST_MAX_CONCURRENT", 16, 1, 256)? as usize,
+                max_tokens: number("TIME_BLAST_MAX_TOKENS", 512, 16, 4096)?,
             },
             allowed_origins,
-            requests_per_minute: number("TIME_BLAST_REQUESTS_PER_MINUTE", 30, 1, 10000)?,
-            requests_per_day: number("TIME_BLAST_REQUESTS_PER_DAY", 1000, 1, 1000000)?,
+            // Per-keystroke translation: ~5 keystrokes/s of typing is ~300 requests/min.
+            requests_per_minute: number("TIME_BLAST_REQUESTS_PER_MINUTE", 600, 1, 100000)?,
+            requests_per_day: number("TIME_BLAST_REQUESTS_PER_DAY", 30000, 1, 10000000)?,
+            daily_budget_usd: parse_budget(
+                env::var("TIME_BLAST_DAILY_BUDGET_USD").ok().as_deref(),
+            )?,
+            session_concurrency: number("TIME_BLAST_SESSION_CONCURRENCY", 2, 1, 16)? as usize,
+            cache_entries: number("TIME_BLAST_CACHE_ENTRIES", 4096, 0, 1000000)? as usize,
         })
+    }
+}
+
+fn parse_budget(value: Option<&str>) -> Result<f64, String> {
+    let Some(value) = value else { return Ok(3.0) };
+    match value.parse::<f64>() {
+        Ok(v) if v.is_finite() && v >= 0.0 => Ok(v),
+        _ => Err("TIME_BLAST_DAILY_BUDGET_USD must be a finite number >= 0".into()),
     }
 }
 
@@ -157,6 +178,15 @@ mod tests {
         }
         for invalid in ["", "NaN", "inf", "-inf", "-0.1", "2.1", "Provider", "null"] {
             assert!(parse_temperature(Some(invalid)).is_err());
+        }
+    }
+
+    #[test]
+    fn budget_defaults_to_three_dollars() {
+        assert_eq!(parse_budget(None).unwrap(), 3.0);
+        assert_eq!(parse_budget(Some("0.5")).unwrap(), 0.5);
+        for bad in ["", "-1", "NaN", "inf", "x"] {
+            assert!(parse_budget(Some(bad)).is_err());
         }
     }
 
