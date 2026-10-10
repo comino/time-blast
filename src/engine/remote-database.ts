@@ -26,8 +26,9 @@ import { IpcMessageDecoder } from './arrow-ipc';
 import { header, json, Kind, readJson, type Frame } from '../protocol/frame';
 
 /** Proposed DatasetSource variant (contract change requested in docs/batch-1/remote-database.md). */
-export interface RemoteDatasetSource { kind: 'remote'; name: string; endpoint: string }
-export type AnyDatasetSource = DatasetSource | RemoteDatasetSource;
+export type RemoteDatasetSource = Extract<DatasetSource, { kind: 'remote' }>;
+/** Kept as an alias: `DatasetSource` now includes the remote placement. */
+export type AnyDatasetSource = DatasetSource;
 
 export const isRemoteSource = (source: AnyDatasetSource): source is RemoteDatasetSource => source.kind === 'remote';
 

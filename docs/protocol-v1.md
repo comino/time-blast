@@ -84,7 +84,7 @@ unknown kinds, truncated frames, and nonzero reserved stamp fields.
 
 | Kind | Name | Direction | Payload |
 |---|---|---|---|
-| 0x01 | `HELLO` | any → peer | `{"node": "<role>", "name": "...", "version": 1}` |
+| 0x01 | `HELLO` | any → peer | `{"node": "<role>", "name": "...", "version": 1, "context"?: <u32>}`. `context` tells a remote database node which id to give the CONTEXT it sends |
 | 0x02 | `READY` | peer → any | `{"node": "<role>", "name": "...", "model"?: "..."}` |
 | 0x03 | `CONTEXT` | database → coordinator → inference | `DatasetContext` (below); header `context` = its id |
 | 0x04 | `STATUS` | any → UI | `{"component": "database|inference|renderer|coordinator", "state": "cold|loading|ready|error", "label", "detail"?, "progress"?}` |
@@ -109,10 +109,13 @@ unknown kinds, truncated frames, and nonzero reserved stamp fields.
 
 A cancelled request gets neither `DONE` nor `ERROR` from the database. Database `ERROR` codes:
 `sql_rejected` (guard: not exactly one read-only query), `sql_error`, `timeout`, `result_limit`,
-`queue_full`, `dataset`.
+`queue_full`, `dataset`, `unavailable` (remote database unreachable or link lost).
+`DONE.bytes` counts the BATCH payload bytes.
 
 Arrow types from DuckDB: `TIMESTAMP` arrives as a microsecond Timestamp (int64 / BigInt64),
 `COUNT(*)` and other integer aggregates as Int64. Consumers must not assume Float64.
+From ClickHouse: time may arrive as `Timestamp<SECOND|MICROSECOND, UTC>`, counts as `Uint64`,
+small literals as `Uint8`; ClickHouse contexts carry ClickHouse type names and text min/max.
 
 Concatenating the `RESULT_SCHEMA` payload, every `BATCH` payload and an Arrow end-of-stream
 marker gives a valid Arrow IPC stream. On in-process links, `RESULT_SCHEMA` and `BATCH` carry the

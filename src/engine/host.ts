@@ -19,7 +19,7 @@ import type {
   CoordinatorCore, CreateCoordinator, StatusComponent, CreateDatabase, CreateRenderer, DatabaseNode, DatasetContext, DatasetSource,
   InferencePlacement, Link, LinkId, LocalFrame, PostToUi, RendererNode, UiToEngine,
 } from './contracts';
-import { encode, Flag, header, json, Kind, now as clockNow, type Frame } from '../protocol/frame';
+import { encode, Flag, header, json, Kind, readJson, now as clockNow, type Frame } from '../protocol/frame';
 import { yieldToEventLoop } from './yield';
 
 export interface Timers {
@@ -101,6 +101,7 @@ export class EngineHost {
 
     const coordinator = deps.createCoordinator().then(core => {
       this.coordinator = core;
+      this.statusToUi('coordinator', 'ready', 'Coordinator ready');
       this.feedCoordinator();
     });
     const renderer = deps.createRenderer(frame => this.fromRenderer(frame), (message, transfer) => deps.postToUi(message, transfer))
@@ -214,7 +215,12 @@ export class EngineHost {
     this.inference = link;
     link.listen(frame => {
       if (this.inference !== link) return;
-      if (frame.kind === Kind.READY) this.reconnectAttempt = 0;
+      if (frame.kind === Kind.READY) {
+        this.reconnectAttempt = 0;
+        let model = '';
+        try { model = (readJson<{ model?: string }>(frame.payload as Uint8Array).model) ?? ''; } catch { /* READY payload is optional detail */ }
+        this.statusToUi('inference', 'ready', model ? `Inference ready · ${model}` : 'Inference ready');
+      }
       this.toCoordinator('inference', frame as Frame<Uint8Array>);
     }, reason => {
       if (this.inference !== link) return;
