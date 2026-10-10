@@ -29,7 +29,7 @@ use tokio::{
 
 use crate::{
     config::Limits,
-    exec::{self, ExecJob, Output, error_frame},
+    exec::{self, ExecJob, Outbox, Output, error_frame},
     now_ms,
     service::App,
 };
@@ -197,7 +197,8 @@ impl Assembler {
 }
 
 enum Outgoing {
-    Frame(Vec<u8>),
+    /// An encoded frame; a job's frames carry their send-window credit until written.
+    Frame(Vec<u8>, Option<tokio::sync::OwnedSemaphorePermit>),
     Control(OpCode, Vec<u8>),
     Close,
 }
@@ -217,7 +218,15 @@ pub async fn run(app: Arc<App>, upgrade: upgrade::UpgradeFut) {
     let writer_task = tokio::spawn(async move {
         while let Some(next) = pending_output.recv().await {
             let (opcode, bytes, close) = match next {
-                Outgoing::Frame(bytes) => (OpCode::Binary, bytes, false),
+                Outgoing::Frame(bytes, credit) => {
+                    let frame = WsFrame::new(true, OpCode::Binary, None, Payload::Owned(bytes));
+                    let written = tokio::time::timeout(Duration::from_secs(10), writer.write_frame(frame)).await;
+                    drop(credit);
+                    if !matches!(written, Ok(Ok(()))) {
+                        break;
+                    }
+                    continue;
+                }
                 Outgoing::Control(op, bytes) => (op, bytes, false),
                 Outgoing::Close => (OpCode::Close, 1008u16.to_be_bytes().to_vec(), true),
             };
@@ -270,7 +279,8 @@ pub async fn run(app: Arc<App>, upgrade: upgrade::UpgradeFut) {
     let limits = app.limits.clone();
     let mut session = Session::new(limits.clone());
     let permits = Arc::new(Semaphore::new(limits.concurrency));
-    let (jobs_out, mut job_frames) = mpsc::unbounded_channel::<Output>();
+    let (jobs_tx, mut job_frames) = mpsc::unbounded_channel::<Output>();
+    let jobs_out = Outbox::new(jobs_tx);
     let mut jobs: JoinSet<()> = JoinSet::new();
     let mut handles: HashMap<u32, AbortHandle> = HashMap::new();
     let mut last_message = Instant::now();
@@ -278,17 +288,18 @@ pub async fn run(app: Arc<App>, upgrade: upgrade::UpgradeFut) {
     heartbeat.tick().await;
     let hello_deadline = tokio::time::sleep(Duration::from_secs(10));
     tokio::pin!(hello_deadline);
-    let send = |bytes: Vec<u8>| output.send(Outgoing::Frame(bytes)).is_ok();
+    let send = |bytes: Vec<u8>| output.send(Outgoing::Frame(bytes, None)).is_ok();
 
     'session: loop {
         tokio::select! { biased;
             _ = cancel.cancelled() => break,
             _ = &mut hello_deadline, if !session.greeted => break,
-            Some(Output { request, bytes, last }) = job_frames.recv() => {
+            Some(Output { request, bytes, last, credit }) = job_frames.recv() => {
                 if last {
                     handles.remove(&request);
                 }
-                if session.job_output(request, last) && !send(bytes) {
+                // A discarded frame (cancelled request) drops its credit here.
+                if session.job_output(request, last) && output.send(Outgoing::Frame(bytes, credit)).is_err() {
                     break;
                 }
             }

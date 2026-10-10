@@ -316,3 +316,96 @@ async fn wall_clock_limit_and_queue_full() {
     let frames = c.result(2).await;
     assert!(matches!(frames.last().unwrap().1.header.kind, Kind::Done | Kind::Error));
 }
+
+/// Latency sweep without a browser (`cargo test --release --test clickhouse -- --ignored
+/// --nocapture latency_sweep`): EXEC → first BATCH / DONE at a Rust WebSocket client on
+/// loopback, per `max_block_size` (env SWEEP_BLOCK_SIZES), warm (after 3 runs), n = 20.
+/// Numbers in docs/batch-1/remote-database.md.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+#[ignore]
+async fn latency_sweep() {
+    if !fixture_ready().await {
+        return;
+    }
+    let queries = [
+        ("aggregate60k", AGGREGATE),
+        ("scan158k", "SELECT ts, speed, lat, lon FROM telemetry WHERE vessel = 'Aurora' AND ts < TIMESTAMP '2026-09-12' ORDER BY ts"),
+        ("tiny", "SELECT 42 AS answer"),
+    ];
+    let sizes: Vec<u32> = std::env::var("SWEEP_BLOCK_SIZES")
+        .unwrap_or_else(|_| "2048,8192,65409".into())
+        .split(',')
+        .map(|s| s.trim().parse().unwrap())
+        .collect();
+    let q = |mut v: Vec<f64>, p: f64| {
+        v.sort_by(f64::total_cmp);
+        v[((p * v.len() as f64) as usize).min(v.len() - 1)]
+    };
+    let mut request = 0;
+    for size in sizes {
+        let config = Config {
+            bind: "127.0.0.1:0".parse().unwrap(),
+            clickhouse: ClickHouseConfig {
+                url: clickhouse_url(),
+                database: database(),
+                user: None,
+                password: None,
+                max_block_size: size,
+                extra_settings: Vec::new(),
+            },
+            dataset_name: "vessels".into(),
+            dataset_description: None,
+            allowed_origins: vec!["http://127.0.0.1:5173".into()],
+            limits: Limits::default(),
+        };
+        let app = App::new(config).unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap().to_string();
+        tokio::spawn(serve_on(listener, app.clone()));
+        let mut c = Client::connect(&address, json!({"context": 1})).await;
+        c.next(Duration::from_secs(10)).await.unwrap();
+        c.next(Duration::from_secs(30)).await.unwrap();
+        for (name, sql) in queries {
+            let (mut first, mut done, mut server_first, mut batches) = (Vec::new(), Vec::new(), Vec::new(), 0);
+            for i in 0..23 {
+                request += 1;
+                let t0 = std::time::Instant::now();
+                c.exec(0, request, 1, sql).await;
+                let mut first_at = None;
+                let mut received = 0.0;
+                let mut count = 0;
+                loop {
+                    let (_, f) = c.next(Duration::from_secs(30)).await.unwrap();
+                    match f.header.kind {
+                        Kind::ResultSchema => received = f.stamps[0].at,
+                        Kind::Batch => {
+                            count += 1;
+                            if first_at.is_none() {
+                                first_at = Some(t0.elapsed().as_secs_f64() * 1000.0);
+                                if i >= 3 {
+                                    server_first.push(f.stamps[0].at - received);
+                                }
+                            }
+                        }
+                        Kind::Done => break,
+                        other => panic!("{other:?}"),
+                    }
+                }
+                if i >= 3 {
+                    first.push(first_at.unwrap());
+                    done.push(t0.elapsed().as_secs_f64() * 1000.0);
+                    batches = count;
+                }
+            }
+            eprintln!(
+                "max_block_size {size:>6} {name:<13} batches {batches:>3}  first p50 {:7.2} p95 {:7.2}  done p50 {:7.2} p95 {:7.2}  server first p50 {:7.2} ms",
+                q(first.clone(), 0.5),
+                q(first, 0.95),
+                q(done.clone(), 0.5),
+                q(done, 0.95),
+                q(server_first, 0.5)
+            );
+        }
+        app.shutdown.cancel();
+    }
+}

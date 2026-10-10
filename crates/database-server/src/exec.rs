@@ -19,7 +19,7 @@ use std::{
 
 use serde_json::json;
 use tb_protocol::{Header, Kind, MAX_PAYLOAD, Stamp, encode_into, node, stage};
-use tokio::sync::mpsc;
+use tokio::sync::{OwnedSemaphorePermit, Semaphore, mpsc};
 
 use crate::{
     clickhouse::{ClickHouse, Failure, cast_projection, exception_text, parse_code, error_code},
@@ -29,13 +29,38 @@ use crate::{
     now_ms,
 };
 
-/// A frame leaving a job: encoded bytes, and whether it is the request's last.
+/// A frame leaving a job: encoded bytes, and whether it is the request's last. `credit` is
+/// held until the WebSocket writer has written the frame (or the frame is discarded).
 pub struct Output {
     pub request: u32,
     pub bytes: Vec<u8>,
     pub last: bool,
+    pub credit: Option<OwnedSemaphorePermit>,
 }
-pub type Outbox = mpsc::UnboundedSender<Output>;
+
+/// Bytes of encoded frames a session may have queued for its socket. A browser that reads
+/// slowly makes jobs wait here, which stops reading ClickHouse's response (TCP backpressure)
+/// instead of buffering whole results in memory.
+pub const SEND_WINDOW: usize = 8 << 20;
+
+/// Where a job's frames go: the session loop, behind the session's send window.
+#[derive(Clone)]
+pub struct Outbox {
+    pub tx: mpsc::UnboundedSender<Output>,
+    pub window: Arc<Semaphore>,
+}
+
+impl Outbox {
+    pub fn new(tx: mpsc::UnboundedSender<Output>) -> Outbox {
+        Outbox { tx, window: Arc::new(Semaphore::new(SEND_WINDOW)) }
+    }
+    /// False once the session is gone.
+    pub async fn send(&self, request: u32, bytes: Vec<u8>, last: bool) -> bool {
+        let need = bytes.len().clamp(1, SEND_WINDOW) as u32;
+        let Ok(credit) = self.window.clone().acquire_many_owned(need).await else { return false };
+        self.tx.send(Output { request, bytes, last, credit: Some(credit) }).is_ok()
+    }
+}
 
 pub struct ExecJob {
     /// Header of the EXEC; every reply echoes its epoch, request, revision and context.
@@ -184,11 +209,7 @@ pub async fn run(shared: Arc<Shared>, job: ExecJob, out: Outbox) -> Stats {
     };
     if let Some(Failure { code, message }) = failure {
         stats.outcome = "error";
-        let _ = out.send(Output {
-            request: job.header.request,
-            bytes: error_frame(&job.header, job.received_at, code, &message),
-            last: true,
-        });
+        out.send(job.header.request, error_frame(&job.header, job.received_at, code, &message), true).await;
     }
     stats
 }
@@ -340,7 +361,7 @@ async fn attempt(
                         }
                         seal(&mut buf, &Header { kind: Kind::ResultSchema, flags: 0, ..h }, &[stamp(stage::EXEC_RECEIVED, job.received_at)]);
                         schema_sent = true;
-                        if out.send(Output { request: h.request, bytes: buf, last: false }).is_err() {
+                        if !out.send(h.request, buf, false).await {
                             return Step::Done;
                         }
                     }
@@ -364,7 +385,7 @@ async fn attempt(
                         };
                         seal(&mut buf, &Header { kind: Kind::Batch, flags: 0, ..h }, stamps);
                         stats.batches += 1;
-                        if out.send(Output { request: h.request, bytes: buf, last: false }).is_err() {
+                        if !out.send(h.request, buf, false).await {
                             return Step::Done;
                         }
                     }
@@ -391,11 +412,7 @@ async fn attempt(
     payload[8..].copy_from_slice(&stats.bytes.to_le_bytes());
     stats.done_ms = Some(job.received.elapsed().as_secs_f64() * 1000.0);
     stats.outcome = "done";
-    let _ = out.send(Output {
-        request: h.request,
-        bytes: frame(&h, Kind::Done, &[stamp(stage::DB_DONE, now_ms())], &payload),
-        last: true,
-    });
+    out.send(h.request, frame(&h, Kind::Done, &[stamp(stage::DB_DONE, now_ms())], &payload), true).await;
     Step::Done
 }
 
@@ -425,6 +442,23 @@ mod tests {
         bare.extend_from_slice(&[1, 2, 3]);
         seal(&mut bare, &header, &[]);
         assert_eq!(decode(&bare).unwrap().payload, [1, 2, 3]);
+    }
+
+    #[tokio::test]
+    async fn send_window_holds_jobs_until_frames_are_written() {
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let out = Outbox::new(tx);
+        assert!(out.send(1, vec![0; SEND_WINDOW - 10], false).await);
+        let blocked = tokio::spawn({
+            let out = out.clone();
+            async move { out.send(1, vec![0; 100], true).await }
+        });
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        assert!(!blocked.is_finished(), "window full: the job waits");
+        let first = rx.recv().await.unwrap();
+        drop(first); // written (or discarded): credit returns
+        assert!(blocked.await.unwrap());
+        assert!(rx.recv().await.unwrap().last);
     }
 
     #[test]
