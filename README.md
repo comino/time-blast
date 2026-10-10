@@ -20,6 +20,8 @@ HTTPS hosting and repeatable deployment are described in [deploy/README.md](depl
 
 The deployed demo defaults to **Rust backend inference → OpenRouter → Gemini 2.5 Flash Lite**, with DuckDB and the canvas in your browser. It needs no local model download. One persistent inference socket carries drafts, requests and cancellation. Local WebGPU remains selectable in Runtime settings. See [the service, configuration and verification limits](docs/backend-prototype.md).
 
+A [seven-model hosted comparison](docs/experiments/hosted-models-2026-10-10.md) retained this default: newer and cheaper candidates did not improve its tested combination of exact plans, latency and price. The repeatable benchmark records failures and provider settings; it is a small integration check, not a general model ranking.
+
 ```sh
 pnpm install --frozen-lockfile
 pnpm dev

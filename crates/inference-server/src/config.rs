@@ -1,6 +1,6 @@
 use std::{env, net::SocketAddr, time::Duration};
 
-use crate::provider::ProviderConfig;
+use crate::provider::{ProviderConfig, ReasoningEffort};
 
 pub struct Config {
     pub bind: SocketAddr,
@@ -40,13 +40,18 @@ impl Config {
                     .flatten()
             })
             .filter(|s| !s.is_empty());
+        let reasoning_effort = parse_reasoning_effort(
+            env::var("TIME_BLAST_REASONING_EFFORT").ok().as_deref(),
+            openrouter,
+        )?;
+        let temperature = parse_temperature(env::var("TIME_BLAST_TEMPERATURE").ok().as_deref())?;
         if openrouter && api_key.is_none() {
             return Err(
                 "Set OPENROUTER_API_KEY or TIME_BLAST_API_KEY in the server environment".into(),
             );
         }
-        let model = env::var("TIME_BLAST_MODEL")
-            .unwrap_or_else(|_| "google/gemini-2.5-flash-lite".into());
+        let model =
+            env::var("TIME_BLAST_MODEL").unwrap_or_else(|_| "google/gemini-2.5-flash-lite".into());
         if model.trim().is_empty() || model.len() > 200 {
             return Err("Invalid TIME_BLAST_MODEL".into());
         }
@@ -70,6 +75,8 @@ impl Config {
                 model,
                 api_key,
                 openrouter,
+                reasoning_effort,
+                temperature,
                 timeout: Duration::from_secs(
                     number("TIME_BLAST_TIMEOUT_SECONDS", 25, 1, 30)? as u64
                 ),
@@ -82,6 +89,50 @@ impl Config {
     }
 }
 
+fn parse_temperature(value: Option<&str>) -> Result<Option<f64>, String> {
+    match value {
+        None => Ok(Some(0.0)),
+        Some("provider") => Ok(None),
+        Some(value) => {
+            let temperature: f64 = value.parse().map_err(
+                |_| "TIME_BLAST_TEMPERATURE must be provider or a finite number between 0 and 2",
+            )?;
+            if !temperature.is_finite() || !(0.0..=2.0).contains(&temperature) {
+                return Err(
+                    "TIME_BLAST_TEMPERATURE must be provider or a finite number between 0 and 2"
+                        .into(),
+                );
+            }
+            Ok(Some(temperature))
+        }
+    }
+}
+
+fn parse_reasoning_effort(
+    value: Option<&str>,
+    openrouter: bool,
+) -> Result<Option<ReasoningEffort>, String> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    if !openrouter {
+        return Err("TIME_BLAST_REASONING_EFFORT requires TIME_BLAST_OPENROUTER=true".into());
+    }
+    let effort = match value {
+        "none" => ReasoningEffort::None,
+        "minimal" => ReasoningEffort::Minimal,
+        "low" => ReasoningEffort::Low,
+        "medium" => ReasoningEffort::Medium,
+        "high" => ReasoningEffort::High,
+        _ => {
+            return Err(
+                "TIME_BLAST_REASONING_EFFORT must be none, minimal, low, medium or high".into(),
+            );
+        }
+    };
+    Ok(Some(effort))
+}
+
 fn number(name: &str, default: u32, min: u32, max: u32) -> Result<u32, String> {
     let value = match env::var(name) {
         Ok(s) => s.parse().map_err(|_| format!("Invalid {name}"))?,
@@ -91,4 +142,60 @@ fn number(name: &str, default: u32, min: u32, max: u32) -> Result<u32, String> {
         return Err(format!("{name} must be between {min} and {max}"));
     }
     Ok(value)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn temperature_defaults_to_zero_and_can_use_provider_default() {
+        assert_eq!(parse_temperature(None).unwrap(), Some(0.0));
+        assert_eq!(parse_temperature(Some("provider")).unwrap(), None);
+        for (input, expected) in [("0", 0.0), ("0.5", 0.5), ("2", 2.0)] {
+            assert_eq!(parse_temperature(Some(input)).unwrap(), Some(expected));
+        }
+        for invalid in ["", "NaN", "inf", "-inf", "-0.1", "2.1", "Provider", "null"] {
+            assert!(parse_temperature(Some(invalid)).is_err());
+        }
+    }
+
+    #[test]
+    fn reasoning_is_unset_by_default_for_all_providers() {
+        assert_eq!(parse_reasoning_effort(None, true).unwrap(), None);
+        assert_eq!(parse_reasoning_effort(None, false).unwrap(), None);
+    }
+
+    #[test]
+    fn explicit_reasoning_effort_accepts_only_supported_config_values() {
+        for (value, expected) in [
+            ("none", ReasoningEffort::None),
+            ("minimal", ReasoningEffort::Minimal),
+            ("low", ReasoningEffort::Low),
+            ("medium", ReasoningEffort::Medium),
+            ("high", ReasoningEffort::High),
+        ] {
+            assert_eq!(
+                parse_reasoning_effort(Some(value), true).unwrap(),
+                Some(expected)
+            );
+        }
+        for invalid in [
+            "",
+            "false",
+            "None",
+            "low ",
+            "xhigh",
+            "max",
+            "{\"effort\":\"none\"}",
+        ] {
+            assert!(parse_reasoning_effort(Some(invalid), true).is_err());
+        }
+    }
+
+    #[test]
+    fn reasoning_control_requires_openrouter() {
+        assert!(parse_reasoning_effort(Some("none"), false).is_err());
+        assert!(parse_reasoning_effort(Some("minimal"), false).is_err());
+    }
 }

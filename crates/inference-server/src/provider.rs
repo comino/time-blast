@@ -17,11 +17,25 @@ const MAX_STREAM_BYTES: usize = 1_048_576;
 const MAX_FRAME_BYTES: usize = 65_536;
 const MAX_COMPLETION_TOKENS: u32 = 256;
 
+/// OpenRouter's unified effort values. Availability is model-specific: `none`
+/// disables reasoning only on models that allow it; `minimal` still reasons.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ReasoningEffort {
+    None,
+    Minimal,
+    Low,
+    Medium,
+    High,
+}
+
 pub struct ProviderConfig {
     pub endpoint: String,
     pub model: String,
     pub api_key: Option<String>,
     pub openrouter: bool,
+    pub reasoning_effort: Option<ReasoningEffort>,
+    pub temperature: Option<f64>,
     pub timeout: Duration,
     pub max_concurrent: usize,
 }
@@ -51,6 +65,10 @@ impl Provider {
             || config.max_concurrent == 0
             || config.max_concurrent > 1024
             || config.timeout.is_zero()
+            || (!config.openrouter && config.reasoning_effort.is_some())
+            || config
+                .temperature
+                .is_some_and(|value| !value.is_finite() || !(0.0..=2.0).contains(&value))
         {
             return Err("Invalid provider configuration.".into());
         }
@@ -229,13 +247,19 @@ impl Provider {
         diagnostics: &mut InferenceDiagnostics,
         generation_start: Instant,
     ) -> Result<StreamOutput, InferenceError> {
-        let mut request = json!({"model":self.inner.config.model,"messages":messages,"temperature":0,
+        let mut request = json!({"model":self.inner.config.model,"messages":messages,
             "max_tokens":MAX_COMPLETION_TOKENS,"stream":true,"stream_options":{"include_usage":true},
             "response_format":self.inner.response_format});
+        if let Some(temperature) = self.inner.config.temperature {
+            request["temperature"] = json!(temperature);
+        }
         if self.inner.config.openrouter {
             request["provider"] = json!({"sort":"latency","require_parameters":true});
-            // The default is explicitly non-thinking. Do not send an unsupported
-            // reasoning parameter with require_parameters enabled.
+            // Leave model defaults untouched unless explicitly configured.
+            // Omitting reasoning is not a promise that a model will not think.
+            if let Some(effort) = self.inner.config.reasoning_effort {
+                request["reasoning"] = json!({"effort":effort});
+            }
         }
         let response = self
             .inner
@@ -692,16 +716,20 @@ mod tests {
                 endpoint,
             }
         }
-        fn provider(&self, timeout: Duration) -> Provider {
-            Provider::new(ProviderConfig {
+        fn config(&self, timeout: Duration) -> ProviderConfig {
+            ProviderConfig {
                 endpoint: self.endpoint.clone(),
                 model: "test-nonthinking".into(),
                 api_key: None,
                 openrouter: true,
+                reasoning_effort: None,
+                temperature: Some(0.0),
                 timeout,
                 max_concurrent: 1,
-            })
-            .unwrap()
+            }
+        }
+        fn provider(&self, timeout: Duration) -> Provider {
+            Provider::new(self.config(timeout)).unwrap()
         }
         async fn wait_requests(&self, count: usize) {
             tokio::time::timeout(Duration::from_secs(2), async {
@@ -766,7 +794,77 @@ mod tests {
             plan::response_schema()
         );
         assert_eq!(request["stream"], true);
+        assert_eq!(request["temperature"], 0.0);
         assert!(request.get("reasoning").is_none());
+    }
+
+    #[tokio::test]
+    async fn configured_reasoning_effort_is_sent_unchanged_on_initial_and_repair_requests() {
+        for (effort, value) in [
+            (ReasoningEffort::None, "none"),
+            (ReasoningEffort::Minimal, "minimal"),
+            (ReasoningEffort::Low, "low"),
+            (ReasoningEffort::Medium, "medium"),
+            (ReasoningEffort::High, "high"),
+        ] {
+            let mock = Mock::new(vec![
+                Reply::completion(json!({"result":{}}), "stop"),
+                Reply::completion(valid_plan(), "stop"),
+            ])
+            .await;
+            let mut config = mock.config(Duration::from_secs(2));
+            config.reasoning_effort = Some(effort);
+            let result = Provider::new(config)
+                .unwrap()
+                .infer(&context(), &draft(), CancellationToken::new())
+                .await
+                .unwrap();
+            assert_eq!(result.diagnostics.attempts, Some(2));
+            let requests = mock.state.requests.lock().unwrap();
+            assert_eq!(requests.len(), 2);
+            for request in requests.iter() {
+                assert_eq!(request["reasoning"], json!({"effort":value}));
+                assert_eq!(request["provider"]["require_parameters"], true);
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn temperature_can_be_omitted_or_configured_for_any_provider() {
+        for openrouter in [false, true] {
+            for temperature in [None, Some(0.5)] {
+                let mock = Mock::new(vec![Reply::completion(valid_plan(), "stop")]).await;
+                let mut config = mock.config(Duration::from_secs(2));
+                config.openrouter = openrouter;
+                config.temperature = temperature;
+                Provider::new(config)
+                    .unwrap()
+                    .infer(&context(), &draft(), CancellationToken::new())
+                    .await
+                    .unwrap();
+                let requests = mock.state.requests.lock().unwrap();
+                assert_eq!(
+                    requests[0].get("temperature"),
+                    temperature.map(|value| json!(value)).as_ref()
+                );
+                assert!(requests[0].get("reasoning").is_none());
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn direct_provider_configuration_rejects_invalid_reasoning_and_temperature() {
+        let mock = Mock::new(vec![]).await;
+        let mut config = mock.config(Duration::from_secs(2));
+        config.openrouter = false;
+        config.reasoning_effort = Some(ReasoningEffort::None);
+        assert!(Provider::new(config).is_err());
+        for value in [f64::NAN, f64::INFINITY, -0.1, 2.1] {
+            let mut config = mock.config(Duration::from_secs(2));
+            config.temperature = Some(value);
+            assert!(Provider::new(config).is_err());
+        }
+        assert!(mock.state.requests.lock().unwrap().is_empty());
     }
 
     #[tokio::test]
@@ -820,6 +918,8 @@ mod tests {
             model: "test".into(),
             api_key: None,
             openrouter: false,
+            reasoning_effort: None,
+            temperature: Some(0.0),
             timeout: Duration::from_secs(3),
             max_concurrent: 1,
         })

@@ -2,6 +2,12 @@
 
 The prototype is functionally exercised. These checks are not evidence of physical input-to-light latency, model semantic accuracy across arbitrary language, or production service performance.
 
+## Hosted model comparison — 2026-10-10
+
+[Seven hosted models were screened](experiments/hosted-models-2026-10-10.md) with the same Rust query contract and twelve reused cases per configuration. Gemini 2.5 Flash Lite remains the deployed default: its two runs each matched eight supported plans and four required refusals, with supported-question medians of 551 ms and 454 ms. Gemini 3.1 Lite also matched all cases at 750 ms, with higher catalog prices. Other available candidates made interpretation errors or refused supported questions. Qwen Flash was excluded by the account's zero-data-retention policy and has no measured quality result. The report retains failures, settings, prices and methodological limits.
+
+Optional reasoning-effort and sampling controls preserve the backend's existing defaults. **34 Rust backend tests**, **717 application tests**, benchmark scorer self-tests and release/browser builds pass. The comparison used isolated services; the deployed service and its model were not changed.
+
 ## Rust inference backend — 2026-10-10
 
 The new `crates/inference-server` service uses Axum/Hyper, Tokio, fastwebsockets and a pooled reqwest/rustls provider client. The browser uses one WebSocket session with immutable dataset context, replaceable drafts, explicit cancellation and bounded exact-plan reuse; DuckDB and its streaming render path remain local. The deployed default is OpenRouter with `google/gemini-2.5-flash-lite`. HTTP compatibility remains available. Credentials stay in the service environment.

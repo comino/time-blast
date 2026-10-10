@@ -67,6 +67,8 @@ controls:
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | `TIME_BLAST_MODEL` | `google/gemini-2.5-flash-lite` | Exact provider model ID. |
+| `TIME_BLAST_REASONING_EFFORT` | unset | OpenRouter only: `none`, `minimal`, `low`, `medium`, or `high`. Unset leaves the provider default; `none` requests disabled reasoning where supported. |
+| `TIME_BLAST_TEMPERATURE` | `0` | Sampling temperature from 0–2, or `provider` to omit the parameter for models that do not support it. |
 | `TIME_BLAST_BIND` | `127.0.0.1:8787` | Listening address. |
 | `TIME_BLAST_TIMEOUT_SECONDS` | `25` | Total inference deadline, including one correction; range 1–30 seconds. |
 | `TIME_BLAST_MAX_CONCURRENT` | `4` | Concurrent provider operations; excess work is rejected. |
@@ -76,6 +78,13 @@ controls:
 One admitted request can use two generations if correction is necessary. These
 process-local counters reset on restart; they are bounded prototype protection,
 not account-level billing quotas or per-user rate limits.
+
+Reasoning support is model-dependent. Check OpenRouter's model metadata before
+setting an effort: a model with mandatory reasoning cannot use `none`, and
+`minimal` can still spend tokens thinking. The 256-token completion limit includes
+reasoning tokens. Hiding reasoning text does not disable that work. Gemini 3.5
+Flash Lite also requires provider-controlled sampling, so comparison runs use
+`TIME_BLAST_TEMPERATURE=provider`. These options do not change the default model.
 
 ## Data and control paths
 

@@ -1,0 +1,3223 @@
+{
+  "benchmark": "rust-openrouter-model-matrix-v1",
+  "startedAt": "2026-10-10T17:45:05.792128+00:00",
+  "binarySha256": "2fce901d27bdd2134414e69aea28933e23b9c2509d7c5d78b0744c2a3a743b8f",
+  "manifestSha256": "d7d4621c7fc5d5a211c8228247688a8297ace2b114a7e8365e8f30f1e4623fd2",
+  "frozenBeforeRequests": {
+    "context": {
+      "id": "backend-meaning-frozen-2026-10-10",
+      "label": "North Atlantic synthetic telemetry acceptance context",
+      "rowCount": 1209600,
+      "start": 1788220800000,
+      "end": 1789430400000,
+      "vessels": [
+        "Aurora",
+        "Meridian",
+        "Kestrel",
+        "Solstice",
+        "Atlas",
+        "Nomad"
+      ],
+      "description": "Six fictional vessels, one reading every six seconds, 1–14 September 2026 UTC. Synthetic data."
+    },
+    "cases": [
+      {
+        "id": "known-1-wave_height-line",
+        "question": "Compare vessel wave height by minute over the last 7 days",
+        "source": "scripts/benchmark-backend.py",
+        "expected": {
+          "metric": "wave_height",
+          "aggregate": "avg",
+          "bucketMinutes": 1,
+          "windowHours": 168,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "line"
+        }
+      },
+      {
+        "id": "known-2-speed-line",
+        "question": "Compare vessel speeds by minute over the last 24 hours",
+        "source": "scripts/benchmark-backend.py",
+        "expected": {
+          "metric": "speed",
+          "aggregate": "avg",
+          "bucketMinutes": 1,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "line"
+        }
+      },
+      {
+        "id": "known-3-wave_height-surface",
+        "question": "Compare vessel wave height by hour over the last 1days as a 3D surface",
+        "source": "scripts/benchmark-backend.py",
+        "expected": {
+          "metric": "wave_height",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "surface"
+        }
+      },
+      {
+        "id": "known-4-wind-heatmap",
+        "question": "Show a heatmap of vessel wind by hour over the last 7 days",
+        "source": "scripts/benchmark-backend.py",
+        "expected": {
+          "metric": "wind",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 168,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "heatmap"
+        }
+      },
+      {
+        "id": "named-vessel-max-wind-five-minutes",
+        "question": "Show Meridian's maximum wind speed in 5-minute buckets over the last 48 hours.",
+        "expected": {
+          "metric": "wind",
+          "aggregate": "max",
+          "bucketMinutes": 5,
+          "windowHours": 48,
+          "splitByVessel": false,
+          "vessel": 1,
+          "view": "line"
+        },
+        "source": "tests/backend_meaning.py"
+      },
+      {
+        "id": "pooled-water-temperature-six-hours",
+        "question": "Show average water temperature across all vessels together in 6-hour buckets over the last 7 days.",
+        "expected": {
+          "metric": "water_temp",
+          "aggregate": "avg",
+          "bucketMinutes": 360,
+          "windowHours": 168,
+          "splitByVessel": false,
+          "vessel": null,
+          "view": "line"
+        },
+        "source": "tests/backend_meaning.py"
+      },
+      {
+        "id": "vessel-density-hourly-day",
+        "question": "Show a density map of vessel speeds in hourly buckets over the last 24 hours.",
+        "expected": {
+          "metric": "speed",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "density"
+        },
+        "source": "tests/backend_meaning.py"
+      },
+      {
+        "id": "wide-wave-surface-710-days",
+        "question": "Compare vessel wave heights by hour over the last 710 days as a 3D surface.",
+        "expected": {
+          "metric": "wave_height",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 17040,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "surface"
+        },
+        "source": "tests/backend_meaning.py"
+      },
+      {
+        "id": "unsupported-value-filter",
+        "question": "Show hourly average vessel speed over the last 24 hours, but only include readings where wind is above 20 knots.",
+        "expected": {
+          "error": "unsupported_request"
+        },
+        "source": "tests/backend_meaning.py"
+      },
+      {
+        "id": "unsupported-correlation",
+        "question": "Plot correlation between vessel speed and wave height over the last 7 days.",
+        "expected": {
+          "error": "unsupported_request"
+        },
+        "source": "tests/backend_meaning.py"
+      },
+      {
+        "id": "unsupported-forecast",
+        "question": "Forecast vessel wave height for the next 24 hours.",
+        "expected": {
+          "error": "unsupported_request"
+        },
+        "source": "tests/backend_meaning.py"
+      },
+      {
+        "id": "unsupported-photo-and-speed",
+        "question": "Show photos of Aurora alongside her average speed over the last 24 hours.",
+        "expected": {
+          "error": "unsupported_request"
+        },
+        "source": "tests/backend_meaning.py"
+      }
+    ],
+    "profiles": [
+      {
+        "model": "google/gemini-2.5-flash-lite",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      {
+        "model": "google/gemini-3.5-flash-lite",
+        "reasoningEffort": "minimal",
+        "temperature": "provider",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      {
+        "model": "qwen/qwen3.5-flash-02-23",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      {
+        "model": "google/gemma-4-26b-a4b-it",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      {
+        "model": "mistralai/ministral-3b-2512",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      }
+    ],
+    "order": "For case index i, rotate profiles left by i modulo model count; requests are sequential.",
+    "requestsPerModel": 12,
+    "applicationPlanCache": false
+  },
+  "catalog": {
+    "snapshotSha256": "2ad0d6022903bccb80ee691da4e4d01db80479e92fd9a4d2865711eb22efe7c1",
+    "source": "https://openrouter.ai/api/v1/models",
+    "pricingCaveat": "Catalog prices are indicative, not measured charges. Latency routing can select a more expensive endpoint.",
+    "models": [
+      {
+        "id": "google/gemini-3.5-flash-lite",
+        "name": "Google: Gemini 3.5 Flash Lite",
+        "created": 1784646726,
+        "pricing": {
+          "prompt": "0.0000003",
+          "completion": "0.0000025",
+          "image": "0.0000003",
+          "audio": "0.0000003",
+          "input_audio_cache": "0.00000003",
+          "web_search": "0.014",
+          "internal_reasoning": "0.0000025",
+          "input_cache_read": "0.00000003",
+          "input_cache_write": "0.0000000833333333333333"
+        },
+        "supported_parameters": [
+          "include_reasoning",
+          "max_tokens",
+          "reasoning",
+          "reasoning_effort",
+          "response_format",
+          "seed",
+          "stop",
+          "structured_outputs",
+          "temperature",
+          "tool_choice",
+          "tools",
+          "top_p"
+        ],
+        "default_parameters": {
+          "temperature": null,
+          "top_p": null,
+          "top_k": null,
+          "frequency_penalty": null,
+          "presence_penalty": null,
+          "repetition_penalty": null
+        },
+        "reasoning": {
+          "mandatory": true,
+          "default_enabled": true,
+          "supported_efforts": [
+            "high",
+            "medium",
+            "low",
+            "minimal"
+          ],
+          "default_effort": "minimal"
+        }
+      },
+      {
+        "id": "google/gemma-4-26b-a4b-it",
+        "name": "Google: Gemma 4 26B A4B ",
+        "created": 1775227989,
+        "pricing": {
+          "prompt": "0.0000000675",
+          "completion": "0.000000225",
+          "input_cache_read": "0.0000000375"
+        },
+        "supported_parameters": [
+          "frequency_penalty",
+          "include_reasoning",
+          "logit_bias",
+          "logprobs",
+          "max_tokens",
+          "min_p",
+          "presence_penalty",
+          "reasoning",
+          "repetition_penalty",
+          "response_format",
+          "seed",
+          "stop",
+          "structured_outputs",
+          "temperature",
+          "tool_choice",
+          "tools",
+          "top_k",
+          "top_logprobs",
+          "top_p"
+        ],
+        "default_parameters": {
+          "temperature": 1,
+          "top_p": 0.95,
+          "top_k": 64
+        },
+        "reasoning": {
+          "mandatory": false,
+          "default_enabled": false
+        }
+      },
+      {
+        "id": "qwen/qwen3.5-flash-02-23",
+        "name": "Qwen: Qwen3.5-Flash",
+        "created": 1772053776,
+        "pricing": {
+          "prompt": "0.000000065",
+          "completion": "0.00000026"
+        },
+        "supported_parameters": [
+          "frequency_penalty",
+          "include_reasoning",
+          "max_tokens",
+          "presence_penalty",
+          "reasoning",
+          "response_format",
+          "seed",
+          "stop",
+          "structured_outputs",
+          "temperature",
+          "tool_choice",
+          "tools",
+          "top_k",
+          "top_p"
+        ],
+        "default_parameters": {
+          "temperature": null,
+          "top_p": null,
+          "frequency_penalty": null
+        },
+        "reasoning": {
+          "mandatory": false
+        }
+      },
+      {
+        "id": "mistralai/ministral-3b-2512",
+        "name": "Mistral: Ministral 3 3B 2512",
+        "created": 1764681560,
+        "pricing": {
+          "prompt": "0.0000001",
+          "completion": "0.0000001",
+          "input_cache_read": "0.00000001"
+        },
+        "supported_parameters": [
+          "frequency_penalty",
+          "max_tokens",
+          "presence_penalty",
+          "response_format",
+          "seed",
+          "stop",
+          "structured_outputs",
+          "temperature",
+          "tool_choice",
+          "tools",
+          "top_p"
+        ],
+        "default_parameters": {
+          "temperature": 0.3,
+          "top_p": null,
+          "frequency_penalty": null
+        }
+      },
+      {
+        "id": "google/gemini-2.5-flash-lite",
+        "name": "Google: Gemini 2.5 Flash Lite",
+        "created": 1753200276,
+        "pricing": {
+          "prompt": "0.0000001",
+          "completion": "0.0000004",
+          "image": "0.0000001",
+          "audio": "0.0000003",
+          "input_audio_cache": "0.00000003",
+          "web_search": "0.014",
+          "internal_reasoning": "0.0000004",
+          "input_cache_read": "0.00000001",
+          "input_cache_write": "0.0000000833333333333333"
+        },
+        "supported_parameters": [
+          "include_reasoning",
+          "max_tokens",
+          "reasoning",
+          "response_format",
+          "seed",
+          "stop",
+          "structured_outputs",
+          "temperature",
+          "tool_choice",
+          "tools",
+          "top_p"
+        ],
+        "default_parameters": {
+          "temperature": null,
+          "top_p": null,
+          "frequency_penalty": null
+        },
+        "reasoning": {
+          "mandatory": false
+        }
+      }
+    ]
+  },
+  "limits": "Twelve reused development/acceptance cases, not held-out accuracy or a latency distribution. Same Rust prompt/schema, 256-token completion budget and one correction attempt; reasoning may consume the budget. HTTP connections to Rust are new per request; each model has its own reusable provider pool. Startup only warms transport. Provider route, queue, cache and model cold/warm state are uncontrolled. Medians include errors for all-supported results and are separately shown for correct supported plans. Unsupported refusals are excluded from both latency medians. No browser, database, photons or p95 measured.",
+  "services": [
+    {
+      "profile": {
+        "model": "google/gemini-2.5-flash-lite",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "endpoint": "http://127.0.0.1:35005/infer",
+      "health": {
+        "maxSessions": 64,
+        "model": "google/gemini-2.5-flash-lite",
+        "providerWarmth": "unknown",
+        "status": "ready",
+        "transport": "fastwebsockets",
+        "version": 1
+      }
+    },
+    {
+      "profile": {
+        "model": "google/gemini-3.5-flash-lite",
+        "reasoningEffort": "minimal",
+        "temperature": "provider",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "endpoint": "http://127.0.0.1:57917/infer",
+      "health": {
+        "maxSessions": 64,
+        "model": "google/gemini-3.5-flash-lite",
+        "providerWarmth": "unknown",
+        "status": "ready",
+        "transport": "fastwebsockets",
+        "version": 1
+      }
+    },
+    {
+      "profile": {
+        "model": "qwen/qwen3.5-flash-02-23",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "endpoint": "http://127.0.0.1:59253/infer",
+      "health": {
+        "maxSessions": 64,
+        "model": "qwen/qwen3.5-flash-02-23",
+        "providerWarmth": "unknown",
+        "status": "ready",
+        "transport": "fastwebsockets",
+        "version": 1
+      }
+    },
+    {
+      "profile": {
+        "model": "google/gemma-4-26b-a4b-it",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "endpoint": "http://127.0.0.1:36301/infer",
+      "health": {
+        "maxSessions": 64,
+        "model": "google/gemma-4-26b-a4b-it",
+        "providerWarmth": "unknown",
+        "status": "ready",
+        "transport": "fastwebsockets",
+        "version": 1
+      }
+    },
+    {
+      "profile": {
+        "model": "mistralai/ministral-3b-2512",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "endpoint": "http://127.0.0.1:50421/infer",
+      "health": {
+        "maxSessions": 64,
+        "model": "mistralai/ministral-3b-2512",
+        "providerWarmth": "unknown",
+        "status": "ready",
+        "transport": "fastwebsockets",
+        "version": 1
+      }
+    }
+  ],
+  "results": [
+    {
+      "id": "known-1-wave_height-line",
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "httpStatus": 200,
+      "wallMs": 730.6285542435944,
+      "response": {
+        "plan": {
+          "metric": "wave_height",
+          "aggregate": "avg",
+          "bucketMinutes": 1,
+          "windowHours": 168,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "line"
+        },
+        "model": "google/gemini-2.5-flash-lite",
+        "tokens": 41,
+        "diagnostics": {
+          "queueMs": 0.00052,
+          "generationMs": 729.461013,
+          "attempts": 1,
+          "firstTokenMs": 640.126549,
+          "promptTokens": 800,
+          "completionTokens": 41
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "google/gemini-2.5-flash-lite",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 1,
+      "caseIndex": 0,
+      "recordedAt": "2026-10-10T17:45:07.355583+00:00"
+    },
+    {
+      "id": "known-1-wave_height-line",
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "httpStatus": 200,
+      "wallMs": 779.836765024811,
+      "response": {
+        "plan": {
+          "metric": "wave_height",
+          "aggregate": "avg",
+          "bucketMinutes": 1,
+          "windowHours": 168,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "line"
+        },
+        "model": "google/gemini-3.5-flash-lite",
+        "tokens": 41,
+        "diagnostics": {
+          "queueMs": 0.0006,
+          "generationMs": 778.5067409999999,
+          "attempts": 1,
+          "firstTokenMs": 669.289213,
+          "promptTokens": 635,
+          "completionTokens": 41
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "google/gemini-3.5-flash-lite",
+        "reasoningEffort": "minimal",
+        "temperature": "provider",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 2,
+      "caseIndex": 0,
+      "recordedAt": "2026-10-10T17:45:08.137515+00:00"
+    },
+    {
+      "id": "known-1-wave_height-line",
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "httpStatus": 502,
+      "wallMs": 243.45189006999135,
+      "response": {
+        "message": "Inference provider returned HTTP 404.",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "diagnostics": {
+          "queueMs": 0.00052,
+          "generationMs": 242.352911,
+          "attempts": 1
+        }
+      },
+      "correct": false,
+      "classification": "inference_error",
+      "error": "Inference provider returned HTTP 404.",
+      "profile": {
+        "model": "qwen/qwen3.5-flash-02-23",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 3,
+      "caseIndex": 0,
+      "recordedAt": "2026-10-10T17:45:08.384405+00:00"
+    },
+    {
+      "id": "known-1-wave_height-line",
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "httpStatus": 200,
+      "wallMs": 869.4295533932745,
+      "response": {
+        "plan": {
+          "metric": "wave_height",
+          "aggregate": "avg",
+          "bucketMinutes": 1,
+          "windowHours": 168,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "line"
+        },
+        "model": "google/gemma-4-26b-a4b-it",
+        "tokens": 42,
+        "diagnostics": {
+          "queueMs": 0.00035999999999999997,
+          "generationMs": 868.324054,
+          "attempts": 1,
+          "firstTokenMs": 553.114764,
+          "promptTokens": 651,
+          "completionTokens": 42
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "google/gemma-4-26b-a4b-it",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 4,
+      "caseIndex": 0,
+      "recordedAt": "2026-10-10T17:45:09.256204+00:00"
+    },
+    {
+      "id": "known-1-wave_height-line",
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "httpStatus": 200,
+      "wallMs": 594.4648389704525,
+      "response": {
+        "plan": {
+          "metric": "wave_height",
+          "aggregate": "avg",
+          "bucketMinutes": 1,
+          "windowHours": 168,
+          "splitByVessel": true,
+          "vessel": 0,
+          "view": "line"
+        },
+        "model": "mistralai/ministral-3b-2512",
+        "tokens": 55,
+        "diagnostics": {
+          "queueMs": 0.00047999999999999996,
+          "generationMs": 593.455181,
+          "attempts": 1,
+          "firstTokenMs": 257.65817499999997,
+          "promptTokens": 643,
+          "completionTokens": 55
+        }
+      },
+      "correct": false,
+      "classification": "incorrect_plan",
+      "error": "Returned plan does not match the frozen expected meaning",
+      "profile": {
+        "model": "mistralai/ministral-3b-2512",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 5,
+      "caseIndex": 0,
+      "recordedAt": "2026-10-10T17:45:09.852713+00:00"
+    },
+    {
+      "id": "known-2-speed-line",
+      "question": "Compare vessel speeds by minute over the last 24 hours",
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "httpStatus": 200,
+      "wallMs": 693.3630690909922,
+      "response": {
+        "plan": {
+          "metric": "speed",
+          "aggregate": "avg",
+          "bucketMinutes": 1,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "line"
+        },
+        "model": "google/gemini-3.5-flash-lite",
+        "tokens": 38,
+        "diagnostics": {
+          "queueMs": 0.0006799999999999999,
+          "generationMs": 692.303131,
+          "attempts": 1,
+          "firstTokenMs": 592.77261,
+          "promptTokens": 635,
+          "completionTokens": 38
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "google/gemini-3.5-flash-lite",
+        "reasoningEffort": "minimal",
+        "temperature": "provider",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 6,
+      "caseIndex": 1,
+      "recordedAt": "2026-10-10T17:45:10.547990+00:00"
+    },
+    {
+      "id": "known-2-speed-line",
+      "question": "Compare vessel speeds by minute over the last 24 hours",
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "httpStatus": 502,
+      "wallMs": 902.7930502779782,
+      "response": {
+        "message": "Inference provider returned HTTP 404.",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "diagnostics": {
+          "queueMs": 0.00128,
+          "generationMs": 901.572109,
+          "attempts": 1
+        }
+      },
+      "correct": false,
+      "classification": "inference_error",
+      "error": "Inference provider returned HTTP 404.",
+      "profile": {
+        "model": "qwen/qwen3.5-flash-02-23",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 7,
+      "caseIndex": 1,
+      "recordedAt": "2026-10-10T17:45:11.452838+00:00"
+    },
+    {
+      "id": "known-2-speed-line",
+      "question": "Compare vessel speeds by minute over the last 24 hours",
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "httpStatus": 200,
+      "wallMs": 640.0463068857789,
+      "response": {
+        "plan": {
+          "metric": "speed",
+          "aggregate": "avg",
+          "bucketMinutes": 1,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "line"
+        },
+        "model": "google/gemma-4-26b-a4b-it",
+        "tokens": 39,
+        "diagnostics": {
+          "queueMs": 0.00084,
+          "generationMs": 638.6688029999999,
+          "attempts": 1,
+          "firstTokenMs": 339.434629,
+          "promptTokens": 651,
+          "completionTokens": 39
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "google/gemma-4-26b-a4b-it",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 8,
+      "caseIndex": 1,
+      "recordedAt": "2026-10-10T17:45:12.095937+00:00"
+    },
+    {
+      "id": "known-2-speed-line",
+      "question": "Compare vessel speeds by minute over the last 24 hours",
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "httpStatus": 200,
+      "wallMs": 593.9543498679996,
+      "response": {
+        "plan": {
+          "metric": "speed",
+          "aggregate": "avg",
+          "bucketMinutes": 1,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": 0,
+          "view": "line"
+        },
+        "model": "mistralai/ministral-3b-2512",
+        "tokens": 52,
+        "diagnostics": {
+          "queueMs": 0.00088,
+          "generationMs": 592.714489,
+          "attempts": 1,
+          "firstTokenMs": 234.23513000000003,
+          "promptTokens": 643,
+          "completionTokens": 52
+        }
+      },
+      "correct": false,
+      "classification": "incorrect_plan",
+      "error": "Returned plan does not match the frozen expected meaning",
+      "profile": {
+        "model": "mistralai/ministral-3b-2512",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 9,
+      "caseIndex": 1,
+      "recordedAt": "2026-10-10T17:45:12.691916+00:00"
+    },
+    {
+      "id": "known-2-speed-line",
+      "question": "Compare vessel speeds by minute over the last 24 hours",
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "httpStatus": 200,
+      "wallMs": 600.326859857887,
+      "response": {
+        "plan": {
+          "metric": "speed",
+          "aggregate": "avg",
+          "bucketMinutes": 1,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "line"
+        },
+        "model": "google/gemini-2.5-flash-lite",
+        "tokens": 38,
+        "diagnostics": {
+          "queueMs": 0.0007999999999999999,
+          "generationMs": 598.799073,
+          "attempts": 1,
+          "firstTokenMs": 435.645973,
+          "promptTokens": 800,
+          "completionTokens": 38
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "google/gemini-2.5-flash-lite",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 10,
+      "caseIndex": 1,
+      "recordedAt": "2026-10-10T17:45:13.294944+00:00"
+    },
+    {
+      "id": "known-3-wave_height-surface",
+      "question": "Compare vessel wave height by hour over the last 1days as a 3D surface",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "httpStatus": 502,
+      "wallMs": 62.10115412250161,
+      "response": {
+        "message": "Inference provider returned HTTP 404.",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "diagnostics": {
+          "queueMs": 0.00108,
+          "generationMs": 60.881932,
+          "attempts": 1
+        }
+      },
+      "correct": false,
+      "classification": "inference_error",
+      "error": "Inference provider returned HTTP 404.",
+      "profile": {
+        "model": "qwen/qwen3.5-flash-02-23",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 11,
+      "caseIndex": 2,
+      "recordedAt": "2026-10-10T17:45:13.359594+00:00"
+    },
+    {
+      "id": "known-3-wave_height-surface",
+      "question": "Compare vessel wave height by hour over the last 1days as a 3D surface",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "httpStatus": 422,
+      "wallMs": 1603.0571172013879,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemma-4-26b-a4b-it",
+        "diagnostics": {
+          "queueMs": 0.00044,
+          "generationMs": 1601.618972,
+          "attempts": 2,
+          "repairMs": 668.302995,
+          "firstTokenMs": 299.311175,
+          "promptTokens": 1384,
+          "completionTokens": 22
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": false,
+      "classification": "incorrect_refusal",
+      "error": "The model refused a supported question",
+      "profile": {
+        "model": "google/gemma-4-26b-a4b-it",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 12,
+      "caseIndex": 2,
+      "recordedAt": "2026-10-10T17:45:14.964852+00:00"
+    },
+    {
+      "id": "known-3-wave_height-surface",
+      "question": "Compare vessel wave height by hour over the last 1days as a 3D surface",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "httpStatus": 200,
+      "wallMs": 560.1340439170599,
+      "response": {
+        "plan": {
+          "metric": "wave_height",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "surface"
+        },
+        "model": "mistralai/ministral-3b-2512",
+        "tokens": 53,
+        "diagnostics": {
+          "queueMs": 0.0007199999999999999,
+          "generationMs": 559.009825,
+          "attempts": 1,
+          "firstTokenMs": 241.931063,
+          "promptTokens": 649,
+          "completionTokens": 53
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "mistralai/ministral-3b-2512",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 13,
+      "caseIndex": 2,
+      "recordedAt": "2026-10-10T17:45:15.529120+00:00"
+    },
+    {
+      "id": "known-3-wave_height-surface",
+      "question": "Compare vessel wave height by hour over the last 1days as a 3D surface",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "httpStatus": 200,
+      "wallMs": 568.7104328535497,
+      "response": {
+        "plan": {
+          "metric": "wave_height",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "surface"
+        },
+        "model": "google/gemini-2.5-flash-lite",
+        "tokens": 41,
+        "diagnostics": {
+          "queueMs": 0.00076,
+          "generationMs": 567.2912879999999,
+          "attempts": 1,
+          "firstTokenMs": 425.71892,
+          "promptTokens": 806,
+          "completionTokens": 41
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "google/gemini-2.5-flash-lite",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 14,
+      "caseIndex": 2,
+      "recordedAt": "2026-10-10T17:45:16.100853+00:00"
+    },
+    {
+      "id": "known-3-wave_height-surface",
+      "question": "Compare vessel wave height by hour over the last 1days as a 3D surface",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "httpStatus": 422,
+      "wallMs": 1108.0429572612047,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-3.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.00047999999999999996,
+          "generationMs": 1106.8087360000002,
+          "attempts": 2,
+          "repairMs": 583.320245,
+          "firstTokenMs": 514.883062,
+          "promptTokens": 1344,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": false,
+      "classification": "incorrect_refusal",
+      "error": "The model refused a supported question",
+      "profile": {
+        "model": "google/gemini-3.5-flash-lite",
+        "reasoningEffort": "minimal",
+        "temperature": "provider",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 15,
+      "caseIndex": 2,
+      "recordedAt": "2026-10-10T17:45:17.211406+00:00"
+    },
+    {
+      "id": "known-4-wind-heatmap",
+      "question": "Show a heatmap of vessel wind by hour over the last 7 days",
+      "expected": {
+        "metric": "wind",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "heatmap"
+      },
+      "httpStatus": 200,
+      "wallMs": 631.9903656840324,
+      "response": {
+        "plan": {
+          "metric": "wind",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 168,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "heatmap"
+        },
+        "model": "google/gemma-4-26b-a4b-it",
+        "tokens": 41,
+        "diagnostics": {
+          "queueMs": 0.00035999999999999997,
+          "generationMs": 630.7039840000001,
+          "attempts": 1,
+          "firstTokenMs": 344.37883400000004,
+          "promptTokens": 653,
+          "completionTokens": 41
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "google/gemma-4-26b-a4b-it",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 16,
+      "caseIndex": 3,
+      "recordedAt": "2026-10-10T17:45:17.847388+00:00"
+    },
+    {
+      "id": "known-4-wind-heatmap",
+      "question": "Show a heatmap of vessel wind by hour over the last 7 days",
+      "expected": {
+        "metric": "wind",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "heatmap"
+      },
+      "httpStatus": 200,
+      "wallMs": 659.3581200577319,
+      "response": {
+        "plan": {
+          "metric": "wind",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 168,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "heatmap"
+        },
+        "model": "mistralai/ministral-3b-2512",
+        "tokens": 54,
+        "diagnostics": {
+          "queueMs": 0.0006,
+          "generationMs": 658.1621789999999,
+          "attempts": 1,
+          "firstTokenMs": 245.337722,
+          "promptTokens": 646,
+          "completionTokens": 54
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "mistralai/ministral-3b-2512",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 17,
+      "caseIndex": 3,
+      "recordedAt": "2026-10-10T17:45:18.510306+00:00"
+    },
+    {
+      "id": "known-4-wind-heatmap",
+      "question": "Show a heatmap of vessel wind by hour over the last 7 days",
+      "expected": {
+        "metric": "wind",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "heatmap"
+      },
+      "httpStatus": 200,
+      "wallMs": 1158.200384117663,
+      "response": {
+        "plan": {
+          "metric": "wind",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 168,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "heatmap"
+        },
+        "model": "google/gemini-2.5-flash-lite",
+        "tokens": 40,
+        "diagnostics": {
+          "queueMs": 0.00076,
+          "generationMs": 1156.484794,
+          "attempts": 1,
+          "firstTokenMs": 981.828134,
+          "promptTokens": 802,
+          "completionTokens": 40
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "google/gemini-2.5-flash-lite",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 18,
+      "caseIndex": 3,
+      "recordedAt": "2026-10-10T17:45:19.671584+00:00"
+    },
+    {
+      "id": "known-4-wind-heatmap",
+      "question": "Show a heatmap of vessel wind by hour over the last 7 days",
+      "expected": {
+        "metric": "wind",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "heatmap"
+      },
+      "httpStatus": 200,
+      "wallMs": 771.0643699392676,
+      "response": {
+        "plan": {
+          "metric": "wind",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 168,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "heatmap"
+        },
+        "model": "google/gemini-3.5-flash-lite",
+        "tokens": 40,
+        "diagnostics": {
+          "queueMs": 0.0006799999999999999,
+          "generationMs": 769.4513029999999,
+          "attempts": 1,
+          "firstTokenMs": 671.56845,
+          "promptTokens": 637,
+          "completionTokens": 40
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "google/gemini-3.5-flash-lite",
+        "reasoningEffort": "minimal",
+        "temperature": "provider",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 19,
+      "caseIndex": 3,
+      "recordedAt": "2026-10-10T17:45:20.447227+00:00"
+    },
+    {
+      "id": "known-4-wind-heatmap",
+      "question": "Show a heatmap of vessel wind by hour over the last 7 days",
+      "expected": {
+        "metric": "wind",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "heatmap"
+      },
+      "httpStatus": 502,
+      "wallMs": 67.21724197268486,
+      "response": {
+        "message": "Inference provider returned HTTP 404.",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "diagnostics": {
+          "queueMs": 0.0006,
+          "generationMs": 65.612015,
+          "attempts": 1
+        }
+      },
+      "correct": false,
+      "classification": "inference_error",
+      "error": "Inference provider returned HTTP 404.",
+      "profile": {
+        "model": "qwen/qwen3.5-flash-02-23",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 20,
+      "caseIndex": 3,
+      "recordedAt": "2026-10-10T17:45:20.517271+00:00"
+    },
+    {
+      "id": "named-vessel-max-wind-five-minutes",
+      "question": "Show Meridian's maximum wind speed in 5-minute buckets over the last 48 hours.",
+      "expected": {
+        "metric": "wind",
+        "aggregate": "max",
+        "bucketMinutes": 5,
+        "windowHours": 48,
+        "splitByVessel": false,
+        "vessel": 1,
+        "view": "line"
+      },
+      "httpStatus": 200,
+      "wallMs": 627.2961250506341,
+      "response": {
+        "plan": {
+          "metric": "wind",
+          "aggregate": "max",
+          "bucketMinutes": 5,
+          "windowHours": 48,
+          "splitByVessel": true,
+          "vessel": 1,
+          "view": "line"
+        },
+        "model": "mistralai/ministral-3b-2512",
+        "tokens": 52,
+        "diagnostics": {
+          "queueMs": 0.0006799999999999999,
+          "generationMs": 626.103984,
+          "attempts": 1,
+          "firstTokenMs": 285.213771,
+          "promptTokens": 651,
+          "completionTokens": 52
+        }
+      },
+      "correct": false,
+      "classification": "incorrect_plan",
+      "error": "Returned plan does not match the frozen expected meaning",
+      "profile": {
+        "model": "mistralai/ministral-3b-2512",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 21,
+      "caseIndex": 4,
+      "recordedAt": "2026-10-10T17:45:21.148817+00:00"
+    },
+    {
+      "id": "named-vessel-max-wind-five-minutes",
+      "question": "Show Meridian's maximum wind speed in 5-minute buckets over the last 48 hours.",
+      "expected": {
+        "metric": "wind",
+        "aggregate": "max",
+        "bucketMinutes": 5,
+        "windowHours": 48,
+        "splitByVessel": false,
+        "vessel": 1,
+        "view": "line"
+      },
+      "httpStatus": 200,
+      "wallMs": 488.0403568968177,
+      "response": {
+        "plan": {
+          "metric": "wind",
+          "aggregate": "max",
+          "bucketMinutes": 5,
+          "windowHours": 48,
+          "splitByVessel": false,
+          "vessel": 1,
+          "view": "line"
+        },
+        "model": "google/gemini-2.5-flash-lite",
+        "tokens": 38,
+        "diagnostics": {
+          "queueMs": 0.0007199999999999999,
+          "generationMs": 487.072101,
+          "attempts": 1,
+          "firstTokenMs": 371.021294,
+          "promptTokens": 809,
+          "completionTokens": 38
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "google/gemini-2.5-flash-lite",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 22,
+      "caseIndex": 4,
+      "recordedAt": "2026-10-10T17:45:21.639634+00:00"
+    },
+    {
+      "id": "named-vessel-max-wind-five-minutes",
+      "question": "Show Meridian's maximum wind speed in 5-minute buckets over the last 48 hours.",
+      "expected": {
+        "metric": "wind",
+        "aggregate": "max",
+        "bucketMinutes": 5,
+        "windowHours": 48,
+        "splitByVessel": false,
+        "vessel": 1,
+        "view": "line"
+      },
+      "httpStatus": 422,
+      "wallMs": 1136.8991350755095,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-3.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.0006,
+          "generationMs": 1135.604032,
+          "attempts": 2,
+          "repairMs": 536.161789,
+          "firstTokenMs": 557.3809560000001,
+          "promptTokens": 1350,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": false,
+      "classification": "incorrect_refusal",
+      "error": "The model refused a supported question",
+      "profile": {
+        "model": "google/gemini-3.5-flash-lite",
+        "reasoningEffort": "minimal",
+        "temperature": "provider",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 23,
+      "caseIndex": 4,
+      "recordedAt": "2026-10-10T17:45:22.781954+00:00"
+    },
+    {
+      "id": "named-vessel-max-wind-five-minutes",
+      "question": "Show Meridian's maximum wind speed in 5-minute buckets over the last 48 hours.",
+      "expected": {
+        "metric": "wind",
+        "aggregate": "max",
+        "bucketMinutes": 5,
+        "windowHours": 48,
+        "splitByVessel": false,
+        "vessel": 1,
+        "view": "line"
+      },
+      "httpStatus": 502,
+      "wallMs": 93.13489031046629,
+      "response": {
+        "message": "Inference provider returned HTTP 404.",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "diagnostics": {
+          "queueMs": 0.00088,
+          "generationMs": 91.83606800000001,
+          "attempts": 1
+        }
+      },
+      "correct": false,
+      "classification": "inference_error",
+      "error": "Inference provider returned HTTP 404.",
+      "profile": {
+        "model": "qwen/qwen3.5-flash-02-23",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 24,
+      "caseIndex": 4,
+      "recordedAt": "2026-10-10T17:45:22.879575+00:00"
+    },
+    {
+      "id": "named-vessel-max-wind-five-minutes",
+      "question": "Show Meridian's maximum wind speed in 5-minute buckets over the last 48 hours.",
+      "expected": {
+        "metric": "wind",
+        "aggregate": "max",
+        "bucketMinutes": 5,
+        "windowHours": 48,
+        "splitByVessel": false,
+        "vessel": 1,
+        "view": "line"
+      },
+      "httpStatus": 200,
+      "wallMs": 666.3045189343393,
+      "response": {
+        "plan": {
+          "metric": "wind",
+          "aggregate": "max",
+          "bucketMinutes": 5,
+          "windowHours": 48,
+          "splitByVessel": false,
+          "vessel": 1,
+          "view": "line"
+        },
+        "model": "google/gemma-4-26b-a4b-it",
+        "tokens": 39,
+        "diagnostics": {
+          "queueMs": 0.001,
+          "generationMs": 663.720554,
+          "attempts": 1,
+          "firstTokenMs": 311.070737,
+          "promptTokens": 660,
+          "completionTokens": 39
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "google/gemma-4-26b-a4b-it",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 25,
+      "caseIndex": 4,
+      "recordedAt": "2026-10-10T17:45:23.548926+00:00"
+    },
+    {
+      "id": "pooled-water-temperature-six-hours",
+      "question": "Show average water temperature across all vessels together in 6-hour buckets over the last 7 days.",
+      "expected": {
+        "metric": "water_temp",
+        "aggregate": "avg",
+        "bucketMinutes": 360,
+        "windowHours": 168,
+        "splitByVessel": false,
+        "vessel": null,
+        "view": "line"
+      },
+      "httpStatus": 200,
+      "wallMs": 483.35363576188684,
+      "response": {
+        "plan": {
+          "metric": "water_temp",
+          "aggregate": "avg",
+          "bucketMinutes": 360,
+          "windowHours": 168,
+          "splitByVessel": false,
+          "vessel": null,
+          "view": "line"
+        },
+        "model": "google/gemini-2.5-flash-lite",
+        "tokens": 43,
+        "diagnostics": {
+          "queueMs": 0.0007999999999999999,
+          "generationMs": 481.68604799999997,
+          "attempts": 1,
+          "firstTokenMs": 317.277485,
+          "promptTokens": 809,
+          "completionTokens": 43
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "google/gemini-2.5-flash-lite",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 26,
+      "caseIndex": 5,
+      "recordedAt": "2026-10-10T17:45:24.043963+00:00"
+    },
+    {
+      "id": "pooled-water-temperature-six-hours",
+      "question": "Show average water temperature across all vessels together in 6-hour buckets over the last 7 days.",
+      "expected": {
+        "metric": "water_temp",
+        "aggregate": "avg",
+        "bucketMinutes": 360,
+        "windowHours": 168,
+        "splitByVessel": false,
+        "vessel": null,
+        "view": "line"
+      },
+      "httpStatus": 200,
+      "wallMs": 689.8388052359223,
+      "response": {
+        "plan": {
+          "metric": "water_temp",
+          "aggregate": "avg",
+          "bucketMinutes": 360,
+          "windowHours": 168,
+          "splitByVessel": false,
+          "vessel": null,
+          "view": "line"
+        },
+        "model": "google/gemini-3.5-flash-lite",
+        "tokens": 77,
+        "diagnostics": {
+          "queueMs": 0.0005600000000000001,
+          "generationMs": 688.1303359999999,
+          "attempts": 1,
+          "firstTokenMs": 551.744338,
+          "promptTokens": 644,
+          "completionTokens": 77
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "google/gemini-3.5-flash-lite",
+        "reasoningEffort": "minimal",
+        "temperature": "provider",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 27,
+      "caseIndex": 5,
+      "recordedAt": "2026-10-10T17:45:24.738786+00:00"
+    },
+    {
+      "id": "pooled-water-temperature-six-hours",
+      "question": "Show average water temperature across all vessels together in 6-hour buckets over the last 7 days.",
+      "expected": {
+        "metric": "water_temp",
+        "aggregate": "avg",
+        "bucketMinutes": 360,
+        "windowHours": 168,
+        "splitByVessel": false,
+        "vessel": null,
+        "view": "line"
+      },
+      "httpStatus": 502,
+      "wallMs": 69.52008185908198,
+      "response": {
+        "message": "Inference provider returned HTTP 404.",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "diagnostics": {
+          "queueMs": 0.001,
+          "generationMs": 68.291221,
+          "attempts": 1
+        }
+      },
+      "correct": false,
+      "classification": "inference_error",
+      "error": "Inference provider returned HTTP 404.",
+      "profile": {
+        "model": "qwen/qwen3.5-flash-02-23",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 28,
+      "caseIndex": 5,
+      "recordedAt": "2026-10-10T17:45:24.812986+00:00"
+    },
+    {
+      "id": "pooled-water-temperature-six-hours",
+      "question": "Show average water temperature across all vessels together in 6-hour buckets over the last 7 days.",
+      "expected": {
+        "metric": "water_temp",
+        "aggregate": "avg",
+        "bucketMinutes": 360,
+        "windowHours": 168,
+        "splitByVessel": false,
+        "vessel": null,
+        "view": "line"
+      },
+      "httpStatus": 422,
+      "wallMs": 1206.7223810590804,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemma-4-26b-a4b-it",
+        "diagnostics": {
+          "queueMs": 0.0011200000000000001,
+          "generationMs": 1205.339197,
+          "attempts": 2,
+          "repairMs": 537.806337,
+          "firstTokenMs": 301.625294,
+          "promptTokens": 1390,
+          "completionTokens": 22
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": false,
+      "classification": "incorrect_refusal",
+      "error": "The model refused a supported question",
+      "profile": {
+        "model": "google/gemma-4-26b-a4b-it",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 29,
+      "caseIndex": 5,
+      "recordedAt": "2026-10-10T17:45:26.024563+00:00"
+    },
+    {
+      "id": "pooled-water-temperature-six-hours",
+      "question": "Show average water temperature across all vessels together in 6-hour buckets over the last 7 days.",
+      "expected": {
+        "metric": "water_temp",
+        "aggregate": "avg",
+        "bucketMinutes": 360,
+        "windowHours": 168,
+        "splitByVessel": false,
+        "vessel": null,
+        "view": "line"
+      },
+      "httpStatus": 200,
+      "wallMs": 713.3662919513881,
+      "response": {
+        "plan": {
+          "metric": "water_temp",
+          "aggregate": "avg",
+          "bucketMinutes": 360,
+          "windowHours": 168,
+          "splitByVessel": false,
+          "vessel": null,
+          "view": "line"
+        },
+        "model": "mistralai/ministral-3b-2512",
+        "tokens": 55,
+        "diagnostics": {
+          "queueMs": 0.0014399999999999999,
+          "generationMs": 712.1205900000001,
+          "attempts": 1,
+          "firstTokenMs": 282.242799,
+          "promptTokens": 651,
+          "completionTokens": 55
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "mistralai/ministral-3b-2512",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 30,
+      "caseIndex": 5,
+      "recordedAt": "2026-10-10T17:45:26.743478+00:00"
+    },
+    {
+      "id": "vessel-density-hourly-day",
+      "question": "Show a density map of vessel speeds in hourly buckets over the last 24 hours.",
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "density"
+      },
+      "httpStatus": 200,
+      "wallMs": 686.8121530860662,
+      "response": {
+        "plan": {
+          "metric": "speed",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "density"
+        },
+        "model": "google/gemini-3.5-flash-lite",
+        "tokens": 73,
+        "diagnostics": {
+          "queueMs": 0.0011200000000000001,
+          "generationMs": 684.8521589999999,
+          "attempts": 1,
+          "firstTokenMs": 552.273347,
+          "promptTokens": 641,
+          "completionTokens": 73
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "google/gemini-3.5-flash-lite",
+        "reasoningEffort": "minimal",
+        "temperature": "provider",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 31,
+      "caseIndex": 6,
+      "recordedAt": "2026-10-10T17:45:27.436303+00:00"
+    },
+    {
+      "id": "vessel-density-hourly-day",
+      "question": "Show a density map of vessel speeds in hourly buckets over the last 24 hours.",
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "density"
+      },
+      "httpStatus": 502,
+      "wallMs": 68.56186501681805,
+      "response": {
+        "message": "Inference provider returned HTTP 404.",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "diagnostics": {
+          "queueMs": 0.00076,
+          "generationMs": 66.87435599999999,
+          "attempts": 1
+        }
+      },
+      "correct": false,
+      "classification": "inference_error",
+      "error": "Inference provider returned HTTP 404.",
+      "profile": {
+        "model": "qwen/qwen3.5-flash-02-23",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 32,
+      "caseIndex": 6,
+      "recordedAt": "2026-10-10T17:45:27.510267+00:00"
+    },
+    {
+      "id": "vessel-density-hourly-day",
+      "question": "Show a density map of vessel speeds in hourly buckets over the last 24 hours.",
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "density"
+      },
+      "httpStatus": 422,
+      "wallMs": 1081.2808121554554,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemma-4-26b-a4b-it",
+        "diagnostics": {
+          "queueMs": 0.00047999999999999996,
+          "generationMs": 1079.9166280000002,
+          "attempts": 2,
+          "repairMs": 724.686887,
+          "firstTokenMs": 285.624617,
+          "promptTokens": 1384,
+          "completionTokens": 22
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": false,
+      "classification": "incorrect_refusal",
+      "error": "The model refused a supported question",
+      "profile": {
+        "model": "google/gemma-4-26b-a4b-it",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 33,
+      "caseIndex": 6,
+      "recordedAt": "2026-10-10T17:45:28.596954+00:00"
+    },
+    {
+      "id": "vessel-density-hourly-day",
+      "question": "Show a density map of vessel speeds in hourly buckets over the last 24 hours.",
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "density"
+      },
+      "httpStatus": 200,
+      "wallMs": 491.7148598469794,
+      "response": {
+        "plan": {
+          "metric": "speed",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "density"
+        },
+        "model": "mistralai/ministral-3b-2512",
+        "tokens": 53,
+        "diagnostics": {
+          "queueMs": 0.0006799999999999999,
+          "generationMs": 490.343196,
+          "attempts": 1,
+          "firstTokenMs": 239.457579,
+          "promptTokens": 649,
+          "completionTokens": 53
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "mistralai/ministral-3b-2512",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 34,
+      "caseIndex": 6,
+      "recordedAt": "2026-10-10T17:45:29.094463+00:00"
+    },
+    {
+      "id": "vessel-density-hourly-day",
+      "question": "Show a density map of vessel speeds in hourly buckets over the last 24 hours.",
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "density"
+      },
+      "httpStatus": 200,
+      "wallMs": 479.16980320587754,
+      "response": {
+        "plan": {
+          "metric": "speed",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "density"
+        },
+        "model": "google/gemini-2.5-flash-lite",
+        "tokens": 39,
+        "diagnostics": {
+          "queueMs": 0.00084,
+          "generationMs": 477.696057,
+          "attempts": 1,
+          "firstTokenMs": 321.219512,
+          "promptTokens": 806,
+          "completionTokens": 39
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "google/gemini-2.5-flash-lite",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 35,
+      "caseIndex": 6,
+      "recordedAt": "2026-10-10T17:45:29.577495+00:00"
+    },
+    {
+      "id": "wide-wave-surface-710-days",
+      "question": "Compare vessel wave heights by hour over the last 710 days as a 3D surface.",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 17040,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "httpStatus": 502,
+      "wallMs": 85.43595671653748,
+      "response": {
+        "message": "Inference provider returned HTTP 404.",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "diagnostics": {
+          "queueMs": 0.00132,
+          "generationMs": 84.13097499999999,
+          "attempts": 1
+        }
+      },
+      "correct": false,
+      "classification": "inference_error",
+      "error": "Inference provider returned HTTP 404.",
+      "profile": {
+        "model": "qwen/qwen3.5-flash-02-23",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 36,
+      "caseIndex": 7,
+      "recordedAt": "2026-10-10T17:45:29.668828+00:00"
+    },
+    {
+      "id": "wide-wave-surface-710-days",
+      "question": "Compare vessel wave heights by hour over the last 710 days as a 3D surface.",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 17040,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "httpStatus": 422,
+      "wallMs": 782.7569311484694,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemma-4-26b-a4b-it",
+        "diagnostics": {
+          "queueMs": 0.00044,
+          "generationMs": 781.021661,
+          "attempts": 2,
+          "repairMs": 413.512348,
+          "firstTokenMs": 298.802085,
+          "promptTokens": 1390,
+          "completionTokens": 22
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": false,
+      "classification": "incorrect_refusal",
+      "error": "The model refused a supported question",
+      "profile": {
+        "model": "google/gemma-4-26b-a4b-it",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 37,
+      "caseIndex": 7,
+      "recordedAt": "2026-10-10T17:45:30.456508+00:00"
+    },
+    {
+      "id": "wide-wave-surface-710-days",
+      "question": "Compare vessel wave heights by hour over the last 710 days as a 3D surface.",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 17040,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "httpStatus": 200,
+      "wallMs": 1044.3008919246495,
+      "response": {
+        "plan": {
+          "metric": "wave_height",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 17040,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "surface"
+        },
+        "model": "mistralai/ministral-3b-2512",
+        "tokens": 56,
+        "diagnostics": {
+          "queueMs": 0.00039999999999999996,
+          "generationMs": 1043.0723500000001,
+          "attempts": 1,
+          "firstTokenMs": 753.2481399999999,
+          "promptTokens": 652,
+          "completionTokens": 56
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "mistralai/ministral-3b-2512",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 38,
+      "caseIndex": 7,
+      "recordedAt": "2026-10-10T17:45:31.504434+00:00"
+    },
+    {
+      "id": "wide-wave-surface-710-days",
+      "question": "Compare vessel wave heights by hour over the last 710 days as a 3D surface.",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 17040,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "httpStatus": 200,
+      "wallMs": 533.9608290232718,
+      "response": {
+        "plan": {
+          "metric": "wave_height",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 17040,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "surface"
+        },
+        "model": "google/gemini-2.5-flash-lite",
+        "tokens": 44,
+        "diagnostics": {
+          "queueMs": 0.0009599999999999999,
+          "generationMs": 532.8289699999999,
+          "attempts": 1,
+          "firstTokenMs": 382.681975,
+          "promptTokens": 809,
+          "completionTokens": 44
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "google/gemini-2.5-flash-lite",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 39,
+      "caseIndex": 7,
+      "recordedAt": "2026-10-10T17:45:32.044696+00:00"
+    },
+    {
+      "id": "wide-wave-surface-710-days",
+      "question": "Compare vessel wave heights by hour over the last 710 days as a 3D surface.",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 17040,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "httpStatus": 200,
+      "wallMs": 732.4647409841418,
+      "response": {
+        "plan": {
+          "metric": "wave_height",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 17040,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "surface"
+        },
+        "model": "google/gemini-3.5-flash-lite",
+        "tokens": 78,
+        "diagnostics": {
+          "queueMs": 0.0006,
+          "generationMs": 730.636549,
+          "attempts": 1,
+          "firstTokenMs": 581.113324,
+          "promptTokens": 644,
+          "completionTokens": 78
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan",
+      "profile": {
+        "model": "google/gemini-3.5-flash-lite",
+        "reasoningEffort": "minimal",
+        "temperature": "provider",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 40,
+      "caseIndex": 7,
+      "recordedAt": "2026-10-10T17:45:32.781315+00:00"
+    },
+    {
+      "id": "unsupported-value-filter",
+      "question": "Show hourly average vessel speed over the last 24 hours, but only include readings where wind is above 20 knots.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 422,
+      "wallMs": 1141.2778468802571,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemma-4-26b-a4b-it",
+        "diagnostics": {
+          "queueMs": 0.00076,
+          "generationMs": 1140.2419100000002,
+          "attempts": 2,
+          "repairMs": 494.595149,
+          "firstTokenMs": 296.962534,
+          "promptTokens": 1400,
+          "completionTokens": 22
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": true,
+      "classification": "correct_refusal",
+      "profile": {
+        "model": "google/gemma-4-26b-a4b-it",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 41,
+      "caseIndex": 8,
+      "recordedAt": "2026-10-10T17:45:33.928627+00:00"
+    },
+    {
+      "id": "unsupported-value-filter",
+      "question": "Show hourly average vessel speed over the last 24 hours, but only include readings where wind is above 20 knots.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 200,
+      "wallMs": 555.1903168670833,
+      "response": {
+        "plan": {
+          "metric": "speed",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "line"
+        },
+        "model": "mistralai/ministral-3b-2512",
+        "tokens": 52,
+        "diagnostics": {
+          "queueMs": 0.0007999999999999999,
+          "generationMs": 553.880374,
+          "attempts": 1,
+          "firstTokenMs": 273.392766,
+          "promptTokens": 657,
+          "completionTokens": 52
+        }
+      },
+      "correct": false,
+      "classification": "incorrect_plan",
+      "error": "Returned plan does not match the frozen expected meaning",
+      "profile": {
+        "model": "mistralai/ministral-3b-2512",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 42,
+      "caseIndex": 8,
+      "recordedAt": "2026-10-10T17:45:34.488128+00:00"
+    },
+    {
+      "id": "unsupported-value-filter",
+      "question": "Show hourly average vessel speed over the last 24 hours, but only include readings where wind is above 20 knots.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 422,
+      "wallMs": 994.0219824202359,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-2.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.0014399999999999999,
+          "generationMs": 992.7916,
+          "attempts": 2,
+          "repairMs": 508.89331599999997,
+          "firstTokenMs": 396.119567,
+          "promptTokens": 1688,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": true,
+      "classification": "correct_refusal",
+      "profile": {
+        "model": "google/gemini-2.5-flash-lite",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 43,
+      "caseIndex": 8,
+      "recordedAt": "2026-10-10T17:45:35.487435+00:00"
+    },
+    {
+      "id": "unsupported-value-filter",
+      "question": "Show hourly average vessel speed over the last 24 hours, but only include readings where wind is above 20 knots.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 422,
+      "wallMs": 1207.7477150596678,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-3.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.00044,
+          "generationMs": 1206.593256,
+          "attempts": 2,
+          "repairMs": 553.3494049999999,
+          "firstTokenMs": 616.9353440000001,
+          "promptTokens": 1360,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": true,
+      "classification": "correct_refusal",
+      "profile": {
+        "model": "google/gemini-3.5-flash-lite",
+        "reasoningEffort": "minimal",
+        "temperature": "provider",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 44,
+      "caseIndex": 8,
+      "recordedAt": "2026-10-10T17:45:36.702332+00:00"
+    },
+    {
+      "id": "unsupported-value-filter",
+      "question": "Show hourly average vessel speed over the last 24 hours, but only include readings where wind is above 20 knots.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 502,
+      "wallMs": 82.40650501102209,
+      "response": {
+        "message": "Inference provider returned HTTP 404.",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "diagnostics": {
+          "queueMs": 0.00124,
+          "generationMs": 80.545872,
+          "attempts": 1
+        }
+      },
+      "correct": false,
+      "classification": "inference_error",
+      "error": "Inference provider returned HTTP 404.",
+      "profile": {
+        "model": "qwen/qwen3.5-flash-02-23",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 45,
+      "caseIndex": 8,
+      "recordedAt": "2026-10-10T17:45:36.791371+00:00"
+    },
+    {
+      "id": "unsupported-correlation",
+      "question": "Plot correlation between vessel speed and wave height over the last 7 days.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 200,
+      "wallMs": 568.435185123235,
+      "response": {
+        "plan": {
+          "metric": "speed",
+          "aggregate": "avg",
+          "bucketMinutes": 15,
+          "windowHours": 168,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "scatter"
+        },
+        "model": "mistralai/ministral-3b-2512",
+        "tokens": 54,
+        "diagnostics": {
+          "queueMs": 0.0005600000000000001,
+          "generationMs": 565.8374210000001,
+          "attempts": 1,
+          "firstTokenMs": 252.74052899999998,
+          "promptTokens": 646,
+          "completionTokens": 54
+        }
+      },
+      "correct": false,
+      "classification": "incorrect_plan",
+      "error": "Returned plan does not match the frozen expected meaning",
+      "profile": {
+        "model": "mistralai/ministral-3b-2512",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 46,
+      "caseIndex": 9,
+      "recordedAt": "2026-10-10T17:45:37.364329+00:00"
+    },
+    {
+      "id": "unsupported-correlation",
+      "question": "Plot correlation between vessel speed and wave height over the last 7 days.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 422,
+      "wallMs": 867.4472728744149,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-2.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.00104,
+          "generationMs": 865.771764,
+          "attempts": 2,
+          "repairMs": 451.90313100000003,
+          "firstTokenMs": 316.850476,
+          "promptTokens": 1666,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": true,
+      "classification": "correct_refusal",
+      "profile": {
+        "model": "google/gemini-2.5-flash-lite",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 47,
+      "caseIndex": 9,
+      "recordedAt": "2026-10-10T17:45:38.237476+00:00"
+    },
+    {
+      "id": "unsupported-correlation",
+      "question": "Plot correlation between vessel speed and wave height over the last 7 days.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 422,
+      "wallMs": 1264.2776919528842,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-3.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.0005600000000000001,
+          "generationMs": 1263.133112,
+          "attempts": 2,
+          "repairMs": 611.6018909999999,
+          "firstTokenMs": 613.9282910000001,
+          "promptTokens": 1338,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": true,
+      "classification": "correct_refusal",
+      "profile": {
+        "model": "google/gemini-3.5-flash-lite",
+        "reasoningEffort": "minimal",
+        "temperature": "provider",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 48,
+      "caseIndex": 9,
+      "recordedAt": "2026-10-10T17:45:39.506675+00:00"
+    },
+    {
+      "id": "unsupported-correlation",
+      "question": "Plot correlation between vessel speed and wave height over the last 7 days.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 502,
+      "wallMs": 104.13896013051271,
+      "response": {
+        "message": "Inference provider returned HTTP 404.",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "diagnostics": {
+          "queueMs": 0.0007199999999999999,
+          "generationMs": 102.600773,
+          "attempts": 1
+        }
+      },
+      "correct": false,
+      "classification": "inference_error",
+      "error": "Inference provider returned HTTP 404.",
+      "profile": {
+        "model": "qwen/qwen3.5-flash-02-23",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 49,
+      "caseIndex": 9,
+      "recordedAt": "2026-10-10T17:45:39.616852+00:00"
+    },
+    {
+      "id": "unsupported-correlation",
+      "question": "Plot correlation between vessel speed and wave height over the last 7 days.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 422,
+      "wallMs": 1542.2091749496758,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemma-4-26b-a4b-it",
+        "diagnostics": {
+          "queueMs": 0.00104,
+          "generationMs": 1541.079635,
+          "attempts": 2,
+          "repairMs": 738.784969,
+          "firstTokenMs": 298.778964,
+          "promptTokens": 1378,
+          "completionTokens": 22
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": true,
+      "classification": "correct_refusal",
+      "profile": {
+        "model": "google/gemma-4-26b-a4b-it",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 50,
+      "caseIndex": 9,
+      "recordedAt": "2026-10-10T17:45:41.165102+00:00"
+    },
+    {
+      "id": "unsupported-forecast",
+      "question": "Forecast vessel wave height for the next 24 hours.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 422,
+      "wallMs": 744.6703100576997,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-2.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.00052,
+          "generationMs": 743.033642,
+          "attempts": 2,
+          "repairMs": 365.33995400000003,
+          "firstTokenMs": 309.71491299999997,
+          "promptTokens": 1660,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": true,
+      "classification": "correct_refusal",
+      "profile": {
+        "model": "google/gemini-2.5-flash-lite",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 51,
+      "caseIndex": 10,
+      "recordedAt": "2026-10-10T17:45:41.914128+00:00"
+    },
+    {
+      "id": "unsupported-forecast",
+      "question": "Forecast vessel wave height for the next 24 hours.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 422,
+      "wallMs": 1247.1761950291693,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-3.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.0009599999999999999,
+          "generationMs": 1245.132759,
+          "attempts": 2,
+          "repairMs": 568.672148,
+          "firstTokenMs": 636.2121960000001,
+          "promptTokens": 1332,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": true,
+      "classification": "correct_refusal",
+      "profile": {
+        "model": "google/gemini-3.5-flash-lite",
+        "reasoningEffort": "minimal",
+        "temperature": "provider",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 52,
+      "caseIndex": 10,
+      "recordedAt": "2026-10-10T17:45:43.166834+00:00"
+    },
+    {
+      "id": "unsupported-forecast",
+      "question": "Forecast vessel wave height for the next 24 hours.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 502,
+      "wallMs": 49.875061959028244,
+      "response": {
+        "message": "Inference provider returned HTTP 404.",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "diagnostics": {
+          "queueMs": 0.0009599999999999999,
+          "generationMs": 47.208214999999996,
+          "attempts": 1
+        }
+      },
+      "correct": false,
+      "classification": "inference_error",
+      "error": "Inference provider returned HTTP 404.",
+      "profile": {
+        "model": "qwen/qwen3.5-flash-02-23",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 53,
+      "caseIndex": 10,
+      "recordedAt": "2026-10-10T17:45:43.223219+00:00"
+    },
+    {
+      "id": "unsupported-forecast",
+      "question": "Forecast vessel wave height for the next 24 hours.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 422,
+      "wallMs": 1477.4430142715573,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemma-4-26b-a4b-it",
+        "diagnostics": {
+          "queueMs": 0.00047999999999999996,
+          "generationMs": 1475.779906,
+          "attempts": 2,
+          "repairMs": 667.809622,
+          "firstTokenMs": 425.346391,
+          "promptTokens": 1372,
+          "completionTokens": 22
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": true,
+      "classification": "correct_refusal",
+      "profile": {
+        "model": "google/gemma-4-26b-a4b-it",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 54,
+      "caseIndex": 10,
+      "recordedAt": "2026-10-10T17:45:44.706371+00:00"
+    },
+    {
+      "id": "unsupported-forecast",
+      "question": "Forecast vessel wave height for the next 24 hours.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 200,
+      "wallMs": 2216.5871867910028,
+      "response": {
+        "plan": {
+          "metric": "wave_height",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "line"
+        },
+        "model": "mistralai/ministral-3b-2512",
+        "tokens": 76,
+        "diagnostics": {
+          "queueMs": 0.0005600000000000001,
+          "generationMs": 2215.201283,
+          "attempts": 2,
+          "repairMs": 1879.99381,
+          "firstTokenMs": 264.283687,
+          "promptTokens": 1355,
+          "completionTokens": 76
+        }
+      },
+      "correct": false,
+      "classification": "incorrect_plan",
+      "error": "Returned plan does not match the frozen expected meaning",
+      "profile": {
+        "model": "mistralai/ministral-3b-2512",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 55,
+      "caseIndex": 10,
+      "recordedAt": "2026-10-10T17:45:46.930872+00:00"
+    },
+    {
+      "id": "unsupported-photo-and-speed",
+      "question": "Show photos of Aurora alongside her average speed over the last 24 hours.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 422,
+      "wallMs": 1191.9676386751235,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-3.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.0005600000000000001,
+          "generationMs": 1190.642577,
+          "attempts": 2,
+          "repairMs": 551.748455,
+          "firstTokenMs": 595.342569,
+          "promptTokens": 1340,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": true,
+      "classification": "correct_refusal",
+      "profile": {
+        "model": "google/gemini-3.5-flash-lite",
+        "reasoningEffort": "minimal",
+        "temperature": "provider",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 56,
+      "caseIndex": 11,
+      "recordedAt": "2026-10-10T17:45:48.127250+00:00"
+    },
+    {
+      "id": "unsupported-photo-and-speed",
+      "question": "Show photos of Aurora alongside her average speed over the last 24 hours.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 502,
+      "wallMs": 137.97298399731517,
+      "response": {
+        "message": "Inference provider returned HTTP 404.",
+        "model": "qwen/qwen3.5-flash-02-23",
+        "diagnostics": {
+          "queueMs": 0.00124,
+          "generationMs": 136.110152,
+          "attempts": 1
+        }
+      },
+      "correct": false,
+      "classification": "inference_error",
+      "error": "Inference provider returned HTTP 404.",
+      "profile": {
+        "model": "qwen/qwen3.5-flash-02-23",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 57,
+      "caseIndex": 11,
+      "recordedAt": "2026-10-10T17:45:48.272540+00:00"
+    },
+    {
+      "id": "unsupported-photo-and-speed",
+      "question": "Show photos of Aurora alongside her average speed over the last 24 hours.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 422,
+      "wallMs": 880.7060997933149,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemma-4-26b-a4b-it",
+        "diagnostics": {
+          "queueMs": 0.00039999999999999996,
+          "generationMs": 879.390837,
+          "attempts": 2,
+          "repairMs": 541.02911,
+          "firstTokenMs": 275.693404,
+          "promptTokens": 1380,
+          "completionTokens": 22
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": true,
+      "classification": "correct_refusal",
+      "profile": {
+        "model": "google/gemma-4-26b-a4b-it",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 58,
+      "caseIndex": 11,
+      "recordedAt": "2026-10-10T17:45:49.159390+00:00"
+    },
+    {
+      "id": "unsupported-photo-and-speed",
+      "question": "Show photos of Aurora alongside her average speed over the last 24 hours.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 200,
+      "wallMs": 900.1461160369217,
+      "response": {
+        "plan": {
+          "metric": "speed",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": 0,
+          "view": "line"
+        },
+        "model": "mistralai/ministral-3b-2512",
+        "tokens": 76,
+        "diagnostics": {
+          "queueMs": 0.0006799999999999999,
+          "generationMs": 898.929375,
+          "attempts": 2,
+          "repairMs": 627.188759,
+          "firstTokenMs": 199.294604,
+          "promptTokens": 1361,
+          "completionTokens": 76
+        }
+      },
+      "correct": false,
+      "classification": "incorrect_plan",
+      "error": "Returned plan does not match the frozen expected meaning",
+      "profile": {
+        "model": "mistralai/ministral-3b-2512",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 59,
+      "caseIndex": 11,
+      "recordedAt": "2026-10-10T17:45:50.066602+00:00"
+    },
+    {
+      "id": "unsupported-photo-and-speed",
+      "question": "Show photos of Aurora alongside her average speed over the last 24 hours.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 422,
+      "wallMs": 825.1793002709746,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-2.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.00108,
+          "generationMs": 824.081641,
+          "attempts": 2,
+          "repairMs": 400.660524,
+          "firstTokenMs": 350.695541,
+          "promptTokens": 1668,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": true,
+      "classification": "correct_refusal",
+      "profile": {
+        "model": "google/gemini-2.5-flash-lite",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "sequence": 60,
+      "caseIndex": 11,
+      "recordedAt": "2026-10-10T17:45:50.897144+00:00"
+    }
+  ],
+  "summary": [
+    {
+      "profile": {
+        "model": "google/gemini-2.5-flash-lite",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "completedRequests": 12,
+      "supportedRequests": 8,
+      "unsupportedRequests": 4,
+      "correctSupported": 8,
+      "correctRefusals": 4,
+      "classifications": {
+        "correct_plan": 8,
+        "correct_refusal": 4
+      },
+      "medianAllSupportedWallMs": 551.336,
+      "medianCorrectSupportedWallMs": 551.336,
+      "requestsWithCorrections": 4,
+      "reportedGenerationAttempts": 16,
+      "requestsWithReportedAttempts": 12,
+      "reportedPromptTokens": 13123,
+      "reportedCompletionTokens": 404,
+      "requestsWithReportedCompletionTokens": 12
+    },
+    {
+      "profile": {
+        "model": "google/gemini-3.5-flash-lite",
+        "reasoningEffort": "minimal",
+        "temperature": "provider",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "completedRequests": 12,
+      "supportedRequests": 8,
+      "unsupportedRequests": 4,
+      "correctSupported": 6,
+      "correctRefusals": 4,
+      "classifications": {
+        "correct_plan": 6,
+        "incorrect_refusal": 2,
+        "correct_refusal": 4
+      },
+      "medianAllSupportedWallMs": 751.765,
+      "medianCorrectSupportedWallMs": 712.914,
+      "requestsWithCorrections": 6,
+      "reportedGenerationAttempts": 18,
+      "requestsWithReportedAttempts": 12,
+      "reportedPromptTokens": 11900,
+      "reportedCompletionTokens": 467,
+      "requestsWithReportedCompletionTokens": 12
+    },
+    {
+      "profile": {
+        "model": "qwen/qwen3.5-flash-02-23",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "completedRequests": 12,
+      "supportedRequests": 8,
+      "unsupportedRequests": 4,
+      "correctSupported": 0,
+      "correctRefusals": 0,
+      "classifications": {
+        "inference_error": 12
+      },
+      "medianAllSupportedWallMs": 77.478,
+      "medianCorrectSupportedWallMs": null,
+      "requestsWithCorrections": 0,
+      "reportedGenerationAttempts": 12,
+      "requestsWithReportedAttempts": 12,
+      "reportedPromptTokens": 0,
+      "reportedCompletionTokens": 0,
+      "requestsWithReportedCompletionTokens": 0
+    },
+    {
+      "profile": {
+        "model": "google/gemma-4-26b-a4b-it",
+        "reasoningEffort": "none",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "completedRequests": 12,
+      "supportedRequests": 8,
+      "unsupportedRequests": 4,
+      "correctSupported": 4,
+      "correctRefusals": 4,
+      "classifications": {
+        "correct_plan": 4,
+        "incorrect_refusal": 4,
+        "correct_refusal": 4
+      },
+      "medianAllSupportedWallMs": 826.093,
+      "medianCorrectSupportedWallMs": 653.175,
+      "requestsWithCorrections": 8,
+      "reportedGenerationAttempts": 20,
+      "requestsWithReportedAttempts": 12,
+      "reportedPromptTokens": 13693,
+      "reportedCompletionTokens": 337,
+      "requestsWithReportedCompletionTokens": 12
+    },
+    {
+      "profile": {
+        "model": "mistralai/ministral-3b-2512",
+        "reasoningEffort": "omitted",
+        "temperature": "0",
+        "maxCompletionTokens": 256,
+        "timeoutSeconds": 25
+      },
+      "completedRequests": 12,
+      "supportedRequests": 8,
+      "unsupportedRequests": 4,
+      "correctSupported": 5,
+      "correctRefusals": 0,
+      "classifications": {
+        "incorrect_plan": 7,
+        "correct_plan": 5
+      },
+      "medianAllSupportedWallMs": 610.88,
+      "medianCorrectSupportedWallMs": 659.358,
+      "requestsWithCorrections": 2,
+      "reportedGenerationAttempts": 14,
+      "requestsWithReportedAttempts": 12,
+      "reportedPromptTokens": 9203,
+      "reportedCompletionTokens": 688,
+      "requestsWithReportedCompletionTokens": 12
+    }
+  ],
+  "complete": true,
+  "finishedAt": "2026-10-10T17:45:50.915420+00:00"
+}
