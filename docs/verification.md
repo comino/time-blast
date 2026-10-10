@@ -12,6 +12,8 @@ Preparation now warms the exact selected schema with one fixed, non-user token t
 
 **688 application tests across 24 files** and the production build pass. New tests cover all six model/precision combinations, exact schema/options, completion/reset ordering, concurrent preparation, canceled drafts, failed initialization cleanup/retry and telemetry boundaries. The browser settings test verifies the smaller default, quantization labels, profile switching and applying before preparation. Hardware-WebGPU speed and accuracy after this change remain unmeasured on this host.
 
+The public HTTPS smoke also passed on revision `3a9a1bb`, release `20261010T144917Z-9948b648`. It verifies the smaller default and no silent template fallback when WebGPU is unavailable, then explicitly uses templates to exercise real DuckDB, 60,480 chart points, the two-second live-query pause, prepared-result promotion and independent advanced chart views. There were no page errors. This checks deployment and database/UI behavior, not live GPU inference latency or model accuracy.
+
 ## Earlier inference reliability iteration
 
 The earlier update selected **Qwen3-4B**, with a literal extraction contract selected together with its prompt, JSON grammar and decoder. The previous Qwen2.5-0.5B compact path scored **1/8 exact** on the reported regression set in native screening; the selected 4B contract scored **8/8**, all on its first attempt. On a separate, previously inspected 12-case development gate, its six supported requests were exact or had the proven single-vessel grouping equivalence, and all six unsupported requests remained non-executable. These are specific test results, not a general accuracy percentage.
