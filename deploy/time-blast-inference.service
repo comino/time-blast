@@ -1,5 +1,5 @@
 [Unit]
-Description=Time Blast Rust inference prototype
+Description=time-blast inference node (tb1 over WebSocket, NL to SQL)
 After=network-online.target
 Wants=network-online.target
 

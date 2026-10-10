@@ -1,10 +1,11 @@
-"""Install/restart the Rust service on the existing demo host (run with sudo).
+"""Install/restart the Rust tb1 inference service on the demo host (run with sudo).
 
 First install reads OPENROUTER_API_KEY from the inherited server environment;
 later installs preserve /etc/time-blast/inference.env. No credential is printed.
 The binary must already be built and tested. Configure Caddy separately.
 """
 import argparse
+import json
 import os
 from pathlib import Path
 import shutil
@@ -39,7 +40,9 @@ def main():
                   "TIME_BLAST_MODEL": "google/gemini-2.5-flash-lite",
                   "TIME_BLAST_OPENROUTER": "true",
                   "TIME_BLAST_ALLOWED_ORIGINS": "https://time-blast.46-224-133-201.sslip.io,http://127.0.0.1:5173,http://localhost:5173",
-                  "TIME_BLAST_REQUESTS_PER_MINUTE": "30", "TIME_BLAST_REQUESTS_PER_DAY": "1000"}
+                  # Per-keystroke translation: request ceilings sized for typing, spend capped.
+                  "TIME_BLAST_REQUESTS_PER_MINUTE": "600", "TIME_BLAST_REQUESTS_PER_DAY": "30000",
+                  "TIME_BLAST_DAILY_BUDGET_USD": "3"}
         def quote(value):
             return '"' + value.replace('\\', '\\\\').replace('"', '\\"') + '"'
         descriptor = os.open(config, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
@@ -60,8 +63,9 @@ def main():
     for _ in range(60):
         try:
             with urlopen("http://127.0.0.1:8787/health", timeout=1) as response:
-                if response.status == 200:
-                    print("Rust inference service installed and healthy on 127.0.0.1:8787")
+                health = json.load(response)
+                if response.status == 200 and health.get("protocol") == "tb1":
+                    print(f"Rust tb1 inference service healthy on 127.0.0.1:8787 · model {health.get('model')}")
                     return
         except OSError:
             pass
