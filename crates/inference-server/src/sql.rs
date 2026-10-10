@@ -136,12 +136,14 @@ impl<'a> Lexer<'a> {
             while self.at < self.bytes.len() && self.bytes[self.at].is_ascii_whitespace() {
                 self.at += 1;
             }
-            if self.src[self.at..].starts_with("--") {
-                self.at = self.src[self.at..]
-                    .find('\n')
+            let rest = &self.bytes[self.at..];
+            if rest.starts_with(b"--") {
+                self.at = rest
+                    .iter()
+                    .position(|&b| b == b'\n')
                     .map_or(self.bytes.len(), |n| self.at + n);
-            } else if self.src[self.at..].starts_with("/*") {
-                match self.src[self.at + 2..].find("*/") {
+            } else if rest.starts_with(b"/*") {
+                match rest[2..].windows(2).position(|w| w == b"*/") {
                     Some(n) => self.at += n + 4,
                     None => {
                         self.unterminated = true;
@@ -229,31 +231,6 @@ mod tests {
     }
 
     #[test]
-    fn plain_sql_streams_through_and_trailing_semicolon_is_dropped() {
-        let (deltas, sql) = stream(&["SELECT", " 1", " AS x", ";", "\n"]);
-        assert_eq!(sql, "SELECT 1 AS x");
-        assert_eq!(deltas, sql);
-    }
-
-    #[test]
-    fn fences_and_language_tags_are_stripped_while_streaming() {
-        for chunks in [
-            vec!["```", "sql\nSELECT ", "ts FROM t", "\n``", "`"],
-            vec![
-                "`",
-                "``sql",
-                "\n",
-                "SELECT ts FROM t\n```\nThis query selects…",
-            ],
-            vec!["  ```\nSELECT ts FROM t;```"],
-        ] {
-            let (deltas, sql) = stream(&chunks);
-            assert_eq!(sql, "SELECT ts FROM t", "{chunks:?}");
-            assert_eq!(deltas, sql, "{chunks:?}");
-        }
-    }
-
-    #[test]
     fn deltas_are_always_a_prefix_of_the_final_sql() {
         let text = "```sql\n-- view: bar\nSELECT vessel, avg(\"speed\") AS v FROM telemetry GROUP BY 1 ORDER BY 1;\n```";
         // Every split into single characters must keep the prefix property.
@@ -269,59 +246,33 @@ mod tests {
         assert!(s.finish().starts_with("-- view: bar\nSELECT"));
     }
 
+    /// Cases shared with tests/inference-node.test.ts so both twins behave identically.
     #[test]
-    fn prose_and_non_queries_never_stream() {
-        for chunks in [
-            vec!["Here", " is the query: SELECT 1"],
-            vec!["DELETE FROM t"],
-            vec!["I cannot", " answer that."],
-        ] {
-            let (deltas, _) = stream(&chunks);
-            assert_eq!(deltas, "", "{chunks:?}");
-        }
-        let (deltas, sql) = stream(&["-- view: bar\n", "SEL", "ECT 1"]);
-        assert_eq!(
-            (deltas.as_str(), sql.as_str()),
-            ("-- view: bar\nSELECT 1", "-- view: bar\nSELECT 1")
+    fn shared_cases_match() {
+        let path = format!(
+            "{}/tests/fixtures/sql-cases.json",
+            env!("CARGO_MANIFEST_DIR")
         );
-    }
-
-    #[test]
-    fn think_block_is_removed() {
-        let (deltas, sql) = stream(&["<think>\n\n</think>\n\n", "SELECT 2"]);
-        assert_eq!((deltas.as_str(), sql.as_str()), ("SELECT 2", "SELECT 2"));
-        let (_, sql) = stream(&["<thi", "nk>reasoning</think>SELECT 3"]);
-        assert_eq!(sql, "SELECT 3");
-    }
-
-    #[test]
-    fn check_accepts_one_select() {
-        for ok in [
-            "SELECT 1",
-            "with a as (select 1) select * from a",
-            "-- view: line\nSELECT ts, avg(speed) FROM t GROUP BY 1",
-            "/* c */ SELECT ';' AS semi, \"a;b\" FROM t",
-            "SELECT 1;  -- trailing",
-            "FROM t SELECT *",
-            "(SELECT 1) UNION ALL (SELECT 2)",
-        ] {
-            assert_eq!(check(ok), Ok(()), "{ok}");
+        let cases: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+        for case in cases["stream"].as_array().unwrap() {
+            let chunks: Vec<&str> = case["chunks"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|c| c.as_str().unwrap())
+                .collect();
+            let (deltas, sql) = stream(&chunks);
+            assert_eq!(deltas, case["deltas"].as_str().unwrap(), "{chunks:?}");
+            assert_eq!(sql, case["sql"].as_str().unwrap(), "{chunks:?}");
         }
-    }
-
-    #[test]
-    fn check_rejects_obviously_invalid_replies() {
-        for (bad, why) in [
-            ("", "no SQL"),
-            ("   -- only a comment", "no SQL"),
-            ("Here is the query: SELECT 1", "must start"),
-            ("DELETE FROM t", "must start"),
-            ("SELECT 1; DROP TABLE t", "more than one"),
-            ("SELECT 'unterminated", "ended inside"),
-            ("SELECT 1 /* open", "ended inside"),
-        ] {
-            let error = check(bad).unwrap_err();
-            assert!(error.contains(why), "{bad}: {error}");
+        for case in cases["check"].as_array().unwrap() {
+            let sql = case["sql"].as_str().unwrap();
+            match (check(sql), case["error"].as_str()) {
+                (Ok(()), None) => {}
+                (Err(error), Some(expected)) => assert!(error.contains(expected), "{sql}: {error}"),
+                (got, expected) => panic!("{sql}: got {got:?}, expected {expected:?}"),
+            }
         }
     }
 }

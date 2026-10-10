@@ -1,0 +1,31 @@
+{
+  "stream": [
+    {"chunks": ["SELECT", " 1", " AS x", ";", "\n"], "deltas": "SELECT 1 AS x", "sql": "SELECT 1 AS x"},
+    {"chunks": ["```", "sql\nSELECT ", "ts FROM t", "\n``", "`"], "deltas": "SELECT ts FROM t", "sql": "SELECT ts FROM t"},
+    {"chunks": ["`", "``sql", "\n", "SELECT ts FROM t\n```\nThis query selects…"], "deltas": "SELECT ts FROM t", "sql": "SELECT ts FROM t"},
+    {"chunks": ["  ```\nSELECT ts FROM t;```"], "deltas": "SELECT ts FROM t", "sql": "SELECT ts FROM t"},
+    {"chunks": ["<think>\n\n</think>\n\n", "SELECT 2"], "deltas": "SELECT 2", "sql": "SELECT 2"},
+    {"chunks": ["<thi", "nk>reasoning</think>SELECT 3"], "deltas": "SELECT 3", "sql": "SELECT 3"},
+    {"chunks": ["-- view: bar\n", "SEL", "ECT 1"], "deltas": "-- view: bar\nSELECT 1", "sql": "-- view: bar\nSELECT 1"},
+    {"chunks": ["Here", " is the query: SELECT 1"], "deltas": "", "sql": "Here is the query: SELECT 1"},
+    {"chunks": ["DELETE FROM t"], "deltas": "", "sql": "DELETE FROM t"},
+    {"chunks": ["SELECT größe", ", '船' FROM \"Mixed Case\"\n"], "deltas": "SELECT größe, '船' FROM \"Mixed Case\"", "sql": "SELECT größe, '船' FROM \"Mixed Case\""}
+  ],
+  "check": [
+    {"sql": "SELECT 1", "error": null},
+    {"sql": "with a as (select 1) select * from a", "error": null},
+    {"sql": "-- view: line\nSELECT ts, avg(speed) FROM t GROUP BY 1", "error": null},
+    {"sql": "/* c */ SELECT ';' AS semi, \"a;b\" FROM t", "error": null},
+    {"sql": "SELECT 1;  -- trailing", "error": null},
+    {"sql": "SELECT größe, 'é;' FROM \"Mixed Case\" -- ünï", "error": null},
+    {"sql": "FROM t SELECT *", "error": null},
+    {"sql": "(SELECT 1) UNION ALL (SELECT 2)", "error": null},
+    {"sql": "", "error": "no SQL"},
+    {"sql": "   -- only a comment", "error": "no SQL"},
+    {"sql": "Here is the query: SELECT 1", "error": "must start"},
+    {"sql": "DELETE FROM t", "error": "must start"},
+    {"sql": "SELECT 1; DROP TABLE t", "error": "more than one"},
+    {"sql": "SELECT 'unterminated", "error": "ended inside"},
+    {"sql": "SELECT 1 /* open", "error": "ended inside"}
+  ]
+}
