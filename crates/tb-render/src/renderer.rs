@@ -29,6 +29,8 @@ pub const ACCEPTED: u32 = 1;
 pub const PREWARM_VERTEX_BUFFERS: usize = 8;
 pub const PREWARM_VERTEX_BYTES: u32 = 64 << 10;
 pub const URGENT: u32 = 2;
+/// AXES payload for a slot that shows no chart.
+pub const NO_AXES: &str = "{\"x\":[],\"y\":[],\"plot\":{\"left\":0,\"top\":0,\"width\":0,\"height\":0},\"legend\":[]}";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Binding {
@@ -500,6 +502,10 @@ impl Renderer {
                 let y1 = (plot[1] + plot[3] + m).min(canvas[1]).ceil();
                 s.pass.scissor(x0 as u32, y0 as u32, (x1 - x0).max(0.0) as u32, (y1 - y0).max(0.0) as u32);
                 f.draw(r.view, &mut DrawFrame { pass: &mut s.pass, plot, canvas, dpr: s.dpr, axes: &axes });
+            } else if s.axes_json != NO_AXES {
+                // No chart (table view): clear the DOM labels of the previous view.
+                events.push((ev::AXES, s.id, r.request, 0, NO_AXES.to_string()));
+                s.axes_json = NO_AXES.to_string();
             }
             s.uniform.sync(&mut gpu, &s.pass.uniforms, KIND_UNIFORM, true);
             gpu.words.extend_from_slice(&[op::PASS, s.id, s.uniform.id, 0, 0, 0, 0]);
@@ -692,6 +698,9 @@ mod tests {
         let words = r.frame(false).to_vec();
         r.frame_done();
         assert_eq!(count(&words, op::DRAW), 0);
+        let e = events(&r);
+        let axes = e.iter().rev().find(|e| e[0] == ev::AXES).expect("table view clears the labels");
+        assert_eq!(&r.strings[axes[4] as usize..(axes[4] + axes[5]) as usize], NO_AXES.as_bytes());
     }
 
     #[test]
