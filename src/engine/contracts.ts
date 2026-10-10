@@ -104,6 +104,8 @@ export interface RendererNode {
   setParam(slot: number, name: string, value: number): void;
   /** BIND/UNBIND, RESULT_SCHEMA, BATCH, DONE frames. Emits DRAWN to the coordinator. */
   handle(frame: LocalFrame): void;
+  /** Build an export of the slot's current result and post `{type:'export'}` to the UI. */
+  export(slot: number, format: 'csv'): void;
   /** Views available for a slot's current result, for the UI's view picker. */
   views(slot: number): ViewName[];
 }

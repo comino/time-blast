@@ -154,12 +154,7 @@ export class EngineHost {
       case 'detach': renderer.detach(message.slot); break;
       case 'view': renderer.setView(message.slot, message.view); break;
       case 'param': renderer.setParam(message.slot, message.name, message.value); break;
-      case 'export': {
-        // Not in RendererNode yet (requested contract change): call it if the renderer has it.
-        const exporter = (renderer as RendererNode & { export?: (slot: number, format: 'csv') => void }).export;
-        exporter?.call(renderer, message.slot, message.format);
-        break;
-      }
+      case 'export': renderer.export(message.slot, message.format); break;
     }
   }
 

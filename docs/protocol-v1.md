@@ -107,6 +107,13 @@ unknown kinds, truncated frames, and nonzero reserved stamp fields.
 | 0x22 | `BATCH` | database → renderer (+ header-only → coordinator) | request | Arrow IPC encapsulated **record batch** message |
 | 0x23 | `DONE` | database → coordinator, renderer | request | `u64 rows, u64 bytes` (16 bytes) |
 
+A cancelled request gets neither `DONE` nor `ERROR` from the database. Database `ERROR` codes:
+`sql_rejected` (guard: not exactly one read-only query), `sql_error`, `timeout`, `result_limit`,
+`queue_full`, `dataset`.
+
+Arrow types from DuckDB: `TIMESTAMP` arrives as a microsecond Timestamp (int64 / BigInt64),
+`COUNT(*)` and other integer aggregates as Int64. Consumers must not assume Float64.
+
 Concatenating the `RESULT_SCHEMA` payload, every `BATCH` payload and an Arrow end-of-stream
 marker gives a valid Arrow IPC stream. On in-process links, `RESULT_SCHEMA` and `BATCH` carry the
 decoded Arrow `Schema` / `RecordBatch` objects instead of bytes.

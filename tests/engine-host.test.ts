@@ -49,6 +49,7 @@ class FakeRenderer implements RendererNode {
   setView(slot: number, view: string | null) { this.calls.push(`view ${slot} ${view}`); }
   setParam(slot: number, name: string, value: number) { this.calls.push(`param ${slot} ${name}=${value}`); }
   views() { return []; }
+  export(slot: number) { this.calls.push(`export ${slot}`); }
   handle(f: LocalFrame) {
     this.frames.push(f);
     // Draw synchronously on the first batch: DRAWN is emitted from inside handle().
