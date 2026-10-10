@@ -87,7 +87,7 @@ unknown kinds, truncated frames, and nonzero reserved stamp fields.
 | 0x01 | `HELLO` | any → peer | `{"node": "<role>", "name": "...", "version": 1}` |
 | 0x02 | `READY` | peer → any | `{"node": "<role>", "name": "...", "model"?: "..."}` |
 | 0x03 | `CONTEXT` | database → coordinator → inference | `DatasetContext` (below); header `context` = its id |
-| 0x04 | `STATUS` | any → UI | `{"component", "state": "cold|loading|ready|error", "label", "detail"?, "progress"?}` |
+| 0x04 | `STATUS` | any → UI | `{"component": "database|inference|renderer|coordinator", "state": "cold|loading|ready|error", "label", "detail"?, "progress"?}` |
 | 0x05 | `ERROR` | any | `{"code", "message", "detail"?}`; header `request` names the failed request or 0 |
 | 0x06 | `CONFIG` | UI → coordinator | `CoordinatorConfig` (below) |
 
@@ -97,7 +97,7 @@ unknown kinds, truncated frames, and nonzero reserved stamp fields.
 |---|---|---|---|---|
 | 0x10 | `DRAFT` | UI → coordinator | revision, context | UTF-8 text. Flag `0x01 COMPOSING` |
 | 0x11 | `COMMIT` | UI → coordinator | revision, context | UTF-8 text (always the full text; Enter) |
-| 0x12 | `CANCEL` | any → any | epoch = **new** epoch; request (0 = everything) | empty |
+| 0x12 | `CANCEL` | any → any | request = 0: cancel everything, epoch = **new** epoch. request ≠ 0: cancel that request only, epoch unchanged | empty |
 | 0x18 | `INFER` | coordinator → inference | request, revision, context | UTF-8 question text |
 | 0x19 | `SQL_DELTA` | inference → coordinator | request | UTF-8 fragment of the SQL being generated |
 | 0x1A | `SQL` | inference → coordinator | request | UTF-8 complete SQL. Flag `0x01 CACHED` (inference-side cache) |
@@ -117,7 +117,7 @@ decoded Arrow `Schema` / `RecordBatch` objects instead of bytes.
 |---|---|---|---|---|
 | 0x30 | `BIND` | coordinator → renderer, UI | request, revision | `u32 slot` |
 | 0x31 | `UNBIND` | coordinator → renderer, UI | request | `u32 slot` |
-| 0x32 | `DRAWN` | renderer → coordinator | request | `u32 slot, u32 points` + stamp `FIRST_DRAW_SUBMITTED` |
+| 0x32 | `DRAWN` | renderer → coordinator | request | `u32 slot, u32 points` + stamp `FIRST_DRAW_SUBMITTED`. May repeat; a later DRAWN can carry `FIRST_PRESENTED` |
 | 0x33 | `RESULT` | coordinator → UI | request, revision, context | JSON `{slot, sql, columns: [{name, type, role}], view, cached}` once per bound request |
 | 0x34 | `TIMING` | coordinator → UI | request, revision | empty; the stamps carry the request's full stage ledger |
 | 0x35 | `KEEP` | coordinator → UI | request, revision | `u32 slot`: the committed result keeps this slot; the UI pins its card and registers a new live slot |
@@ -127,8 +127,10 @@ decoded Arrow `Schema` / `RecordBatch` objects instead of bytes.
 - **revision**: monotonic per editor, assigned by the UI. A newer revision supersedes older ones.
 - **request**: assigned by the coordinator, monotonic u32, never reused in a session. One request
   covers one translation and its execution.
-- **epoch**: `CANCEL` carries the new epoch. Every node drops request-scoped frames whose epoch is
-  below its current epoch.
+- **epoch**: a full `CANCEL` (request 0) carries the new epoch; a targeted `CANCEL` keeps it.
+  Every node drops request-scoped frames whose epoch is below its current epoch. **Every reply
+  echoes the epoch of the frame that caused it** (INFER → SQL_DELTA/SQL/INFER_STATS/ERROR,
+  EXEC → RESULT_SCHEMA/BATCH/DONE/ERROR, BIND → DRAWN).
 - **context**: the dataset context id. Loading new data creates a new context. Frames for another
   context are dropped.
 - **slot**: a render target (a card canvas), registered by the UI **before** results exist, so a
