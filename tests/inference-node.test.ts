@@ -184,12 +184,13 @@ describe('WebLLM inference node over tb1', () => {
     h.hello(); h.context();
     h.infer(1, 'slow');
     await h.waitFor(has(h, 1, Kind.SQL_DELTA));
-    h.cancel(1, 1);
+    h.cancel(1, 7); // targeted: the epoch stays 0
     expect(h.interrupts()).toBe(1);
-    h.infer(2, 'fast', 1);
+    h.infer(2, 'fast', 0);
     release();
     await h.waitFor(has(h, 2, Kind.INFER_STATS));
-    expect(kinds(h.frames(1))).toEqual([Kind.SQL_DELTA]);
+    expect(kinds(h.frames(1))).toEqual([Kind.SQL_DELTA, Kind.INFER_STATS]);
+    expect(readJson(h.frames(1)[1].payload)).toEqual({ model: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC', promptTokens: 0, completionTokens: 0, attempts: 1, cancelled: true });
     expect(readText(h.frames(2).find((f) => f.kind === Kind.SQL)!.payload)).toBe('SELECT 2');
   });
 
@@ -200,7 +201,7 @@ describe('WebLLM inference node over tb1', () => {
     h.hello(); h.context();
     h.infer(1, 'first', 3);
     await h.waitFor(has(h, 1, Kind.SQL_DELTA));
-    h.cancel(99, 4); // a newer epoch fences request 1 (epoch 3)
+    h.cancel(0, 4); // cancel everything; epoch 4 fences request 1 (epoch 3)
     h.infer(2, 'stale', 3);
     h.infer(3, 'waits', 4);
     h.infer(4, 'replaces the waiting one', 4);
@@ -210,7 +211,8 @@ describe('WebLLM inference node over tb1', () => {
     expect(h.frames(2)).toEqual([]);
     expect(readJson(h.frames(3)[0].payload)).toMatchObject({ code: 'busy' });
     expect(readJson(h.frames(5)[0].payload)).toMatchObject({ code: 'unknown_context' });
-    expect(kinds(h.frames(1))).toEqual([Kind.SQL_DELTA]);
+    expect(kinds(h.frames(1))).toEqual([Kind.SQL_DELTA, Kind.INFER_STATS]);
+    expect(h.frames(1).every((f) => f.epoch === 3)).toBe(true);
   });
 
   it('queues INFER until the model is ready and reports load failures', async () => {

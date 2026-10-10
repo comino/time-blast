@@ -129,9 +129,10 @@ export function createInferenceNode(deps: InferenceNodeDeps) {
     }
   }
 
+  /** request 0: cancel everything and adopt the new epoch; otherwise only that request. */
   function onCancel(frame: Frame) {
-    epoch = Math.max(epoch, frame.epoch);
-    const doomed = (job: Job) => frame.request === 0 || job.header.request === frame.request || job.header.epoch < epoch;
+    if (frame.request === 0) epoch = Math.max(epoch, frame.epoch);
+    const doomed = (job: Job) => frame.request === 0 || job.header.request === frame.request;
     if (waiting && doomed(waiting)) waiting = undefined;
     if (running && doomed(running) && !running.cancelled) {
       running.cancelled = true;
@@ -214,7 +215,11 @@ export function createInferenceNode(deps: InferenceNodeDeps) {
             spent.completionTokens += chunk.usage.completion_tokens ?? 0;
           }
         }
-        if (!live()) return; // canceled: silent
+        if (!live()) {
+          // Cancelled: no SQL, but the spend stays visible.
+          send(reply(Kind.INFER_STATS, job.header, json({ model, ...spent, cancelled: true })));
+          return;
+        }
         const final = sql.finish();
         const reason = finish !== 'stop' ? `the reply was cut off (finish reason ${finish ?? 'missing'})` : check(final);
         if (reason === undefined) {
@@ -232,7 +237,10 @@ export function createInferenceNode(deps: InferenceNodeDeps) {
         messages.push({ role: 'assistant', content: raw }, { role: 'user', content: repairMessage(job.context.context, reason) });
       }
     } catch (cause) {
-      if (!live()) return;
+      if (!live()) {
+        send(reply(Kind.INFER_STATS, job.header, json({ model, ...spent, cancelled: true })));
+        return;
+      }
       error(job.header, 'engine', cause instanceof Error ? cause.message : String(cause));
       if (spent.attempts > 0) stats();
     }

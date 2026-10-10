@@ -486,12 +486,20 @@ async fn cancel_aborts_the_upstream_stream_and_silences_the_request() {
     })
     .await
     .expect("upstream stream was not dropped after CANCEL");
-    c.send(infer(2, 1, "fast one")).await;
+    // A targeted CANCEL keeps the epoch: an INFER at epoch 0 is still current.
+    c.send(infer(2, 0, "fast one")).await;
     let frames = c.until(Kind::InferStats, 2).await;
-    assert!(
-        frames.iter().all(|f| f.header.request == 2),
-        "no frame of the canceled request leaks: {frames:?}"
+    // The only frame of request 1 after CANCEL is its INFER_STATS, flagged cancelled.
+    let (one, two): (Vec<&Frame>, Vec<&Frame>) = frames.iter().partition(|f| f.header.request == 1);
+    assert_eq!(one.len(), 1, "{one:?}");
+    assert_eq!(one[0].header.kind, Kind::InferStats);
+    assert_eq!(one[0].header.epoch, 0, "replies echo the INFER's epoch");
+    let stats: Value = serde_json::from_slice(&one[0].payload).unwrap();
+    assert_eq!(
+        stats,
+        json!({"model":"fake/model","promptTokens":0,"completionTokens":0,"attempts":1,"cancelled":true})
     );
+    assert!(two.iter().any(|f| f.header.kind == Kind::Sql));
 }
 
 #[tokio::test]
@@ -507,7 +515,13 @@ async fn stale_epochs_are_dropped_and_cancel_all_fences_older_requests() {
         .await;
     c.send(infer(3, 5, "current")).await;
     let frames = c.until(Kind::InferStats, 3).await;
-    assert!(frames.iter().all(|f| f.header.request == 3), "{frames:?}");
+    let stray: Vec<_> = frames.iter().filter(|f| f.header.request != 3).collect();
+    assert!(
+        stray
+            .iter()
+            .all(|f| f.header.request == 1 && f.header.kind == Kind::InferStats),
+        "only the cancelled request's INFER_STATS may precede: {stray:?}"
+    );
     assert_eq!(
         h.upstream.requests.lock().unwrap().len(),
         2,

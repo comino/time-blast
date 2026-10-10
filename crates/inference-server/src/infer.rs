@@ -97,6 +97,8 @@ pub struct Job {
     pub question: String,
     pub prepared: Arc<Prepared>,
     pub received_at: f64,
+    /// What the job has spent so far, readable by the session if it cancels the job.
+    pub progress: Arc<Mutex<Spent>>,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -123,6 +125,17 @@ impl Spent {
         if let Some(c) = usage.cost_usd {
             self.cost_usd = Some(self.cost_usd.unwrap_or(0.0) + c);
         }
+    }
+
+    /// INFER_STATS for a request cancelled after the provider was called: usage of finished
+    /// attempts only (an aborted stream reports none), flagged `cancelled`.
+    pub fn cancelled_frame(&self, base: &Header, configured_model: &str) -> Option<Frame> {
+        if self.attempts == 0 {
+            return None;
+        }
+        let mut stats = self.stats_json(configured_model);
+        stats["cancelled"] = json!(true);
+        Some(Frame::new(reply(Kind::InferStats, base), stats.to_string()))
     }
 
     pub fn stats_json(&self, configured_model: &str) -> Value {
@@ -236,6 +249,7 @@ async fn translate(
     let mut streamed_any = false;
     for attempt in 1..=2u32 {
         spent.attempts = attempt;
+        *job.progress.lock().unwrap() = spent.clone();
         if attempt == 1 {
             ledger.push((stage::PROVIDER_REQUEST, node::INFERENCE, now_ms()));
         }
@@ -269,6 +283,7 @@ async fn translate(
         if completion.model.is_some() {
             spent.model = completion.model.clone();
         }
+        *job.progress.lock().unwrap() = spent.clone();
         let sql = sql_stream.finish();
         let verdict = if completion.refused {
             Err("the model refused".to_string())

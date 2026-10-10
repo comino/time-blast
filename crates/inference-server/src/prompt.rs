@@ -85,18 +85,17 @@ pub fn system_prompt(context: &DatasetContext) -> String {
         "You translate a question about the dataset below into exactly one {dialect} SQL query.\n\
 \n\
 Output:\n\
-- Reply with the SQL only: one read-only SELECT statement (WITH is allowed). No prose, no markdown, no code fences, no trailing semicolon.\n\
-- Use only the tables and columns listed below, spelled exactly as listed.\n\
+- Reply with the SQL only: one read-only SELECT statement. No prose, no markdown, no code fences, no trailing semicolon.\n\
+- Write compact SQL without indentation. Prefer the simplest query; use WITH only when it is needed.\n\
+- Use only the tables and columns listed below, spelled exactly as listed. Give every computed column a short alias.\n\
 - The question is typed live and may be unfinished. Answer the most plausible complete question. Never ask for clarification.\n\
 \n\
 Result shape (the chart is chosen from column order and types):\n\
-- First column: the x axis, a time or a category.\n\
-- Then optionally one text column that splits the result into series.\n\
-- Last column: the main numeric value. Further numeric columns before it are extra measures.\n\
+- Columns in this order: the x axis first (a time or a category), then optionally one text column that splits the result into series, then the numeric values with the main value last.\n\
 - Name latitude and longitude columns lat and lon.\n\
 - ORDER BY the x column, then the series column.\n\
-- Keep results small: bucket time, e.g. {bucket}, so each series has at most about 1000 points. Return at most 5000 rows; LIMIT plain row listings.\n\
-- Only when the question asks for a presentation (a chart type, map, table), make the first line the comment -- view: <name> with name one of {VIEWS}. Otherwise write no comments.\n\
+- Return at most about 5000 rows. A query on a table with more than 5000 rows must aggregate (GROUP BY a time bucket such as {bucket}, and the series) or use LIMIT.\n\
+- Write no comments, with one exception: when the question itself names a presentation (chart, plot, bar, line, scatter, map, table, heatmap, ...), the first line is -- view: <name> with name exactly one of {VIEWS}.\n\
 \n\
 Time:\n",
         bucket = bucket_example(&context.dialect),

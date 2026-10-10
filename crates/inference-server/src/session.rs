@@ -6,7 +6,7 @@
 use std::{
     collections::{HashMap, VecDeque},
     sync::{
-        Arc,
+        Arc, Mutex,
         atomic::{AtomicU64, Ordering},
     },
     time::{Duration, Instant},
@@ -21,7 +21,7 @@ use tokio::{
 };
 
 use crate::{
-    infer::{self, Job, Outbox, Prepared, cached_frames, error_frame, now_ms},
+    infer::{self, Job, Outbox, Prepared, Spent, cached_frames, error_frame, now_ms},
     prompt::DatasetContext,
     service::App,
 };
@@ -128,22 +128,21 @@ impl Session {
         }
     }
 
+    /// request 0: cancel everything and adopt the new epoch. Otherwise cancel that request
+    /// only; the epoch is unchanged.
     fn cancel(&mut self, epoch: u32, request: u32) -> Vec<Action> {
-        self.epoch = self.epoch.max(epoch);
-        let current = self.epoch;
-        let doomed: Vec<u32> = self
-            .active
-            .iter()
-            .filter(|(id, a)| request == 0 || **id == request || a.epoch < current)
-            .map(|(id, _)| *id)
-            .collect();
-        doomed
-            .into_iter()
-            .map(|id| {
-                self.active.remove(&id);
-                Action::Abort(id)
-            })
-            .collect()
+        if request == 0 {
+            self.epoch = self.epoch.max(epoch);
+            return self
+                .active
+                .drain()
+                .map(|(id, _)| Action::Abort(id))
+                .collect();
+        }
+        match self.active.remove(&request) {
+            Some(_) => vec![Action::Abort(request)],
+            None => Vec::new(),
+        }
     }
 
     fn infer(
@@ -206,6 +205,7 @@ impl Session {
             question,
             prepared,
             received_at,
+            progress: Default::default(),
         };
         match admit(
             &job.prepared,
@@ -362,7 +362,7 @@ pub async fn run(app: Arc<App>, upgrade: upgrade::UpgradeFut) {
     let mut session = Session::new(app.session_concurrency, app.model.clone());
     let (jobs_out, mut job_frames): (Outbox, _) = mpsc::unbounded_channel();
     let mut jobs: JoinSet<()> = JoinSet::new();
-    let mut handles: HashMap<u32, AbortHandle> = HashMap::new();
+    let mut handles: HashMap<u32, (AbortHandle, Header, Arc<Mutex<Spent>>)> = HashMap::new();
     let mut last_message = Instant::now();
     let mut heartbeat = tokio::time::interval(Duration::from_secs(25));
     heartbeat.tick().await;
@@ -419,13 +419,27 @@ pub async fn run(app: Arc<App>, upgrade: upgrade::UpgradeFut) {
                             break 'session;
                         }
                         Action::Abort(request) => {
-                            if let Some(handle) = handles.remove(&request) {
+                            if let Some((handle, header, progress)) = handles.remove(&request) {
+                                let finished = handle.is_finished();
                                 handle.abort();
-                                app.totals.lock().unwrap().cancelled += 1;
+                                // Speculation cost stays visible: report what is known.
+                                let spent = progress.lock().unwrap().clone();
+                                if !finished {
+                                    // A finished job already recorded its own spend.
+                                    app.budget.lock().unwrap().spend(spent.cost_usd.unwrap_or(0.0));
+                                    let mut totals = app.totals.lock().unwrap();
+                                    totals.cancelled += 1;
+                                    totals.record(&spent, true);
+                                }
+                                if let Some(frame) = spent.cancelled_frame(&header, &app.model) {
+                                    if !send(&frame) { break 'session }
+                                }
                             }
                         }
                         Action::Spawn(job) => {
                             let request = job.header.request;
+                            let header = job.header;
+                            let progress = job.progress.clone();
                             let app = app.clone();
                             let out = jobs_out.clone();
                             app.totals.lock().unwrap().requests += 1;
@@ -434,7 +448,7 @@ pub async fn run(app: Arc<App>, upgrade: upgrade::UpgradeFut) {
                                 app.budget.lock().unwrap().spend(spent.cost_usd.unwrap_or(0.0));
                                 app.totals.lock().unwrap().record(&spent, result.is_ok());
                             });
-                            handles.insert(request, handle);
+                            handles.insert(request, (handle, header, progress));
                         }
                     }
                 }
