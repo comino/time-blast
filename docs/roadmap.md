@@ -1,5 +1,8 @@
 # Roadmap and optimization backlog
 
+> **Historical.** Written before [vision.md](vision.md). Current priorities are in
+> [status.md](status.md#pick-up-here-next). The optimization tables below remain a useful backlog.
+
 Status as of 2026-10-10: a deployed browser prototype and Rust inference service
 exist. The public demo uses OpenRouter's Gemini 2.5 Flash Lite, browser-local
 DuckDB-Wasm and Canvas2D. Local four-bit Qwen2.5-1.5B remains selectable. The

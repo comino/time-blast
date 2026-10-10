@@ -108,27 +108,36 @@ substitute for a hardware-WebGPU run.
 
 ## Pick up here next
 
-1. **ClickHouse data service:** implement the remote adapter's actual service,
-   preserving columnar streaming, bounded buffers, cancellation and snapshot/
-   freshness semantics before comparing it with embedded DuckDB.
-2. **Inference quality and routing:** freeze a broader corpus, including requests
-   the supported plan cannot represent; measure incorrect executable plans,
-   correction rates, route costs and latency. Test model-specific contracts on
-   development cases and evaluate changes separately.
-3. **Performance evidence:** replay typing and cancellations, distinguish exact
-   cache hits from generation, measure cold/warm tails and concurrent load, and
-   run local inference on a hardware GPU. Add physical timing separately.
-4. **Service operations:** before expanding access, implement authentication and
-   durable account/user budgets. Current origin checks are not authentication,
-   and process-local request counters reset on restart. Cancellation closes the
-   provider stream but does not prove that upstream generation/billing stops.
+The direction is set by [vision.md](vision.md). In order:
 
-Predicting unfinished questions, mutable/forked KV caches, WebTransport data
-streams, a remote ClickHouse relay and GPU chart rendering remain proposals.
-No raw browser TCP, universally fastest socket library, or physical
-microsecond-level performance claim has been established.
+1. **Uniform protocol.** One message vocabulary and binary frame for coordinator,
+   inference and database. MessagePort in the browser, binary WebSocket remotely,
+   with one spec and a TypeScript and a Rust codec tested against each other.
+   Replace the current per-component JSON protocols (`time-blast.v1`,
+   `time-blast.inference.v1`, the HTTP database bridge and the worker messages).
+   Start from the identities and lifecycle in [protocol.md](protocol.md).
+2. **Model writes SQL over generic data.** Replace the 7-field `QueryPlan` and the
+   vessel-shaped `ColumnBatch`: schema in the prompt, SQL out, sandboxed read-only
+   execution, arbitrary Arrow results, chart chosen from column types. Load any
+   Parquet/CSV.
+3. **Remove the 2-second idle pause.** Translate on every keystroke with
+   cancellation, prefix caching and change detection, within a few $/day.
+4. **Measure thought → result stage by stage.** Per-hop timestamps in frames;
+   a latency dial to simulate ~10× faster inference; fast providers and a
+   self-hosted model compared with OpenRouter.
+5. **Move components.** A server-side DuckDB node on the same protocol proves a
+   placement change needs no rewrite. ClickHouse follows. Remote inference
+   should hand SQL straight to a remote database.
+6. **Explore interactions:** per-keystroke results, next-question anticipation,
+   chart-as-query, voice.
+
+Operational debt to keep in mind: the public demo has no authentication, and its
+OpenRouter budget counters are process-local and reset on restart.
 
 ## Documentation map
+
+Full map with current/historical classification: [README.md](README.md).
+
 
 - [Browser contract](prototype.md) and [Rust backend](backend-prototype.md): implemented behavior and interfaces.
 - [Deployment runbook](../deploy/README.md): operate and update the existing demo.

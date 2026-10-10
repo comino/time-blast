@@ -1,5 +1,7 @@
 # Inference before Enter
 
+> **Historical.** Built around the typed plan and Enter; speculation ideas still apply. Direction: [vision.md](vision.md).
+
 Status: design notes from October 9, 2026. See [current status](status.md), the [browser prototype](prototype.md), and the [implemented Rust inference backend](backend-prototype.md) for shipped behavior. The additional mechanisms below remain proposals unless documented there; [verification](verification.md) records measured results and limits.
 Primary references checked on **2026-10-09**. Capabilities must be verified against the
 exact engine, model and deployment version selected for an experiment.

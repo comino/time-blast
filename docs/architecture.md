@@ -1,5 +1,7 @@
 # Architecture
 
+> **Historical.** Day-one proposals; principles now live in [vision.md](vision.md).
+
 Status: architecture proposals from October 9, 2026. The [current status](status.md), [browser prototype](prototype.md), and [Rust inference backend](backend-prototype.md) describe implemented behavior; [verification](verification.md) records measurements. The wider placement, relay, and scheduling design below includes future work.
 
 Time-blast is a browser application and execution protocol for interactive analytical queries. Its optimization unit is the remaining dependency chain from a committed request to a correct visible point. The system moves independent work before commitment and removes avoidable delays after it.

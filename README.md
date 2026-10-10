@@ -1,18 +1,21 @@
 # time-blast
 
-**Minimize the time between pressing Enter on a natural-language data request and seeing its first correct data point.**
+**Research into one loop — natural language → SQL → execute → see it — made so fast that the answer is there the moment you stop thinking about what you want.**
 
-Type a question. An LLM turns it into a query. DuckDB or ClickHouse executes it. A chart starts drawing as soon as it has a usable point. Spend the time *before* Enter preparing as much of that path as possible, and ruthlessly shorten whatever remains afterward.
+Two questions drive everything:
 
-The interface, coordinator and DuckDB run in the browser. Inference can run locally through WebGPU or remotely through the Rust service. Independent database and coordinator placement contracts are present; their remote services, including ClickHouse, remain future work. Placement should change the adapter and latency profile without changing the meaning of a request or result.
+1. **How fast can the loop get?** Every stage counts: typing, transport, inference, SQL, execution, data movement, drawing. We chase microseconds for their own sake, and measure every claim.
+2. **What new data interactions does that speed enable?** Results on every keystroke, anticipating the next question, the chart itself as a query, voice.
 
-**Deployment direction:** embedded DuckDB-Wasm for the prototype; ClickHouse as the primary intended database backend. Rust now serves inference and is the leading candidate for the future database relay. The spatial canvas is inspired by [Data Canvas](https://github.com/comino/clickhouse-data-canvas); maps, charts and tables are implemented, while photos require a dataset with image URLs and an adapter.
+The metric is **thought → correct result**. Typing and Enter are steps to shrink or remove. We design for inference ~10× faster than today, when database, transport and drawing will dominate. The engine is generic: any schema, and the model writes SQL directly. One uniform protocol lets inference, database and coordinator each run in the browser or remotely without rewriting anything.
 
-**Data-path requirement:** stream columnar buffers all the way into the chart, draw on the first complete timestamp/value point, and eliminate every avoidable copy. No full-result collection, per-row object conversion, or whole-workspace save may gate the first mark. Account explicitly for engine, browser, and GPU boundaries that still require copying.
+**→ Read [docs/vision.md](docs/vision.md) first.** It is canonical. [docs/README.md](docs/README.md) says which other docs are current.
 
-**Status:** working browser prototype and Rust inference backend. Embedded DuckDB-Wasm, a Rust/Wasm query compiler, local WebLLM or remote model inference, draft transport, speculative execution, and streaming canvas charts are implemented. The [Rust service](docs/backend-prototype.md) uses persistent WebSocket sessions and calls OpenRouter or a compatible inference endpoint directly through a pooled HTTP client. Remote database/ClickHouse execution remains a future milestone. The design notes below also contain experiments that are not implemented yet.
+## Where the code is today
 
-**Start here:** [current status and handoff](docs/status.md) · [implemented browser contract](docs/prototype.md) · [Rust backend](docs/backend-prototype.md) · [deployment](deploy/README.md) · [verification](docs/verification.md).
+The first prototype (2026-10-09/10) predates the vision. It works and is deployed, but it is narrower than the goal. It uses a 7-field typed plan over one synthetic vessel dataset instead of SQL over any schema, waits 2 s of idle time before live queries, and has a separate JSON protocol per component. The [vision's "unlearn" table](docs/vision.md#what-to-unlearn-from-the-first-prototype) lists what changes. The rest of this README describes the prototype as it exists.
+
+Implemented: browser chat and spatial canvas, DuckDB-Wasm in a worker, a Rust/Wasm query compiler, local WebGPU (WebLLM) or remote inference through a Rust WebSocket service calling OpenRouter, speculative execution with exact-result promotion, and Arrow columns streamed into ten Canvas2D chart types. Remote database and coordinator adapters exist as client contracts without services. **Start here:** [status and handoff](docs/status.md) · [browser contract](docs/prototype.md) · [Rust backend](docs/backend-prototype.md) · [deployment](deploy/README.md).
 
 ## Run it
 
@@ -133,7 +136,7 @@ This moves work earlier; it does not make that work free. Report speculative GPU
 
 ## What counts as fast
 
-The primary target is **Enter to the first visible correct point for the committed request**. Also measure first provisional preview, first useful chart coverage, and final exact completion. A wrong prediction, spinner, timestamp without a value, or stale chart is not a successful first point.
+The goal is **thought → correct result** ([vision](docs/vision.md)). The prototype's measured target is the narrower **Enter to the first visible correct point for the committed request**. Also measure first provisional preview, first useful chart coverage, and final exact completion. A wrong prediction, spinner, timestamp without a value, or stale chart is not a successful first point.
 
 There are two measurement levels:
 
@@ -181,4 +184,4 @@ Supporting research notes describe the implementation choices and further experi
 
 ## Next experiments
 
-The prototype already exercises exact-result promotion, cancellation, local streaming and hosted inference. Next, implement the ClickHouse data service with equivalent freshness/cancellation semantics, broaden inference evaluation beyond the reused development cases, and measure cold/warm latency distributions under realistic typing and concurrent load. Hardware-WebGPU and physical input-to-light measurements remain open. See the [prioritized roadmap](docs/roadmap.md); measure kernel or socket changes before declaring a winner.
+See [the priorities in docs/status.md](docs/status.md#pick-up-here-next): unify the protocol, switch to model-written SQL over generic data, remove the idle pause, and measure thought → result stage by stage.
