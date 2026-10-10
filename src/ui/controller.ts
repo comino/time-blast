@@ -6,16 +6,8 @@ import type { AxisTicks, ColumnRole, DatasetContext, DatasetSource, EngineToUi, 
 import { DraftEncoder, type Clock } from './draft-encoder';
 import { breakdown, RollingStats, type InferStats, type RollingSummary, type TimingBreakdown } from './timing';
 
-/** protocol-v1 `CoordinatorConfig`. Not in contracts.ts yet (requested). */
-export interface CoordinatorConfig {
-  live?: boolean;
-  minChars?: number;
-  inferencePolicy?: 'latest' | 'restart';
-  latencyDialMs?: number | null;
-  translationCache?: boolean;
-  speculate?: boolean;
-  freeSlots?: number[];
-}
+import type { CoordinatorConfig } from '../engine/contracts';
+export type { CoordinatorConfig };
 export const DEFAULT_COORDINATOR_CONFIG: Required<Omit<CoordinatorConfig, 'freeSlots'>> = {
   live: true, minChars: 3, inferencePolicy: 'latest', latencyDialMs: null, translationCache: true, speculate: true,
 };

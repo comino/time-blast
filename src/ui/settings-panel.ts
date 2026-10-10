@@ -1,5 +1,5 @@
 /** Runtime settings dialog: inference placement, dataset, coordinator config (live). */
-import type { DatasetSource, InferencePlacement } from '../engine/contracts';
+import type { DatasetSource, InferencePlacement, WebGpuModel } from '../engine/contracts';
 import type { CoordinatorConfig } from './controller';
 import { datasetFromFiles, datasetFromUrl } from './dataset-drop';
 import { coordinatorDefaults, defaultInference, DEFAULT_MODEL_PROFILE, MODEL_PROFILES } from './defaults';
@@ -90,7 +90,7 @@ export class SettingsPanel {
       try { const url = new URL(endpoint); if (!/^wss?:$|^https?:$/.test(url.protocol)) throw new Error(); }
       catch { this.error('Enter a ws(s):// or http(s):// inference endpoint.'); return; }
       this.inference = { kind: 'remote', endpoint };
-    } else this.inference = { kind: 'webgpu', model: (f.modelProfile as HTMLSelectElement).value || DEFAULT_MODEL_PROFILE };
+    } else this.inference = { kind: 'webgpu', model: ((f.modelProfile as HTMLSelectElement).value || DEFAULT_MODEL_PROFILE) as WebGpuModel };
     this.error('');
     this.callbacks.inference(this.inference);
   }
