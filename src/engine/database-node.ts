@@ -244,7 +244,7 @@ export class DuckDatabaseNode implements DatabaseNode {
     } finally {
       if (started && !finished) { try { db.cancelPendingQuery(conn); } catch { /* connection already idle */ } }
       if (this.running === job) this.running = undefined;
-      this.options.onExecStats?.(stats);
+      try { this.options.onExecStats?.(stats); } catch { /* a measurement hook must not break the node */ }
     }
   }
 

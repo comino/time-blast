@@ -19,6 +19,11 @@ time-blast.46-224-133-201.sslip.io {
 	@mutable not path /assets/*
 	header @mutable Cache-Control "no-cache"
 	header X-Content-Type-Options nosniff
+	# Cross-origin isolation (SharedArrayBuffer, 5 µs timers). credentialless keeps CORS
+	# fetches to Hugging Face (WebLLM weights) and extensions.duckdb.org working. Same values
+	# as vite.config.ts.
+	header Cross-Origin-Opener-Policy same-origin
+	header Cross-Origin-Embedder-Policy credentialless
 
 	encode zstd gzip
 	file_server {

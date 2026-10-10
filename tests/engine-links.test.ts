@@ -6,6 +6,8 @@ import { decode, encode, header, json, Kind, readJson, readText, SUBPROTOCOL, te
 const frame = (kind: number, payload: Uint8Array = new Uint8Array(0), fields = {}): Frame =>
   ({ ...header(kind as never, fields), stamps: [], payload });
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+/** Port delivery is asynchronous and, under load, can take more than one timer turn. */
+const until = async (ready: () => boolean) => { for (let i = 0; i < 500 && !ready(); i++) await tick(); };
 
 describe('in-process link', () => {
   it('delivers objects synchronously, in order, by identity', () => {
@@ -113,7 +115,7 @@ describe('MessagePort link', () => {
     const got: Frame[] = [];
     right.listen(f => got.push(f as Frame));
     left.send({ ...frame(Kind.SQL, text('SELECT 1'), { request: 7, epoch: 2 }), stamps: [{ stage: 9, node: 3, at: 1234.5 }] });
-    await tick();
+    await until(() => got.length > 0);
     expect(got).toHaveLength(1);
     expect(readText(got[0].payload)).toBe('SELECT 1');
     expect(got[0]).toMatchObject({ kind: Kind.SQL, request: 7, epoch: 2, stamps: [{ stage: 9, node: 3, at: 1234.5 }] });
@@ -143,7 +145,7 @@ describe('MessagePort link', () => {
       unwrap: data => (data as { type?: string }).type === 'frame' ? (data as { bytes: ArrayBuffer }).bytes : undefined,
     });
     link.send(frame(Kind.CONFIG, json({ live: true })));
-    await tick();
+    await until(() => seen.length >= 2);
     const kinds = seen.map(m => decode(new Uint8Array((m as { bytes: ArrayBuffer }).bytes)).kind);
     expect(kinds).toEqual([Kind.HELLO, Kind.CONFIG]);
     expect(readJson(decode(new Uint8Array((seen[0] as { bytes: ArrayBuffer }).bytes)).payload)).toEqual({ node: 'coordinator', model: 'm' });
@@ -156,7 +158,7 @@ describe('MessagePort link', () => {
     const closed = vi.fn();
     link.listen(() => {}, closed);
     channel.port2.postMessage(new Uint8Array([9, 9, 9]).buffer);
-    await tick();
+    await until(() => closed.mock.calls.length > 0);
     expect(closed).toHaveBeenCalledWith(expect.stringMatching(/protocol error/));
     channel.port2.close();
   });
