@@ -65,8 +65,8 @@ describe('tb-render RendererNode (null GPU backend, real Wasm core)', () => {
     h.r.handle(bind(1, 10, 3));
     h.r.handle(schemaFrame(10, b, 3));
     const views = h.ui.filter(m => m.type === 'views').at(-1)!;
-    expect(views).toMatchObject({ slot: 1, available: ['line', 'bar', 'scatter', 'table'], chosen: 'line' });
-    expect(h.r.views(1)).toEqual(['line', 'bar', 'scatter', 'table']);
+    expect(views).toMatchObject({ slot: 1, available: ['line', 'bar', 'scatter', 'heatmap', 'surface', 'table'], chosen: 'line' });
+    expect(h.r.views(1)).toEqual(['line', 'bar', 'scatter', 'table', 'heatmap', 'surface']);
   });
 
   it('draws the first batch synchronously and emits DRAWN with the binding epoch', async () => {
