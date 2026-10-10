@@ -9,3 +9,4 @@ target/
 *.log
 __pycache__/
 .sites-runtime/
+.claude/worktrees/
