@@ -87,26 +87,33 @@ pub fn system_prompt(context: &DatasetContext) -> String {
 Output:\n\
 - Reply with the SQL only: one read-only SELECT statement. No prose, no markdown, no code fences, no trailing semicolon.\n\
 - Write compact SQL without indentation. Prefer the simplest query; use WITH only when it is needed.\n\
-- Use only the tables and columns listed below, spelled exactly as listed. Give every computed column a short alias.\n\
+- Use only the tables and columns listed below, spelled exactly as listed. Give every computed column a short alias that is not the name of a column.\n\
 - The question is typed live and may be unfinished. Answer the most plausible complete question. Never ask for clarification.\n\
 \n\
 Result shape (the chart is chosen from column order and types):\n\
 - Columns in this order: the x axis first (a time or a category), then optionally one text column that splits the result into series, then the numeric values with the main value last.\n\
 - Name latitude and longitude columns lat and lon.\n\
 - ORDER BY the x column, then the series column.\n\
-- Return at most about 5000 rows. A query on a table with more than 5000 rows must aggregate (GROUP BY a time bucket such as {bucket}, and the series) or use LIMIT.\n\
-- Write no comments, with one exception: when the question itself names a presentation (chart, plot, bar, line, scatter, map, table, heatmap, ...), the first line is -- view: <name> with name exactly one of {VIEWS}.\n\
+- Return at most about 5000 rows. A query on a table with more than 5000 rows fails without GROUP BY or LIMIT, also for a map, tracks or a scatter plot: aggregate (GROUP BY a time bucket such as {bucket}, and the series if the question compares them) or use LIMIT.\n\
+- Keep times as timestamps: bucket them with a function such as {bucket}, never format them as text.\n\
+- Write no comments. Exception: if the question contains a presentation word (chart, plot, bar, line, scatter, map, table, heatmap, ...), start with the line -- view: <name>, name exactly one of {VIEWS}. Most questions contain none; then the reply starts with SELECT or WITH.\n\
 \n\
 Time:\n",
         bucket = bucket_example(&context.dialect),
     ));
     match latest_timestamp(context) {
-        Some((table, column, max)) => out.push_str(&format!(
-            "- \"Now\" is the latest timestamp in the data, not today's date: {}.{} = {}. Relative times such as \"last 7 days\" or \"today\" count back from it.\n",
-            ident(table),
-            ident(column),
-            literal(max)
-        )),
+        Some((table, column, ty, max)) => {
+            out.push_str(&format!(
+                "- \"Now\" is the latest timestamp in the data, not today's date: {}.{} = {}. Relative times such as \"last 7 days\" or \"today\" count back from it.\n",
+                ident(table),
+                ident(column),
+                literal(max)
+            ));
+            out.push_str(&format!(
+                "- Write a relative window as {}. Use {dialect} functions only (no SQLite DATETIME() or strftime).\n",
+                window_example(&context.dialect, column, ty, max)
+            ));
+        }
         None => out.push_str(
             "- Relative times such as \"last 7 days\" count back from the latest timestamp in the data (its max()), not from today's date.\n",
         ),
@@ -166,17 +173,41 @@ pub fn repair_message(context: &DatasetContext, reason: &str) -> String {
 }
 
 /// First TIMESTAMP/DATE column (in table order) that has a max statistic.
-fn latest_timestamp(context: &DatasetContext) -> Option<(&str, &str, &Value)> {
+fn latest_timestamp(context: &DatasetContext) -> Option<(&str, &str, &str, &Value)> {
     context.tables.iter().find_map(|table| {
         table.columns.iter().find_map(|column| {
             let ty = column.ty.to_ascii_uppercase();
             let temporal = ty.starts_with("TIMESTAMP") || ty.starts_with("DATE");
             match (&column.max, temporal) {
-                (Some(max), true) => Some((table.name.as_str(), column.name.as_str(), max)),
+                (Some(max), true) => Some((
+                    table.name.as_str(),
+                    column.name.as_str(),
+                    column.ty.as_str(),
+                    max,
+                )),
                 _ => None,
             }
         })
     })
+}
+
+/// `ts >= TIMESTAMP '…' - INTERVAL '7 days'` in the dataset's dialect, from the latest value.
+fn window_example(dialect: &str, column: &str, ty: &str, max: &Value) -> String {
+    let date = !ty.to_ascii_uppercase().starts_with("TIMESTAMP");
+    match dialect {
+        "clickhouse" => format!(
+            "{} >= {}({}) - INTERVAL 7 DAY",
+            ident(column),
+            if date { "toDate" } else { "toDateTime" },
+            literal(max)
+        ),
+        _ => format!(
+            "{} >= {} {} - INTERVAL '7 days'",
+            ident(column),
+            if date { "DATE" } else { "TIMESTAMP" },
+            literal(max)
+        ),
+    }
 }
 
 fn is_plain_ident(name: &str) -> bool {
