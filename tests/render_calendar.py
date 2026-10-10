@@ -25,8 +25,8 @@ EXPECT = {
 }
 
 
-def ink(png):
-    img = Image.open(io.BytesIO(png)).convert("RGB")
+def ink(img):
+    img = img.convert("RGB")
     count, colours = 0, set()
     for r, g, b in img.getdata():
         if abs(r - BACKGROUND[0]) + abs(g - BACKGROUND[1]) + abs(b - BACKGROUND[2]) > 60:
@@ -47,11 +47,15 @@ def check(page, base, backend, reps, screenshot=None):
     summary = page.evaluate("() => window.__calendar")
     failures = []
     if screenshot:
-        page.screenshot(path=screenshot.replace(".png", f"-{backend}.png"), full_page=True)
+        page.screenshot(path=screenshot.replace(".png", f"-{backend}.png"), full_page=True, timeout=300_000)
     page.add_style_tag(content=".labels { display: none !important; }")
+    # One page screenshot, cropped per canvas: software WebGL2 readback of several contexts can
+    # take tens of seconds on a loaded host, longer than per-element screenshot timeouts.
+    shot = Image.open(io.BytesIO(page.screenshot(timeout=300_000)))
     for slot, (cycle, min_ink, min_colours) in EXPECT.items():
         case = summary["cases"][slot]
-        pixels, colours = ink(page.locator(f'figure[data-card="{slot}"] canvas').screenshot())
+        box = page.locator(f'figure[data-card="{slot}"] canvas').bounding_box()
+        pixels, colours = ink(shot.crop((int(box["x"]), int(box["y"]), int(box["x"] + box["width"]), int(box["y"] + box["height"]))))
         print(f"  slot {slot}: {pixels} ink px, {colours} colours, {case['labels']} labels, caption {case['caption']!r}")
         if case["chosen"] != "seasons":
             failures.append(f"slot {slot}: chosen {case['chosen']}")
@@ -79,10 +83,14 @@ def main():
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True, args=SOFTWARE if args.software else [])
         results["browser"] = browser.version
-        page = browser.new_page(viewport={"width": 1100, "height": 900}, device_scale_factor=1)
-        page.on("console", lambda m: m.type == "error" and print("console:", m.text, file=sys.stderr))
         for backend in args.backend or ["webgpu", "webgl2"]:
             print(backend)
+            # A fresh browser per backend: queued software-WebGPU work must not stall the next run.
+            if ran or results.get("webgpu") is not None:
+                browser.close()
+                browser = pw.chromium.launch(headless=True, args=SOFTWARE if args.software else [])
+            page = browser.new_page(viewport={"width": 1100, "height": 900}, device_scale_factor=1)
+            page.on("console", lambda m: m.type == "error" and print("console:", m.text, file=sys.stderr))
             result, summary = check(page, args.url, backend, args.reps, args.screenshot)
             if result is None:
                 continue

@@ -29,6 +29,8 @@
     const out = document.getElementById('out'), grid = document.getElementById('grid');
     const params = new URLSearchParams(location.search);
     const backend = params.get('backend') ?? 'webgpu', reps = Number(params.get('reps') ?? 9);
+    // `view` (default seasons) applies to the timed case only, for comparing against xy views.
+    const timedView = params.get('view') ?? 'seasons';
     const BATCH = 2048, MIN = 60_000_000n, DAY = 86_400_000_000n;
 
     /** `n` rows from `start` (µs) every `step` µs, optional series names, smooth seasonal values. */
@@ -110,6 +112,7 @@
       // First-draw cost for the 20,160-row weekly case: BATCH(first) → FIRST_DRAW_SUBMITTED,
       // plus the whole stream and the time until the GPU finished.
       const first = [], ingest = [], build = [], replay = [], all = [], presented = [];
+      renderer.setView(1, timedView);
       for (let k = 0; k < reps; k++) {
         await tick();
         const r = request++;
