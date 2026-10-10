@@ -147,7 +147,7 @@ describe('database node', () => {
     console.log(`[engine-database] 60k aggregate (Node, warm): guard ${(s.guardMs * 1000).toFixed(0)} µs, schema ${s.schemaMs!.toFixed(1)} ms, first batch ${s.firstBatchMs!.toFixed(1)} ms, done ${s.doneMs!.toFixed(1)} ms, ${s.batches} batches, ${s.polls} polls, ${s.fetchRetries} retries, ${s.yields} yields, ${s.rows} rows, ${s.bytes} bytes`);
     expect(s.rows).toBe(60_480);
     expect(s.outcome).toBe('done');
-  });
+  }, 30_000); // measurement; the shared host can be heavily loaded
 
   it('rejects writes, settings, file access and multiple statements', async () => {
     const run = makeNode();

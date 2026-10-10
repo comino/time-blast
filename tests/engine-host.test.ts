@@ -246,8 +246,9 @@ describe('engine host', () => {
   it('reports a node that fails to start as a STATUS frame to the UI', async () => {
     const t = setup({ failRenderer: true });
     await expect(t.host.ready).rejects.toThrow('no GPU');
-    const status = t.uiFrames().find(f => f.kind === Kind.STATUS)!;
-    expect(readJson(status.payload)).toMatchObject({ component: 'renderer', state: 'error', detail: 'no GPU' });
+    const statuses = t.uiFrames().filter(f => f.kind === Kind.STATUS).map(f => readJson(f.payload));
+    expect(statuses).toContainEqual(expect.objectContaining({ component: 'renderer', state: 'error', detail: 'no GPU' }));
+    expect(statuses).toContainEqual(expect.objectContaining({ component: 'coordinator', state: 'ready' }));
   });
 
   it('bounds pre-ready queues by dropping the oldest frame', async () => {
