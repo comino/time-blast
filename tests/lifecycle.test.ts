@@ -17,7 +17,7 @@ vi.mock('../src/core/coordinator',()=>({BrowserCoordinator:class {constructor(op
 }}));
 vi.mock('../src/core/remote-coordinator',async()=>({RemoteCoordinatorClient:(await import('../src/core/coordinator')).LocalCoordinatorClient}));
 vi.mock('../src/inference',()=>({createInferenceAdapter:vi.fn((mode,options)=>{
-  const model={mode,options,prepare:vi.fn(async()=>{}),dispose:vi.fn()};state.models.push(model);return model;
+  const model={mode,options,prepare:vi.fn(async()=>{}),dispose:vi.fn(),setPlanCacheEnabled:vi.fn()};state.models.push(model);return model;
 })}));
 vi.mock('../src/ui',()=>({createUI:(_root:any,callbacks:any)=>{
   state.callbacks=callbacks;
@@ -72,6 +72,52 @@ describe('runtime adapter ownership',()=>{
     await vi.waitFor(()=>expect(state.models).toHaveLength(2));
     expect(state.databases).toHaveLength(1);expect(state.databases[0].dispose).not.toHaveBeenCalled();
     expect(state.models[0].dispose).toHaveBeenCalledOnce();
+  });
+  it.each(['qwen-0.5b','qwen-1.5b'] as const)('changes the browser model to %s without rebuilding DuckDB and rejects old model status',async localModel=>{
+    await start();
+    const original=state.models[0];
+    expect(original.options).toMatchObject({localModel:'qwen3-4b',cacheModelPlans:true});
+    state.callbacks.onDraft('Compare a week of vessel waves',false);
+    state.callbacks.onConfig({...DEFAULT_CONFIG,localModel});
+    await vi.waitFor(()=>expect(state.clients).toHaveLength(2));
+    expect(state.models).toHaveLength(2);
+    expect(state.models[1].options.localModel).toBe(localModel);
+    expect(state.models[1].prepare).toHaveBeenCalledWith(state.databases[0].context);
+    expect(original.dispose).toHaveBeenCalledOnce();
+    expect(state.clients[0].dispose).toHaveBeenCalledOnce();
+    expect(state.databases).toHaveLength(1);
+    expect(state.databases[0].dispose).not.toHaveBeenCalled();
+    expect(state.clients[1].draft).toHaveBeenLastCalledWith('Compare a week of vessel waves',false);
+    const statuses=state.statuses.length;
+    original.options.onStatus({state:'ready',label:'Stale model'});
+    expect(state.statuses).toHaveLength(statuses);
+  });
+  it('changes plan-cache policy without discarding warmed model or database',async()=>{
+    await start();
+    state.callbacks.onConfig({...DEFAULT_CONFIG,cacheModelPlans:false});
+    await vi.waitFor(()=>expect(state.clients).toHaveLength(2));
+    expect(state.models).toHaveLength(1);expect(state.databases).toHaveLength(1);
+    expect(state.models[0].dispose).not.toHaveBeenCalled();
+    expect(state.databases[0].dispose).not.toHaveBeenCalled();
+    expect(state.models[0].setPlanCacheEnabled).toHaveBeenLastCalledWith(false);
+    expect(state.clients[0].dispose).toHaveBeenCalledOnce();
+    state.callbacks.onConfig({...DEFAULT_CONFIG,cacheModelPlans:true});
+    await vi.waitFor(()=>expect(state.clients).toHaveLength(3));
+    expect(state.models).toHaveLength(1);
+    expect(state.models[0].setPlanCacheEnabled).toHaveBeenLastCalledWith(true);
+  });
+  it.each(['remote','templates'] as const)('does not replace %s inference when its inactive browser model profile changes',async mode=>{
+    await start();
+    const config={...DEFAULT_CONFIG,inferenceMode:mode,inferenceEndpoint:mode==='remote'?'https://model.test/infer':''};
+    state.callbacks.onConfig(config);
+    await vi.waitFor(()=>expect(state.clients).toHaveLength(2));
+    const selected=state.models.at(-1);
+    state.callbacks.onConfig({...config,localModel:'qwen-1.5b'});
+    await vi.waitFor(()=>expect(state.clients).toHaveLength(3));
+    expect(state.models).toHaveLength(2);
+    expect(state.models.at(-1)).toBe(selected);
+    expect(selected.dispose).not.toHaveBeenCalled();
+    expect(state.databases).toHaveLength(1);
   });
   it('retains the warmed model and updates its context when only database changes',async()=>{
     await start();state.callbacks.onConfig({...DEFAULT_CONFIG,databaseMode:'remote',databaseEndpoint:'https://db.test'});

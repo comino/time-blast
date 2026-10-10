@@ -1,0 +1,465 @@
+{
+  "checked_utc": "2026-10-09T22:08:08.710846+00:00",
+  "status": "Source and artifact inspection only; no candidate inference or hardware-GPU evaluation in this report.",
+  "runtime": {
+    "package": "@mlc-ai/web-llm",
+    "version": "0.2.85",
+    "npm_integrity": "sha512-CwUiSAvDCYnmAZlpPMkurPHDfBLq6fvdRB3vRgoA894hRG/V/BSeY9bmMm6iIIU5VpjJxfb/dLPpJX2at0L9rw==",
+    "installed_bundle_sha256": "341bae95822bfee1d0fd6a0e6cd2db8613bb8edf809390ac142fba36ec17792c",
+    "source_tag": "v0.2.85",
+    "source_commit": "5f742443179a5463e83a19f704d7c19f1f019f98",
+    "source_url": "https://github.com/mlc-ai/web-llm/blob/5f742443179a5463e83a19f704d7c19f1f019f98/src/llm_chat.ts",
+    "source_sha256": "538b8bf7ce9af7e7fe93e6eef590ff2481fc542336ebf9528c0d96f9b7050f64"
+  },
+  "nonthinking_contract": {
+    "request_option": {
+      "extra_body": {
+        "enable_thinking": false
+      }
+    },
+    "exact_prefix": "<think>\n\n</think>\n\n",
+    "source_lines": {
+      "grammar_tokenizer_stop_binding": 799,
+      "forced_prefix_added_to_output_ids": 853,
+      "output_ids_decoded_to_message": 1033,
+      "sampled_token_accepted_by_grammar": 1986
+    },
+    "observed_from_source": [
+      "The engine inserts the empty block into the assistant prompt and outputIds before sampling.",
+      "The JSON grammar is initialized/reset independently; forced prefix tokens are not accepted into its matcher.",
+      "Only subsequently sampled tokens pass through grammarMatcher.acceptToken.",
+      "Decoded outputIds include the prefix, and engine.ts streaming deltas expose that message content."
+    ],
+    "application_requirement": "Normalize only the exact documented leading empty block for explicitly supported Qwen3 models, then apply the existing strict JSON validation. Never remove nonempty reasoning, alternate markup, prose, embedded markers or suffixes.",
+    "hardware_generation_verified": false,
+    "telemetry_caveat": "The forced empty header is in outputIds and therefore counts toward max_tokens, but is not sampled output. First-token latency should exclude header-only deltas; do not synthesize decoding-token counts from the exposed text."
+  },
+  "qwen3_candidates": [
+    {
+      "model": "Qwen3-0.6B-q4f16_1-MLC",
+      "revision": "8c14ce481d4c692769976ad52afea453a102df19",
+      "config_url": "https://huggingface.co/mlc-ai/Qwen3-0.6B-q4f16_1-MLC/resolve/8c14ce481d4c692769976ad52afea453a102df19/mlc-chat-config.json",
+      "config_sha256": "190a51c56b9a07a8d8721266f8e459bcd1b1689bcdff294795cd2bffa203ff2d",
+      "tokenizer_config_url": "https://huggingface.co/mlc-ai/Qwen3-0.6B-q4f16_1-MLC/resolve/8c14ce481d4c692769976ad52afea453a102df19/tokenizer_config.json",
+      "tokenizer_config_sha256": "bbc2c089e3bef8753f63348c10595767be8998bc6ca7c7ebcaada346d401fba8",
+      "configured_stop_ids": [
+        151643,
+        151645
+      ],
+      "tokenizer_stop_ids": {
+        "<|endoftext|>": 151643,
+        "<|im_end|>": 151645
+      },
+      "pinned_model_url": "https://huggingface.co/mlc-ai/Qwen3-0.6B-q4f16_1-MLC/resolve/8c14ce481d4c692769976ad52afea453a102df19/",
+      "actual_tokenizer": {
+        "url": "https://huggingface.co/mlc-ai/Qwen3-0.6B-q4f16_1-MLC/resolve/8c14ce481d4c692769976ad52afea453a102df19/tokenizer.json",
+        "bytes": 11422654,
+        "sha256": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+        "actual_tokenizer_ids": {
+          "<|endoftext|>": 151643,
+          "<|im_end|>": 151645,
+          "<think>": 151667,
+          "</think>": 151668
+        }
+      },
+      "tensor_manifest": {
+        "url": "https://huggingface.co/mlc-ai/Qwen3-0.6B-q4f16_1-MLC/resolve/8c14ce481d4c692769976ad52afea453a102df19/tensor-cache.json",
+        "bytes": 129391,
+        "sha256": "f4647d617dc869d91fbd7851c65af0a2cf7dd615884ebe3b110013801b65d8c7",
+        "shards_count": 9,
+        "all_shards_relative": true,
+        "first_shard": "params_shard_0.bin"
+      },
+      "pinned_model_lib": {
+        "url": "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/025bcaf3780fa8254f5e5efd3bfea0a5397248f4/web-llm-models/v0_2_84/base/Qwen3-0.6B-q4f16_1_cs1k-webgpu.wasm",
+        "bytes": 5535989,
+        "sha256": "4db800b24119204e1a0386e8a12e084d5012aa60f77c5bffad362f20498df912",
+        "wasm_magic": "0061736d"
+      }
+    },
+    {
+      "model": "Qwen3-0.6B-q4f32_1-MLC",
+      "revision": "9b4f0b05b08c692ea86fe151ea878406ad22f428",
+      "config_url": "https://huggingface.co/mlc-ai/Qwen3-0.6B-q4f32_1-MLC/resolve/9b4f0b05b08c692ea86fe151ea878406ad22f428/mlc-chat-config.json",
+      "config_sha256": "e52fcd32f38eaa9d8886fd3e9e0f0f13334226784a9fd8f4db2acffff01653cf",
+      "tokenizer_config_url": "https://huggingface.co/mlc-ai/Qwen3-0.6B-q4f32_1-MLC/resolve/9b4f0b05b08c692ea86fe151ea878406ad22f428/tokenizer_config.json",
+      "tokenizer_config_sha256": "bbc2c089e3bef8753f63348c10595767be8998bc6ca7c7ebcaada346d401fba8",
+      "configured_stop_ids": [
+        151643,
+        151645
+      ],
+      "tokenizer_stop_ids": {
+        "<|endoftext|>": 151643,
+        "<|im_end|>": 151645
+      },
+      "pinned_model_url": "https://huggingface.co/mlc-ai/Qwen3-0.6B-q4f32_1-MLC/resolve/9b4f0b05b08c692ea86fe151ea878406ad22f428/",
+      "actual_tokenizer": {
+        "url": "https://huggingface.co/mlc-ai/Qwen3-0.6B-q4f32_1-MLC/resolve/9b4f0b05b08c692ea86fe151ea878406ad22f428/tokenizer.json",
+        "bytes": 11422654,
+        "sha256": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+        "actual_tokenizer_ids": {
+          "<|endoftext|>": 151643,
+          "<|im_end|>": 151645,
+          "<think>": 151667,
+          "</think>": 151668
+        }
+      },
+      "tensor_manifest": {
+        "url": "https://huggingface.co/mlc-ai/Qwen3-0.6B-q4f32_1-MLC/resolve/9b4f0b05b08c692ea86fe151ea878406ad22f428/tensor-cache.json",
+        "bytes": 129392,
+        "sha256": "625c67c44d4fcc7a2c3915257634a5866b1c2e45911be05ecedcfee6e04b22ea",
+        "shards_count": 9,
+        "all_shards_relative": true,
+        "first_shard": "params_shard_0.bin"
+      },
+      "pinned_model_lib": {
+        "url": "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/025bcaf3780fa8254f5e5efd3bfea0a5397248f4/web-llm-models/v0_2_84/base/Qwen3-0.6B-q4f32_1_cs1k-webgpu.wasm",
+        "bytes": 5419279,
+        "sha256": "361f1310ae616863bccbc638f075f7484816b45eb30ffecf08539272a1b2ae1e",
+        "wasm_magic": "0061736d"
+      }
+    },
+    {
+      "model": "Qwen3-1.7B-q4f16_1-MLC",
+      "revision": "80b3abcec6c3b3f5355dc0cc99cc4fb578f192bc",
+      "config_url": "https://huggingface.co/mlc-ai/Qwen3-1.7B-q4f16_1-MLC/resolve/80b3abcec6c3b3f5355dc0cc99cc4fb578f192bc/mlc-chat-config.json",
+      "config_sha256": "f5e726b50363ffaae83f063ad40ddb67394e7da090d251cf549a69d5f899d58a",
+      "tokenizer_config_url": "https://huggingface.co/mlc-ai/Qwen3-1.7B-q4f16_1-MLC/resolve/80b3abcec6c3b3f5355dc0cc99cc4fb578f192bc/tokenizer_config.json",
+      "tokenizer_config_sha256": "5a7303fcb1a27ede63134a2cbd61d5282c247ca6d769ce4746d4ffa124aedd63",
+      "configured_stop_ids": [
+        151643,
+        151645
+      ],
+      "tokenizer_stop_ids": {
+        "<|endoftext|>": 151643,
+        "<|im_end|>": 151645
+      },
+      "pinned_model_url": "https://huggingface.co/mlc-ai/Qwen3-1.7B-q4f16_1-MLC/resolve/80b3abcec6c3b3f5355dc0cc99cc4fb578f192bc/",
+      "actual_tokenizer": {
+        "url": "https://huggingface.co/mlc-ai/Qwen3-1.7B-q4f16_1-MLC/resolve/80b3abcec6c3b3f5355dc0cc99cc4fb578f192bc/tokenizer.json",
+        "bytes": 11422654,
+        "sha256": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+        "actual_tokenizer_ids": {
+          "<|endoftext|>": 151643,
+          "<|im_end|>": 151645,
+          "<think>": 151667,
+          "</think>": 151668
+        }
+      },
+      "tensor_manifest": {
+        "url": "https://huggingface.co/mlc-ai/Qwen3-1.7B-q4f16_1-MLC/resolve/80b3abcec6c3b3f5355dc0cc99cc4fb578f192bc/tensor-cache.json",
+        "bytes": 134335,
+        "sha256": "c0ebbdf8326d2839f77246446c01e5504ecadd6cc1279ef5873d34d15bf59104",
+        "shards_count": 30,
+        "all_shards_relative": true,
+        "first_shard": "params_shard_0.bin"
+      },
+      "pinned_model_lib": {
+        "url": "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/025bcaf3780fa8254f5e5efd3bfea0a5397248f4/web-llm-models/v0_2_84/base/Qwen3-1.7B-q4f16_1_cs1k-webgpu.wasm",
+        "bytes": 5566554,
+        "sha256": "8161aaa4b40bccf19fcedb2f2e8c221eb9efb72d2198681f1958c9c1e05a682f",
+        "wasm_magic": "0061736d"
+      }
+    },
+    {
+      "model": "Qwen3-1.7B-q4f32_1-MLC",
+      "revision": "bddd4d584cabe19113f7e4ff46fd9e73b4d3dc89",
+      "config_url": "https://huggingface.co/mlc-ai/Qwen3-1.7B-q4f32_1-MLC/resolve/bddd4d584cabe19113f7e4ff46fd9e73b4d3dc89/mlc-chat-config.json",
+      "config_sha256": "f33b32f3671f8f38af2d45c9c125d749afeaaab862d2e602956fedf5b60f257b",
+      "tokenizer_config_url": "https://huggingface.co/mlc-ai/Qwen3-1.7B-q4f32_1-MLC/resolve/bddd4d584cabe19113f7e4ff46fd9e73b4d3dc89/tokenizer_config.json",
+      "tokenizer_config_sha256": "5a7303fcb1a27ede63134a2cbd61d5282c247ca6d769ce4746d4ffa124aedd63",
+      "configured_stop_ids": [
+        151643,
+        151645
+      ],
+      "tokenizer_stop_ids": {
+        "<|endoftext|>": 151643,
+        "<|im_end|>": 151645
+      },
+      "pinned_model_url": "https://huggingface.co/mlc-ai/Qwen3-1.7B-q4f32_1-MLC/resolve/bddd4d584cabe19113f7e4ff46fd9e73b4d3dc89/",
+      "actual_tokenizer": {
+        "url": "https://huggingface.co/mlc-ai/Qwen3-1.7B-q4f32_1-MLC/resolve/bddd4d584cabe19113f7e4ff46fd9e73b4d3dc89/tokenizer.json",
+        "bytes": 11422654,
+        "sha256": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+        "actual_tokenizer_ids": {
+          "<|endoftext|>": 151643,
+          "<|im_end|>": 151645,
+          "<think>": 151667,
+          "</think>": 151668
+        }
+      },
+      "tensor_manifest": {
+        "url": "https://huggingface.co/mlc-ai/Qwen3-1.7B-q4f32_1-MLC/resolve/bddd4d584cabe19113f7e4ff46fd9e73b4d3dc89/tensor-cache.json",
+        "bytes": 134336,
+        "sha256": "97f39ead6d2fa19a61186a159866aa5fc2b433b50edc6b06b3ca22c957832859",
+        "shards_count": 30,
+        "all_shards_relative": true,
+        "first_shard": "params_shard_0.bin"
+      },
+      "pinned_model_lib": {
+        "url": "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/025bcaf3780fa8254f5e5efd3bfea0a5397248f4/web-llm-models/v0_2_84/base/Qwen3-1.7B-q4f32_1_cs1k-webgpu.wasm",
+        "bytes": 5444872,
+        "sha256": "a80ca0d245ed9ce492497918afd21ec1d43dd3873b63591255b01bd9c41adf65",
+        "wasm_magic": "0061736d"
+      }
+    }
+  ],
+  "qwen35_rejected_as_drop_in": {
+    "model": "Qwen3.5-0.8B-q4f16_1-MLC",
+    "revision": "0ec138972555613c1d7812a821778ad0398c8790",
+    "files": {
+      "mlc-chat-config.json": {
+        "url": "https://huggingface.co/mlc-ai/Qwen3.5-0.8B-q4f16_1-MLC/resolve/0ec138972555613c1d7812a821778ad0398c8790/mlc-chat-config.json",
+        "sha256": "1ea93c2b8b396a3754516d0c4b6f4b6881c2930ca2cc6cb2cf00e511e6be86a9",
+        "bytes": 2358
+      },
+      "tokenizer_config.json": {
+        "url": "https://huggingface.co/mlc-ai/Qwen3.5-0.8B-q4f16_1-MLC/resolve/0ec138972555613c1d7812a821778ad0398c8790/tokenizer_config.json",
+        "sha256": "49e2b6e395f959f077f1e992b338919c0d4a9732fc6e613995e06557f843500c",
+        "bytes": 16709
+      },
+      "tokenizer.json": {
+        "url": "https://huggingface.co/mlc-ai/Qwen3.5-0.8B-q4f16_1-MLC/resolve/0ec138972555613c1d7812a821778ad0398c8790/tokenizer.json",
+        "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+        "bytes": 12807982
+      }
+    },
+    "configured_stop_ids": [
+      151643,
+      151645
+    ],
+    "actual_tokenizer_stop_ids": {
+      "<|endoftext|>": 248044,
+      "<|im_end|>": 248046
+    },
+    "finding": "Configured stop IDs are ordinary vocabulary entries in this tokenizer. The qwen2 conversation template also omits the official default non-thinking prefix. Qwen3.5-2B-q4f16_1-MLC has the same stop-ID mismatch. Registry presence alone is not validated compatibility.",
+    "qwen_model_documentation": "https://huggingface.co/Qwen/Qwen3.5-0.8B",
+    "followup_report": "qwen35-public-config-override-2026-10-09.json",
+    "followup_summary": "Historical unmodified-asset finding remains valid. A later public-API audit found a typed conv_config correction; see the follow-up before treating this as a permanent candidate rejection."
+  },
+  "native_trial_artifacts": [
+    {
+      "publisher": "bartowski/Qwen_Qwen3-0.6B-GGUF",
+      "revision": "60b85c0e3d8fe0f6474f406922a26d12aca4550d",
+      "source_url": "https://huggingface.co/bartowski/Qwen_Qwen3-0.6B-GGUF/resolve/60b85c0e3d8fe0f6474f406922a26d12aca4550d/Qwen_Qwen3-0.6B-Q4_K_M.gguf?download=true",
+      "base_model": "Qwen/Qwen3-0.6B",
+      "upstream_weight_revision": null,
+      "filename": "Qwen_Qwen3-0.6B-Q4_K_M.gguf",
+      "bytes": 484220320,
+      "sha256": "9acfc1e001311f34b4252001b626f2e466d592a42065f66571bff3790d4e1b14"
+    },
+    {
+      "publisher": "bartowski/Qwen_Qwen3.5-0.8B-GGUF",
+      "revision": "f36b1ea49a332ede8fe5f389bbf5b3575ef71f48",
+      "source_url": "https://huggingface.co/bartowski/Qwen_Qwen3.5-0.8B-GGUF/resolve/f36b1ea49a332ede8fe5f389bbf5b3575ef71f48/Qwen_Qwen3.5-0.8B-Q4_K_M.gguf?download=true",
+      "base_model": "Qwen/Qwen3.5-0.8B",
+      "upstream_weight_revision": null,
+      "filename": "Qwen_Qwen3.5-0.8B-Q4_K_M.gguf",
+      "bytes": 579615840,
+      "sha256": "fb044e93939a70469c905781334f5de1e6c8b608ced6cbc8c9249bd4127d9526"
+    },
+    {
+      "publisher": "bartowski/Qwen_Qwen3-1.7B-GGUF",
+      "revision": "dcb19155b962dbb6389f4691a982043a8e651022",
+      "source_url": "https://huggingface.co/bartowski/Qwen_Qwen3-1.7B-GGUF/resolve/dcb19155b962dbb6389f4691a982043a8e651022/Qwen_Qwen3-1.7B-Q4_K_M.gguf?download=true",
+      "base_model": "Qwen/Qwen3-1.7B",
+      "upstream_weight_revision": null,
+      "filename": "Qwen_Qwen3-1.7B-Q4_K_M.gguf",
+      "bytes": 1282439584,
+      "sha256": "72c5c3cb38fa32d5256e2fe30d03e7a64c6c79e668ad84057e3bd66e250b24fb"
+    },
+    {
+      "publisher": "bartowski/Qwen_Qwen3-4B-GGUF",
+      "revision": "cb76885dc66d50759b207c5a48c4e78dfa00c638",
+      "source_url": "https://huggingface.co/bartowski/Qwen_Qwen3-4B-GGUF/resolve/cb76885dc66d50759b207c5a48c4e78dfa00c638/Qwen_Qwen3-4B-Q4_K_M.gguf?download=true",
+      "base_model": "Qwen/Qwen3-4B",
+      "upstream_weight_revision": null,
+      "filename": "Qwen_Qwen3-4B-Q4_K_M.gguf",
+      "bytes": 2497280960,
+      "sha256": "fbe1d5edd4ce802ae3ae7c7e4ab7d09789d697fdac1fc7929f8df4ca3c41bae3"
+    }
+  ],
+  "asset_checks": [
+    {
+      "model": "Qwen3.5-0.8B-q4f16_1",
+      "url": "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/v0_2_84/base/Qwen3.5-0.8B-q4f16_1_cs1k-webgpu.wasm",
+      "status": 200,
+      "bytes_header": "6197129"
+    },
+    {
+      "model": "Qwen3.5-0.8B-q4f32_1",
+      "url": "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/v0_2_84/base/Qwen3.5-0.8B-q4f32_1_cs1k-webgpu.wasm",
+      "status": 200,
+      "bytes_header": "6080025"
+    },
+    {
+      "model": "Qwen3-0.6B-q4f16_1",
+      "url": "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/v0_2_84/base/Qwen3-0.6B-q4f16_1_cs1k-webgpu.wasm",
+      "status": 200,
+      "bytes_header": "5535989"
+    },
+    {
+      "model": "Qwen3-0.6B-q4f32_1",
+      "url": "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/web-llm-models/v0_2_84/base/Qwen3-0.6B-q4f32_1_cs1k-webgpu.wasm",
+      "status": 200,
+      "bytes_header": "5419279"
+    }
+  ],
+  "limitations": [
+    "MLC registry URLs follow mutable model branches; this report records inspected revisions and hashes.",
+    "Qwen3 candidates require actual model accuracy/latency tests; no superiority is established.",
+    "Official Qwen3-0.6B-GGUF currently provides Q8_0, not Q4_K_M. The native candidate uses a separately identified publisher.",
+    "Native Q4_K_M weights/runtime differ from browser MLC q4f16_1/q4f32_1; results must be reported separately.",
+    "Publisher cards identify base models but do not establish an exact upstream-weight revision for these downloads.",
+    "No model load, generation, quantization or application profile change was performed for this artifact."
+  ],
+  "asset_pinning": {
+    "checked_utc": "2026-10-09T22:33:55.298745+00:00",
+    "binary_repository_commit": "025bcaf3780fa8254f5e5efd3bfea0a5397248f4",
+    "runtime_config_source": "https://github.com/mlc-ai/web-llm/blob/5f742443179a5463e83a19f704d7c19f1f019f98/src/config.ts",
+    "runtime_engine_source": "https://github.com/mlc-ai/web-llm/blob/5f742443179a5463e83a19f704d7c19f1f019f98/src/engine.ts",
+    "runtime_url_source": "https://github.com/mlc-ai/web-llm/blob/5f742443179a5463e83a19f704d7c19f1f019f98/src/support.ts",
+    "api": "CreateMLCEngine(modelId, {appConfig: {...prebuiltAppConfig, model_list: [{...registryRecord, model: pinnedModelBaseUrl, model_lib: pinnedModelLibraryUrl}]}, initProgressCallback})",
+    "observed_from_source": [
+      "cleanModelUrl preserves /resolve/<commit>/ URLs. Preserve the registry record overrides and library version path v0_2_84/base.",
+      "mlc-chat-config.json, tokenizer.json, tensor-cache.json and relative shard dataPaths resolve against the pinned model base URL.",
+      "The actual tokenizer.json is consumed; tokenizer_config.json is ignored by this runtime.",
+      "Wasm uses the independently configured model_lib URL, so pinning the Hugging Face model alone does not pin the binary.",
+      "Cache API keys include the full artifact URL. Commit URLs do not reuse the old /main keys; existing downloads can occupy additional storage until eviction or explicit cleanup.",
+      "ModelRecord.integrity can verify config, actual tokenizer and Wasm using SRI; it does not expose tensor-shard integrity. Verification happens during model loading, not each generation."
+    ],
+    "verification_limit": "Artifact hash and source inspection only; no WebGPU model initialization or inference."
+  },
+  "qwen3_4b_fallback": {
+    "checked_utc": "2026-10-09T22:40:47.310295+00:00",
+    "status": "Artifact and source inspection only. No inference/model load. Browser helper and profiles remain unchanged.",
+    "model_documentation": "https://huggingface.co/Qwen/Qwen3-4B",
+    "models": [
+      {
+        "model": "Qwen3-4B-q4f16_1-MLC",
+        "revision": "a5c9fab855e3ccbdfed2e7e69683d75f30332161",
+        "model_url": "https://huggingface.co/mlc-ai/Qwen3-4B-q4f16_1-MLC/resolve/a5c9fab855e3ccbdfed2e7e69683d75f30332161/",
+        "registry_vram_required_MB": 3431.59,
+        "registry_context_window_size": 4096,
+        "files": {
+          "mlc-chat-config.json": {
+            "url": "https://huggingface.co/mlc-ai/Qwen3-4B-q4f16_1-MLC/resolve/a5c9fab855e3ccbdfed2e7e69683d75f30332161/mlc-chat-config.json",
+            "bytes": 2075,
+            "sha256": "9726ac7dbcd90475f8045604be0862ef1b4837e432c5004da20b8a6e348330da"
+          },
+          "tokenizer.json": {
+            "url": "https://huggingface.co/mlc-ai/Qwen3-4B-q4f16_1-MLC/resolve/a5c9fab855e3ccbdfed2e7e69683d75f30332161/tokenizer.json",
+            "bytes": 11422654,
+            "sha256": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4"
+          },
+          "tokenizer_config.json": {
+            "url": "https://huggingface.co/mlc-ai/Qwen3-4B-q4f16_1-MLC/resolve/a5c9fab855e3ccbdfed2e7e69683d75f30332161/tokenizer_config.json",
+            "bytes": 9675,
+            "sha256": "5a7303fcb1a27ede63134a2cbd61d5282c247ca6d769ce4746d4ffa124aedd63"
+          },
+          "tensor-cache.json": {
+            "url": "https://huggingface.co/mlc-ai/Qwen3-4B-q4f16_1-MLC/resolve/a5c9fab855e3ccbdfed2e7e69683d75f30332161/tensor-cache.json",
+            "bytes": 180452,
+            "sha256": "b6e26392cf28f3c8b966af21efb9e987cd8e612edcad2544d2da78de20bc514a"
+          },
+          "model_lib": {
+            "url": "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/025bcaf3780fa8254f5e5efd3bfea0a5397248f4/web-llm-models/v0_2_84/base/Qwen3-4B-q4f16_1_cs1k-webgpu.wasm",
+            "bytes": 5847049,
+            "sha256": "a986a53c92579714eb7ec36856004f5fb75272c9f69091f14eb6b2086eea4440",
+            "wasm_magic": "0061736d"
+          }
+        },
+        "model_type": "qwen3",
+        "quantization": "q4f16_1",
+        "actual_tokenizer_ids": {
+          "<|endoftext|>": 151643,
+          "<|im_end|>": 151645,
+          "<think>": 151667,
+          "</think>": 151668
+        },
+        "shards_count": 74,
+        "all_shards_relative": true,
+        "shard_bytes": 2262920192,
+        "conversation_template_name": "qwen3",
+        "configured_stop_ids": [
+          151643,
+          151645
+        ]
+      },
+      {
+        "model": "Qwen3-4B-q4f32_1-MLC",
+        "revision": "b7e4eb1ba80728187fb5df44055cc1a7c32310e0",
+        "model_url": "https://huggingface.co/mlc-ai/Qwen3-4B-q4f32_1-MLC/resolve/b7e4eb1ba80728187fb5df44055cc1a7c32310e0/",
+        "registry_vram_required_MB": 4327.71,
+        "registry_context_window_size": 4096,
+        "files": {
+          "mlc-chat-config.json": {
+            "url": "https://huggingface.co/mlc-ai/Qwen3-4B-q4f32_1-MLC/resolve/b7e4eb1ba80728187fb5df44055cc1a7c32310e0/mlc-chat-config.json",
+            "bytes": 2075,
+            "sha256": "fd13528a8c6007671c55076a7181c4ca441b135ebfbcd24608db0af07f485ca3"
+          },
+          "tokenizer.json": {
+            "url": "https://huggingface.co/mlc-ai/Qwen3-4B-q4f32_1-MLC/resolve/b7e4eb1ba80728187fb5df44055cc1a7c32310e0/tokenizer.json",
+            "bytes": 11422654,
+            "sha256": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4"
+          },
+          "tokenizer_config.json": {
+            "url": "https://huggingface.co/mlc-ai/Qwen3-4B-q4f32_1-MLC/resolve/b7e4eb1ba80728187fb5df44055cc1a7c32310e0/tokenizer_config.json",
+            "bytes": 9675,
+            "sha256": "5a7303fcb1a27ede63134a2cbd61d5282c247ca6d769ce4746d4ffa124aedd63"
+          },
+          "tensor-cache.json": {
+            "url": "https://huggingface.co/mlc-ai/Qwen3-4B-q4f32_1-MLC/resolve/b7e4eb1ba80728187fb5df44055cc1a7c32310e0/tensor-cache.json",
+            "bytes": 180451,
+            "sha256": "fe288cae116da5bd02a9e1d668f195764bb2814937e4643398ddeb8dcfbe4d76"
+          },
+          "model_lib": {
+            "url": "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/025bcaf3780fa8254f5e5efd3bfea0a5397248f4/web-llm-models/v0_2_84/base/Qwen3-4B-q4f32_1_cs1k-webgpu.wasm",
+            "bytes": 5704086,
+            "sha256": "d4ad6b142902f55d724480c785274516cfc72e2bf1678c5a941845c427dc77b2",
+            "wasm_magic": "0061736d"
+          }
+        },
+        "model_type": "qwen3",
+        "quantization": "q4f32_1",
+        "actual_tokenizer_ids": {
+          "<|endoftext|>": 151643,
+          "<|im_end|>": 151645,
+          "<think>": 151667,
+          "</think>": 151668
+        },
+        "shards_count": 74,
+        "all_shards_relative": true,
+        "shard_bytes": 2262920192,
+        "conversation_template_name": "qwen3",
+        "configured_stop_ids": [
+          151643,
+          151645
+        ]
+      }
+    ],
+    "native_gguf_metadata": {
+      "gguf_version": 3,
+      "tensor_count": 398,
+      "metadata_fields": 31,
+      "general.architecture": "qwen3",
+      "general.name": "Qwen3 4B",
+      "qwen3.context_length": 32768,
+      "tokenizer.ggml.eos_token_id": 151645,
+      "tokenizer.ggml.bos_token_id": 151643,
+      "chat_template": {
+        "sha256": "5595e8741bb5500f9d395e05a0aefe6ca1e8d54c5dd8b98bcf7760d895fdc6e6",
+        "contains_enable_thinking": true,
+        "contains_empty_think_header": true
+      },
+      "general.file_type": 15
+    },
+    "assessment": [
+      "Both quantized variants exist in the pinned WebLLM registry and use the qwen3 conversation template.",
+      "The actual tokenizer.json matches the configured stop IDs and is byte-identical to the inspected smaller Qwen3 tokenizer.",
+      "The registry memory figures are estimates, not hardware measurements. Weight shards alone total 2,262,920,192 bytes.",
+      "The existing explicit enable_thinking:false runtime contract applies to this family, but the application allowlist and asset helper have not been extended to 4B.",
+      "Ready for a bounded native comparison if selected; no native or browser quality, latency, memory-fit or GPU initialization result is established."
+    ]
+  }
+}

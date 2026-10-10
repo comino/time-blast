@@ -1,0 +1,185 @@
+{
+  "checked_utc": "2026-10-09T23:00:27.850677+00:00",
+  "status": "Supported public configuration fix identified and source-only conversation parity checked. No browser engine loading or hardware-GPU generation performed. Native inference is a separate screening report.",
+  "supersedes": "model-candidate-assets-2026-10-09.json#qwen35_rejected_as_drop_in",
+  "conclusion": "The published metadata remains incorrect, but it can be corrected through the typed public ChatOptions.conv_config API. The candidate should be tested with explicit overrides rather than discarded solely for this metadata defect.",
+  "runtime": {
+    "package": "@mlc-ai/web-llm",
+    "version": "0.2.85",
+    "source_commit": "5f742443179a5463e83a19f704d7c19f1f019f98",
+    "installed_bundle_sha256": "341bae95822bfee1d0fd6a0e6cd2db8613bb8edf809390ac142fba36ec17792c",
+    "config_source": "https://github.com/mlc-ai/web-llm/blob/5f742443179a5463e83a19f704d7c19f1f019f98/src/config.ts",
+    "engine_source": "https://github.com/mlc-ai/web-llm/blob/5f742443179a5463e83a19f704d7c19f1f019f98/src/engine.ts",
+    "pipeline_source": "https://github.com/mlc-ai/web-llm/blob/5f742443179a5463e83a19f704d7c19f1f019f98/src/llm_chat.ts"
+  },
+  "public_api": {
+    "type_contract": "ChatOptions extends Partial<ChatConfig>; ChatConfig declares conv_config?: Partial<ConvTemplateConfig> and conv_template: ConvTemplateConfig. ConvTemplateConfig declares stop_token_ids: number[].",
+    "typed_override": {
+      "conv_config": {
+        "stop_token_ids": [
+          248044,
+          248046
+        ]
+      }
+    },
+    "engine_call": "CreateMLCEngine(modelId, engineConfig, chatOptions)",
+    "alternative": "Place the same typed correction in ModelRecord.overrides while preserving existing registry settings and nested conv_config entries.",
+    "typecheck": "Both CreateMLCEngine third-argument and ModelRecord.overrides variants type-check against installed definitions with strict TypeScript and no casts.",
+    "propagation": "getConversation merges conv_template then conv_config; the resulting stop IDs are used by output stopping and XGrammar TokenizerInfo construction.",
+    "timing": "Apply at model initialization. Do not mutate a warmed grammar tokenizer/engine to change stop IDs."
+  },
+  "models": [
+    {
+      "model": "Qwen3.5-0.8B-q4f16_1-MLC",
+      "mlc_revision": "0ec138972555613c1d7812a821778ad0398c8790",
+      "mlc_config": {
+        "url": "https://huggingface.co/mlc-ai/Qwen3.5-0.8B-q4f16_1-MLC/resolve/0ec138972555613c1d7812a821778ad0398c8790/mlc-chat-config.json",
+        "bytes": 2358,
+        "sha256": "1ea93c2b8b396a3754516d0c4b6f4b6881c2930ca2cc6cb2cf00e511e6be86a9"
+      },
+      "actual_tokenizer": {
+        "url": "https://huggingface.co/mlc-ai/Qwen3.5-0.8B-q4f16_1-MLC/resolve/0ec138972555613c1d7812a821778ad0398c8790/tokenizer.json",
+        "bytes": 12807982,
+        "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+        "actual_special_ids": {
+          "<|endoftext|>": 248044,
+          "<|im_start|>": 248045,
+          "<|im_end|>": 248046,
+          "<think>": 248068,
+          "</think>": 248069
+        }
+      },
+      "published_stop_ids": [
+        151643,
+        151645
+      ],
+      "official_model_revision": "2fc06364715b967f1860aea9cf38778875588b17",
+      "official_template": {
+        "url": "https://huggingface.co/Qwen/Qwen3.5-0.8B/resolve/2fc06364715b967f1860aea9cf38778875588b17/chat_template.jinja",
+        "bytes": 7755,
+        "sha256": "273d8e0e683b885071fb17e08d71e5f2a5ddfb5309756181681de4f5a1822d80"
+      }
+    },
+    {
+      "model": "Qwen3.5-2B-q4f16_1-MLC",
+      "mlc_revision": "dd74e9c8a20c4546df85c844103bff87b6dcacad",
+      "mlc_config": {
+        "url": "https://huggingface.co/mlc-ai/Qwen3.5-2B-q4f16_1-MLC/resolve/dd74e9c8a20c4546df85c844103bff87b6dcacad/mlc-chat-config.json",
+        "bytes": 2358,
+        "sha256": "43577b6de9a4c62cf0fe9c5ee57bc52ebb2fc487c64a21bf78d62431186b4b01"
+      },
+      "actual_tokenizer": {
+        "url": "https://huggingface.co/mlc-ai/Qwen3.5-2B-q4f16_1-MLC/resolve/dd74e9c8a20c4546df85c844103bff87b6dcacad/tokenizer.json",
+        "bytes": 12807982,
+        "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+        "actual_special_ids": {
+          "<|endoftext|>": 248044,
+          "<|im_start|>": 248045,
+          "<|im_end|>": 248046,
+          "<think>": 248068,
+          "</think>": 248069
+        }
+      },
+      "published_stop_ids": [
+        151643,
+        151645
+      ],
+      "official_model_revision": "15852e8c16360a2fea060d615a32b45270f8a8fc",
+      "official_template": {
+        "url": "https://huggingface.co/Qwen/Qwen3.5-2B/resolve/15852e8c16360a2fea060d615a32b45270f8a8fc/chat_template.jinja",
+        "bytes": 7755,
+        "sha256": "273d8e0e683b885071fb17e08d71e5f2a5ddfb5309756181681de4f5a1822d80"
+      }
+    }
+  ],
+  "nonthinking": {
+    "request": {
+      "extra_body": {
+        "enable_thinking": false
+      }
+    },
+    "exact_header": "<think>\n\n</think>\n\n",
+    "official_behavior": "Both inspected official templates use this header by default or with enable_thinking:false.",
+    "browser_behavior": "The pinned runtime inserts the header into assistant prompt and outputIds; returned text includes it, while grammar constrains sampled JSON.",
+    "required_validation": "Only the existing strict, model-allowlisted empty-header normalization is appropriate; do not strip real reasoning."
+  },
+  "controlled_conversation_checks": {
+    "checks": [
+      {
+        "model": "mlc-ai/Qwen3.5-0.8B-q4f16_1-MLC",
+        "messages": 2,
+        "exactOfficialPrompt": true,
+        "stopTokens": [
+          248044,
+          248046
+        ],
+        "stopStrings": [
+          "<|endoftext|>",
+          "<|im_end|>"
+        ]
+      },
+      {
+        "model": "mlc-ai/Qwen3.5-0.8B-q4f16_1-MLC",
+        "messages": 4,
+        "exactOfficialPrompt": true,
+        "stopTokens": [
+          248044,
+          248046
+        ],
+        "stopStrings": [
+          "<|endoftext|>",
+          "<|im_end|>"
+        ]
+      },
+      {
+        "model": "mlc-ai/Qwen3.5-2B-q4f16_1-MLC",
+        "messages": 2,
+        "exactOfficialPrompt": true,
+        "stopTokens": [
+          248044,
+          248046
+        ],
+        "stopStrings": [
+          "<|endoftext|>",
+          "<|im_end|>"
+        ]
+      },
+      {
+        "model": "mlc-ai/Qwen3.5-2B-q4f16_1-MLC",
+        "messages": 4,
+        "exactOfficialPrompt": true,
+        "stopTokens": [
+          248044,
+          248046
+        ],
+        "stopStrings": [
+          "<|endoftext|>",
+          "<|im_end|>"
+        ]
+      }
+    ],
+    "browser": "145.0.7632.0",
+    "gpu_used": false,
+    "model_loaded": false,
+    "note": "Source-only conversation construction and official pinned Jinja template comparison, not engine load/generation."
+  },
+  "asset_strategy": "Pin model repository and binary commit URLs, retain original registry settings, and layer the typed override. A local model-config mirror is unnecessary.",
+  "remaining_hardware_checks": [
+    "Verify the compiled hybrid KV+RNN model ABI loads and runs on actual f16/f32 browser hardware. Runtime source supports hybrid state but that is not a hardware result.",
+    "Confirm constrained JSON/refusal termination uses corrected EOS IDs, and verify nonthinking behavior on initial and correction calls.",
+    "Exercise repeated calls, queue cancellation, stale-result rejection and memory pressure with the candidate.",
+    "Compare exact plan meaning and refusal behavior on the frozen evaluation corpus; no capability improvement is established by metadata inspection.",
+    "Measure cold/warm memory and inference latency separately; native Q4_K_M results cannot establish browser MLC accuracy or latency."
+  ],
+  "limitations": [
+    "Inspected assets in this follow-up are the 0.8B and 2B f16 variants; f32 revisions need the same verification before selection.",
+    "Prompt parity checks use short plain-text initial/correction histories without outer whitespace, images or tools. Official template trimming differs for surrounding whitespace.",
+    "The published bos_token_id/eos_token_id placeholders are also inconsistent with the tokenizer. The ordinary chat path uses conversation stop IDs and no default BOS prefix; do not substitute unrelated config fields without checking their actual consumption."
+  ],
+  "native_screening_reports": {
+    "full_plan": "evals/results/2026-10-09-qwen35-0.8-full-regression.json",
+    "semantic_v4_1": "evals/results/2026-10-09-qwen35-0.8-semantic-v4.1-regression.json",
+    "semantic_without_examples": "evals/results/2026-10-09-qwen35-0.8-semantic-noexamples-v1-regression.json",
+    "note": "All reports are native Q4_K_M development screenings on the same eight public cases, not WebGPU validation. Removing examples did not resolve the semantic format errors."
+  }
+}

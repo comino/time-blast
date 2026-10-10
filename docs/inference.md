@@ -1,6 +1,6 @@
 # Inference before Enter
 
-Status: proposed design; no inference adapter or measured speedup is implemented.
+Status: design notes. The browser worker, local/remote adapter contracts, bounded correction and their verification limits are described in [the implemented prototype](prototype.md). The additional mechanisms below remain proposals unless stated there.
 Primary references checked on **2026-10-09**. Capabilities must be verified against the
 exact engine, model and deployment version selected for an experiment.
 

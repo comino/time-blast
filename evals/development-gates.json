@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "corpus": "inference-corpus.json",
+  "provenance": "Selected after inspecting candidate failures. These are development selection cases, not a fresh unseen audit.",
+  "gates": {
+    "literal-units-and-refusals-v1": {
+      "description": "Six supported queries exercise named vessels, five-minute/daily/six-hour buckets, three-week conversion and minimum/maximum aggregation. Six unsupported requests exercise multiple metrics, exclusion, median, sum, threshold and unknown vessel.",
+      "caseIds": [
+        "aurora_min_speed",
+        "meridian_wind_table",
+        "kestrel_water",
+        "atlas_daily_speed",
+        "min_wind_bars",
+        "fleet_table_three_weeks",
+        "reject_two_metrics",
+        "reject_exclusion",
+        "reject_median",
+        "reject_total",
+        "reject_threshold",
+        "reject_unknown_vessel"
+      ],
+      "scoring": "Keep full-plan strict outcomes and existing named-vessel grouping-only equivalence separately; never relax data fields or unsupported requirements."
+    }
+  }
+}

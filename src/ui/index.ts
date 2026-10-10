@@ -5,6 +5,7 @@ import './styles.css';
 import { MAX_PROMPT_CHARS } from '../inference/plan';
 import { prewarmViews } from './renderer-registry';
 import { DRAFT_IDLE_MS } from '../core/scheduling';
+import { BROWSER_MODEL_PROFILES, isLocalModelProfile } from '../inference/models';
 
 export interface UICallbacks {
   onDraft(text: string, composing: boolean): void;
@@ -139,9 +140,15 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
     const browserDatabase = field('databaseMode').value === 'browser';
     el('dataset-profile-field').hidden = !browserDatabase;
     field('datasetProfile').disabled = !browserDatabase;
-    root.querySelector<HTMLElement>('.model-load')!.hidden = !['auto', 'webgpu'].includes(field('inferenceMode').value);
-    action<HTMLButtonElement>('warm-model').disabled = modelLoading || field('inferenceMode').value !== config.inferenceMode || !['auto', 'webgpu'].includes(config.inferenceMode);
-    action('warm-model').title = field('inferenceMode').value !== config.inferenceMode ? 'Apply runtime before preparing this model' : 'Prepare the current local model';
+    const localModel = ['auto', 'webgpu'].includes(field('inferenceMode').value);
+    root.querySelector<HTMLElement>('.model-load')!.hidden = !localModel;
+    field('localModel').disabled = !localModel;
+    field('cacheModelPlans').disabled = !localModel;
+    const profile = BROWSER_MODEL_PROFILES.find(candidate => candidate.id === field('localModel').value);
+    el('local-model-help').textContent = profile?.detail ?? '';
+    const modelChanged = field('inferenceMode').value !== config.inferenceMode || field('localModel').value !== config.localModel;
+    action<HTMLButtonElement>('warm-model').disabled = modelLoading || modelChanged || !['auto', 'webgpu'].includes(config.inferenceMode);
+    action('warm-model').title = modelChanged ? 'Apply runtime before preparing this model' : 'Prepare the current local model';
     const live = (field('liveQuery') as HTMLInputElement).checked || (field('liveTranslation') as HTMLInputElement).checked;
     el('translation-threshold').hidden = !live;
     (field('translationMinChars') as HTMLInputElement).disabled = !live;
@@ -166,10 +173,15 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
     if ((liveQuery || liveTranslation) && !validMinimum) {
       el('runtime-error').textContent = `Use a whole number from 1 to ${MAX_PROMPT_CHARS} for minimum characters.`; return;
     }
+    const localModel = field('localModel').value;
+    if (!isLocalModelProfile(localModel)) {
+      el('runtime-error').textContent = 'Choose an available browser model.'; return;
+    }
     const next: RuntimeConfig = {
       coordinatorMode: field('coordinatorMode').value as RuntimeConfig['coordinatorMode'], coordinatorEndpoint: field('coordinatorEndpoint').value.trim(),
       inferenceMode: field('inferenceMode').value as RuntimeConfig['inferenceMode'], inferenceEndpoint: field('inferenceEndpoint').value.trim(),
       inferenceDraftEndpoint: field('inferenceDraftEndpoint').value.trim(),
+      localModel, cacheModelPlans: (field('cacheModelPlans') as HTMLInputElement).checked,
       databaseMode: field('databaseMode').value as RuntimeConfig['databaseMode'], databaseEndpoint: field('databaseEndpoint').value.trim(),
       datasetProfile: field('datasetProfile').value as RuntimeConfig['datasetProfile'],
       speculation: (field('speculation') as HTMLInputElement).checked,

@@ -72,6 +72,8 @@ export interface InferenceAdapter {
   prepare(context: DatasetContext): Promise<void>;
   observeDraft(draft: Draft): void;
   resolve(draft: Draft, signal: AbortSignal): Promise<InferenceResult>;
+  /** Changes local exact-plan reuse without unloading a warmed model. */
+  setPlanCacheEnabled?(enabled: boolean): void;
   dispose(): void;
 }
 export interface ColumnBatch {
@@ -88,6 +90,16 @@ export interface ColumnBatch {
   /** Keeps the producer's immutable backing allocation alive. */
   owner?: unknown;
 }
+/** Local execution strategy for complete, disjoint time buckets in one snapshot. */
+export interface FirstBucketExecution {
+  readonly kind: 'first-complete-bucket';
+  readonly sql: string;
+  readonly firstSql: string;
+  readonly remainderSql: string;
+  readonly contextId: string;
+  readonly start: number;
+  readonly end: number;
+}
 export interface QueryRequest {
   id: string;
   sql: string;
@@ -95,10 +107,12 @@ export interface QueryRequest {
   context: DatasetContext;
   signal: AbortSignal;
   priority: 'committed' | 'speculative';
+  firstBucket?: FirstBucketExecution;
 }
 export interface DatabaseAdapter {
   readonly id: string;
   readonly placement: 'browser' | 'remote';
+  readonly supportsFirstBucket?: true;
   prepare(onProgress?: (status: AdapterStatus) => void): Promise<DatasetContext>;
   execute(request: QueryRequest): AsyncIterable<ColumnBatch>;
   dispose(): Promise<void>;
@@ -106,6 +120,7 @@ export interface DatabaseAdapter {
 export interface QueryCompiler {
   prepare(): Promise<void>;
   compile(plan: QueryPlan, context: DatasetContext): string;
+  compileFirstBucket?(plan: QueryPlan, context: DatasetContext): FirstBucketExecution | undefined;
   readonly kind: 'rust-wasm';
 }
 export interface QueryTiming {
@@ -136,6 +151,7 @@ export interface QueryView {
   revision: number;
   plan: QueryPlan;
   sql: string;
+  execution?: 'first-complete-bucket';
   source: InferenceResult['source'];
   model?: string;
   database?: string;
@@ -161,9 +177,13 @@ export type PipelineEvent =
   | { type: 'error'; id?: string; message: string; failure?: QueryFailure }
   | { type: 'trace'; entry: TraceEvent };
 export type InferenceMode = 'auto' | 'webgpu' | 'templates' | 'remote';
+export type LocalModelProfile = 'qwen-0.5b' | 'qwen-1.5b' | 'qwen3-4b';
+export const DEFAULT_LOCAL_MODEL_PROFILE: LocalModelProfile = 'qwen3-4b';
 export type DatasetProfile = 'demo' | 'large';
 export interface RuntimeConfig {
   inferenceMode: InferenceMode;
+  localModel: LocalModelProfile;
+  cacheModelPlans: boolean;
   inferenceEndpoint: string;
   inferenceDraftEndpoint: string;
   databaseMode: 'browser' | 'remote';
@@ -178,6 +198,7 @@ export interface RuntimeConfig {
 }
 export const DEFAULT_CONFIG: RuntimeConfig = {
   inferenceMode: 'webgpu', inferenceEndpoint: '', inferenceDraftEndpoint: '', databaseMode: 'browser',
+  localModel: DEFAULT_LOCAL_MODEL_PROFILE, cacheModelPlans: true,
   databaseEndpoint: '', coordinatorMode: 'browser', coordinatorEndpoint: '', speculation: true,
   liveQuery: true, liveTranslation: true, translationMinChars: 20,
   datasetProfile: 'large',

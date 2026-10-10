@@ -45,7 +45,8 @@ async function initialize():Promise<void> {
   const own=++generation;
   const selected={...config};
   const nextDatabaseKey=JSON.stringify([selected.databaseMode,selected.databaseEndpoint,selected.databaseMode==='browser'?selected.datasetProfile:null]);
-  const nextInferenceKey=JSON.stringify([selected.inferenceMode,selected.inferenceEndpoint,selected.inferenceDraftEndpoint]);
+  const usesLocalModel=selected.inferenceMode==='auto'||selected.inferenceMode==='webgpu';
+  const nextInferenceKey=JSON.stringify([selected.inferenceMode,selected.inferenceEndpoint,selected.inferenceDraftEndpoint,usesLocalModel?selected.localModel:null]);
   const keepDatabase=databaseKey===nextDatabaseKey&&Boolean(database&&context);
   const keepInference=inferenceKey===nextInferenceKey&&Boolean(inference);
   client?.dispose();client=undefined;
@@ -69,9 +70,11 @@ async function initialize():Promise<void> {
     if (own!==generation) return;
     context=dataset;ui.setDataset(dataset);
     const model:InferenceAdapter=inference??createInferenceAdapter(selected.inferenceMode,{endpoint:selected.inferenceEndpoint,draftEndpoint:selected.inferenceDraftEndpoint,
+      localModel:selected.localModel,cacheModelPlans:selected.cacheModelPlans,
       onStatus:status=>{if(model===inference)ui.setStatus('model',status);}});
     inference=model;
     inferenceKey=nextInferenceKey;
+    model.setPlanCacheEnabled?.(selected.cacheModelPlans);
     // prepare establishes context synchronously; a slow model download never gates template queries.
     void model.prepare(dataset).catch(error=>{if(own===generation)ui.setStatus('model',{state:'unavailable',label:'Model unavailable',detail:String(error)});});
     connect(selected,own,dataset,db,model);
@@ -89,6 +92,7 @@ function connect(selected:RuntimeConfig,own:number,dataset:DatasetContext,db:Dat
     ui.handleEvent(event);
   };
   const options={database:db,inference:model,compiler,context:dataset,emit,speculation:selected.speculation,
+    firstBucket:selected.databaseMode==='browser',
     liveTranslation:selected.liveTranslation,translationMinChars:selected.translationMinChars,draftDebounceMs:DRAFT_IDLE_MS};
   ui.setBusy(false);
   try {

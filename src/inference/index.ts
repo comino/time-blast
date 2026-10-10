@@ -1,4 +1,4 @@
-import type { AdapterStatus, DatasetContext, Draft, InferenceAdapter, InferenceMode, InferenceResult } from '../core/types';
+import type { AdapterStatus, DatasetContext, Draft, InferenceAdapter, InferenceMode, InferenceResult, LocalModelProfile } from '../core/types';
 import type { WorkerRequest, WorkerResponse } from './messages';
 import { abortError, assertNotAborted, MAX_PROMPT_CHARS, MODEL_RESPONSE_SCHEMA, validateDraft, validateQueryPlan } from './plan';
 import { parseTemplate } from './templates';
@@ -15,6 +15,8 @@ export interface InferenceOptions {
   draftEndpoint?: string;
   onStatus?: (status: AdapterStatus) => void;
   model?: string;
+  localModel?: LocalModelProfile;
+  cacheModelPlans?: boolean;
   fetchImpl?: typeof fetch;
 }
 
@@ -35,11 +37,23 @@ export class LocalInferenceAdapter implements InferenceAdapter {
   private nextId = 0;
   private latestDraft?: Draft;
   private readonly plans = new PlanCache();
+  private cacheEnabled: boolean;
+  private cacheEpoch = 0;
   private pending = new Map<string, { resolve(value: InferenceResult | undefined): void; reject(error: Error): void; cleanup(): void }>();
   private warmWaiters=new Set<{finish(error?:unknown):void}>();
 
   constructor(private mode: Exclude<InferenceMode, 'remote'>, private options: InferenceOptions = {}) {
     this.id = mode === 'templates' ? 'deterministic-templates' : `webllm-${mode}`;
+    this.cacheEnabled = options.cacheModelPlans !== false;
+  }
+
+  /** Fresh inference trials can bypass plan reuse while keeping the engine warm. */
+  setPlanCacheEnabled(enabled: boolean): void {
+    this.assertLive();
+    if (this.cacheEnabled === enabled) return;
+    this.cacheEnabled = enabled;
+    this.cacheEpoch++;
+    this.plans.clear();
   }
 
   async prepare(context: DatasetContext): Promise<void> {
@@ -106,7 +120,8 @@ export class LocalInferenceAdapter implements InferenceAdapter {
       if (plan) return { plan, source: 'template', model: 'Exact template grammar' };
       if (this.mode === 'templates') throw new Error('This wording is outside the deterministic template grammar. Choose Auto, Local WebGPU or remote inference.');
     }
-    const cached = this.plans.get(draft.text, context);
+    const cacheEpoch = this.cacheEpoch;
+    const cached = this.cacheEnabled ? this.plans.get(draft.text, context) : undefined;
     if (cached) return cached;
     let warmupMs = timing.warmupMs = 0;
     if (this.warming&&!this.ready) {
@@ -127,7 +142,7 @@ export class LocalInferenceAdapter implements InferenceAdapter {
       validated = { ...result, plan: validateQueryPlan(result.plan, context), source: 'webgpu',
         diagnostics: { ...diagnostics, warmupMs: warmupMs + (diagnostics?.warmupMs ?? 0) } };
     } catch (error) { throw new InferenceFailure(error, { ...result, source: 'webgpu', diagnostics }); }
-    if (this.context === context && !this.disposed) this.plans.set(draft.text, context, validated);
+    if (this.cacheEnabled && this.cacheEpoch === cacheEpoch && this.context === context && !this.disposed) this.plans.set(draft.text, context, validated);
     return validated;
   }
 
@@ -217,10 +232,10 @@ export class LocalInferenceAdapter implements InferenceAdapter {
     worker.onerror = (event) => fail(event.message || 'Unable to load the local model worker.');
     worker.onmessageerror = () => fail('Unable to decode a message from the local model worker.');
     if (this.latestDraft) worker.postMessage({ type: 'draft', draft: this.latestDraft } satisfies WorkerRequest);
-    await this.request({ type: 'prepare', model: this.options.model });
+    await this.request({ type: 'prepare', model: this.options.model, localModel: this.options.localModel });
   }
 
-  private request(message: { type: 'prepare'; model?: string } | { type: 'resolve'; draft: Draft; context: DatasetContext }, signal?: AbortSignal): Promise<InferenceResult | undefined> {
+  private request(message: { type: 'prepare'; model?: string; localModel?: LocalModelProfile } | { type: 'resolve'; draft: Draft; context: DatasetContext }, signal?: AbortSignal): Promise<InferenceResult | undefined> {
     if (signal) assertNotAborted(signal);
     const worker = this.worker;
     if (!worker) return Promise.reject(new Error('The local model worker is unavailable.'));

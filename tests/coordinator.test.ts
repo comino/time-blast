@@ -7,19 +7,59 @@ const context:DatasetContext={id:'snapshot-1',label:'Test',rowCount:2,start:0,en
 const plan:QueryPlan={metric:'speed',aggregate:'avg',bucketMinutes:60,windowHours:24,splitByVessel:false,vessel:null,view:'line'};
 const batch:ColumnBatch={x:new Float64Array([0,3600000]),y:new Float64Array([12,14]),series:new Int32Array([0,0]),length:2,byteLength:40};
 const draft=(text='Average speed by hour',revision=1):Draft=>({text,revision,contextId:context.id,sentAt:performance.now()});
-function harness(overrides:{database?:DatabaseAdapter;inference?:InferenceAdapter;speculativeBytes?:number;speculation?:boolean;liveTranslation?:boolean;translationMinChars?:number;debounceMs?:number;draftDebounceMs?:number}={}) {
+function harness(overrides:{database?:DatabaseAdapter;inference?:InferenceAdapter;compiler?:QueryCompiler;firstBucket?:boolean;speculativeBytes?:number;speculation?:boolean;liveTranslation?:boolean;translationMinChars?:number;debounceMs?:number;draftDebounceMs?:number}={}) {
   const events:PipelineEvent[]=[];
   const inference:InferenceAdapter=overrides.inference??{id:'test',placement:'browser',prepare:async()=>{},observeDraft:vi.fn(),dispose(){},resolve:vi.fn(async()=>({plan,source:'template' as const}))};
   const database:DatabaseAdapter=overrides.database??{id:'test-db',placement:'browser',prepare:async()=>context,dispose:async()=>{},execute:vi.fn(async function*(){yield batch;})};
-  const compiler:QueryCompiler={kind:'rust-wasm',prepare:async()=>{},compile:vi.fn(()=>'SQL')};
+  const compiler:QueryCompiler=overrides.compiler??{kind:'rust-wasm',prepare:async()=>{},compile:vi.fn(()=>'SQL')};
   const coordinator=new BrowserCoordinator({inference,database,compiler,context,emit:e=>events.push(e),speculation:overrides.speculation??true,
     debounceMs:'debounceMs' in overrides?overrides.debounceMs:10,speculativeBytes:overrides.speculativeBytes,
-    liveTranslation:overrides.liveTranslation,translationMinChars:overrides.translationMinChars,draftDebounceMs:overrides.draftDebounceMs});
+    firstBucket:overrides.firstBucket,liveTranslation:overrides.liveTranslation,translationMinChars:overrides.translationMinChars,draftDebounceMs:overrides.draftDebounceMs});
   return {coordinator,events,inference,database,compiler};
 }
 beforeEach(()=>vi.stubGlobal('scheduler',{yield:()=>new Promise<void>(resolve=>setTimeout(resolve,0))}));
 afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();vi.restoreAllMocks();});
 const settle=async()=>{for(let i=0;i<10;i++)await Promise.resolve();};
+
+describe('first-bucket execution ownership',()=>{
+  const execution={kind:'first-complete-bucket' as const,sql:'SQL',firstSql:'FIRST',remainderSql:'REST',
+    contextId:context.id,start:context.start,end:context.end};
+  function setup(enabled=true,placement:'browser'|'remote'='browser',capable=true) {
+    const database:DatabaseAdapter={id:'db',placement,...(capable?{supportsFirstBucket:true as const}:{}),
+      prepare:async()=>context,dispose:async()=>{},execute:vi.fn(async function*(){yield batch;})};
+    const compiler:QueryCompiler={kind:'rust-wasm',prepare:async()=>{},compile:vi.fn(()=>'SQL'),
+      compileFirstBucket:vi.fn(()=>execution)};
+    return harness({database,compiler,firstBucket:enabled,speculation:false,liveTranslation:true});
+  }
+  it.each([[false,'browser',true],[true,'remote',true],[true,'browser',false]] as const)(
+    'does not add local statements when enabled=%s placement=%s capability=%s',async(enabled,placement,capable)=>{
+      const h=setup(enabled,placement,capable);h.coordinator.commit(draft());await settle();
+      expect(h.compiler.compileFirstBucket).not.toHaveBeenCalled();
+      expect(vi.mocked(h.database.execute).mock.calls[0][0]).not.toHaveProperty('firstBucket');
+      h.coordinator.dispose();
+    });
+  it('promotes prepared SQL with the same bounded execution and immutable logical identity',async()=>{
+    const h=setup();const question=draft();h.coordinator.observeDraft(question);await settle();
+    expect(h.database.execute).not.toHaveBeenCalled();
+    expect(h.compiler.compileFirstBucket).toHaveBeenCalledOnce();
+    h.coordinator.commit({...question,revision:2});await settle();
+    const request=vi.mocked(h.database.execute).mock.calls[0][0];
+    expect(request.firstBucket).toBe(execution);expect(request.plan).toBe(plan);expect(request.context).toBe(context);
+    expect(request.sql).toBe('SQL');expect(request.priority).toBe('committed');
+    expect(h.compiler.compileFirstBucket).toHaveBeenCalledOnce();
+    const start=h.events.find(e=>e.type==='start');
+    expect(start).toMatchObject({type:'start',view:{id:request.id,revision:2,sql:'SQL',execution:'first-complete-bucket'}});
+    expect(h.events.find(e=>e.type==='batch')).toMatchObject({id:request.id,batch});
+    expect(h.events.some(e=>e.type==='trace'&&e.entry.event==='first_bucket_execution')).toBe(true);
+    h.coordinator.dispose();
+  });
+  it('keeps a one-bucket query on its original single-statement path',async()=>{
+    const h=setup();vi.mocked(h.compiler.compileFirstBucket!).mockReturnValue(undefined);
+    h.coordinator.commit(draft());await settle();
+    expect(vi.mocked(h.database.execute).mock.calls[0][0]).not.toHaveProperty('firstBucket');
+    expect(h.events.find(e=>e.type==='start')).not.toHaveProperty('view.execution');h.coordinator.dispose();
+  });
+});
 function queuedTransport() {
   const messages:any[]=[];const port2={onmessage:null as any,close(){}};
   vi.stubGlobal('MessageChannel',class {port1={postMessage:(data:any)=>messages.push(data),close(){}};port2=port2;});

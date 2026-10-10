@@ -15,6 +15,7 @@ export const SYNTHETIC_CONTEXT = SYNTHETIC_CONTEXTS.demo;
 export class DuckDBAdapter implements DatabaseAdapter {
   readonly id = 'duckdb-wasm';
   readonly placement = 'browser' as const;
+  readonly supportsFirstBucket = true as const;
   private engine?: duckdb.AsyncDuckDB;
   private worker?: Worker;
   private loading?: Promise<DatasetContext>;
@@ -83,10 +84,20 @@ export class DuckDBAdapter implements DatabaseAdapter {
     checkAbort(request.signal);
     const context = await this.prepare();
     if (request.context.id !== context.id) throw new Error('Dataset context changed; resolve the request again');
+    const firstBucket = request.firstBucket;
+    if (firstBucket && (firstBucket.kind !== 'first-complete-bucket' || firstBucket.sql !== request.sql
+      || firstBucket.contextId !== context.id || firstBucket.start !== context.start || firstBucket.end !== context.end
+      || request.context.start !== context.start || request.context.end !== context.end || request.context.rowCount !== context.rowCount
+      || request.context.vessels.length !== context.vessels.length || request.context.vessels.some((name, i) => name !== context.vessels[i]))) {
+      throw new Error('First-bucket execution does not match the owned dataset and logical query');
+    }
+    // This private engine owns only the bundled telemetry table. Physical SQL is
+    // produced by the bounded Rust compiler; remote execution never uses it.
+    const statements = firstBucket ? [firstBucket.firstSql, firstBucket.remainderSql] : [request.sql];
     const release = await this.gate.acquire(request.signal);
     let connection: duckdb.AsyncDuckDBConnection | undefined;
     let reader: Awaited<ReturnType<duckdb.AsyncDuckDBConnection['send']>> | undefined;
-    let finished = false, stopped = false;
+    let finished = false, stopped = false, transaction = false;
     let canceling: Promise<void> | undefined;
     const cancel = (): Promise<void> => {
       stopped = true;
@@ -101,18 +112,33 @@ export class DuckDBAdapter implements DatabaseAdapter {
       checkAbort(request.signal);
       this.active = { connection, cancel };
       request.signal.addEventListener('abort', onAbort, { once: true });
-      reader = await connection.send(request.sql, true);
-      if (!reader) throw new Error('DuckDB worker stopped before producing a result');
+      if (firstBucket) {
+        // One stable read-only snapshot spans both complete-group statements.
+        // The baseline retains its existing single-statement transaction.
+        await connection.query('BEGIN TRANSACTION READ ONLY');
+        transaction = true;
+      }
       let rows = 0, bytes = 0;
       const retained = new WeakSet<ArrayBufferLike>();
-      for await (const record of reader) {
+      for (const sql of statements) {
         checkAbort(request.signal);
         if (stopped || this.disposed) throw abortError();
-        const batch = retainArrowBatch(record, context.vessels.length);
-        rows += batch.length; bytes += accountRetainedBytes(batch, retained);
-        if (rows > MAX_RESULT_ROWS || bytes > MAX_RESULT_BYTES) throw new Error('Query exceeded the result budget');
-        if (batch.length) yield batch;
+        reader = await connection.send(sql, true);
+        if (!reader) throw new Error('DuckDB worker stopped before producing a result');
+        for await (const record of reader) {
+          checkAbort(request.signal);
+          if (stopped || this.disposed) throw abortError();
+          const batch = retainArrowBatch(record, context.vessels.length);
+          rows += batch.length; bytes += accountRetainedBytes(batch, retained);
+          if (rows > MAX_RESULT_ROWS || bytes > MAX_RESULT_BYTES) throw new Error('Query exceeded the result budget');
+          if (batch.length) yield batch;
+        }
+        await reader.cancel().catch(() => {});
+        reader = undefined;
       }
+      checkAbort(request.signal);
+      if (stopped || this.disposed) throw abortError();
+      if (transaction) { await connection.query('COMMIT'); transaction = false; }
       checkAbort(request.signal);
       if (stopped || this.disposed) throw abortError();
       finished = true;
@@ -124,6 +150,7 @@ export class DuckDBAdapter implements DatabaseAdapter {
       if (!finished) await cancel();
       await canceling;
       await reader?.cancel().catch(() => {});
+      if (transaction) await connection?.query('ROLLBACK').catch(() => {});
       await connection?.close().catch(() => {});
       if (this.active?.connection === connection) this.active = undefined;
       release();

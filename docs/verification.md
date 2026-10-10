@@ -2,8 +2,47 @@
 
 The prototype is functionally exercised. These checks are not evidence of physical input-to-light latency, model semantic accuracy across arbitrary language, or production service performance.
 
+## Inference reliability iteration
+
+The default local profile is now **Qwen3-4B**, with a literal extraction contract selected together with its prompt, JSON grammar and decoder. The previous Qwen2.5-0.5B compact path scored **1/8 exact** on the reported regression set in native screening; the selected 4B contract scored **8/8**, all on its first attempt. On a separate, previously inspected 12-case development gate, its six supported requests were exact or had the proven single-vessel grouping equivalence, and all six unsupported requests remained non-executable. These are specific test results, not a general accuracy percentage.
+
+The first independently authored 24-case audit found **13/16 supported exact-or-equivalent plans** and **6/8 unsupported requests kept non-executable**. Its remaining failures include a wrong bucket, false unsupported claims, and dropped absolute-date/forecast requirements. A well-formed wrong interpretation does not trigger validation repair. A later contract with explicit temporal scope passed the public eight but regressed the mixed supported gate, so it remains an unselected experiment. The [evaluation reports](../evals/results/README.md) retain failed candidates, raw outputs, frozen artifacts, corpus hashes, runtime details and scoring limitations.
+
+A final independently authored 20-case audit of the unchanged selected candidate scored **10/12 supported exact** and **6/8 unsupported non-executable**, with no runtime failures. One strict supported mismatch comes from an omitted bare-request grouping default in the audit author's contract; its original expectation and score remain unchanged, with an independent-review note. The other supported failure changes 24-hour buckets to one hour. Absolute dates and forecasting again produced false accepts. These residual failures remain documented; no prompt was tuned against the final audit.
+
+All model-quality measurements above use **llama.cpp b11538 and native GGUF weights on CPU**. The browser uses WebLLM 0.2.85 and MLC assets; neither browser accuracy nor GPU inference speed can be inferred from the native scores. The hardware preflight on this host returned no GPU adapter and loaded no weights. The hardware-only evaluator is ready for another machine and refuses software adapters.
+
+Worker regressions exercise the selected contract, both precision variants, canonical forced-header handling, correction feedback, context overflow, cancellation and cumulative diagnostics. Asset tests verify immutable model/library revisions while preserving registry memory, context and feature settings. Profile/cache lifecycle tests prove that switching models retains DuckDB, old worker messages are fenced, disabling exact-plan reuse keeps the warm engine, and in-flight requests cannot repopulate a cleared cache after its policy changes.
+
+The actual browser XGrammar Wasm accepts supported literal extractions and rejects malformed shapes. Unsupported requirements that the grammar intentionally allows are rejected by the real decoder. Captured native completions for the user's three questions pass through the actual decoder, rebuilt Rust compiler, DuckDB and canvas: **60,480**, **144** and **2,016** points with all six vessels and correct available time bounds. Nineteen invalid completions stop before compilation or database execution. This replay checks execution of captured responses, not live model generation.
+
+```sh
+python3 tests/browser_model_grammar.py
+python3 tests/browser_model_query.py
+python3 tests/ui_model_profiles.py
+python3 tests/browser_model_accuracy.py --self-test
+# On a machine with a hardware WebGPU adapter:
+python3 tests/browser_model_accuracy.py --profile qwen3-4b --headed
+```
+
+## First complete bucket in local DuckDB
+
+The local database now emits the first complete timestamp group before executing the remaining window, within one read-only transaction. The checked-in Rust/Wasm compiler preserves the original time-window anchor and rejects splits through a group. One connection and admission owner retain both statement streams, one abort signal, and shared row/unique-buffer budgets. Remote database behavior is unchanged.
+
+The [warm comparison](experiments/first-bucket-query-2026-10-09.md) contains six pairs for each of six query shapes. All **36 pairs** match every ordered timestamp, series, metric and coordinate value exactly. For the week/minute six-vessel chart, median first draw changed **55.65 → 13.85 ms**; the median paired improvement was **42.40 ms**, with **6.30 ms** additional database completion time. Both strategies used the same initialized dataset, and native inference was paused. These measurements concern software drawing submission on this host, not inference or screen presentation.
+
+The production path's captured-model replay draws from the first **six-point** batch while retaining all **60,480** eventual points and the original Arrow buffers. All ten chart routes, view switching and the two-second live-query flow pass with the enabled strategy. Separate real-engine probes verify read-only mutation rejection in either phase, cancellation/early return, unchanged recovery results and no remainder after a canceled prefix. Controlled tests also cover empty prefixes, shared budgets, query ownership, partial failures and commit errors.
+
+```sh
+python3 tests/browser_first_bucket_safety.py
+python3 tests/browser_model_query.py --first-bucket
+python3 tests/browser_views.py
+python3 tests/browser_live_query.py
+```
+
 ## Automated checks
 
+- Final iteration: **675 application tests across 23 files**, **8 Rust tests**, and **8 controlled evaluator/provenance tests** pass, along with TypeScript checking and the Vite production build. The rebuilt Wasm artifact is committed with its Rust source. Independent reviews found no material blocker in the selected inference/profile/cache path or the complete-bucket execution path.
 - TypeScript compilation and Vite production build pass.
 - Rust compiler tests pass; the built Wasm artifact is also instantiated and exercised by the JavaScript tests.
 - The test suite covers strict intent grammar/validation, actual model-worker message/cancellation behavior through controlled doubles, remote inference request/cancellation isolation, speculative promotion, stale query rejection, primitive Arrow backing-buffer identity/slices, stream truncation/EOS/error handling, bounded query admission, and ordered chart indices.
@@ -97,7 +136,7 @@ The correction update passes **427 unit tests**, TypeScript checking and the pro
 
 The later reliability pass fixes the compact mobile surface limitation described above. Matrix cards now retain a 520-pixel minimum height; a populated mobile canvas gains enough vertical room to fit the first card. Its existing resize observer fits the camera after that expansion, without adding per-batch layout reads. Query details cover only the chart body, leaving statistics, stage timings and controls accessible. Chart headings also identify the interpreted vessel filter or fleet grouping, rather than calling every grouped result a fleet comparison.
 
-`tests/browser_mobile_matrix.py` exercises real DuckDB surface results at 390×844, including the 710-day requested window and its coverage note. The projection height increased from approximately one pixel to 98 pixels in the ordinary case and 64 pixels with the coverage note. Screenshots were visually inspected. The workspace regression and five additional viewport geometry checks from 320×568 through 651×800 pass without page errors or horizontal page overflow. These are layout checks, not latency measurements.
+`tests/browser_mobile_matrix.py` exercises actual surface cards with controlled column buffers at 390×844, including the 710-day requested window and its coverage note. The projection height increased from approximately one pixel to 98 pixels in the ordinary case and 64 pixels with the coverage note. Screenshots were visually inspected. The workspace regression and five additional viewport geometry checks from 320×568 through 651×800 pass without page errors or horizontal page overflow. These are layout checks, not database or latency measurements.
 
 The ten-view browser test also had an independent test-harness race: Playwright's request event can arrive before the Python interception callback records its held import. The test now waits for that explicit interception signal, verifies there is still no drawing, then releases the renderer and checks completion. Eighty isolated repetitions and the full real-DuckDB view suite pass; application rendering behavior was not changed to accommodate the test.
 
@@ -126,11 +165,11 @@ The measured source was committed in `c0527b645da6a0b2cd2cb0cea9508f9aa0b62275`.
 python3 scripts/benchmark-browser.py --output /tmp/time-blast-benchmark.json
 ```
 
-## Local model: explicit verification limit
+## Earlier software-WebGPU probe
 
 WebLLM **0.2.85** is integrated through its real WebGPU engine. Default headless Chromium exposed `navigator.gpu`, but `requestAdapter()` returned `null`. Auto mode reported that limitation and kept exact templates usable.
 
-With explicit software-WebGPU flags, SwiftShader exposed an adapter without `shader-f16`; the worker selected **Qwen2.5-0.5B-Instruct-q4f32_1-MLC**. It downloaded roughly 267 MB of model artifacts and reported model initialization ready. The non-template generation did **not** produce a completed validated intent before the probe's **420-second timeout**. The browser was then closed. No completed LLM inference is claimed from this host.
+With explicit software-WebGPU flags, SwiftShader exposed an adapter without `shader-f16`; the worker selected the then-default **Qwen2.5-0.5B-Instruct-q4f32_1-MLC**. It downloaded roughly 267 MB of model artifacts and reported model initialization ready. The non-template generation did **not** produce a completed validated intent before the probe's **420-second timeout**. The browser was then closed. No completed browser LLM inference is claimed from this probe.
 
 The real inference probe is:
 

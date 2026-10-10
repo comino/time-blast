@@ -1,4 +1,4 @@
-import type {ColumnBatch, DatabaseAdapter, DatasetContext, Draft, InferenceAdapter, InferenceResult, PipelineEvent, QueryCompiler, QueryTiming, QueryView} from './types';
+import type {ColumnBatch, DatabaseAdapter, DatasetContext, Draft, FirstBucketExecution, InferenceAdapter, InferenceResult, PipelineEvent, QueryCompiler, QueryTiming, QueryView} from './types';
 import {MAX_PROMPT_CHARS} from '../inference/plan';
 import {inferenceFailureDetails} from '../inference/failure';
 
@@ -7,11 +7,14 @@ interface Job {
   id:string; draft:Draft; abort:AbortController; timing:QueryTiming;
   view?:QueryView; staged:ColumnBatch[]; committed:boolean; settled:boolean; queryStarted:boolean; error?:Error;
   retained:Set<ArrayBufferLike>; retainedBytes:number; draining?:Promise<void>;
+  firstBucket?:FirstBucketExecution;
 }
 export interface CoordinatorOptions {
   database:DatabaseAdapter; inference:InferenceAdapter; compiler:QueryCompiler; context:DatasetContext;
   emit:Emit; speculation:boolean; debounceMs?:number; speculativeBytes?:number; resultBytes?:number;
   liveTranslation?:boolean; translationMinChars?:number; draftDebounceMs?:number;
+  /** Explicit local capability; remote adapters keep their ordinary query contract. */
+  firstBucket?:boolean;
 }
 
 export function translationThreshold(value?:number):number {
@@ -133,8 +136,12 @@ export class BrowserCoordinator {
         if (job.abort.signal.aborted || this.closed) return;
         job.timing.intentAt=performance.now();
         const sql=compiler.compile(result.plan,context);
+        if(this.options.firstBucket && database.placement==='browser' && database.supportsFirstBucket) {
+          job.firstBucket=compiler.compileFirstBucket?.(result.plan,context);
+        }
         job.timing.compiledAt=performance.now();
         job.view={id:job.id,prompt:job.draft.text,revision:job.draft.revision,plan:result.plan,sql,
+          ...(job.firstBucket?{execution:job.firstBucket.kind}:{}),
           source:result.source,model:result.model,inference:result.diagnostics,database:database.id,context,timing:job.timing};
         if (job.committed) this.emit({type:'start',view:job.view});
         this.trace('intent_validated',`${result.source} · ${job.id}`);
@@ -147,8 +154,10 @@ export class BrowserCoordinator {
       job.queryStarted=true;
       if(!job.committed)this.emit({type:'speculation',state:'querying',text:job.draft.text,points:0});
       const {sql,plan}=job.view;
+      if(job.firstBucket)this.trace('first_bucket_execution','First complete time bucket, then remainder in one read-only snapshot');
       job.timing.queryStartedAt=performance.now();
       for await (const batch of database.execute({id:job.id,sql,plan,context,signal:job.abort.signal,
+        ...(job.firstBucket ? {firstBucket:job.firstBucket} : {}),
         // Admission can occur after Enter. An already-sent remote request needs a
         // service-specific upgrade protocol, which this prototype does not have.
         get priority() { return job.committed?'committed' as const:'speculative' as const; }})) {

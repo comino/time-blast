@@ -39,6 +39,8 @@ def run(url, screenshot):
         assert before == 1, engines
         page.get_by_role('button', name='Runtime settings', exact=True).click()
         assert page.locator('[name="inferenceMode"]').input_value() == 'webgpu'
+        assert page.locator('[name="localModel"]').input_value() == 'qwen3-4b'
+        assert page.locator('[name="cacheModelPlans"]').is_checked()
         page.locator('[data-action="close-settings"]').click()
         assert page.evaluate("!('gpu' in navigator)")
         assert page.locator('[data-action="live-query"]').get_attribute('aria-checked') == 'true'
@@ -72,6 +74,8 @@ def run(url, screenshot):
           document.querySelector('[data-el="result-state"]')?.textContent.trim() === 'COMPLETE' &&
           document.querySelector('[data-el="points"]')?.textContent.trim() === '144'""")
         assert page.locator('.result-card[data-live-preview="true"]').count() == 1
+        assert 'read-only DuckDB snapshot' in page.locator('[data-el="sql"]').text_content()
+        assert page.evaluate("__typingWork.length>0 && document.querySelector('[data-el=\"trace-list\"]').textContent.includes('first_bucket_execution')")
         automatic_start_ms = page.evaluate("Math.min(...__typingWork.map(event=>event.at))-__lastTypedAt")
         assert 2000 <= automatic_start_ms < 60_000, ('Automatic work must wait for the typing pause', automatic_start_ms)
         assert page.locator('[data-history-card]').count() == 0

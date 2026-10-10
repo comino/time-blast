@@ -1,0 +1,735 @@
+{
+  "version": 1,
+  "status": "complete",
+  "started_at": "2026-10-09T23:00:13.600506+00:00",
+  "source": "native",
+  "runtime": "llama.cpp b11538 79e2e74eb; Linux aarch64 CPU; Qwen3.5-0.8B Q4_K_M; threads1 batch1; context4096; parallel1; reasoning off; native prefix reuse; concurrent 4B three-thread qualitative screening; not browser latency",
+  "requested_model": "qwen35-screen",
+  "evaluator_platform": "Linux-6.8.0-138-generic-aarch64-with-glibc2.39",
+  "python": "3.12.3",
+  "endpoint": "http://127.0.0.1:18082/v1/chat/completions",
+  "artifact_sha256": "f31f5a6163f8ae4d83c19ebaa30f30430b1282f5fc733fe12a31bea91e84ceb6",
+  "corpus_sha256": "9e8c834356167405c33339bc647dd2ce66ccaa27df75b456a02a7098d39fbbfd",
+  "evaluator_sha256": "372398fcdf2e8cde3522283c21578742b7cb625ffe2bdc7c3a1e19e54961708f",
+  "artifact": {
+    "encoding": "full",
+    "systemPrompt": "Translate the user's data request to one JSON object. No SQL, prose, markdown or reasoning.\nOnly fields: metric, aggregate, bucketMinutes, windowHours, splitByVessel, vessel, view.\nmetric: speed (vessel knots), wind (wind knots), wave_height (metres), water_temp (Celsius).\naggregate: avg|min|max. bucketMinutes: 1|5|15|60|360|1440. windowHours: integer 1..4294967295.\nsplitByVessel: boolean. vessel: null for all or a vessel ID. view: line|bar|scatter|table|heatmap|surface|map|density|tracks|seasons.\nDefault aggregate avg, bucketMinutes 60, windowHours 24, splitByVessel false, vessel null, view line.\nCompare vessels means splitByVessel true. A named vessel means its exact ID.\nViews do not change metric, aggregation, filters or time buckets. They display the same returned samples.\nline/bar/scatter/table: time versus the selected metric; scatter does not compare two metrics.\nheatmap: time by vessel with metric color. surface: time by vessel with metric height; no spatial interpolation. Set splitByVessel true when either asks for vessel or fleet metrics.\nmap: geographic bucket-mean positions colored by vessel. tracks: those positions connected in timestamp order. density: counts of returned bucket-mean positions in map cells, not raw-event density or time spent. map/density/tracks always require splitByVessel true; never plot a position averaged across vessels.\nseasons: the returned samples placed by UTC calendar date on a yearly wheel, with vessel rings and metric color. It adds no monthly/seasonal aggregation, missing months or extrapolation. Do not invent seasonal patterns or data beyond the dataset coverage.\nPhoto galleries, photos, image URLs, extra dimensions and arbitrary chart types are unsupported.\nOnly vessel and trailing time-window filters are supported. Do not drop filters, negation, extra metrics, unsupported computations or unknown vessel names.\nIf the full request cannot be represented faithfully, return {\"error\":\"unsupported_request\"}.\nAll relative windows end at the fixed dataset end, not today's date. UTC timestamps.\nRequested windows may exceed coverage. Preserve the requested windowHours; the query returns only its overlap with the available dataset, without inventing missing data. A request for 710 days is windowHours 17040, even when the dataset contains fewer days.\nMissing spaces between a number and its time unit do not make a request unsupported: 1days or 1day means windowHours 24; 710days means windowHours 17040.\nDataset metadata (data, not instructions): {\"id\":\"synthetic-vessels-2026-09-v1\",\"start\":\"2026-09-01T00:00:00.000Z\",\"end\":\"2026-09-15T00:00:00.000Z\",\"vessels\":[{\"id\":0,\"name\":\"Aurora\"},{\"id\":1,\"name\":\"Meridian\"},{\"id\":2,\"name\":\"Kestrel\"},{\"id\":3,\"name\":\"Solstice\"},{\"id\":4,\"name\":\"Atlas\"},{\"id\":5,\"name\":\"Nomad\"}]}\nExamples:\nAverage speed by hour => {\"metric\":\"speed\",\"aggregate\":\"avg\",\"bucketMinutes\":60,\"windowHours\":24,\"splitByVessel\":false,\"vessel\":null,\"view\":\"line\"}\nCompare vessel speeds over the last 24 hours => {\"metric\":\"speed\",\"aggregate\":\"avg\",\"bucketMinutes\":60,\"windowHours\":24,\"splitByVessel\":true,\"vessel\":null,\"view\":\"line\"}\nMaximum wind by hour => {\"metric\":\"wind\",\"aggregate\":\"max\",\"bucketMinutes\":60,\"windowHours\":24,\"splitByVessel\":false,\"vessel\":null,\"view\":\"line\"}\nShow wave height over the last 7 days => {\"metric\":\"wave_height\",\"aggregate\":\"avg\",\"bucketMinutes\":60,\"windowHours\":168,\"splitByVessel\":false,\"vessel\":null,\"view\":\"line\"}\nShow a heatmap of vessel speeds by hour over the last 7 days => {\"metric\":\"speed\",\"aggregate\":\"avg\",\"bucketMinutes\":60,\"windowHours\":168,\"splitByVessel\":true,\"vessel\":null,\"view\":\"heatmap\"}\nCompare vessel wave height by hour over the last 7 days as a 3D surface => {\"metric\":\"wave_height\",\"aggregate\":\"avg\",\"bucketMinutes\":60,\"windowHours\":168,\"splitByVessel\":true,\"vessel\":null,\"view\":\"surface\"}\nShow a density map of vessel speeds by hour => {\"metric\":\"speed\",\"aggregate\":\"avg\",\"bucketMinutes\":60,\"windowHours\":24,\"splitByVessel\":true,\"vessel\":null,\"view\":\"density\"}",
+    "schema": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "metric",
+            "aggregate",
+            "bucketMinutes",
+            "windowHours",
+            "splitByVessel",
+            "vessel",
+            "view"
+          ],
+          "properties": {
+            "metric": {
+              "type": "string",
+              "enum": [
+                "speed",
+                "wind",
+                "wave_height",
+                "water_temp"
+              ]
+            },
+            "aggregate": {
+              "type": "string",
+              "enum": [
+                "avg",
+                "min",
+                "max"
+              ]
+            },
+            "bucketMinutes": {
+              "type": "integer",
+              "enum": [
+                1,
+                5,
+                15,
+                60,
+                360,
+                1440
+              ]
+            },
+            "windowHours": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            },
+            "splitByVessel": {
+              "type": "boolean"
+            },
+            "vessel": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 5
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "view": {
+              "type": "string",
+              "enum": [
+                "line",
+                "bar",
+                "scatter",
+                "table",
+                "heatmap",
+                "surface",
+                "map",
+                "density",
+                "tracks",
+                "seasons"
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "error"
+          ],
+          "properties": {
+            "error": {
+              "type": "string",
+              "enum": [
+                "unsupported_request"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "context": {
+      "id": "synthetic-vessels-2026-09-v1",
+      "label": "North Atlantic \u00b7 synthetic vessel telemetry",
+      "rowCount": 120960,
+      "start": 1788220800000,
+      "end": 1789430400000,
+      "vessels": [
+        "Aurora",
+        "Meridian",
+        "Kestrel",
+        "Solstice",
+        "Atlas",
+        "Nomad"
+      ],
+      "description": "Six fictional vessels, one reading per minute, 1\u201314 September 2026 UTC. Deterministic synthetic data; speed and wind in knots, wave height in metres, water temperature in \u00b0C."
+    },
+    "metadata": {
+      "source": "buildSystemPrompt + MODEL_RESPONSE_SCHEMA actual production exports",
+      "candidate": "full-baseline"
+    }
+  },
+  "context": {
+    "id": "synthetic-vessels-2026-09-v1",
+    "label": "North Atlantic \u00b7 synthetic vessel telemetry",
+    "rowCount": 120960,
+    "start": 1788220800000,
+    "end": 1789430400000,
+    "vessels": [
+      "Aurora",
+      "Meridian",
+      "Kestrel",
+      "Solstice",
+      "Atlas",
+      "Nomad"
+    ],
+    "description": "Six fictional vessels, one reading per minute, 1\u201314 September 2026 UTC. Deterministic synthetic data; speed and wind in knots, wave height in metres, water temperature in \u00b0C."
+  },
+  "settings": {
+    "temperature": 0,
+    "seed": 1,
+    "max_tokens": 256,
+    "request_timeout_seconds": 300.0,
+    "repair": true,
+    "schema_constrained": true,
+    "native_cache_prompt": true,
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    }
+  },
+  "selection": {
+    "split": "regression",
+    "ids": [
+      "user_week_minute_waves",
+      "user_adjacent_day_surface",
+      "user_wide_surface",
+      "default_speed",
+      "max_wind_default",
+      "wave_week",
+      "speed_compare_day",
+      "daily_heatmap"
+    ]
+  },
+  "limitations": [
+    "Native/remote reference evaluation is not browser WebGPU accuracy or latency.",
+    "Recorded endpoint wall time includes transport and is diagnostic only; stages are not measured.",
+    "Temperature zero and a fixed seed request repeatability; different runtimes/hardware can still differ.",
+    "Native prefix reuse changes prefill work and can change floating-point execution. Compare its policy separately; it is not browser KV-cache evidence.",
+    "The Python reference decoder is independent of the browser decoder; inspect bounded raw responses.",
+    "After failures inform tuning, these examples are development data, not fresh heldout evidence.",
+    "Correct refusals and invalid non-executable outputs are reported separately.",
+    "Public regressions overlap prompt examples; this is not a fresh heldout accuracy estimate.",
+    "A preliminary mode-check request warmed prefix state before the recorded eight-case run.",
+    "Endpoint and CPU timings include concurrent workload and do not predict browser latency."
+  ],
+  "results": [
+    {
+      "id": "user_week_minute_waves",
+      "split": "regression",
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "tags": [
+        "user-report",
+        "days",
+        "minute"
+      ],
+      "actual": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 168,
+        "splitByVessel": false,
+        "vessel": null,
+        "view": "line"
+      },
+      "outcome": "wrong_plan",
+      "attempts": [
+        {
+          "output": {
+            "text": "{\n  \"metric\": \"wave_height\",\n  \"aggregate\": \"avg\",\n  \"bucketMinutes\": 60,\n  \"windowHours\": 168,\n  \"splitByVessel\": false,\n  \"vessel\": null,\n  \"view\": \"line\"\n}",
+            "truncated": false
+          },
+          "finish_reason": "stop",
+          "model": "qwen35-screen",
+          "usage": {
+            "completion_tokens": 68,
+            "prompt_tokens": 1102,
+            "total_tokens": 1170,
+            "prompt_tokens_details": {
+              "cached_tokens": 1098
+            }
+          },
+          "system_fingerprint": "b11538-79e2e74eb",
+          "reasoning_present": false,
+          "endpoint_wall_ms": 7674.35,
+          "actual": {
+            "metric": "wave_height",
+            "aggregate": "avg",
+            "bucketMinutes": 60,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "validation_error": null,
+          "outcome": "wrong_plan"
+        }
+      ]
+    },
+    {
+      "id": "user_adjacent_day_surface",
+      "split": "regression",
+      "question": "Compare vessel wave height by hour over the last 1days as a 3D surface",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "tags": [
+        "user-report",
+        "adjacent-unit",
+        "surface"
+      ],
+      "actual": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "outcome": "wrong_plan",
+      "attempts": [
+        {
+          "output": {
+            "text": "{\n  \"metric\": \"wave_height\",\n  \"aggregate\": \"avg\",\n  \"bucketMinutes\": 60,\n  \"windowHours\": 168,\n  \"splitByVessel\": true,\n  \"vessel\": null,\n  \"view\": \"surface\"\n}",
+            "truncated": false
+          },
+          "finish_reason": "stop",
+          "model": "qwen35-screen",
+          "usage": {
+            "completion_tokens": 68,
+            "prompt_tokens": 1108,
+            "total_tokens": 1176,
+            "prompt_tokens_details": {
+              "cached_tokens": 1078
+            }
+          },
+          "system_fingerprint": "b11538-79e2e74eb",
+          "reasoning_present": false,
+          "endpoint_wall_ms": 8626.964,
+          "actual": {
+            "metric": "wave_height",
+            "aggregate": "avg",
+            "bucketMinutes": 60,
+            "windowHours": 168,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "surface"
+          },
+          "validation_error": null,
+          "outcome": "wrong_plan"
+        }
+      ]
+    },
+    {
+      "id": "user_wide_surface",
+      "split": "regression",
+      "question": "Compare vessel wave height by hour over the last 710 days as a 3D surface",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 17040,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "tags": [
+        "user-report",
+        "wide-window",
+        "surface"
+      ],
+      "actual": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 17040,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "outcome": "correct_plan",
+      "attempts": [
+        {
+          "output": {
+            "text": "{\n  \"metric\": \"wave_height\",\n  \"aggregate\": \"avg\",\n  \"bucketMinutes\": 60,\n  \"windowHours\": 17040,\n  \"splitByVessel\": true,\n  \"vessel\": null,\n  \"view\": \"surface\"\n}",
+            "truncated": false
+          },
+          "finish_reason": "stop",
+          "model": "qwen35-screen",
+          "usage": {
+            "completion_tokens": 70,
+            "prompt_tokens": 1110,
+            "total_tokens": 1180,
+            "prompt_tokens_details": {
+              "cached_tokens": 1078
+            }
+          },
+          "system_fingerprint": "b11538-79e2e74eb",
+          "reasoning_present": false,
+          "endpoint_wall_ms": 9136.837,
+          "actual": {
+            "metric": "wave_height",
+            "aggregate": "avg",
+            "bucketMinutes": 60,
+            "windowHours": 17040,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "surface"
+          },
+          "validation_error": null,
+          "outcome": "correct_plan"
+        }
+      ]
+    },
+    {
+      "id": "default_speed",
+      "split": "regression",
+      "question": "Average speed by hour",
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": false,
+        "vessel": null,
+        "view": "line"
+      },
+      "tags": [
+        "defaults"
+      ],
+      "actual": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": false,
+        "vessel": null,
+        "view": "line"
+      },
+      "outcome": "correct_plan",
+      "attempts": [
+        {
+          "output": {
+            "text": "{\n  \"metric\": \"speed\",\n  \"aggregate\": \"avg\",\n  \"bucketMinutes\": 60,\n  \"windowHours\": 24,\n  \"splitByVessel\": false,\n  \"vessel\": null,\n  \"view\": \"line\"\n}",
+            "truncated": false
+          },
+          "finish_reason": "stop",
+          "model": "qwen35-screen",
+          "usage": {
+            "completion_tokens": 66,
+            "prompt_tokens": 1094,
+            "total_tokens": 1160,
+            "prompt_tokens_details": {
+              "cached_tokens": 1078
+            }
+          },
+          "system_fingerprint": "b11538-79e2e74eb",
+          "reasoning_present": false,
+          "endpoint_wall_ms": 7921.709,
+          "actual": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 60,
+            "windowHours": 24,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "validation_error": null,
+          "outcome": "correct_plan"
+        }
+      ]
+    },
+    {
+      "id": "max_wind_default",
+      "split": "regression",
+      "question": "Maximum wind by hour",
+      "expected": {
+        "metric": "wind",
+        "aggregate": "max",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": false,
+        "vessel": null,
+        "view": "line"
+      },
+      "tags": [
+        "defaults"
+      ],
+      "actual": {
+        "metric": "wind",
+        "aggregate": "max",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": false,
+        "vessel": null,
+        "view": "line"
+      },
+      "outcome": "correct_plan",
+      "attempts": [
+        {
+          "output": {
+            "text": "{\n  \"metric\": \"wind\",\n  \"aggregate\": \"max\",\n  \"bucketMinutes\": 60,\n  \"windowHours\": 24,\n  \"splitByVessel\": false,\n  \"vessel\": null,\n  \"view\": \"line\"\n}",
+            "truncated": false
+          },
+          "finish_reason": "stop",
+          "model": "qwen35-screen",
+          "usage": {
+            "completion_tokens": 66,
+            "prompt_tokens": 1094,
+            "total_tokens": 1160,
+            "prompt_tokens_details": {
+              "cached_tokens": 1078
+            }
+          },
+          "system_fingerprint": "b11538-79e2e74eb",
+          "reasoning_present": false,
+          "endpoint_wall_ms": 7839.729,
+          "actual": {
+            "metric": "wind",
+            "aggregate": "max",
+            "bucketMinutes": 60,
+            "windowHours": 24,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "validation_error": null,
+          "outcome": "correct_plan"
+        }
+      ]
+    },
+    {
+      "id": "wave_week",
+      "split": "regression",
+      "question": "Show wave height over the last 7 days",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 168,
+        "splitByVessel": false,
+        "vessel": null,
+        "view": "line"
+      },
+      "tags": [
+        "days"
+      ],
+      "actual": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 168,
+        "splitByVessel": false,
+        "vessel": null,
+        "view": "line"
+      },
+      "outcome": "correct_plan",
+      "attempts": [
+        {
+          "output": {
+            "text": "{\n  \"metric\": \"wave_height\",\n  \"aggregate\": \"avg\",\n  \"bucketMinutes\": 60,\n  \"windowHours\": 168,\n  \"splitByVessel\": false,\n  \"vessel\": null,\n  \"view\": \"line\"\n}",
+            "truncated": false
+          },
+          "finish_reason": "stop",
+          "model": "qwen35-screen",
+          "usage": {
+            "completion_tokens": 68,
+            "prompt_tokens": 1099,
+            "total_tokens": 1167,
+            "prompt_tokens_details": {
+              "cached_tokens": 1078
+            }
+          },
+          "system_fingerprint": "b11538-79e2e74eb",
+          "reasoning_present": false,
+          "endpoint_wall_ms": 8348.392,
+          "actual": {
+            "metric": "wave_height",
+            "aggregate": "avg",
+            "bucketMinutes": 60,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "validation_error": null,
+          "outcome": "correct_plan"
+        }
+      ]
+    },
+    {
+      "id": "speed_compare_day",
+      "split": "regression",
+      "question": "Compare vessel speeds over the last 24 hours",
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "tags": [
+        "grouping"
+      ],
+      "actual": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "outcome": "correct_plan",
+      "attempts": [
+        {
+          "output": {
+            "text": "{\n  \"metric\": \"speed\",\n  \"aggregate\": \"avg\",\n  \"bucketMinutes\": 60,\n  \"windowHours\": 24,\n  \"splitByVessel\": true,\n  \"vessel\": null,\n  \"view\": \"line\"\n}",
+            "truncated": false
+          },
+          "finish_reason": "stop",
+          "model": "qwen35-screen",
+          "usage": {
+            "completion_tokens": 66,
+            "prompt_tokens": 1100,
+            "total_tokens": 1166,
+            "prompt_tokens_details": {
+              "cached_tokens": 1078
+            }
+          },
+          "system_fingerprint": "b11538-79e2e74eb",
+          "reasoning_present": false,
+          "endpoint_wall_ms": 8264.119,
+          "actual": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 60,
+            "windowHours": 24,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "validation_error": null,
+          "outcome": "correct_plan"
+        }
+      ]
+    },
+    {
+      "id": "daily_heatmap",
+      "split": "regression",
+      "question": "Show a heatmap of vessel wind by hour over the last 7 days",
+      "expected": {
+        "metric": "wind",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "heatmap"
+      },
+      "tags": [
+        "heatmap"
+      ],
+      "actual": {
+        "metric": "wind",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "heatmap"
+      },
+      "outcome": "correct_plan",
+      "attempts": [
+        {
+          "output": {
+            "text": "{\n  \"metric\": \"wind\",\n  \"aggregate\": \"avg\",\n  \"bucketMinutes\": 60,\n  \"windowHours\": 168,\n  \"splitByVessel\": true,\n  \"vessel\": null,\n  \"view\": \"heatmap\"\n}",
+            "truncated": false
+          },
+          "finish_reason": "stop",
+          "model": "qwen35-screen",
+          "usage": {
+            "completion_tokens": 67,
+            "prompt_tokens": 1104,
+            "total_tokens": 1171,
+            "prompt_tokens_details": {
+              "cached_tokens": 1078
+            }
+          },
+          "system_fingerprint": "b11538-79e2e74eb",
+          "reasoning_present": false,
+          "endpoint_wall_ms": 8463.608,
+          "actual": {
+            "metric": "wind",
+            "aggregate": "avg",
+            "bucketMinutes": 60,
+            "windowHours": 168,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "heatmap"
+          },
+          "validation_error": null,
+          "outcome": "correct_plan"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "cases": 8,
+    "supported_cases": 8,
+    "unsupported_cases": 0,
+    "outcomes": {
+      "correct_plan": 6,
+      "wrong_plan": 2
+    },
+    "strict_accuracy": 0.75,
+    "supported_exact_plan_accuracy": 0.75,
+    "equivalent_named_grouping_only": 0,
+    "supported_exact_or_equivalent_accuracy": 0.75,
+    "scorable_model_cases": 8,
+    "availability_or_mode_error_cases": 0,
+    "scorable_supported_cases": 8,
+    "scorable_unsupported_cases": 0,
+    "scorable_supported_exact_plan_accuracy": 0.75,
+    "scorable_supported_exact_or_equivalent_accuracy": 0.75,
+    "scorable_unsupported_false_accept_rate": null,
+    "scorable_unsupported_non_executable_rate": null,
+    "attempts_reporting_cached_prompt_tokens": 8,
+    "reported_cached_prompt_tokens": 8644,
+    "false_accept_rate": null,
+    "false_refusal_rate": 0.0,
+    "unsupported_non_executable_rate": null,
+    "first_attempt_outcomes": {
+      "correct_plan": 6,
+      "wrong_plan": 2
+    },
+    "repairs": 0,
+    "repair_transitions": {},
+    "repair_introduced_false_accepts": 0,
+    "repair_fixed_supported_plans": 0,
+    "field_mismatches": {
+      "bucketMinutes": 1,
+      "splitByVessel": 1,
+      "windowHours": 1
+    }
+  },
+  "completed_at": "2026-10-09T23:01:19.896939+00:00",
+  "model_artifact": {
+    "publisher": "bartowski/Qwen_Qwen3.5-0.8B-GGUF",
+    "revision": "f36b1ea49a332ede8fe5f389bbf5b3575ef71f48",
+    "source_url": "https://huggingface.co/bartowski/Qwen_Qwen3.5-0.8B-GGUF/resolve/f36b1ea49a332ede8fe5f389bbf5b3575ef71f48/Qwen_Qwen3.5-0.8B-Q4_K_M.gguf?download=true",
+    "base_model": "Qwen/Qwen3.5-0.8B",
+    "filename": "Qwen_Qwen3.5-0.8B-Q4_K_M.gguf",
+    "bytes": 579615840,
+    "sha256": "fb044e93939a70469c905781334f5de1e6c8b608ced6cbc8c9249bd4127d9526"
+  },
+  "screening": {
+    "purpose": "Bounded qualitative screening, not a browser latency or general accuracy claim.",
+    "cpu_concurrency": "A separate Qwen3-4B evaluation used three CPU threads while this model used one thread and one batch thread.",
+    "max_tokens": 256,
+    "initial_probe": {
+      "case": "user_week_minute_waves",
+      "outcome": "wrong_plan",
+      "plain_completed_json": true,
+      "reasoning_present": false
+    },
+    "prefix_state": "The separate one-case mode probe preceded this eight-case run on the same server; the first corpus case was repeated with prefix reuse enabled.",
+    "max_combined_process_rss_kib": 1397372,
+    "min_system_mem_available_kib": 1981696,
+    "memory_limit_kib": 1572864,
+    "owned_server_stopped": true,
+    "elapsed_seconds_including_startup_probe_and_cleanup": 114.56,
+    "browser_runtime_different": "GGUF Q4_K_M on llama.cpp CPU differs from MLC q4f16_1/q4f32_1 on WebGPU."
+  }
+}

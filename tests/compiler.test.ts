@@ -44,3 +44,44 @@ it.each(CHART_VIEWS)('keeps the Rust ABI and SQL unchanged for %s presentation',
 it.each(['map','density','tracks'])('rejects ambiguous fleet positions in %s before compilation',view=>{
   expect(()=>compiler.compile({...plan,view} as QueryPlan,context)).toThrow('Invalid query intent');
 });
+
+it('produces identical SQL for either grouping flag when exactly one vessel is selected',()=>{
+  for (const vessel of [0,1,2,3,4,5]) {
+    for (const aggregate of ['avg','min','max'] as const) {
+      const selected={...plan,vessel,aggregate};
+      expect(compiler.compile({...selected,splitByVessel:true},context)).toBe(compiler.compile({...selected,splitByVessel:false},context));
+    }
+  }
+});
+
+it('partitions the first complete query group without moving a partial lower bound',()=>{
+  const snapshot={...context,end:48*3_600_000};
+  const intent=Object.freeze({...plan,bucketMinutes:360,windowHours:25,splitByVessel:true});
+  const execution=compiler.compileFirstBucket(intent,snapshot)!;
+  expect(execution).toMatchObject({kind:'first-complete-bucket',contextId:snapshot.id,start:0,end:snapshot.end,sql:compiler.compile(intent,snapshot)});
+  expect(execution.firstSql).toContain('t >= 82800000 AND t < 86400000');
+  expect(execution.remainderSql).toContain('t >= 86400000 AND t < 172800000');
+  expect(execution.firstSql).toContain('floor(t / 21600000)');
+  expect(Object.isFrozen(execution)).toBe(true);
+  expect(intent.windowHours).toBe(25);
+});
+it('retains canonical single-statement execution when the whole window is one partial bucket',()=>{
+  expect(compiler.compileFirstBucket({...plan,bucketMinutes:1440,windowHours:1},context)).toBeUndefined();
+});
+it.each([24*15,24*710,MAX_WINDOW_HOURS])('partitions available coverage while preserving %s requested hours',windowHours=>{
+  const snapshot={...context,start:1000,end:86_400_000};
+  const intent={...plan,windowHours,vessel:3};
+  const execution=compiler.compileFirstBucket(intent,snapshot)!;
+  expect(execution.sql).toBe(compiler.compile(intent,snapshot));
+  expect(execution.firstSql).toContain('t >= 1000 AND t < 3600000 AND vessel = 3');
+  expect(execution.remainderSql).toContain('t >= 3600000 AND t < 86400000 AND vessel = 3');
+});
+it('rejects arbitrary execution cuts and ranges outside the logical window in actual Wasm',()=>{
+  const intent={...plan,windowHours:1};
+  const lo=context.end-3_600_000;
+  for(const [lower,upper] of [[0,context.end],[lo,context.end+1],[lo+1,context.end],[lo,lo+1],
+    [lo,lo],[NaN,context.end],[lo,Infinity],[lo+0.5,context.end]]){
+    expect(()=>compiler.compileRange(intent,context,lower,upper)).toThrow();
+  }
+  expect(compiler.compileRange(intent,context,lo,context.end)).toBe(compiler.compile(intent,context));
+});

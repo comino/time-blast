@@ -31,9 +31,11 @@ Try **“Compare vessel wave height by minute over the last 7 days”** for **60
 
 Ask for the presentation directly: **“Show a heatmap of vessel wind by hour over the last 7 days”**, **“Compare vessel wave height by hour over the last 7 days as a 3D surface”**, or **“Show voyage tracks of vessel speeds by hour over the last 7 days”**. Rotate surfaces and scrub or play voyages inside their cards. All ten supported view types are part of the validated inference intent.
 
-The default **Local language model · WebGPU** mode uses local **Qwen2.5-0.5B** and bypasses templates, including for example questions. An unavailable model reports an error instead of falling back to rules. Initial model download is hundreds of megabytes; loading and model availability are visible. Auto and template-only modes remain explicit Runtime options. Auto uses conservative exact templates for recognized requests and the model for other wording; templates are labeled explicitly. Repeated identical requests may reuse the labeled model-plan cache; reload to clear that in-memory cache when retesting inference.
+The default **Local language model · WebGPU** mode uses local **Qwen3-4B** and bypasses templates, including for example questions. An unavailable model reports an error instead of falling back to rules. Its initial weights download is about **2.3 GB**; estimated GPU memory is **3.4 GB with f16**, or **4.3 GB with f32**. Loading and model availability are visible. Runtime offers smaller Qwen2.5-0.5B and 1.5B profiles, which made more interpretation errors in the [native comparisons](evals/results/README.md). Changing models preserves the loaded database. For fresh inference trials, turn off **Reuse exact model plans**; this clears cached plans and keeps the model warm. Compare correctness and timing on the actual device; native GGUF tests do not establish browser MLC accuracy or speed.
 
-If the local model refuses, returns an invalid plan, or reaches its output token limit, it gets **one correction attempt** with its previous response and exact validation error. The corrected response must pass the same validation. Query details show attempt count, correction time and total work; final failures also show bounded raw model output. Cancellation and runtime/device errors do not retry. This cannot detect every valid plan with the wrong meaning: [native model diagnostics](docs/benchmarks/native-inference-evaluation-2026-10-09.json) found such errors, including after a correction request. These CPU results use different quantization/runtime from the browser and do not establish browser accuracy or latency.
+Auto and template-only modes remain explicit Runtime options. Auto uses conservative exact templates for recognized requests and the model for other wording; templates are labeled explicitly.
+
+If the local model refuses, returns an invalid plan, or reaches its output token limit, it gets **one correction attempt** with its previous response and exact validation error. The corrected response must pass the same validation. Query details show attempt count, correction time and total work; final failures also show bounded raw model output. Cancellation and runtime/device errors do not retry. This cannot detect every valid plan with the wrong meaning: [native evaluations](evals/results/README.md) found such errors, including after a correction request. These CPU results use different quantization/runtime from the browser and do not establish browser accuracy or latency.
 
 Try “Average speed by hour”, “Maximum wind by hour”, or “Show wave height over the last 7 days”. The narrow intent supports four metrics, avg/min/max, fixed time buckets, trailing windows, and vessel filtering/grouping. A request for 710 days retains that requested window and queries the available overlap: the bundled dataset supplies 14 days, while a remote dataset can supply more. Model output is validated and compiled from allowlisted fields; arbitrary generated SQL is never executed. A valid plan can still misunderstand natural language—inspect its meaning before relying on it.
 
@@ -46,8 +48,10 @@ Default execution stays in your browser. Assets and model weights must download 
 - Every input revision crosses a local MessageChannel immediately, then reaches the inference worker. Live execution and manual submission use the same immutable commit contract across placements.
 - **Live query** and **Prepare translation after typing** are enabled by default, starting at **20 characters** after trimming. Automatic inference and queries wait **2 seconds after the latest edit**; draft transport and model warmup remain immediate. Stale work is canceled, IME waits for composition to finish, and readiness preserves the existing deadline. Enter bypasses the pause. Stop, Clear canvas, and closing the live preview cancel pending execution.
 - Turn **Live query** off for manual submission with background preparation after the same 2-second pause. With live query off, turn **Prepare query results while I type** off to prepare SQL only and execute the database on Enter. The selected inference mode applies in every case: Auto may use templates, while Local WebGPU uses model-derived plans.
-- Local model requests use a shorter prompt and compact validated JSON. A 64-entry exact model-plan cache skips repeated generation within the same adapter/context; it never caches database results or reuses similar wording. Cache hits are labeled explicitly. [Tokenizer measurements](docs/benchmarks/inference-token-counts-2026-10-09.json) recorded 951 → 527 system-prompt tokens for the initial compact prompt and six fewer output tokens in three examples. Subsequent instructions clarify dataset coverage and missing spaces such as `1days`; their hardware inference speed and semantic accuracy still require evaluation.
+- Qwen3-4B extracts literal quantities, vessel names and requested operations into constrained JSON. Code converts units and checks whether the extracted plan is executable; language interpretation stays with the model. Unsupported aggregate names remain expressible so validation can reject them. The smaller Qwen2.5 profiles retain full query fields, which worked better for them in screening. Every profile uses the same validated query contract downstream.
+- A bounded 64-entry exact model-plan cache skips repeated generation within the same adapter/context. It never caches database results or reuses similar wording; hits are labeled. Runtime can disable it for fresh trials without unloading the model. [Historical compact-prompt token counts](docs/benchmarks/inference-token-counts-2026-10-09.json) describe the previous encoding, not the current model-specific formats.
 - Rust/Wasm compiles the intent; DuckDB runs in its own worker; WebLLM runs in another worker. Heavy engines are initialized before submission where possible.
+- Local DuckDB streams the first complete time bucket, then the remaining buckets in the same read-only snapshot. Both statements share one connection, cancellation and result budget; single-bucket requests use one statement. In a warm paired experiment, the 60,480-point query drew its first points about **42 ms sooner**, adding about **6 ms** to total database time. [Measurements and limits](docs/experiments/first-bucket-query-2026-10-09.md).
 - Arrow numeric columns retain their backing buffers into Canvas2D. The first marker is submitted on the first batch before subsequent chart work. Local data does not get encoded for a fictitious network boundary.
 - Cancellation epochs, exact question/snapshot matching, per-query database connections, bounded queues, staged-memory limits, and explicit failure/completion protect speculation.
 - The live preview and submitted questions immediately display a loading card on a dotted spatial canvas beside chat. Earlier kept results stay available; drag and resize cards, pan/zoom, or use Fit and Arrange.
@@ -57,11 +61,12 @@ Default execution stays in your browser. Assets and model weights must download 
 
 Geographic views require vessel grouping and show mean coordinates per returned bucket. Density counts those positions, not source readings. The seasonal wheel plots actual UTC calendar samples; this 14-day dataset cannot establish annual patterns. Surfaces use separate vessel ribbons rather than interpolating between categorical vessel IDs. Photo galleries remain unavailable because this dataset has no image URLs.
 
-The current aggregation uses `GROUP BY` and `ORDER BY`: database work may finish before its first result batch becomes available. The renderer consumes batches incrementally, but it cannot make a blocking SQL operator produce a final point early. The next substantial latency improvement is an ordered/time-tiled query path. Likewise, no browser can promise literal end-to-end zero-copy through DuckDB's worker/IPC boundary. See [implementation, limits, and copy accounting](docs/prototype.md).
+Aggregation still uses blocking `GROUP BY` and `ORDER BY` within each statement. The local first-bucket path limits that initial work to one complete timestamp; its remaining query streams Arrow batches as they become available. Remote adapters retain their ordinary query contract until they provide equivalent snapshot semantics. No browser can promise literal end-to-end zero-copy through DuckDB's worker/IPC boundary. See [implementation, limits, and copy accounting](docs/prototype.md).
 
 ## Verify or rebuild
 
 ```sh
+# Unit/evaluator parity tests also require Python 3 (standard library only):
 pnpm test
 pnpm build
 # Only when changing the Rust compiler:
@@ -75,11 +80,15 @@ python3 tests/browser_ui.py
 python3 tests/browser_workspace.py
 python3 tests/browser_views.py
 python3 tests/ui_live_translation.py
+python3 tests/ui_model_profiles.py
+python3 tests/browser_model_grammar.py
+python3 tests/browser_model_query.py
+python3 -m unittest discover -s evals -p 'test_*.py'
 # Requires a real available WebGPU adapter; downloads model weights:
-python3 tests/browser_inference.py
+python3 tests/browser_model_accuracy.py --profile qwen3-4b --headed
 ```
 
-`pnpm-lock.yaml` pins the JavaScript runtime dependencies. `scripts/generate-dataset.py` records how to regenerate the deterministic input. Tests cover buffer identity, streaming termination, cancellation races, promotion, intent validation, and actual compiled Wasm.
+`pnpm-lock.yaml` pins the JavaScript runtime dependencies. `scripts/generate-dataset.py` records how to regenerate the deterministic input. Tests cover buffer identity, streaming termination, cancellation races, promotion, intent validation, and actual compiled Wasm. The [meaning evaluation corpus and runners](evals/README.md) compare every plan field and record unsupported false acceptance separately. Recorded-model replay exercises real SQL/data/rendering; controlled engines and grammar checks do not establish model accuracy.
 
 Initial [warm template benchmark](docs/benchmark-browser.json), 20 trials per mode: median commit-to-draw submission **19.6 ms without speculation**, **5.65 ms for a prepared hit**. The latter waits for staging before Enter. This is a small headless-browser experiment, not an inference or photon benchmark; [method and limitations](docs/verification.md).
 

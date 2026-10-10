@@ -1,0 +1,220 @@
+{
+  "cases": [
+    {
+      "id": "blind-01",
+      "prompt": "Show speed.",
+      "supported": true,
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      }
+    },
+    {
+      "id": "blind-02",
+      "prompt": "Make a bar chart comparing the minimum wind speed for each vessel over the last 48 hours, using 15-minute buckets.",
+      "supported": true,
+      "expected": {
+        "metric": "wind",
+        "aggregate": "min",
+        "bucketMinutes": 15,
+        "windowHours": 48,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "bar"
+      }
+    },
+    {
+      "id": "blind-03",
+      "prompt": "Give me one fleet-wide average water temperature per six-hour bucket for the trailing 72 hours, in a table.",
+      "supported": true,
+      "expected": {
+        "metric": "water_temp",
+        "aggregate": "avg",
+        "bucketMinutes": 360,
+        "windowHours": 72,
+        "splitByVessel": false,
+        "vessel": null,
+        "view": "table"
+      }
+    },
+    {
+      "id": "blind-04",
+      "prompt": "For Aurora alone, use a scatter view of maximum wave height in five-minute buckets during the last six hours.",
+      "supported": true,
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "max",
+        "bucketMinutes": 5,
+        "windowHours": 6,
+        "splitByVessel": true,
+        "vessel": 0,
+        "view": "scatter"
+      }
+    },
+    {
+      "id": "blind-05",
+      "prompt": "I want a heatmap for Meridian: maximum speed, daily buckets, and a trailing window of 336 hours.",
+      "supported": true,
+      "expected": {
+        "metric": "speed",
+        "aggregate": "max",
+        "bucketMinutes": 1440,
+        "windowHours": 336,
+        "splitByVessel": true,
+        "vessel": 1,
+        "view": "heatmap"
+      }
+    },
+    {
+      "id": "blind-06",
+      "prompt": "Display Kestrel in the surface view with average wind speed for each one-minute bucket over the preceding 12 hours.",
+      "supported": true,
+      "expected": {
+        "metric": "wind",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 12,
+        "splitByVessel": true,
+        "vessel": 2,
+        "view": "surface"
+      }
+    },
+    {
+      "id": "blind-07",
+      "prompt": "Put Solstice on the map, using hourly average speed across the latest eight hours of the dataset.",
+      "supported": true,
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 8,
+        "splitByVessel": true,
+        "vessel": 3,
+        "view": "map"
+      }
+    },
+    {
+      "id": "blind-08",
+      "prompt": "Use the density view for Nomad, with minimum wind speed in five-minute buckets for the last three hours.",
+      "supported": true,
+      "expected": {
+        "metric": "wind",
+        "aggregate": "min",
+        "bucketMinutes": 5,
+        "windowHours": 3,
+        "splitByVessel": true,
+        "vessel": 5,
+        "view": "density"
+      }
+    },
+    {
+      "id": "blind-09",
+      "prompt": "Show Atlas in tracks view for the trailing 36 hours; aggregate speed by average into 15-minute buckets.",
+      "supported": true,
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 15,
+        "windowHours": 36,
+        "splitByVessel": true,
+        "vessel": 4,
+        "view": "tracks"
+      }
+    },
+    {
+      "id": "blind-10",
+      "prompt": "Switch to the seasons view and compare all six vessels by hourly maximum water temperature over the last 240 hours.",
+      "supported": true,
+      "expected": {
+        "metric": "water_temp",
+        "aggregate": "max",
+        "bucketMinutes": 60,
+        "windowHours": 240,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "seasons"
+      }
+    },
+    {
+      "id": "blind-11",
+      "prompt": "Plot a single fleet-wide line of minimum wave height in 24-hour buckets. Request the trailing 720 hours, even if the dataset covers less time.",
+      "supported": true,
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "min",
+        "bucketMinutes": 1440,
+        "windowHours": 720,
+        "splitByVessel": false,
+        "vessel": null,
+        "view": "line"
+      }
+    },
+    {
+      "id": "blind-12",
+      "prompt": "Use a trailing window of exactly 4294967295 hours, hourly buckets, and a table showing each vessel's maximum speed.",
+      "supported": true,
+      "expected": {
+        "metric": "speed",
+        "aggregate": "max",
+        "bucketMinutes": 60,
+        "windowHours": 4294967295,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "table"
+      }
+    },
+    {
+      "id": "blind-13",
+      "prompt": "For each vessel, put average speed and average wind speed together on the same hourly line chart for the last 24 hours.",
+      "supported": false,
+      "expected": null
+    },
+    {
+      "id": "blind-14",
+      "prompt": "Show median water temperature per vessel in hourly buckets over the last 48 hours. Please keep the median rather than replacing it with an average.",
+      "supported": false,
+      "expected": null
+    },
+    {
+      "id": "blind-15",
+      "prompt": "Chart Aurora's hourly average speed minus Meridian's hourly average speed for the last 24 hours. I need the difference as a single series.",
+      "supported": false,
+      "expected": null
+    },
+    {
+      "id": "blind-16",
+      "prompt": "Show the average speed per vessel for the last 24 hours, but calculate it using only readings above 20 knots. Use hourly buckets.",
+      "supported": false,
+      "expected": null
+    },
+    {
+      "id": "blind-17",
+      "prompt": "Make a table of hourly maximum wave height for Atlas from September 2, 2026 at 00:00 through September 3, 2026 at 00:00 UTC.",
+      "supported": false,
+      "expected": null
+    },
+    {
+      "id": "blind-18",
+      "prompt": "Forecast Solstice's average speed for each hour of the next 24 hours and display it as a line.",
+      "supported": false,
+      "expected": null
+    },
+    {
+      "id": "blind-19",
+      "prompt": "Compare average engine RPM for all six vessels in hourly buckets during the last 12 hours.",
+      "supported": false,
+      "expected": null
+    },
+    {
+      "id": "blind-20",
+      "prompt": "Show Kestrel's average water temperature for the trailing 24 hours in buckets of exactly 10 minutes, without rounding the bucket duration.",
+      "supported": false,
+      "expected": null
+    }
+  ]
+}

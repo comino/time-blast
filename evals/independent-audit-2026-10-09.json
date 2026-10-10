@@ -1,0 +1,449 @@
+{
+  "version": 1,
+  "provenance": "Independently authored without access to prompts, earlier corpora or results",
+  "cases": [
+    {
+      "id": "audit_01",
+      "split": "fresh-audit",
+      "question": "Plot Aurora's average speed over the past 37 hours, using five-minute buckets.",
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 5,
+        "windowHours": 37,
+        "splitByVessel": false,
+        "vessel": 0,
+        "view": "line"
+      },
+      "tags": [
+        "supported",
+        "named-vessel",
+        "line",
+        "explicit-average"
+      ]
+    },
+    {
+      "id": "audit_02",
+      "split": "fresh-audit",
+      "question": "Show a bar chart of Meridian's highest wind reading in each 15-minute interval across the last three days.",
+      "expected": {
+        "metric": "wind",
+        "aggregate": "max",
+        "bucketMinutes": 15,
+        "windowHours": 72,
+        "splitByVessel": false,
+        "vessel": 1,
+        "view": "bar"
+      },
+      "tags": [
+        "supported",
+        "named-vessel",
+        "bar",
+        "days-to-hours",
+        "maximum-paraphrase"
+      ]
+    },
+    {
+      "id": "audit_03",
+      "split": "fresh-audit",
+      "question": "Give me a table of Kestrel's lowest water temperature per hour for the last 11 days.",
+      "expected": {
+        "metric": "water_temp",
+        "aggregate": "min",
+        "bucketMinutes": 60,
+        "windowHours": 264,
+        "splitByVessel": false,
+        "vessel": 2,
+        "view": "table"
+      },
+      "tags": [
+        "supported",
+        "named-vessel",
+        "table",
+        "minimum-paraphrase"
+      ]
+    },
+    {
+      "id": "audit_04",
+      "split": "fresh-audit",
+      "question": "Make a time-versus-wave-height scatter plot for Solstice over the last 19 hours, with mean values every minute.",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 19,
+        "splitByVessel": false,
+        "vessel": 3,
+        "view": "scatter"
+      },
+      "tags": [
+        "supported",
+        "named-vessel",
+        "scatter",
+        "mean-paraphrase"
+      ]
+    },
+    {
+      "id": "audit_05",
+      "split": "fresh-audit",
+      "question": "Compare all six vessels' maximum speeds as separate lines, in six-hour buckets, for the past five weeks.",
+      "expected": {
+        "metric": "speed",
+        "aggregate": "max",
+        "bucketMinutes": 360,
+        "windowHours": 840,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "tags": [
+        "supported",
+        "vessel-comparison",
+        "line",
+        "weeks-to-hours",
+        "six-hour-buckets"
+      ]
+    },
+    {
+      "id": "audit_06",
+      "split": "fresh-audit",
+      "question": "Use a heatmap with time across and vessels down to compare minimum wind in daily buckets over the past 80 days.",
+      "expected": {
+        "metric": "wind",
+        "aggregate": "min",
+        "bucketMinutes": 1440,
+        "windowHours": 1920,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "heatmap"
+      },
+      "tags": [
+        "supported",
+        "vessel-comparison",
+        "heatmap",
+        "daily-buckets"
+      ]
+    },
+    {
+      "id": "audit_07",
+      "split": "fresh-audit",
+      "question": "Show a surface chart comparing the vessels over the last nine days: time on one axis, vessel on the other, and average water temperature as height, with 15-minute buckets.",
+      "expected": {
+        "metric": "water_temp",
+        "aggregate": "avg",
+        "bucketMinutes": 15,
+        "windowHours": 216,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "tags": [
+        "supported",
+        "vessel-comparison",
+        "surface",
+        "explicit-dimensions"
+      ]
+    },
+    {
+      "id": "audit_08",
+      "split": "fresh-audit",
+      "question": "For Atlas, use the maximum wave-height reading per five-minute bucket for the last 29 hours and switch to a map of bucket-average positions colored by vessel.",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "max",
+        "bucketMinutes": 5,
+        "windowHours": 29,
+        "splitByVessel": true,
+        "vessel": 4,
+        "view": "map"
+      },
+      "tags": [
+        "supported",
+        "named-vessel",
+        "map",
+        "geographic-split-required"
+      ]
+    },
+    {
+      "id": "audit_09",
+      "split": "fresh-audit",
+      "question": "With Nomad's minimum speed selected, draw its hourly mean positions connected in time order for the last 19 days.",
+      "expected": {
+        "metric": "speed",
+        "aggregate": "min",
+        "bucketMinutes": 60,
+        "windowHours": 456,
+        "splitByVessel": true,
+        "vessel": 5,
+        "view": "tracks"
+      },
+      "tags": [
+        "supported",
+        "named-vessel",
+        "tracks",
+        "geographic-split-required"
+      ]
+    },
+    {
+      "id": "audit_10",
+      "split": "fresh-audit",
+      "question": "Choose average wind, with six-hour buckets over the last 13 days, and show the density of returned positions per map cell for all vessels.",
+      "expected": {
+        "metric": "wind",
+        "aggregate": "avg",
+        "bucketMinutes": 360,
+        "windowHours": 312,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "density"
+      },
+      "tags": [
+        "supported",
+        "all-vessels",
+        "density",
+        "position-count-semantics"
+      ]
+    },
+    {
+      "id": "audit_11",
+      "split": "fresh-audit",
+      "question": "Place the daily maximum water temperature for the fleet as one combined series on a yearly wheel for the past 400 days, retaining actual dates rather than combining seasons.",
+      "expected": {
+        "metric": "water_temp",
+        "aggregate": "max",
+        "bucketMinutes": 1440,
+        "windowHours": 9600,
+        "splitByVessel": false,
+        "vessel": null,
+        "view": "seasons"
+      },
+      "tags": [
+        "supported",
+        "combined-fleet",
+        "seasons",
+        "actual-dates",
+        "long-window"
+      ]
+    },
+    {
+      "id": "audit_12",
+      "split": "fresh-audit",
+      "question": "Combine all vessels into one bar chart showing the minimum wave height in each quarter-hour bucket over the last 48 hours.",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "min",
+        "bucketMinutes": 15,
+        "windowHours": 48,
+        "splitByVessel": false,
+        "vessel": null,
+        "view": "bar"
+      },
+      "tags": [
+        "supported",
+        "combined-fleet",
+        "bar",
+        "quarter-hour-paraphrase"
+      ]
+    },
+    {
+      "id": "audit_13",
+      "split": "fresh-audit",
+      "question": "Plot speed for the fleet.",
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": false,
+        "vessel": null,
+        "view": "line"
+      },
+      "tags": [
+        "supported",
+        "defaults",
+        "combined-fleet",
+        "line"
+      ]
+    },
+    {
+      "id": "audit_14",
+      "split": "fresh-audit",
+      "question": "Give me a table of average wind for Aurora for the last 1,000 days, grouped by hour.",
+      "expected": {
+        "metric": "wind",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24000,
+        "splitByVessel": false,
+        "vessel": 0,
+        "view": "table"
+      },
+      "tags": [
+        "supported",
+        "named-vessel",
+        "table",
+        "long-window",
+        "preserve-window"
+      ]
+    },
+    {
+      "id": "audit_15",
+      "split": "fresh-audit",
+      "question": "Compare the vessels in separate time-versus-wave-height scatter series for the last two weeks; take the maximum in each one-minute bucket.",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "max",
+        "bucketMinutes": 1,
+        "windowHours": 336,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "scatter"
+      },
+      "tags": [
+        "supported",
+        "vessel-comparison",
+        "scatter",
+        "weeks-to-hours"
+      ]
+    },
+    {
+      "id": "audit_16",
+      "split": "fresh-audit",
+      "question": "Draw Atlas's minimum water temperature as a line for the previous five days, with six-hour intervals.",
+      "expected": {
+        "metric": "water_temp",
+        "aggregate": "min",
+        "bucketMinutes": 360,
+        "windowHours": 120,
+        "splitByVessel": false,
+        "vessel": 4,
+        "view": "line"
+      },
+      "tags": [
+        "supported",
+        "named-vessel",
+        "line",
+        "six-hour-buckets"
+      ]
+    },
+    {
+      "id": "audit_17",
+      "split": "fresh-audit",
+      "question": "Compare only Aurora and Nomad on separate lines of hourly average speed for the last 72 hours; leave every other vessel out.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "tags": [
+        "unsupported",
+        "multiple-vessel-subset",
+        "exclusion"
+      ]
+    },
+    {
+      "id": "audit_18",
+      "split": "fresh-audit",
+      "question": "Plot average speed and average water temperature together on the same chart for Meridian over the past 24 hours, using hourly buckets.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "tags": [
+        "unsupported",
+        "multiple-metrics"
+      ]
+    },
+    {
+      "id": "audit_19",
+      "split": "fresh-audit",
+      "question": "Show the median wave height in each 15-minute bucket for Kestrel over the last four days.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "tags": [
+        "unsupported",
+        "median"
+      ]
+    },
+    {
+      "id": "audit_20",
+      "split": "fresh-audit",
+      "question": "Show Solstice's average wind over the last 36 hours in ten-minute buckets.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "tags": [
+        "unsupported",
+        "unsupported-bucket"
+      ]
+    },
+    {
+      "id": "audit_21",
+      "split": "fresh-audit",
+      "question": "Make a table of Atlas's daily maximum water temperature from March 4, 2025 through March 10, 2025.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "tags": [
+        "unsupported",
+        "absolute-date-range"
+      ]
+    },
+    {
+      "id": "audit_22",
+      "split": "fresh-audit",
+      "question": "Forecast Nomad's hourly average speed for the next 24 hours and draw the predicted values as a line.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "tags": [
+        "unsupported",
+        "forecast"
+      ]
+    },
+    {
+      "id": "audit_23",
+      "split": "fresh-audit",
+      "question": "Convert Aurora's wind readings from meters per second to miles per hour, then show hourly averages for the last seven days.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "tags": [
+        "unsupported",
+        "unit-conversion"
+      ]
+    },
+    {
+      "id": "audit_24",
+      "split": "fresh-audit",
+      "question": "Show Meridian's average wave height in hourly buckets for the last six days, keeping only buckets where the average exceeds 2 metres.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "tags": [
+        "unsupported",
+        "threshold-filter"
+      ]
+    }
+  ],
+  "context": {
+    "id": "synthetic-vessels-2026-09-v1",
+    "label": "North Atlantic \u00b7 synthetic vessel telemetry",
+    "rowCount": 120960,
+    "start": 1788220800000,
+    "end": 1789430400000,
+    "vessels": [
+      "Aurora",
+      "Meridian",
+      "Kestrel",
+      "Solstice",
+      "Atlas",
+      "Nomad"
+    ],
+    "description": "Six fictional vessels, one reading per minute, 1\u201314 September 2026 UTC. Deterministic synthetic data; speed and wind in knots, wave height in metres, water temperature in \u00b0C."
+  },
+  "sourceArtifact": {
+    "sha256": "bc5f51c737226432fdd05459dc2e9d5c36cdf16cfb9e261d34a23fb11e1359d6",
+    "file": "independent-audit-2026-10-09.source.json",
+    "transformation": "Added unchanged dataset context from inference-corpus.json; every authored case unchanged.",
+    "frozenCandidateArtifactSha256": "d4e0e3a17cb92c813ed89a6dbd1f876391123897c8657c1a6f3c7316243502c0"
+  }
+}

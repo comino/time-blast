@@ -1,10 +1,14 @@
 import { CreateMLCEngine, prebuiltAppConfig, type ChatCompletionMessageParam, type MLCEngine } from '@mlc-ai/web-llm';
-import type { Draft, InferenceDiagnostics } from '../core/types';
+import type { Draft, InferenceDiagnostics, LocalModelProfile } from '../core/types';
 import { GenerationQueue } from './generation';
 import type { WorkerRequest, WorkerResponse } from './messages';
-import { abortError, buildLocalSystemPrompt, LOCAL_MODEL_RESPONSE_SCHEMA, parseLocalModelPlan, validateDraft } from './plan';
+import { abortError, validateDraft } from './plan';
 import { combineAttemptDiagnostics, webLLMDiagnostics } from './diagnostics';
 import { readFailureResponse } from './failure';
+import { selectBrowserModel } from './models';
+import { pinBrowserModelAssets } from './model-assets';
+import { EMPTY_THINKING_PREFIX, modelGenerationOptions, normalizeModelOutput } from './model-output';
+import { modelPlanContract } from './model-contract';
 
 const scope = self as unknown as {
   onmessage: ((event: MessageEvent<WorkerRequest>) => void) | null;
@@ -18,16 +22,17 @@ let latestDraft: Draft | undefined;
 const queue = new GenerationQueue();
 const send = (message: WorkerResponse) => scope.postMessage(message);
 
-async function prepare(requested?: string): Promise<void> {
+async function prepare(requested?: string, profile?: LocalModelProfile): Promise<void> {
   if (engine) return;
   if (initializing) return initializing;
   initializing = (async () => {
     if (!scope.navigator.gpu) throw new Error('WebGPU is unavailable in this browser worker. Limited templates remain available in Auto mode.');
     const adapter = await scope.navigator.gpu.requestAdapter();
     if (!adapter) throw new Error('No WebGPU adapter is available. Limited templates remain available in Auto mode.');
-    model = requested ?? `Qwen2.5-0.5B-Instruct-q4${adapter.features.has('shader-f16') ? 'f16' : 'f32'}_1-MLC`;
+    model = requested ?? selectBrowserModel(profile, adapter.features.has('shader-f16'));
     if (!prebuiltAppConfig.model_list.some((record) => record.model_id === model)) throw new Error(`Unknown WebLLM model: ${model}`);
     engine = await CreateMLCEngine(model, {
+      appConfig: pinBrowserModelAssets(model, prebuiltAppConfig),
       initProgressCallback: (report) => send({ type: 'status', status: {
         state: 'loading', label: `Loading ${model}`, progress: Math.max(0, Math.min(1, report.progress)), detail: report.text,
       } }),
@@ -57,7 +62,7 @@ scope.onmessage = ({ data }) => {
     warmupMs: admittedAt === undefined ? undefined : (generationAt ?? performance.now()) - admittedAt,
     generationMs: generationAt === undefined ? undefined : performance.now() - generationAt });
   const task = data.type === 'prepare'
-    ? prepare(data.model).then(() => send({ type: 'ready', id, model }))
+    ? prepare(data.model, data.localModel).then(() => send({ type: 'ready', id, model }))
     : queue.run(id, async () => {
       admittedAt = performance.now();
       await prepare();
@@ -65,8 +70,10 @@ scope.onmessage = ({ data }) => {
       validateDraft(data.draft, data.context);
       // WebLLM 0.2.85's streaming path resets its interrupt flag per generation.
       // Drain the iterator internally: only a finished, validated plan leaves this worker.
+      const generationOptions = modelGenerationOptions(model);
+      const contract = modelPlanContract(model);
       let messages: ChatCompletionMessageParam[] = [
-        { role: 'system', content: buildLocalSystemPrompt(data.context) }, { role: 'user', content: data.draft.text },
+        { role: 'system', content: contract.systemPrompt(data.context) }, { role: 'user', content: data.draft.text },
       ];
       for (let attempt = 0; attempt < 2; attempt++) {
         if (queue.isCanceled(id)) throw abortError();
@@ -76,8 +83,8 @@ scope.onmessage = ({ data }) => {
         // Engine failures are outside the validation catch: unavailable devices,
         // interrupted streams and other runtime faults must never trigger repair.
         const stream = await engine!.chat.completions.create({
-          messages, stream: true, stream_options: { include_usage: true }, temperature: 0, max_tokens: 256,
-          response_format: { type: 'json_object', schema: JSON.stringify(LOCAL_MODEL_RESPONSE_SCHEMA) },
+          ...generationOptions, messages, stream: true, stream_options: { include_usage: true }, temperature: 0, max_tokens: 256,
+          response_format: { type: 'json_object', schema: contract.schema },
         });
         const iterator = stream[Symbol.asyncIterator]();
         while (true) {
@@ -86,8 +93,11 @@ scope.onmessage = ({ data }) => {
           const chunk = await next;
           if (chunk.done) break;
           const content = chunk.value.choices[0]?.delta.content ?? '';
-          if (content && firstTokenMs === undefined) firstTokenMs = performance.now() - generationAt!;
           text += content;
+          // A forced empty thinking header is prompt material, not generated content.
+          if (content && firstTokenMs === undefined && !(generationOptions.extra_body && EMPTY_THINKING_PREFIX.startsWith(text))) {
+            firstTokenMs = performance.now() - generationAt!;
+          }
           finishReason = chunk.value.choices[0]?.finish_reason ?? finishReason;
           if (chunk.value.usage) attemptDiagnostics[attempt] = webLLMDiagnostics(chunk.value.usage);
         }
@@ -98,12 +108,12 @@ scope.onmessage = ({ data }) => {
         if (finishReason !== 'stop' && finishReason !== 'length') throw new Error(incomplete);
         try {
           if (finishReason === 'length') throw new Error(`${incomplete} Output reached the token limit.`);
-          const plan = parseLocalModelPlan(text, data.context);
+          const plan = contract.parse(normalizeModelOutput(text, model), data.context);
           const diagnostics = measured();
           return { plan, source: 'webgpu' as const, model, tokens: diagnostics.completionTokens, diagnostics };
         } catch (error) {
           if (attempt === 1 || (error instanceof Error && error.name === 'AbortError')) throw error;
-          const previous = readFailureResponse({ text })!;
+          const previous = readFailureResponse({ text: normalizeModelOutput(text, model) })!;
           messages = [...messages, { role: 'assistant', content: previous.text }, { role: 'user', content:
             `Your previous response failed validation: ${error instanceof Error ? error.message : String(error)}\n` +
             (previous.truncated ? 'The previous assistant response was truncated for this correction.\n' : '') +
@@ -116,7 +126,9 @@ scope.onmessage = ({ data }) => {
       throw new Error('Model correction did not produce a query plan.');
     }, () => engine?.interruptGenerate()).then((result) => send({ type: 'result', id, result }));
   void task.catch((error: unknown) => send({ type: 'error', id,
-    message: error instanceof Error ? error.message : String(error), name: error instanceof Error ? error.name : 'Error',
+    message: error instanceof Error && error.name === 'ContextWindowSizeExceededError'
+      ? `${attemptDiagnostics.length > 1 ? 'The correction would exceed' : 'The question and model instructions exceed'} this model's context capacity. Shorten the question and try again.`
+      : error instanceof Error ? error.message : String(error), name: error instanceof Error ? error.name : 'Error',
     ...(data.type === 'resolve' ? { inference: { source: 'webgpu', model, diagnostics: measured(),
       // Only public completion content is retained, never messages or reasoning fields.
       response: generationAt !== undefined && !(error instanceof Error && error.name === 'AbortError')

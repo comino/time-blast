@@ -1,0 +1,4336 @@
+{
+  "versions": {
+    "@duckdb/duckdb-wasm": "1.32.0",
+    "apache-arrow": "17.0.0",
+    "chromium": "145.0.7632.0"
+  },
+  "sourceSHA256": {
+    "tests/browser_first_bucket_experiment.py": "a1b757a533a8c3258c28a050bb7d4a1359c6a091142fa4015015150c8713f683",
+    "src/adapters/duckdb.ts": "2e24ff0c5a3be0be8dc2051b2ff370e43240a3d1c60fced2db01b147690bd74a",
+    "src/adapters/arrow.ts": "cd87d0e6a9e603f43c4dda82fbac432ce461221645a12802958febb8cf197299",
+    "src/core/compiler.ts": "7b4633d09b55bd63672f47786a914fb454ec2faad1f7b543d321fdbf807c7125",
+    "crates/query-core/src/lib.rs": "c3e1cb09f9bbc5f429505b9be47967bfbbdd01cfd5f201fe25ce09ba6aee35d7",
+    "public/wasm/query-core.wasm": "3e4b7d4ca524c6fd4c30e88b75a4e57655e3691dcb066a676e531c66e4d7066f",
+    "src/ui/chart.ts": "c9b57d79b80af563c68666d4fe10d901d0e00cfe63f737af9eb52df8850e4e9a"
+  },
+  "summary": [
+    {
+      "case": "minute_week_vessels",
+      "pairs": 6,
+      "statistics": {
+        "baseline": {
+          "firstBatchMs": {
+            "median": 55.55000019073486,
+            "p95": 64.72499990463257
+          },
+          "firstDrawMs": {
+            "median": 55.65000009536743,
+            "p95": 64.799999833107
+          },
+          "halfDataMs": {
+            "median": 68.29999995231628,
+            "p95": 79.12499976158142
+          },
+          "totalMs": {
+            "median": 78.69999980926514,
+            "p95": 94.02499985694885
+          },
+          "fullDrawMs": {
+            "median": 567.1999998092651,
+            "p95": 567.5
+          }
+        },
+        "firstBucket": {
+          "firstBatchMs": {
+            "median": 13.749999761581421,
+            "p95": 15.474999785423279
+          },
+          "firstDrawMs": {
+            "median": 13.850000143051147,
+            "p95": 15.574999690055847
+          },
+          "halfDataMs": {
+            "median": 72.44999980926514,
+            "p95": 81.69999992847443
+          },
+          "totalMs": {
+            "median": 85.20000004768372,
+            "p95": 95.72499990463257
+          },
+          "fullDrawMs": {
+            "median": 567.0,
+            "p95": 567.5500001907349
+          }
+        }
+      },
+      "medianFirstDrawSavedMs": 42.39999985694885,
+      "medianTotalOverheadMs": 6.300000190734863,
+      "allKeysAndOrderExact": true,
+      "allNumericValuesExact": true
+    },
+    {
+      "case": "hour_day_vessels",
+      "pairs": 6,
+      "statistics": {
+        "baseline": {
+          "firstBatchMs": {
+            "median": 20.09999990463257,
+            "p95": 21.0
+          },
+          "firstDrawMs": {
+            "median": 20.25,
+            "p95": 21.174999952316284
+          },
+          "halfDataMs": {
+            "median": 20.09999990463257,
+            "p95": 21.0
+          },
+          "totalMs": {
+            "median": 20.799999952316284,
+            "p95": 21.600000262260437
+          },
+          "fullDrawMs": {
+            "median": 49.200000047683716,
+            "p95": 50.37500011920929
+          }
+        },
+        "firstBucket": {
+          "firstBatchMs": {
+            "median": 14.700000047683716,
+            "p95": 16.90000021457672
+          },
+          "firstDrawMs": {
+            "median": 14.799999952316284,
+            "p95": 17.02500009536743
+          },
+          "halfDataMs": {
+            "median": 27.950000047683716,
+            "p95": 34.97499990463257
+          },
+          "totalMs": {
+            "median": 29.350000143051147,
+            "p95": 36.72499990463257
+          },
+          "fullDrawMs": {
+            "median": 49.950000047683716,
+            "p95": 64.325000166893
+          }
+        }
+      },
+      "medianFirstDrawSavedMs": 4.349999904632568,
+      "medianTotalOverheadMs": 8.550000190734863,
+      "allKeysAndOrderExact": true,
+      "allNumericValuesExact": true
+    },
+    {
+      "case": "six_hour_partial_lower",
+      "pairs": 6,
+      "statistics": {
+        "baseline": {
+          "firstBatchMs": {
+            "median": 19.49999976158142,
+            "p95": 20.59999978542328
+          },
+          "firstDrawMs": {
+            "median": 20.24999976158142,
+            "p95": 21.149999856948853
+          },
+          "halfDataMs": {
+            "median": 19.49999976158142,
+            "p95": 20.59999978542328
+          },
+          "totalMs": {
+            "median": 20.899999856948853,
+            "p95": 21.699999809265137
+          },
+          "fullDrawMs": {
+            "median": 49.15000009536743,
+            "p95": 50.35000002384186
+          }
+        },
+        "firstBucket": {
+          "firstBatchMs": {
+            "median": 14.399999856948853,
+            "p95": 15.074999928474426
+          },
+          "firstDrawMs": {
+            "median": 15.150000095367432,
+            "p95": 15.974999904632568
+          },
+          "halfDataMs": {
+            "median": 25.549999952316284,
+            "p95": 28.024999976158142
+          },
+          "totalMs": {
+            "median": 27.049999952316284,
+            "p95": 29.425000071525574
+          },
+          "fullDrawMs": {
+            "median": 50.299999713897705,
+            "p95": 50.450000047683716
+          }
+        }
+      },
+      "medianFirstDrawSavedMs": 4.800000190734863,
+      "medianTotalOverheadMs": 6.25,
+      "allKeysAndOrderExact": true,
+      "allNumericValuesExact": true
+    },
+    {
+      "case": "minute_week_named",
+      "pairs": 6,
+      "statistics": {
+        "baseline": {
+          "firstBatchMs": {
+            "median": 28.699999809265137,
+            "p95": 30.12499988079071
+          },
+          "firstDrawMs": {
+            "median": 28.75,
+            "p95": 30.149999856948853
+          },
+          "halfDataMs": {
+            "median": 30.100000143051147,
+            "p95": 32.35000026226044
+          },
+          "totalMs": {
+            "median": 32.200000047683716,
+            "p95": 35.77499973773956
+          },
+          "fullDrawMs": {
+            "median": 117.20000004768372,
+            "p95": 125.44999992847443
+          }
+        },
+        "firstBucket": {
+          "firstBatchMs": {
+            "median": 13.75,
+            "p95": 15.550000309944153
+          },
+          "firstDrawMs": {
+            "median": 13.850000143051147,
+            "p95": 15.725000143051147
+          },
+          "halfDataMs": {
+            "median": 38.549999952316284,
+            "p95": 40.00000023841858
+          },
+          "totalMs": {
+            "median": 40.700000047683716,
+            "p95": 41.800000071525574
+          },
+          "fullDrawMs": {
+            "median": 133.65000009536743,
+            "p95": 134.375
+          }
+        }
+      },
+      "medianFirstDrawSavedMs": 15.049999713897705,
+      "medianTotalOverheadMs": 7.999999761581421,
+      "allKeysAndOrderExact": true,
+      "allNumericValuesExact": true
+    },
+    {
+      "case": "hour_week_fleet",
+      "pairs": 6,
+      "statistics": {
+        "baseline": {
+          "firstBatchMs": {
+            "median": 41.34999990463257,
+            "p95": 44.10000014305115
+          },
+          "firstDrawMs": {
+            "median": 41.5,
+            "p95": 44.200000047683716
+          },
+          "halfDataMs": {
+            "median": 41.34999990463257,
+            "p95": 44.10000014305115
+          },
+          "totalMs": {
+            "median": 41.90000009536743,
+            "p95": 44.800000071525574
+          },
+          "fullDrawMs": {
+            "median": 64.79999995231628,
+            "p95": 66.77499985694885
+          }
+        },
+        "firstBucket": {
+          "firstBatchMs": {
+            "median": 14.450000047683716,
+            "p95": 16.37500011920929
+          },
+          "firstDrawMs": {
+            "median": 14.549999952316284,
+            "p95": 16.575000286102295
+          },
+          "halfDataMs": {
+            "median": 48.09999990463257,
+            "p95": 52.42500030994415
+          },
+          "totalMs": {
+            "median": 50.34999990463257,
+            "p95": 54.5
+          },
+          "fullDrawMs": {
+            "median": 67.0,
+            "p95": 76.92500019073486
+          }
+        }
+      },
+      "medianFirstDrawSavedMs": 26.899999856948853,
+      "medianTotalOverheadMs": 7.749999761581421,
+      "allKeysAndOrderExact": true,
+      "allNumericValuesExact": true
+    },
+    {
+      "case": "single_partial_day_bucket",
+      "pairs": 6,
+      "statistics": {
+        "baseline": {
+          "firstBatchMs": {
+            "median": 13.299999713897705,
+            "p95": 14.699999928474426
+          },
+          "firstDrawMs": {
+            "median": 14.049999713897705,
+            "p95": 15.37499988079071
+          },
+          "halfDataMs": {
+            "median": 13.299999713897705,
+            "p95": 14.699999928474426
+          },
+          "totalMs": {
+            "median": 14.59999966621399,
+            "p95": 16.50000011920929
+          },
+          "fullDrawMs": {
+            "median": 33.5,
+            "p95": 42.74999988079071
+          }
+        },
+        "firstBucket": {
+          "firstBatchMs": {
+            "median": 13.299999952316284,
+            "p95": 18.399999856948853
+          },
+          "firstDrawMs": {
+            "median": 13.949999809265137,
+            "p95": 18.799999952316284
+          },
+          "halfDataMs": {
+            "median": 13.299999952316284,
+            "p95": 18.399999856948853
+          },
+          "totalMs": {
+            "median": 14.599999904632568,
+            "p95": 19.84999978542328
+          },
+          "fullDrawMs": {
+            "median": 33.5,
+            "p95": 46.09999978542328
+          }
+        }
+      },
+      "medianFirstDrawSavedMs": 0.40000009536743164,
+      "medianTotalOverheadMs": -0.75,
+      "allKeysAndOrderExact": true,
+      "allNumericValuesExact": true
+    }
+  ],
+  "result": {
+    "status": "measured_experiment",
+    "implementation": "production",
+    "profile": "large",
+    "contextId": "synthetic-vessels-2026-09-6s-v1",
+    "datasetRows": 1209600,
+    "startupMs": 2753,
+    "trials": 6,
+    "warmups": 1,
+    "pairs": [
+      {
+        "case": "minute_week_vessels",
+        "trial": 0,
+        "order": [
+          "baseline",
+          "first_bucket"
+        ],
+        "baseline": {
+          "case": "minute_week_vessels",
+          "mode": "baseline",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "avg",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 60480,
+          "batches": 30,
+          "retainedBytes": 2187360,
+          "firstBatchMs": 66.19999980926514,
+          "firstDrawMs": 66.2999997138977,
+          "firstDrawReceivedPoints": 2048,
+          "halfDataMs": 79.89999961853027,
+          "totalMs": 97.19999980926514,
+          "fullDrawMs": 567.2999997138977,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "minute_week_vessels",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "avg",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.20000028610229492,
+          "rows": 60480,
+          "batches": 31,
+          "retainedBytes": 2187696,
+          "firstBatchMs": 14.199999809265137,
+          "firstDrawMs": 14.300000190734863,
+          "firstDrawReceivedPoints": 6,
+          "halfDataMs": 79,
+          "totalMs": 96.09999990463257,
+          "fullDrawMs": 567,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 60480,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 51.99999952316284,
+        "totalOverheadMs": -1.0999999046325684
+      },
+      {
+        "case": "minute_week_vessels",
+        "trial": 1,
+        "order": [
+          "first_bucket",
+          "baseline"
+        ],
+        "baseline": {
+          "case": "minute_week_vessels",
+          "mode": "baseline",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "avg",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 60480,
+          "batches": 30,
+          "retainedBytes": 2187360,
+          "firstBatchMs": 54.80000019073486,
+          "firstDrawMs": 54.90000009536743,
+          "firstDrawReceivedPoints": 2048,
+          "halfDataMs": 72.90000009536743,
+          "totalMs": 84.5,
+          "fullDrawMs": 565,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "minute_week_vessels",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "avg",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.09999990463256836,
+          "rows": 60480,
+          "batches": 31,
+          "retainedBytes": 2187696,
+          "firstBatchMs": 15.799999713897705,
+          "firstDrawMs": 15.899999618530273,
+          "firstDrawReceivedPoints": 6,
+          "halfDataMs": 71.2999997138977,
+          "totalMs": 79,
+          "fullDrawMs": 565,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 60480,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 39.00000047683716,
+        "totalOverheadMs": -5.5
+      },
+      {
+        "case": "minute_week_vessels",
+        "trial": 2,
+        "order": [
+          "baseline",
+          "first_bucket"
+        ],
+        "baseline": {
+          "case": "minute_week_vessels",
+          "mode": "baseline",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "avg",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 60480,
+          "batches": 30,
+          "retainedBytes": 2187360,
+          "firstBatchMs": 53.5,
+          "firstDrawMs": 53.59999990463257,
+          "firstDrawReceivedPoints": 2048,
+          "halfDataMs": 62.5,
+          "totalMs": 70.30000019073486,
+          "fullDrawMs": 567.5,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "minute_week_vessels",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "avg",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.19999980926513672,
+          "rows": 60480,
+          "batches": 31,
+          "retainedBytes": 2187696,
+          "firstBatchMs": 13.299999713897705,
+          "firstDrawMs": 13.299999713897705,
+          "firstDrawReceivedPoints": 6,
+          "halfDataMs": 69.5,
+          "totalMs": 88.40000009536743,
+          "fullDrawMs": 562.2999997138977,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 60480,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 40.30000019073486,
+        "totalOverheadMs": 18.09999990463257
+      },
+      {
+        "case": "minute_week_vessels",
+        "trial": 3,
+        "order": [
+          "first_bucket",
+          "baseline"
+        ],
+        "baseline": {
+          "case": "minute_week_vessels",
+          "mode": "baseline",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "avg",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 60480,
+          "batches": 30,
+          "retainedBytes": 2187360,
+          "firstBatchMs": 56.30000019073486,
+          "firstDrawMs": 56.40000009536743,
+          "firstDrawReceivedPoints": 2048,
+          "halfDataMs": 63.09999990463257,
+          "totalMs": 71.59999990463257,
+          "fullDrawMs": 566.5,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "minute_week_vessels",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "avg",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.20000028610229492,
+          "rows": 60480,
+          "batches": 31,
+          "retainedBytes": 2187696,
+          "firstBatchMs": 13.200000286102295,
+          "firstDrawMs": 13.400000095367432,
+          "firstDrawReceivedPoints": 6,
+          "halfDataMs": 73.59999990463257,
+          "totalMs": 82,
+          "fullDrawMs": 567.7000002861023,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 60480,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 43,
+        "totalOverheadMs": 10.400000095367432
+      },
+      {
+        "case": "minute_week_vessels",
+        "trial": 4,
+        "order": [
+          "baseline",
+          "first_bucket"
+        ],
+        "baseline": {
+          "case": "minute_week_vessels",
+          "mode": "baseline",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "avg",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 60480,
+          "batches": 30,
+          "retainedBytes": 2187360,
+          "firstBatchMs": 60.30000019073486,
+          "firstDrawMs": 60.30000019073486,
+          "firstDrawReceivedPoints": 2048,
+          "halfDataMs": 76.80000019073486,
+          "totalMs": 82.5,
+          "fullDrawMs": 567.0999999046326,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "minute_week_vessels",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "avg",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.19999980926513672,
+          "rows": 60480,
+          "batches": 31,
+          "retainedBytes": 2187696,
+          "firstBatchMs": 14.5,
+          "firstDrawMs": 14.599999904632568,
+          "firstDrawReceivedPoints": 6,
+          "halfDataMs": 82.59999990463257,
+          "totalMs": 94.59999990463257,
+          "fullDrawMs": 567,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 60480,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 45.700000286102295,
+        "totalOverheadMs": 12.099999904632568
+      },
+      {
+        "case": "minute_week_vessels",
+        "trial": 5,
+        "order": [
+          "first_bucket",
+          "baseline"
+        ],
+        "baseline": {
+          "case": "minute_week_vessels",
+          "mode": "baseline",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "avg",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0.09999990463256836,
+          "rows": 60480,
+          "batches": 30,
+          "retainedBytes": 2187360,
+          "firstBatchMs": 54.69999980926514,
+          "firstDrawMs": 54.799999713897705,
+          "firstDrawReceivedPoints": 2048,
+          "halfDataMs": 63.69999980926514,
+          "totalMs": 74.89999961853027,
+          "fullDrawMs": 567.5,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "minute_week_vessels",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "avg",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 60480,
+          "batches": 31,
+          "retainedBytes": 2187696,
+          "firstBatchMs": 12.900000095367432,
+          "firstDrawMs": 13,
+          "firstDrawReceivedPoints": 6,
+          "halfDataMs": 70.40000009536743,
+          "totalMs": 77.09999990463257,
+          "fullDrawMs": 567.0999999046326,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 60480,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 41.799999713897705,
+        "totalOverheadMs": 2.200000286102295
+      },
+      {
+        "case": "hour_day_vessels",
+        "trial": 0,
+        "order": [
+          "first_bucket",
+          "baseline"
+        ],
+        "baseline": {
+          "case": "hour_day_vessels",
+          "mode": "baseline",
+          "plan": {
+            "metric": "wind",
+            "aggregate": "max",
+            "bucketMinutes": 60,
+            "windowHours": 24,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789344000000,
+            "cut": 1789347600000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 144,
+          "batches": 1,
+          "retainedBytes": 5520,
+          "firstBatchMs": 19.299999713897705,
+          "firstDrawMs": 19.399999618530273,
+          "firstDrawReceivedPoints": 144,
+          "halfDataMs": 19.299999713897705,
+          "totalMs": 20.09999990463257,
+          "fullDrawMs": 50.299999713897705,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "hour_day_vessels",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "wind",
+            "aggregate": "max",
+            "bucketMinutes": 60,
+            "windowHours": 24,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789344000000,
+            "cut": 1789347600000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.10000038146972656,
+          "rows": 144,
+          "batches": 2,
+          "retainedBytes": 5856,
+          "firstBatchMs": 14.300000190734863,
+          "firstDrawMs": 14.400000095367432,
+          "firstDrawReceivedPoints": 6,
+          "halfDataMs": 28.40000009536743,
+          "totalMs": 29.700000286102295,
+          "fullDrawMs": 48.90000009536743,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 144,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 4.999999523162842,
+        "totalOverheadMs": 9.600000381469727
+      },
+      {
+        "case": "hour_day_vessels",
+        "trial": 1,
+        "order": [
+          "baseline",
+          "first_bucket"
+        ],
+        "baseline": {
+          "case": "hour_day_vessels",
+          "mode": "baseline",
+          "plan": {
+            "metric": "wind",
+            "aggregate": "max",
+            "bucketMinutes": 60,
+            "windowHours": 24,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789344000000,
+            "cut": 1789347600000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 144,
+          "batches": 1,
+          "retainedBytes": 5520,
+          "firstBatchMs": 21,
+          "firstDrawMs": 21.100000381469727,
+          "firstDrawReceivedPoints": 144,
+          "halfDataMs": 21,
+          "totalMs": 21.600000381469727,
+          "fullDrawMs": 48.10000038146973,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "hour_day_vessels",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "wind",
+            "aggregate": "max",
+            "bucketMinutes": 60,
+            "windowHours": 24,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789344000000,
+            "cut": 1789347600000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.2999997138977051,
+          "rows": 144,
+          "batches": 2,
+          "retainedBytes": 5856,
+          "firstBatchMs": 13.099999904632568,
+          "firstDrawMs": 13.199999809265137,
+          "firstDrawReceivedPoints": 6,
+          "halfDataMs": 26.299999713897705,
+          "totalMs": 27.799999713897705,
+          "fullDrawMs": 48.799999713897705,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 144,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 7.90000057220459,
+        "totalOverheadMs": 6.1999993324279785
+      },
+      {
+        "case": "hour_day_vessels",
+        "trial": 2,
+        "order": [
+          "first_bucket",
+          "baseline"
+        ],
+        "baseline": {
+          "case": "hour_day_vessels",
+          "mode": "baseline",
+          "plan": {
+            "metric": "wind",
+            "aggregate": "max",
+            "bucketMinutes": 60,
+            "windowHours": 24,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789344000000,
+            "cut": 1789347600000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 144,
+          "batches": 1,
+          "retainedBytes": 5520,
+          "firstBatchMs": 15.699999809265137,
+          "firstDrawMs": 15.799999713897705,
+          "firstDrawReceivedPoints": 144,
+          "halfDataMs": 15.699999809265137,
+          "totalMs": 16.199999809265137,
+          "fullDrawMs": 33.5,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "hour_day_vessels",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "wind",
+            "aggregate": "max",
+            "bucketMinutes": 60,
+            "windowHours": 24,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789344000000,
+            "cut": 1789347600000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.09999990463256836,
+          "rows": 144,
+          "batches": 2,
+          "retainedBytes": 5856,
+          "firstBatchMs": 15,
+          "firstDrawMs": 15.099999904632568,
+          "firstDrawReceivedPoints": 6,
+          "halfDataMs": 36.59999990463257,
+          "totalMs": 38.09999990463257,
+          "fullDrawMs": 61.40000009536743,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 144,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 0.6999998092651367,
+        "totalOverheadMs": 21.90000009536743
+      },
+      {
+        "case": "hour_day_vessels",
+        "trial": 3,
+        "order": [
+          "baseline",
+          "first_bucket"
+        ],
+        "baseline": {
+          "case": "hour_day_vessels",
+          "mode": "baseline",
+          "plan": {
+            "metric": "wind",
+            "aggregate": "max",
+            "bucketMinutes": 60,
+            "windowHours": 24,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789344000000,
+            "cut": 1789347600000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 144,
+          "batches": 1,
+          "retainedBytes": 5520,
+          "firstBatchMs": 21,
+          "firstDrawMs": 21.199999809265137,
+          "firstDrawReceivedPoints": 144,
+          "halfDataMs": 21,
+          "totalMs": 21.59999990463257,
+          "fullDrawMs": 50.40000009536743,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "hour_day_vessels",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "wind",
+            "aggregate": "max",
+            "bucketMinutes": 60,
+            "windowHours": 24,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789344000000,
+            "cut": 1789347600000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.19999980926513672,
+          "rows": 144,
+          "batches": 2,
+          "retainedBytes": 5856,
+          "firstBatchMs": 14.400000095367432,
+          "firstDrawMs": 14.5,
+          "firstDrawReceivedPoints": 6,
+          "halfDataMs": 25.199999809265137,
+          "totalMs": 26.5,
+          "fullDrawMs": 49.5,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 144,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 6.699999809265137,
+        "totalOverheadMs": 4.900000095367432
+      },
+      {
+        "case": "hour_day_vessels",
+        "trial": 4,
+        "order": [
+          "first_bucket",
+          "baseline"
+        ],
+        "baseline": {
+          "case": "hour_day_vessels",
+          "mode": "baseline",
+          "plan": {
+            "metric": "wind",
+            "aggregate": "max",
+            "bucketMinutes": 60,
+            "windowHours": 24,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789344000000,
+            "cut": 1789347600000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 144,
+          "batches": 1,
+          "retainedBytes": 5520,
+          "firstBatchMs": 18,
+          "firstDrawMs": 18,
+          "firstDrawReceivedPoints": 144,
+          "halfDataMs": 18,
+          "totalMs": 18.5,
+          "fullDrawMs": 46.10000038146973,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "hour_day_vessels",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "wind",
+            "aggregate": "max",
+            "bucketMinutes": 60,
+            "windowHours": 24,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789344000000,
+            "cut": 1789347600000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.09999990463256836,
+          "rows": 144,
+          "batches": 2,
+          "retainedBytes": 5856,
+          "firstBatchMs": 15.700000286102295,
+          "firstDrawMs": 15.900000095367432,
+          "firstDrawReceivedPoints": 6,
+          "halfDataMs": 30.09999990463257,
+          "totalMs": 32.59999990463257,
+          "fullDrawMs": 50.40000009536743,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 144,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 2.0999999046325684,
+        "totalOverheadMs": 14.099999904632568
+      },
+      {
+        "case": "hour_day_vessels",
+        "trial": 5,
+        "order": [
+          "baseline",
+          "first_bucket"
+        ],
+        "baseline": {
+          "case": "hour_day_vessels",
+          "mode": "baseline",
+          "plan": {
+            "metric": "wind",
+            "aggregate": "max",
+            "bucketMinutes": 60,
+            "windowHours": 24,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789344000000,
+            "cut": 1789347600000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 144,
+          "batches": 1,
+          "retainedBytes": 5520,
+          "firstBatchMs": 20.90000009536743,
+          "firstDrawMs": 21.100000381469727,
+          "firstDrawReceivedPoints": 144,
+          "halfDataMs": 20.90000009536743,
+          "totalMs": 21.5,
+          "fullDrawMs": 50.30000019073486,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "hour_day_vessels",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "wind",
+            "aggregate": "max",
+            "bucketMinutes": 60,
+            "windowHours": 24,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789344000000,
+            "cut": 1789347600000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.09999990463256836,
+          "rows": 144,
+          "batches": 2,
+          "retainedBytes": 5856,
+          "firstBatchMs": 17.300000190734863,
+          "firstDrawMs": 17.40000009536743,
+          "firstDrawReceivedPoints": 6,
+          "halfDataMs": 27.5,
+          "totalMs": 29,
+          "fullDrawMs": 65.30000019073486,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 144,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 3.700000286102295,
+        "totalOverheadMs": 7.5
+      },
+      {
+        "case": "six_hour_partial_lower",
+        "trial": 0,
+        "order": [
+          "baseline",
+          "first_bucket"
+        ],
+        "baseline": {
+          "case": "six_hour_partial_lower",
+          "mode": "baseline",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 360,
+            "windowHours": 25,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789340400000,
+            "cut": 1789344000000,
+            "end": 1789430400000,
+            "bucket": 21600000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 30,
+          "batches": 1,
+          "retainedBytes": 1416,
+          "firstBatchMs": 19.59999990463257,
+          "firstDrawMs": 20.09999990463257,
+          "firstDrawReceivedPoints": 30,
+          "halfDataMs": 19.59999990463257,
+          "totalMs": 20.5,
+          "fullDrawMs": 50.19999980926514,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "six_hour_partial_lower",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 360,
+            "windowHours": 25,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789340400000,
+            "cut": 1789344000000,
+            "end": 1789430400000,
+            "bucket": 21600000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.09999990463256836,
+          "rows": 30,
+          "batches": 2,
+          "retainedBytes": 1752,
+          "firstBatchMs": 15,
+          "firstDrawMs": 15.599999904632568,
+          "firstDrawReceivedPoints": 6,
+          "halfDataMs": 25.300000190734863,
+          "totalMs": 26.40000009536743,
+          "fullDrawMs": 50.09999990463257,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 30,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 4.5,
+        "totalOverheadMs": 5.900000095367432
+      },
+      {
+        "case": "six_hour_partial_lower",
+        "trial": 1,
+        "order": [
+          "first_bucket",
+          "baseline"
+        ],
+        "baseline": {
+          "case": "six_hour_partial_lower",
+          "mode": "baseline",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 360,
+            "windowHours": 25,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789340400000,
+            "cut": 1789344000000,
+            "end": 1789430400000,
+            "bucket": 21600000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 30,
+          "batches": 1,
+          "retainedBytes": 1416,
+          "firstBatchMs": 19.399999618530273,
+          "firstDrawMs": 20.399999618530273,
+          "firstDrawReceivedPoints": 30,
+          "halfDataMs": 19.399999618530273,
+          "totalMs": 21.299999713897705,
+          "fullDrawMs": 46.299999713897705,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "six_hour_partial_lower",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 360,
+            "windowHours": 25,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789340400000,
+            "cut": 1789344000000,
+            "end": 1789430400000,
+            "bucket": 21600000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.19999980926513672,
+          "rows": 30,
+          "batches": 2,
+          "retainedBytes": 1752,
+          "firstBatchMs": 13.099999904632568,
+          "firstDrawMs": 13.799999713897705,
+          "firstDrawReceivedPoints": 6,
+          "halfDataMs": 25.699999809265137,
+          "totalMs": 27.09999990463257,
+          "fullDrawMs": 50.5,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 30,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 6.599999904632568,
+        "totalOverheadMs": 5.800000190734863
+      },
+      {
+        "case": "six_hour_partial_lower",
+        "trial": 2,
+        "order": [
+          "baseline",
+          "first_bucket"
+        ],
+        "baseline": {
+          "case": "six_hour_partial_lower",
+          "mode": "baseline",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 360,
+            "windowHours": 25,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789340400000,
+            "cut": 1789344000000,
+            "end": 1789430400000,
+            "bucket": 21600000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 30,
+          "batches": 1,
+          "retainedBytes": 1416,
+          "firstBatchMs": 20,
+          "firstDrawMs": 20.700000286102295,
+          "firstDrawReceivedPoints": 30,
+          "halfDataMs": 20,
+          "totalMs": 21.40000009536743,
+          "fullDrawMs": 49.200000286102295,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "six_hour_partial_lower",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 360,
+            "windowHours": 25,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789340400000,
+            "cut": 1789344000000,
+            "end": 1789430400000,
+            "bucket": 21600000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 30,
+          "batches": 2,
+          "retainedBytes": 1752,
+          "firstBatchMs": 14.799999713897705,
+          "firstDrawMs": 15.599999904632568,
+          "firstDrawReceivedPoints": 6,
+          "halfDataMs": 26.59999990463257,
+          "totalMs": 28,
+          "fullDrawMs": 50.299999713897705,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 30,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 5.100000381469727,
+        "totalOverheadMs": 6.599999904632568
+      },
+      {
+        "case": "six_hour_partial_lower",
+        "trial": 3,
+        "order": [
+          "first_bucket",
+          "baseline"
+        ],
+        "baseline": {
+          "case": "six_hour_partial_lower",
+          "mode": "baseline",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 360,
+            "windowHours": 25,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789340400000,
+            "cut": 1789344000000,
+            "end": 1789430400000,
+            "bucket": 21600000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 30,
+          "batches": 1,
+          "retainedBytes": 1416,
+          "firstBatchMs": 17.90000009536743,
+          "firstDrawMs": 18.5,
+          "firstDrawReceivedPoints": 30,
+          "halfDataMs": 17.90000009536743,
+          "totalMs": 19.199999809265137,
+          "fullDrawMs": 50.40000009536743,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "six_hour_partial_lower",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 360,
+            "windowHours": 25,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789340400000,
+            "cut": 1789344000000,
+            "end": 1789430400000,
+            "bucket": 21600000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.10000038146972656,
+          "rows": 30,
+          "batches": 2,
+          "retainedBytes": 1752,
+          "firstBatchMs": 14,
+          "firstDrawMs": 14.700000286102295,
+          "firstDrawReceivedPoints": 6,
+          "halfDataMs": 25.40000009536743,
+          "totalMs": 27,
+          "fullDrawMs": 50.30000019073486,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 30,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 3.799999713897705,
+        "totalOverheadMs": 7.800000190734863
+      },
+      {
+        "case": "six_hour_partial_lower",
+        "trial": 4,
+        "order": [
+          "baseline",
+          "first_bucket"
+        ],
+        "baseline": {
+          "case": "six_hour_partial_lower",
+          "mode": "baseline",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 360,
+            "windowHours": 25,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789340400000,
+            "cut": 1789344000000,
+            "end": 1789430400000,
+            "bucket": 21600000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 30,
+          "batches": 1,
+          "retainedBytes": 1416,
+          "firstBatchMs": 20.799999713897705,
+          "firstDrawMs": 21.299999713897705,
+          "firstDrawReceivedPoints": 30,
+          "halfDataMs": 20.799999713897705,
+          "totalMs": 21.799999713897705,
+          "fullDrawMs": 49.09999990463257,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "six_hour_partial_lower",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 360,
+            "windowHours": 25,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789340400000,
+            "cut": 1789344000000,
+            "end": 1789430400000,
+            "bucket": 21600000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.09999990463256836,
+          "rows": 30,
+          "batches": 2,
+          "retainedBytes": 1752,
+          "firstBatchMs": 13,
+          "firstDrawMs": 13.5,
+          "firstDrawReceivedPoints": 6,
+          "halfDataMs": 25.40000009536743,
+          "totalMs": 26.799999713897705,
+          "fullDrawMs": 50.09999990463257,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 30,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 7.799999713897705,
+        "totalOverheadMs": 5
+      },
+      {
+        "case": "six_hour_partial_lower",
+        "trial": 5,
+        "order": [
+          "first_bucket",
+          "baseline"
+        ],
+        "baseline": {
+          "case": "six_hour_partial_lower",
+          "mode": "baseline",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 360,
+            "windowHours": 25,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789340400000,
+            "cut": 1789344000000,
+            "end": 1789430400000,
+            "bucket": 21600000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 30,
+          "batches": 1,
+          "retainedBytes": 1416,
+          "firstBatchMs": 16.399999618530273,
+          "firstDrawMs": 17.299999713897705,
+          "firstDrawReceivedPoints": 30,
+          "halfDataMs": 16.399999618530273,
+          "totalMs": 18.09999990463257,
+          "fullDrawMs": 48.39999961853027,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "six_hour_partial_lower",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 360,
+            "windowHours": 25,
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789340400000,
+            "cut": 1789344000000,
+            "end": 1789430400000,
+            "bucket": 21600000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.09999990463256836,
+          "rows": 30,
+          "batches": 2,
+          "retainedBytes": 1752,
+          "firstBatchMs": 15.099999904632568,
+          "firstDrawMs": 16.09999990463257,
+          "firstDrawReceivedPoints": 6,
+          "halfDataMs": 28.5,
+          "totalMs": 29.90000009536743,
+          "fullDrawMs": 50.299999713897705,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 30,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 1.1999998092651367,
+        "totalOverheadMs": 11.800000190734863
+      },
+      {
+        "case": "minute_week_named",
+        "trial": 0,
+        "order": [
+          "first_bucket",
+          "baseline"
+        ],
+        "baseline": {
+          "case": "minute_week_named",
+          "mode": "baseline",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "min",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": 2,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 10080,
+          "batches": 5,
+          "retainedBytes": 364560,
+          "firstBatchMs": 28.699999809265137,
+          "firstDrawMs": 28.800000190734863,
+          "firstDrawReceivedPoints": 2048,
+          "halfDataMs": 29.699999809265137,
+          "totalMs": 30.800000190734863,
+          "fullDrawMs": 117.40000009536743,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "minute_week_named",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "min",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": 2,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.09999990463256836,
+          "rows": 10080,
+          "batches": 6,
+          "retainedBytes": 364904,
+          "firstBatchMs": 11.799999713897705,
+          "firstDrawMs": 11.900000095367432,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 37.19999980926514,
+          "totalMs": 40.09999990463257,
+          "fullDrawMs": 117.5,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 10080,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 16.90000009536743,
+        "totalOverheadMs": 9.299999713897705
+      },
+      {
+        "case": "minute_week_named",
+        "trial": 1,
+        "order": [
+          "baseline",
+          "first_bucket"
+        ],
+        "baseline": {
+          "case": "minute_week_named",
+          "mode": "baseline",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "min",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": 2,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 10080,
+          "batches": 5,
+          "retainedBytes": 364560,
+          "firstBatchMs": 29.90000009536743,
+          "firstDrawMs": 30,
+          "firstDrawReceivedPoints": 2048,
+          "halfDataMs": 32.700000286102295,
+          "totalMs": 35.40000009536743,
+          "fullDrawMs": 114.60000038146973,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "minute_week_named",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "min",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": 2,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.19999980926513672,
+          "rows": 10080,
+          "batches": 6,
+          "retainedBytes": 364904,
+          "firstBatchMs": 12.299999713897705,
+          "firstDrawMs": 12.400000095367432,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 37.69999980926514,
+          "totalMs": 40.19999980926514,
+          "fullDrawMs": 134.5,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 10080,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 17.59999990463257,
+        "totalOverheadMs": 4.799999713897705
+      },
+      {
+        "case": "minute_week_named",
+        "trial": 2,
+        "order": [
+          "first_bucket",
+          "baseline"
+        ],
+        "baseline": {
+          "case": "minute_week_named",
+          "mode": "baseline",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "min",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": 2,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 10080,
+          "batches": 5,
+          "retainedBytes": 364560,
+          "firstBatchMs": 30.199999809265137,
+          "firstDrawMs": 30.199999809265137,
+          "firstDrawReceivedPoints": 2048,
+          "halfDataMs": 31.300000190734863,
+          "totalMs": 32.40000009536743,
+          "fullDrawMs": 117,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "minute_week_named",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "min",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": 2,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.10000038146972656,
+          "rows": 10080,
+          "batches": 6,
+          "retainedBytes": 364904,
+          "firstBatchMs": 13.599999904632568,
+          "firstDrawMs": 13.700000286102295,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 37.40000009536743,
+          "totalMs": 39.09999990463257,
+          "fullDrawMs": 133.59999990463257,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 10080,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 16.499999523162842,
+        "totalOverheadMs": 6.699999809265137
+      },
+      {
+        "case": "minute_week_named",
+        "trial": 3,
+        "order": [
+          "baseline",
+          "first_bucket"
+        ],
+        "baseline": {
+          "case": "minute_week_named",
+          "mode": "baseline",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "min",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": 2,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 10080,
+          "batches": 5,
+          "retainedBytes": 364560,
+          "firstBatchMs": 28.699999809265137,
+          "firstDrawMs": 28.699999809265137,
+          "firstDrawReceivedPoints": 2048,
+          "halfDataMs": 30,
+          "totalMs": 35.89999961853027,
+          "fullDrawMs": 114.09999990463257,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "minute_week_named",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "min",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": 2,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.20000028610229492,
+          "rows": 10080,
+          "batches": 6,
+          "retainedBytes": 364904,
+          "firstBatchMs": 15.600000381469727,
+          "firstDrawMs": 15.800000190734863,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 39.40000009536743,
+          "totalMs": 41.200000286102295,
+          "fullDrawMs": 133.7000002861023,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 10080,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 12.899999618530273,
+        "totalOverheadMs": 5.3000006675720215
+      },
+      {
+        "case": "minute_week_named",
+        "trial": 4,
+        "order": [
+          "first_bucket",
+          "baseline"
+        ],
+        "baseline": {
+          "case": "minute_week_named",
+          "mode": "baseline",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "min",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": 2,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 10080,
+          "batches": 5,
+          "retainedBytes": 364560,
+          "firstBatchMs": 27.5,
+          "firstDrawMs": 27.59999990463257,
+          "firstDrawReceivedPoints": 2048,
+          "halfDataMs": 30.200000286102295,
+          "totalMs": 32,
+          "fullDrawMs": 117.5,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "minute_week_named",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "min",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": 2,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.09999990463256836,
+          "rows": 10080,
+          "batches": 6,
+          "retainedBytes": 364904,
+          "firstBatchMs": 13.900000095367432,
+          "firstDrawMs": 14,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 40.200000286102295,
+          "totalMs": 42,
+          "fullDrawMs": 131.40000009536743,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 10080,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 13.599999904632568,
+        "totalOverheadMs": 10
+      },
+      {
+        "case": "minute_week_named",
+        "trial": 5,
+        "order": [
+          "baseline",
+          "first_bucket"
+        ],
+        "baseline": {
+          "case": "minute_week_named",
+          "mode": "baseline",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "min",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": 2,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 10080,
+          "batches": 5,
+          "retainedBytes": 364560,
+          "firstBatchMs": 28.199999809265137,
+          "firstDrawMs": 28.299999713897705,
+          "firstDrawReceivedPoints": 2048,
+          "halfDataMs": 29.40000009536743,
+          "totalMs": 30.90000009536743,
+          "fullDrawMs": 128.09999990463257,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "minute_week_named",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "wave_height",
+            "aggregate": "min",
+            "bucketMinutes": 1,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": 2,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788825660000,
+            "end": 1789430400000,
+            "bucket": 60000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.3000001907348633,
+          "rows": 10080,
+          "batches": 6,
+          "retainedBytes": 364904,
+          "firstBatchMs": 15.400000095367432,
+          "firstDrawMs": 15.5,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 39.40000009536743,
+          "totalMs": 41.200000286102295,
+          "fullDrawMs": 134,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 10080,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 12.799999713897705,
+        "totalOverheadMs": 10.300000190734863
+      },
+      {
+        "case": "hour_week_fleet",
+        "trial": 0,
+        "order": [
+          "baseline",
+          "first_bucket"
+        ],
+        "baseline": {
+          "case": "hour_week_fleet",
+          "mode": "baseline",
+          "plan": {
+            "metric": "water_temp",
+            "aggregate": "avg",
+            "bucketMinutes": 60,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788829200000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 168,
+          "batches": 1,
+          "retainedBytes": 6384,
+          "firstBatchMs": 40.90000009536743,
+          "firstDrawMs": 41,
+          "firstDrawReceivedPoints": 168,
+          "halfDataMs": 40.90000009536743,
+          "totalMs": 41.700000286102295,
+          "fullDrawMs": 60,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "hour_week_fleet",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "water_temp",
+            "aggregate": "avg",
+            "bucketMinutes": 60,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788829200000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.09999990463256836,
+          "rows": 168,
+          "batches": 2,
+          "retainedBytes": 6728,
+          "firstBatchMs": 13.5,
+          "firstDrawMs": 13.700000286102295,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 46.59999990463257,
+          "totalMs": 47.80000019073486,
+          "fullDrawMs": 67,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 168,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 27.299999713897705,
+        "totalOverheadMs": 6.099999904632568
+      },
+      {
+        "case": "hour_week_fleet",
+        "trial": 1,
+        "order": [
+          "first_bucket",
+          "baseline"
+        ],
+        "baseline": {
+          "case": "hour_week_fleet",
+          "mode": "baseline",
+          "plan": {
+            "metric": "water_temp",
+            "aggregate": "avg",
+            "bucketMinutes": 60,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788829200000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 168,
+          "batches": 1,
+          "retainedBytes": 6384,
+          "firstBatchMs": 43.799999713897705,
+          "firstDrawMs": 43.89999961853027,
+          "firstDrawReceivedPoints": 168,
+          "halfDataMs": 43.799999713897705,
+          "totalMs": 44.5,
+          "fullDrawMs": 62.89999961853027,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "hour_week_fleet",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "water_temp",
+            "aggregate": "avg",
+            "bucketMinutes": 60,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788829200000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.20000028610229492,
+          "rows": 168,
+          "batches": 2,
+          "retainedBytes": 6728,
+          "firstBatchMs": 14.5,
+          "firstDrawMs": 14.599999904632568,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 47.5,
+          "totalMs": 49.5,
+          "fullDrawMs": 67.09999990463257,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 168,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 29.299999713897705,
+        "totalOverheadMs": 5
+      },
+      {
+        "case": "hour_week_fleet",
+        "trial": 2,
+        "order": [
+          "baseline",
+          "first_bucket"
+        ],
+        "baseline": {
+          "case": "hour_week_fleet",
+          "mode": "baseline",
+          "plan": {
+            "metric": "water_temp",
+            "aggregate": "avg",
+            "bucketMinutes": 60,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788829200000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 168,
+          "batches": 1,
+          "retainedBytes": 6384,
+          "firstBatchMs": 41.299999713897705,
+          "firstDrawMs": 41.5,
+          "firstDrawReceivedPoints": 168,
+          "halfDataMs": 41.299999713897705,
+          "totalMs": 41.90000009536743,
+          "fullDrawMs": 64.59999990463257,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "hour_week_fleet",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "water_temp",
+            "aggregate": "avg",
+            "bucketMinutes": 60,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788829200000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.20000028610229492,
+          "rows": 168,
+          "batches": 2,
+          "retainedBytes": 6728,
+          "firstBatchMs": 16.90000009536743,
+          "firstDrawMs": 17.100000381469727,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 50.10000038146973,
+          "totalMs": 54.200000286102295,
+          "fullDrawMs": 66.80000019073486,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 168,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 24.399999618530273,
+        "totalOverheadMs": 12.300000190734863
+      },
+      {
+        "case": "hour_week_fleet",
+        "trial": 3,
+        "order": [
+          "first_bucket",
+          "baseline"
+        ],
+        "baseline": {
+          "case": "hour_week_fleet",
+          "mode": "baseline",
+          "plan": {
+            "metric": "water_temp",
+            "aggregate": "avg",
+            "bucketMinutes": 60,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788829200000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 168,
+          "batches": 1,
+          "retainedBytes": 6384,
+          "firstBatchMs": 40.80000019073486,
+          "firstDrawMs": 40.90000009536743,
+          "firstDrawReceivedPoints": 168,
+          "halfDataMs": 40.80000019073486,
+          "totalMs": 41.60000038146973,
+          "fullDrawMs": 66.7000002861023,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "hour_week_fleet",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "water_temp",
+            "aggregate": "avg",
+            "bucketMinutes": 60,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788829200000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.19999980926513672,
+          "rows": 168,
+          "batches": 2,
+          "retainedBytes": 6728,
+          "firstBatchMs": 14.400000095367432,
+          "firstDrawMs": 14.5,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 48,
+          "totalMs": 51,
+          "fullDrawMs": 65.90000009536743,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 168,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 26.40000009536743,
+        "totalOverheadMs": 9.399999618530273
+      },
+      {
+        "case": "hour_week_fleet",
+        "trial": 4,
+        "order": [
+          "baseline",
+          "first_bucket"
+        ],
+        "baseline": {
+          "case": "hour_week_fleet",
+          "mode": "baseline",
+          "plan": {
+            "metric": "water_temp",
+            "aggregate": "avg",
+            "bucketMinutes": 60,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788829200000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 168,
+          "batches": 1,
+          "retainedBytes": 6384,
+          "firstBatchMs": 41.40000009536743,
+          "firstDrawMs": 41.5,
+          "firstDrawReceivedPoints": 168,
+          "halfDataMs": 41.40000009536743,
+          "totalMs": 41.90000009536743,
+          "fullDrawMs": 66.7999997138977,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "hour_week_fleet",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "water_temp",
+            "aggregate": "avg",
+            "bucketMinutes": 60,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788829200000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0.10000038146972656,
+          "rows": 168,
+          "batches": 2,
+          "retainedBytes": 6728,
+          "firstBatchMs": 14.800000190734863,
+          "firstDrawMs": 15,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 53.200000286102295,
+          "totalMs": 54.59999990463257,
+          "fullDrawMs": 80.2000002861023,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 168,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 26.5,
+        "totalOverheadMs": 12.699999809265137
+      },
+      {
+        "case": "hour_week_fleet",
+        "trial": 5,
+        "order": [
+          "first_bucket",
+          "baseline"
+        ],
+        "baseline": {
+          "case": "hour_week_fleet",
+          "mode": "baseline",
+          "plan": {
+            "metric": "water_temp",
+            "aggregate": "avg",
+            "bucketMinutes": 60,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788829200000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 168,
+          "batches": 1,
+          "retainedBytes": 6384,
+          "firstBatchMs": 44.200000286102295,
+          "firstDrawMs": 44.30000019073486,
+          "firstDrawReceivedPoints": 168,
+          "halfDataMs": 44.200000286102295,
+          "totalMs": 44.90000009536743,
+          "fullDrawMs": 65,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "hour_week_fleet",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "water_temp",
+            "aggregate": "avg",
+            "bucketMinutes": 60,
+            "windowHours": 168,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1788825600000,
+            "cut": 1788829200000,
+            "end": 1789430400000,
+            "bucket": 3600000,
+            "split": true
+          },
+          "physicalStatements": 2,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 168,
+          "batches": 2,
+          "retainedBytes": 6728,
+          "firstBatchMs": 14.299999713897705,
+          "firstDrawMs": 14.399999618530273,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 48.19999980926514,
+          "totalMs": 49.69999980926514,
+          "fullDrawMs": 67,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 168,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 29.90000057220459,
+        "totalOverheadMs": 4.799999713897705
+      },
+      {
+        "case": "single_partial_day_bucket",
+        "trial": 0,
+        "order": [
+          "first_bucket",
+          "baseline"
+        ],
+        "baseline": {
+          "case": "single_partial_day_bucket",
+          "mode": "baseline",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 1440,
+            "windowHours": 1,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789426800000,
+            "cut": 1789430400000,
+            "end": 1789430400000,
+            "bucket": 86400000,
+            "split": false
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 1,
+          "batches": 1,
+          "retainedBytes": 376,
+          "firstBatchMs": 13.399999618530273,
+          "firstDrawMs": 14.299999713897705,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 13.399999618530273,
+          "totalMs": 14.799999713897705,
+          "fullDrawMs": 33.69999980926514,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "single_partial_day_bucket",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 1440,
+            "windowHours": 1,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789426800000,
+            "cut": 1789430400000,
+            "end": 1789430400000,
+            "bucket": 86400000,
+            "split": false
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 1,
+          "batches": 1,
+          "retainedBytes": 376,
+          "firstBatchMs": 12.200000286102295,
+          "firstDrawMs": 12.800000190734863,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 12.200000286102295,
+          "totalMs": 13.300000190734863,
+          "fullDrawMs": 33.10000038146973,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 1,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 1.4999995231628418,
+        "totalOverheadMs": -1.4999995231628418
+      },
+      {
+        "case": "single_partial_day_bucket",
+        "trial": 1,
+        "order": [
+          "baseline",
+          "first_bucket"
+        ],
+        "baseline": {
+          "case": "single_partial_day_bucket",
+          "mode": "baseline",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 1440,
+            "windowHours": 1,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789426800000,
+            "cut": 1789430400000,
+            "end": 1789430400000,
+            "bucket": 86400000,
+            "split": false
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 1,
+          "batches": 1,
+          "retainedBytes": 376,
+          "firstBatchMs": 15,
+          "firstDrawMs": 15.599999904632568,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 15,
+          "totalMs": 16.800000190734863,
+          "fullDrawMs": 45.69999980926514,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "single_partial_day_bucket",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 1440,
+            "windowHours": 1,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789426800000,
+            "cut": 1789430400000,
+            "end": 1789430400000,
+            "bucket": 86400000,
+            "split": false
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0.09999990463256836,
+          "rows": 1,
+          "batches": 1,
+          "retainedBytes": 376,
+          "firstBatchMs": 14.799999713897705,
+          "firstDrawMs": 15.199999809265137,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 14.799999713897705,
+          "totalMs": 15.799999713897705,
+          "fullDrawMs": 33.5,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 1,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 0.40000009536743164,
+        "totalOverheadMs": -1.0000004768371582
+      },
+      {
+        "case": "single_partial_day_bucket",
+        "trial": 2,
+        "order": [
+          "first_bucket",
+          "baseline"
+        ],
+        "baseline": {
+          "case": "single_partial_day_bucket",
+          "mode": "baseline",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 1440,
+            "windowHours": 1,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789426800000,
+            "cut": 1789430400000,
+            "end": 1789430400000,
+            "bucket": 86400000,
+            "split": false
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0.10000038146972656,
+          "rows": 1,
+          "batches": 1,
+          "retainedBytes": 376,
+          "firstBatchMs": 12,
+          "firstDrawMs": 12.700000286102295,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 12,
+          "totalMs": 13.400000095367432,
+          "fullDrawMs": 33.10000038146973,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "single_partial_day_bucket",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 1440,
+            "windowHours": 1,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789426800000,
+            "cut": 1789430400000,
+            "end": 1789430400000,
+            "bucket": 86400000,
+            "split": false
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0.19999980926513672,
+          "rows": 1,
+          "batches": 1,
+          "retainedBytes": 376,
+          "firstBatchMs": 19.59999990463257,
+          "firstDrawMs": 20,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 19.59999990463257,
+          "totalMs": 21.199999809265137,
+          "fullDrawMs": 50.299999713897705,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 1,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": -7.299999713897705,
+        "totalOverheadMs": 7.799999713897705
+      },
+      {
+        "case": "single_partial_day_bucket",
+        "trial": 3,
+        "order": [
+          "baseline",
+          "first_bucket"
+        ],
+        "baseline": {
+          "case": "single_partial_day_bucket",
+          "mode": "baseline",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 1440,
+            "windowHours": 1,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789426800000,
+            "cut": 1789430400000,
+            "end": 1789430400000,
+            "bucket": 86400000,
+            "split": false
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 1,
+          "batches": 1,
+          "retainedBytes": 376,
+          "firstBatchMs": 12.599999904632568,
+          "firstDrawMs": 13.5,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 12.599999904632568,
+          "totalMs": 14.200000286102295,
+          "fullDrawMs": 33.30000019073486,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "single_partial_day_bucket",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 1440,
+            "windowHours": 1,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789426800000,
+            "cut": 1789430400000,
+            "end": 1789430400000,
+            "bucket": 86400000,
+            "split": false
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 1,
+          "batches": 1,
+          "retainedBytes": 376,
+          "firstBatchMs": 12.400000095367432,
+          "firstDrawMs": 12.900000095367432,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 12.400000095367432,
+          "totalMs": 13.300000190734863,
+          "fullDrawMs": 33.5,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 1,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 0.5999999046325684,
+        "totalOverheadMs": -0.9000000953674316
+      },
+      {
+        "case": "single_partial_day_bucket",
+        "trial": 4,
+        "order": [
+          "first_bucket",
+          "baseline"
+        ],
+        "baseline": {
+          "case": "single_partial_day_bucket",
+          "mode": "baseline",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 1440,
+            "windowHours": 1,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789426800000,
+            "cut": 1789430400000,
+            "end": 1789430400000,
+            "bucket": 86400000,
+            "split": false
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 1,
+          "batches": 1,
+          "retainedBytes": 376,
+          "firstBatchMs": 13.799999713897705,
+          "firstDrawMs": 14.699999809265137,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 13.799999713897705,
+          "totalMs": 15.599999904632568,
+          "fullDrawMs": 33.90000009536743,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "single_partial_day_bucket",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 1440,
+            "windowHours": 1,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789426800000,
+            "cut": 1789430400000,
+            "end": 1789430400000,
+            "bucket": 86400000,
+            "split": false
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0.09999990463256836,
+          "rows": 1,
+          "batches": 1,
+          "retainedBytes": 376,
+          "firstBatchMs": 14,
+          "firstDrawMs": 14.5,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 14,
+          "totalMs": 15,
+          "fullDrawMs": 33.5,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 1,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 0.19999980926513672,
+        "totalOverheadMs": -0.5999999046325684
+      },
+      {
+        "case": "single_partial_day_bucket",
+        "trial": 5,
+        "order": [
+          "baseline",
+          "first_bucket"
+        ],
+        "baseline": {
+          "case": "single_partial_day_bucket",
+          "mode": "baseline",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 1440,
+            "windowHours": 1,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789426800000,
+            "cut": 1789430400000,
+            "end": 1789430400000,
+            "bucket": 86400000,
+            "split": false
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0,
+          "rows": 1,
+          "batches": 1,
+          "retainedBytes": 376,
+          "firstBatchMs": 13.199999809265137,
+          "firstDrawMs": 13.799999713897705,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 13.199999809265137,
+          "totalMs": 14.399999618530273,
+          "fullDrawMs": 33.299999713897705,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "firstBucket": {
+          "case": "single_partial_day_bucket",
+          "mode": "first_bucket",
+          "plan": {
+            "metric": "speed",
+            "aggregate": "avg",
+            "bucketMinutes": 1440,
+            "windowHours": 1,
+            "splitByVessel": false,
+            "vessel": null,
+            "view": "line"
+          },
+          "range": {
+            "lower": 1789426800000,
+            "cut": 1789430400000,
+            "end": 1789430400000,
+            "bucket": 86400000,
+            "split": false
+          },
+          "physicalStatements": 1,
+          "queryConnections": 1,
+          "planningMs": 0.09999990463256836,
+          "rows": 1,
+          "batches": 1,
+          "retainedBytes": 376,
+          "firstBatchMs": 12.599999904632568,
+          "firstDrawMs": 13.399999618530273,
+          "firstDrawReceivedPoints": 1,
+          "halfDataMs": 12.599999904632568,
+          "totalMs": 14.199999809265137,
+          "fullDrawMs": 33.39999961853027,
+          "borrowedProducerBatches": true,
+          "cardPreparedBeforeTiming": true
+        },
+        "equality": {
+          "rows": 1,
+          "exactNumericMatch": true,
+          "exactKeysAndOrder": true,
+          "differences": {
+            "x": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "series": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "y": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lat": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            },
+            "lon": {
+              "count": 0,
+              "maxAbsolute": 0,
+              "maxRelative": 0
+            }
+          }
+        },
+        "firstDrawSavedMs": 0.40000009536743164,
+        "totalOverheadMs": -0.19999980926513672
+      }
+    ],
+    "cancellation": {
+      "remainderSkipped": true,
+      "startedStatements": 1,
+      "recoveryRows": 60480,
+      "errorName": "AbortError"
+    },
+    "scope": "Warm bundled DuckDB plus prepared line card; no model, remote service or concurrent query",
+    "firstBucketUsesTwoAdapterConnections": false,
+    "readOnlyTransaction": true,
+    "originalRequestContextPreserved": true,
+    "physicalPresentationMeasured": false,
+    "correctnessOracleRetainsAtMostTwoResults": true,
+    "numericBuffersCopiedForOracle": false
+  },
+  "pageErrors": [],
+  "limitations": [
+    "Warm trials only; small-sample p95 is descriptive, not a reliable production tail estimate.",
+    "Production uses a shared read-only transaction on an owned bundled snapshot; experimental mode relies on application-managed immutability.",
+    "Result verification retains borrowed batches outside the timing path; no full-result numeric copy is made.",
+    "Any numeric mismatch blocks claiming an exact baseline-equivalent optimization. Inspect avg-related drift explicitly.",
+    "First drawing is Canvas submission, not physical presentation. Timings include harness/card/budget bookkeeping."
+  ],
+  "exactEquivalencePassed": true
+}

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DatasetContext, Draft, InferenceResult, QueryPlan } from '../src/core/types';
-import { LocalInferenceAdapter } from '../src/inference';
+import { LocalInferenceAdapter, type InferenceOptions } from '../src/inference';
 import type { WorkerRequest, WorkerResponse } from '../src/inference/messages';
 import { MAX_PROMPT_CHARS } from '../src/inference/plan';
 import { PlanCache } from '../src/inference/plan-cache';
@@ -99,11 +99,11 @@ class FakeWorker {
 const adapters: LocalInferenceAdapter[] = [];
 afterEach(() => { for (const adapter of adapters.splice(0)) adapter.dispose(); vi.unstubAllGlobals(); });
 
-async function prepared() {
+async function prepared(options: InferenceOptions = {}) {
   let worker!: FakeWorker;
   vi.stubGlobal('navigator', { gpu: {} });
   vi.stubGlobal('Worker', class extends FakeWorker { constructor() { super(); worker = this; } });
-  const adapter = new LocalInferenceAdapter('webgpu'); adapters.push(adapter);
+  const adapter = new LocalInferenceAdapter('webgpu', options); adapters.push(adapter);
   const warming = adapter.prepare(context);
   const request = worker.messages.find((message) => message.type === 'prepare')!;
   worker.emit({ type: 'ready', id: request.id, model: 'test-qwen' }); await warming;
@@ -111,6 +111,43 @@ async function prepared() {
 }
 
 describe('local inference cache integration', () => {
+  it('can run every exact repeat through the warmed model with caching disabled', async () => {
+    const { adapter, worker } = await prepared({ cacheModelPlans: false, localModel: 'qwen-1.5b' });
+    for (let index = 0; index < 3; index++) {
+      const next = adapter.resolve(draft(undefined, index + 1), signal());
+      expect(worker.resolves()).toHaveLength(index + 1);
+      worker.answer(index);
+      expect((await next).diagnostics?.cacheHit).not.toBe(true);
+    }
+    expect(worker.messages.filter(message => message.type === 'prepare')).toEqual([
+      expect.objectContaining({ type: 'prepare', localModel: 'qwen-1.5b' }),
+    ]);
+  });
+
+  it('clears old plans when policy changes while preserving the warmed worker', async () => {
+    const { adapter, worker } = await prepared();
+    const first = adapter.resolve(draft(), signal()); worker.answer(0); await first;
+    expect((await adapter.resolve(draft(), signal())).diagnostics?.cacheHit).toBe(true);
+    adapter.setPlanCacheEnabled(false);
+    const uncached = adapter.resolve(draft(), signal()); worker.answer(1); await uncached;
+    adapter.setPlanCacheEnabled(true);
+    const fresh = adapter.resolve(draft(), signal()); worker.answer(2); await fresh;
+    expect((await adapter.resolve(draft(), signal())).diagnostics?.cacheHit).toBe(true);
+    expect(worker.resolves()).toHaveLength(3);
+    expect(worker.messages.filter(message => message.type === 'prepare')).toHaveLength(1);
+  });
+
+  it('does not admit results started before a cache policy change, even after re-enabling', async () => {
+    const { adapter, worker } = await prepared();
+    const old = adapter.resolve(draft(), signal());
+    adapter.setPlanCacheEnabled(false); adapter.setPlanCacheEnabled(true);
+    worker.answer(0); await old;
+    const fresh = adapter.resolve(draft(), signal());
+    expect(worker.resolves()).toHaveLength(2);
+    worker.answer(1); await fresh;
+    expect((await adapter.resolve(draft(), signal())).diagnostics?.cacheHit).toBe(true);
+  });
+
   it('skips worker generation for an exact repeat at a newer revision', async () => {
     const { adapter, worker } = await prepared();
     const first = adapter.resolve(draft(), signal()); worker.answer(0);

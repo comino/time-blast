@@ -153,7 +153,9 @@ export class ResultCard {
     const coverage = this.part('coverage-note');
     coverage.hidden = view.plan.windowHours <= availableHours;
     coverage.textContent = coverage.hidden ? '' : `Requested ${windowLabel(view.plan.windowHours)} · available dataset spans ${windowLabel(availableHours)} (${dates.format(view.context.start)} — ${dates.format(view.context.end)} UTC). Showing the available interval.`;
-    this.part('sql').textContent = view.sql; this.part('source').textContent = sourceLabels[view.source];
+    this.part('sql').textContent = (view.execution === 'first-complete-bucket'
+      ? '-- Logical query. Execution streams its first complete time bucket,\n-- then the remaining buckets in one read-only DuckDB snapshot.\n' : '') + view.sql;
+    this.part('source').textContent = sourceLabels[view.source];
     this.part('query-meta').textContent = `${view.id} · revision ${view.revision}${view.model ? ` · ${view.model}` : ''}`;
     this.part('mean-unit').textContent = metric.unit; this.part('value-header').textContent = `${metric.name.toUpperCase()} · ${metric.unit}`;
     this.chart.begin(view);
