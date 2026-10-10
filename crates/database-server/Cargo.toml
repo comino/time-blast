@@ -1,0 +1,34 @@
+# Standalone: own lockfile and release profile; deployed as a native binary.
+# Remote database node: tb1 over WebSocket in front of ClickHouse (docs/batch-1/remote-database.md).
+[workspace]
+
+[package]
+name = "time-blast-database"
+version = "0.1.0"
+edition = "2024"
+publish = false
+rust-version = "1.88"
+
+[dependencies]
+tb-protocol = { path = "../tb-protocol" }
+axum = { version = "=0.8.8", features = ["http1", "tokio"] }
+fastwebsockets = { version = "=0.10.0", features = ["upgrade", "unstable-split"] }
+# Plain HTTP to ClickHouse on loopback or a private network: no TLS, no compression.
+reqwest = { version = "=0.12.28", default-features = false }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
+tokio = { version = "=1.53.1", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time", "io-util"] }
+tokio-util = "=0.7.19"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+
+[profile.dev]
+debug = 0
+incremental = false
+
+[profile.test]
+debug = 0
+incremental = false
