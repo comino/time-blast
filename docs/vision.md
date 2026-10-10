@@ -114,7 +114,28 @@ APIs such as OpenRouter, and self-hosted server models (likely most practical).
 The database: DuckDB-Wasm in the browser today; DuckDB and ClickHouse servers
 remotely.
 
-### 4. Speculate cheaply
+### 4. Rust/Wasm for everything time-critical; JavaScript for the boring parts
+
+Anything on the hot path is written in **Rust** (server) or **Rust → WebAssembly**
+(browser), going down to SIMD intrinsics or assembly where that measurably helps.
+That covers protocol codecs, Arrow decoding, scheduling, geometry and rendering.
+**JavaScript/TypeScript is only glue and boring UI**: settings, layout, menus.
+
+Rendering the data is the most time-critical code we have. It should use the
+fastest path the browser exposes: **WebGPU (WebGL2 as fallback), driven from
+Rust/Wasm.** Geometry and command buffers are built in Wasm linear memory and the
+GPU draws the pixels. Canvas2D is legacy.
+
+Know the boundaries, because they decide where the microseconds go:
+- Wasm can't call the GPU directly. Every WebGPU/WebGL call passes through a
+  thin JS binding, so batch calls and keep that glue minimal.
+- Each Wasm module has its own memory. Moving data from DuckDB-Wasm's heap into
+  our renderer's heap is a copy unless both share one memory or one build.
+  Removing that copy is a legitimate target.
+- Wasm SIMD128 is the browser's "assembler" level. Use it in hot kernels where
+  it's measured to help.
+
+### 5. Speculate cheaply
 
 Speculative inference on every keystroke is in scope, within a budget of
 **a few dollars per day.** Use small, fast models, prompt-prefix caching,
@@ -134,6 +155,7 @@ with this vision. Treat them as things to remove, not constraints to respect:
 | Enter → first point as the headline metric | Measures a step we want to eliminate | Thought → result; Enter is a sub-measurement |
 | Separate wire protocol per component and placement (3–4 JSON protocols) | Moving a component means a new protocol and server | One binary protocol, pluggable transport |
 | Vessel-shaped `ColumnBatch {x, y, series, lat, lon}` | Not generic | Arbitrary Arrow schemas; chart choice from column types |
+| Canvas2D renderers and hot-path logic in TypeScript | Rendering and data paths belong in Rust/Wasm | WebGPU from Rust/Wasm; JS only as glue |
 | Long, heavily hedged documentation | Slows every future reader down | Short, decisive, current docs |
 
 Keep what serves the vision: the DuckDB worker, Arrow-to-canvas streaming without

@@ -21,6 +21,7 @@ note in this repo.
   or remotely. Same messages, same binary frame; only the transport differs (MessagePort locally,
   binary WebSocket remotely). Local paths use ownership transfer, never serialization for a
   network that isn't there. Remote components talk to each other directly.
+- **Rust/Wasm for time-critical code; JS/TS only for boring glue and UI.** Rendering goes WebGPU (WebGL2 fallback) driven from Rust/Wasm; Canvas2D is legacy. Server hot paths are Rust. SIMD/assembly is welcome where measured.
 - **Stream, don't collect.** Arrow batches flow into drawing without per-row objects,
   full-result collection or repeated concatenation. Draw at the first complete point.
 - **Correctness of identity.** Preserve session/revision/request/epoch identities, cancellation
