@@ -101,7 +101,7 @@ unknown kinds, truncated frames, and nonzero reserved stamp fields.
 | 0x18 | `INFER` | coordinator → inference | request, revision, context | UTF-8 question text |
 | 0x19 | `SQL_DELTA` | inference → coordinator | request | UTF-8 fragment of the SQL being generated |
 | 0x1A | `SQL` | inference → coordinator | request | UTF-8 complete SQL. Flag `0x01 CACHED` (inference-side cache) |
-| 0x1B | `INFER_STATS` | inference → coordinator → UI | request | JSON `{model, promptTokens, completionTokens, cachedTokens?, costUsd?, attempts}` |
+| 0x1B | `INFER_STATS` | inference → coordinator → UI | request | JSON `{model, promptTokens, completionTokens, cachedTokens?, reasoningTokens?, costUsd?, attempts, cancelled?}`; also sent for cancelled requests that reached the provider |
 | 0x20 | `EXEC` | coordinator → database | request, context | UTF-8 SQL. Flag `0x01 SPECULATIVE` |
 | 0x21 | `RESULT_SCHEMA` | database → renderer (+ header-only → coordinator) | request | Arrow IPC encapsulated **schema** message |
 | 0x22 | `BATCH` | database → renderer (+ header-only → coordinator) | request | Arrow IPC encapsulated **record batch** message |
@@ -228,7 +228,7 @@ Roles: `time`, `category`, `series`, `value`, `measure`, `lat`, `lon`.
 | 4 | `INFER_SENT` | coordinator |
 | 5 | `INFER_RECEIVED` | inference node |
 | 6 | `PROVIDER_REQUEST` | inference node, when calling an upstream provider |
-| 7 | `FIRST_TOKEN` | inference node |
+| 7 | `FIRST_TOKEN` | inference node, with node 6 (provider), on the inference node's clock |
 | 8 | `SQL_FIRST_DELTA` | inference node |
 | 9 | `SQL_COMPLETE` | inference node |
 | 10 | `SQL_RECEIVED` | coordinator |
