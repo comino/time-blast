@@ -99,6 +99,7 @@ export class WebGpuBackend implements GpuBackend {
     const adapter = await gpu.requestAdapter({ powerPreference: 'high-performance' });
     if (!adapter) return null;
     const device: GPUDevice = await adapter.requestDevice();
+    (device as any).addEventListener?.('uncapturederror', (e: any) => console.error(`tb-render WebGPU: ${e.error?.message ?? e}`));
     const format: GPUTextureFormat = gpu.getPreferredCanvasFormat();
     const layout = device.createBindGroupLayout({ entries: [{ binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
       buffer: { type: 'uniform', hasDynamicOffset: true, minBindingSize: UNIFORM_SIZE } }] });
@@ -161,13 +162,14 @@ export class WebGpuBackend implements GpuBackend {
         }
         case Op.PASS: {
           const target = this.contexts.get(w[i + 1]);
-          i += 7;
-          if (!target) { pass = undefined; break; }
-          encoder ??= device.createCommandEncoder();
-          group = this.groups.get(w[i - 6]);
-          pass = encoder.beginRenderPass({ colorAttachments: [{ view: target.context.getCurrentTexture().createView(),
-            clearValue: { r: asFloat(w[i - 5]), g: asFloat(w[i - 4]), b: asFloat(w[i - 3]), a: asFloat(w[i - 2]) }, loadOp: 'clear', storeOp: 'store' }] });
-          calls += 4; break;
+          if (target) {
+            encoder ??= device.createCommandEncoder();
+            group = this.groups.get(w[i + 2]);
+            pass = encoder.beginRenderPass({ colorAttachments: [{ view: target.context.getCurrentTexture().createView(),
+              clearValue: { r: asFloat(w[i + 3]), g: asFloat(w[i + 4]), b: asFloat(w[i + 5]), a: asFloat(w[i + 6]) }, loadOp: 'clear', storeOp: 'store' }] });
+            calls += 4;
+          } else pass = undefined;
+          i += 7; break;
         }
         case Op.PIPE: pass?.setPipeline(this.pipelines[w[i + 1]]); calls++; i += 2; break;
         case Op.VB: { const b = this.buffers.get(w[i + 2]); if (b) pass?.setVertexBuffer(w[i + 1], b, w[i + 3]); calls++; i += 4; break; }

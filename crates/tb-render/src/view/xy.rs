@@ -653,7 +653,7 @@ mod tests {
         assert!(!xy.series[0].sorted);
         let mut words = Vec::new();
         let mut next = 0;
-        xy.upload(View::Line, &mut Gpu { words: &mut words, next_id: &mut next });
+        xy.upload(View::Line, &mut Gpu { words: &mut words, next_id: &mut next, pool: &mut crate::gpu::Pool::default() });
         let xs: Vec<f32> = xy.series[0].pts.iter().map(|p| p[0]).collect();
         assert_eq!(xs, [-2000.0, -1000.0, 0.0]);
         assert!(xy.series[0].sorted);
@@ -667,7 +667,7 @@ mod tests {
         xy.ingest(&store, 0, store.rows);
         let mut words = Vec::new();
         let mut next = 0;
-        xy.upload(View::Line, &mut Gpu { words: &mut words, next_id: &mut next });
+        xy.upload(View::Line, &mut Gpu { words: &mut words, next_id: &mut next, pool: &mut crate::gpu::Pool::default() });
         let mut pass = crate::gpu::PassRecorder::default();
         let axes = crate::axes::AxesOut::default();
         xy.draw(View::Line, &mut DrawFrame { pass: &mut pass, plot: [10.0, 10.0, 300.0, 200.0], canvas: [320.0, 220.0], dpr: 1.0, axes: &axes });

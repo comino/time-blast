@@ -7,7 +7,7 @@
 //! first-draw path), everything else is coalesced into one frame per animation frame.
 
 use crate::axes::{layout, AxesOut};
-use crate::gpu::{as_bytes, json_str, op, Gpu, GpuVec, PassRecorder, PipelineTable, Uniform, KIND_UNIFORM, KIND_VERTEX};
+use crate::gpu::{as_bytes, json_str, op, Gpu, GpuVec, PassRecorder, PipelineTable, Pool, Uniform, KIND_UNIFORM, KIND_VERTEX};
 use crate::schema::{infer_roles, ColumnInfo, View};
 use crate::store::{RawColumn, Store};
 use crate::view::{available_views, choose_view, family_for, pipeline_table, DrawFrame, Family};
@@ -25,6 +25,9 @@ pub const EVENT_WORDS: usize = 6;
 
 /// `batch` result flags.
 pub const ACCEPTED: u32 = 1;
+/// Buffers created per slot at attach (series vertex buffers + grid).
+pub const PREWARM_VERTEX_BUFFERS: usize = 8;
+pub const PREWARM_VERTEX_BYTES: u32 = 64 << 10;
 pub const URGENT: u32 = 2;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -129,6 +132,7 @@ pub struct Slot {
     pass: PassRecorder,
     axes_json: String,
     pub params: Vec<(String, f64)>,
+    pool: Pool,
 }
 
 impl Slot {
@@ -150,6 +154,7 @@ impl Slot {
             pass: PassRecorder::default(),
             axes_json: String::new(),
             params: Vec::new(),
+            pool: Pool::default(),
         }
     }
     fn result_mut(&mut self, request: u32) -> Option<&mut ResultState> {
@@ -220,6 +225,18 @@ impl Renderer {
             Some(i) => i,
             None => {
                 self.slots.push(Slot::new(slot));
+                let s = self.slots.last_mut().unwrap();
+                // Pre-warm buffers off the hot path so the first draw creates no GPU objects.
+                let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id, pool: &mut s.pool };
+                gpu.words.extend_from_slice(&[op::CTX, slot]);
+                let mut warm = Vec::new();
+                for _ in 0..PREWARM_VERTEX_BUFFERS {
+                    warm.push((gpu.buffer(KIND_VERTEX, PREWARM_VERTEX_BYTES), KIND_VERTEX));
+                }
+                warm.push((gpu.buffer(KIND_UNIFORM, 4096), KIND_UNIFORM));
+                for ((id, capacity), kind) in warm {
+                    gpu.recycle(id, capacity, kind);
+                }
                 self.slots.len() - 1
             }
         };
@@ -245,12 +262,14 @@ impl Renderer {
     pub fn detach(&mut self, slot: u32) {
         if let Some(i) = self.slot_index(slot) {
             let mut s = self.slots.remove(i);
-            let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id };
+            let mut pool = std::mem::take(&mut s.pool);
+            let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id, pool: &mut pool };
             for r in [s.pending.as_mut(), s.shown.as_mut()].into_iter().flatten() {
                 r.release(&mut gpu);
             }
             s.uniform.release(&mut gpu);
             s.grid.release(&mut gpu);
+            pool.drain(&mut self.words);
         }
     }
 
@@ -258,7 +277,7 @@ impl Renderer {
         let Some(i) = self.slot_index(slot) else { return };
         let s = &mut self.slots[i];
         s.hint = hint;
-        let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id };
+        let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id, pool: &mut s.pool };
         let mut changed = false;
         for r in [s.pending.as_mut(), s.shown.as_mut()].into_iter().flatten() {
             changed |= r.select(hint, &self.pipes, &mut gpu);
@@ -295,8 +314,8 @@ impl Renderer {
     /// new request draws its first point.
     pub fn bind(&mut self, slot: u32, binding: Binding) -> bool {
         let Some(i) = self.slot_index(slot) else { return false };
-        let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id };
         let s = &mut self.slots[i];
+        let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id, pool: &mut s.pool };
         if let Some(mut p) = s.pending.take() {
             if p.request == binding.request {
                 s.pending = Some(p);
@@ -316,7 +335,7 @@ impl Renderer {
             return false;
         }
         s.bound = None;
-        let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id };
+        let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id, pool: &mut s.pool };
         for r in [s.pending.take(), s.shown.take()].into_iter().flatten() {
             let mut r = r;
             r.release(&mut gpu);
@@ -353,8 +372,8 @@ impl Renderer {
             consumed: 0,
             done: false,
         };
-        let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id };
         let s = &mut self.slots[i];
+        let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id, pool: &mut s.pool };
         result.select(s.hint, &self.pipes, &mut gpu);
         let json = result.views_json();
         let view = result.view as u32;
@@ -431,7 +450,7 @@ impl Renderer {
             if s.css[0] < 1.0 || s.css[1] < 1.0 {
                 continue;
             }
-            let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id };
+            let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id, pool: &mut s.pool };
             let mut first_draw = false;
             if s.pending.as_ref().map_or(false, |r| r.ready()) {
                 if let Some(mut old) = s.shown.take() {
@@ -686,6 +705,25 @@ mod tests {
         }
         let words = r.frame(false).to_vec();
         assert_eq!(count(&words, op::PASS), 12);
-        assert_eq!(count(&words, op::CTX), 12);
+        assert_eq!(count(&words, op::CTX), 24, "12 pre-warm sections + 12 frames");
+    }
+
+    #[test]
+    fn first_draw_creates_no_buffers_after_prewarm() {
+        let mut r = Renderer::new();
+        r.attach(1, 300.0, 200.0, 1.0);
+        let warm = r.frame(false).to_vec();
+        r.frame_done();
+        assert_eq!(count(&warm, op::BUF_CREATE), PREWARM_VERTEX_BUFFERS + 1);
+        for request in 1..=3 {
+            bind(&mut r, 1, request);
+            r.schema(request, 0, cols());
+            let b = batch(&[(0, 1.0), (1000, 2.0)]);
+            assert_eq!(r.batch(request, 0, 2, &raw(&b)) & URGENT, URGENT);
+            let words = r.frame(true).to_vec();
+            r.frame_done();
+            assert_eq!(count(&words, op::BUF_CREATE), 0, "request {request}");
+            assert_eq!(count(&words, op::BUF_DESTROY), 0, "request {request}");
+        }
     }
 }

@@ -50,16 +50,82 @@ pub const KIND_UNIFORM: u32 = 2;
 /// UNIFORM_BUFFER_OFFSET_ALIGNMENT are both ≤ 256.
 pub const UNIFORM_STRIDE: usize = 256;
 
-/// Allocator of buffer ids plus the stream that out-of-pass buffer ops go to.
+/// Allocator of buffer ids plus the stream that out-of-pass buffer ops go to, and the
+/// slot's pool of idle buffers.
 pub struct Gpu<'a> {
     pub words: &'a mut Vec<u32>,
     pub next_id: &'a mut u32,
+    pub pool: &'a mut Pool,
 }
 
 impl<'a> Gpu<'a> {
     pub fn alloc_id(&mut self) -> u32 {
         *self.next_id += 1;
         *self.next_id
+    }
+
+    /// A buffer of `kind` with at least `bytes` capacity: a pooled one if any fits, else new.
+    pub fn buffer(&mut self, kind: u32, bytes: u32) -> (u32, u32) {
+        if let Some(found) = self.pool.take(kind, bytes) {
+            return found;
+        }
+        let capacity = bytes.next_power_of_two().max(4096);
+        let id = self.alloc_id();
+        self.words.extend_from_slice(&[op::BUF_CREATE, id, capacity, kind]);
+        (id, capacity)
+    }
+
+    /// Return a buffer to the pool (or destroy it when the pool is full).
+    pub fn recycle(&mut self, id: u32, capacity: u32, kind: u32) {
+        if !self.pool.put(id, capacity, kind) {
+            self.words.extend_from_slice(&[op::BUF_DESTROY, id]);
+        }
+    }
+}
+
+/// Idle GPU buffers of one slot. Creating buffers (and, for uniforms, bind groups) costs
+/// JS→GPU calls; a new request reuses the buffers of the one it replaces, and a fresh slot is
+/// pre-warmed at attach, so the first-draw path normally creates nothing. Per slot because
+/// WebGL2 buffers belong to one context.
+#[derive(Default, Debug)]
+pub struct Pool {
+    free: Vec<(u32, u32, u32)>,
+    bytes: u64,
+}
+
+pub const POOL_MAX_BYTES: u64 = 16 << 20;
+pub const POOL_MAX_BUFFERS: usize = 64;
+
+impl Pool {
+    pub fn take(&mut self, kind: u32, bytes: u32) -> Option<(u32, u32)> {
+        let best = self
+            .free
+            .iter()
+            .enumerate()
+            .filter(|(_, b)| b.2 == kind && b.1 >= bytes)
+            .min_by_key(|(_, b)| b.1)
+            .map(|(i, _)| i)?;
+        let (id, capacity, _) = self.free.swap_remove(best);
+        self.bytes -= capacity as u64;
+        Some((id, capacity))
+    }
+    pub fn put(&mut self, id: u32, capacity: u32, kind: u32) -> bool {
+        if self.free.len() >= POOL_MAX_BUFFERS || self.bytes + capacity as u64 > POOL_MAX_BYTES {
+            return false;
+        }
+        self.free.push((id, capacity, kind));
+        self.bytes += capacity as u64;
+        true
+    }
+    pub fn len(&self) -> usize {
+        self.free.len()
+    }
+    /// Destroy everything (slot detached).
+    pub fn drain(&mut self, words: &mut Vec<u32>) {
+        for (id, _, _) in self.free.drain(..) {
+            words.extend_from_slice(&[op::BUF_DESTROY, id]);
+        }
+        self.bytes = 0;
     }
 }
 
@@ -70,6 +136,7 @@ pub struct GpuVec {
     pub id: u32,
     pub capacity: u32,
     pub uploaded: u32,
+    pub kind: u32,
 }
 
 impl GpuVec {
@@ -83,12 +150,12 @@ impl GpuVec {
         }
         if len > self.capacity {
             if self.id != 0 {
-                gpu.words.extend_from_slice(&[op::BUF_DESTROY, self.id]);
+                gpu.recycle(self.id, self.capacity, self.kind);
             }
-            let capacity = len.next_power_of_two().max(4096);
-            self.id = gpu.alloc_id();
+            let (id, capacity) = gpu.buffer(kind, len);
+            self.id = id;
             self.capacity = capacity;
-            gpu.words.extend_from_slice(&[op::BUF_CREATE, self.id, capacity, kind]);
+            self.kind = kind;
             self.uploaded = 0;
         }
         let from = if rewrite || len < self.uploaded { 0 } else { self.uploaded };
@@ -99,9 +166,10 @@ impl GpuVec {
         self.uploaded = len;
     }
 
+    /// Give the buffer back to the slot's pool.
     pub fn release(&mut self, gpu: &mut Gpu) {
         if self.id != 0 {
-            gpu.words.extend_from_slice(&[op::BUF_DESTROY, self.id]);
+            gpu.recycle(self.id, self.capacity, self.kind);
         }
         *self = GpuVec::default();
     }
@@ -385,9 +453,10 @@ mod tests {
     fn gpuvec_appends_tail_and_grows() {
         let mut words = Vec::new();
         let mut next = 0;
+        let mut pool = Pool::default();
         let mut v = GpuVec::default();
         let data = vec![0u8; 100];
-        let mut gpu = Gpu { words: &mut words, next_id: &mut next };
+        let mut gpu = Gpu { words: &mut words, next_id: &mut next, pool: &mut pool };
         v.sync(&mut gpu, &data[..40], KIND_VERTEX, false);
         assert_eq!(&gpu.words[..4], &[op::BUF_CREATE, 1, 4096, KIND_VERTEX]);
         assert_eq!(gpu.words[4], op::BUF_WRITE);
@@ -402,9 +471,22 @@ mod tests {
         assert!(gpu.words.is_empty(), "nothing new to upload");
         let big = vec![0u8; 5000];
         v.sync(&mut gpu, &big, KIND_VERTEX, false);
-        assert_eq!(&gpu.words[..2], &[op::BUF_DESTROY, 1]);
-        assert_eq!(&gpu.words[2..6], &[op::BUF_CREATE, 2, 8192, KIND_VERTEX]);
-        assert_eq!(gpu.words[10], 5000);
+        // The outgrown buffer goes to the pool, not to destroy.
+        assert_eq!(&gpu.words[..4], &[op::BUF_CREATE, 2, 8192, KIND_VERTEX]);
+        assert_eq!(gpu.words[8], 5000);
+        assert_eq!(gpu.pool.len(), 1);
+        // A new vector reuses the pooled buffer without creating one.
+        gpu.words.clear();
+        let mut w = GpuVec::default();
+        w.sync(&mut gpu, &data[..40], KIND_VERTEX, false);
+        assert_eq!(gpu.words[..2], [op::BUF_WRITE, 1]);
+        assert_eq!(gpu.pool.len(), 0);
+        // Uniform requests never get vertex buffers.
+        w.release(&mut gpu);
+        gpu.words.clear();
+        let mut u = GpuVec::default();
+        u.sync(&mut gpu, &data[..40], KIND_UNIFORM, false);
+        assert_eq!(gpu.words[0], op::BUF_CREATE);
     }
 
     #[test]

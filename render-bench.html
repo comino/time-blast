@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>tb-render bench</title>
+  <style>
+    :root { color-scheme: dark; --bg: #08111b; --panel: #10212d; --line: #29414d; --text: #d6e9e8; --muted: #7695a2; }
+    body { margin: 0; padding: 16px; background: var(--bg); color: var(--text); font: 13px/1.4 ui-monospace, SFMono-Regular, monospace; }
+    h1 { font-size: 16px; margin: 0 0 8px; }
+    p { color: var(--muted); margin: 0 0 12px; max-width: 900px; }
+    #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+    figure { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px; position: relative; }
+    figcaption { color: var(--muted); font-size: 11px; margin-bottom: 4px; }
+    .plot { position: relative; width: 100%; height: 220px; }
+    .plot canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .labels span { position: absolute; font-size: 10px; color: var(--muted); white-space: nowrap; pointer-events: none; }
+    pre { background: var(--panel); border: 1px solid var(--line); padding: 8px; overflow: auto; max-height: 60vh; }
+  </style>
+</head>
+<body>
+  <h1>tb-render bench</h1>
+  <p>Legacy Canvas2D <code>StreamChart</code> vs the Rust/Wasm renderer on WebGPU and WebGL2, same synthetic data.
+    <code>?mode=bench</code> (default) runs timings; <code>?mode=views</code> renders each wave-1 view for the
+    Playwright check. Software GPU timings (SwiftShader) are not hardware timings.</p>
+  <div id="grid"></div>
+  <pre id="out">running…</pre>
+  <script type="module" src="/src/render-bench.ts"></script>
+</body>
+</html>
