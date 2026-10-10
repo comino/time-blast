@@ -1,6 +1,6 @@
 /**
- * Browser model profiles for the WebLLM inference node (copied from the legacy
- * src/inference/models.ts, model-assets.ts and model-output.ts, which batch 1 deletes).
+ * Browser model profiles for the WebLLM inference node (carried over from the
+ * prototype's src/inference/models.ts, model-assets.ts and model-output.ts, since deleted).
  * IDs and asset revisions are verified against the pinned WebLLM 0.2.85 registry; see
  * docs/benchmarks/model-candidate-assets-2026-10-09.json and qwen25-browser-assets-2026-10-09.json.
  */

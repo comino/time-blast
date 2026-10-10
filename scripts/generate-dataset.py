@@ -8,8 +8,6 @@ python3 -m venv /tmp/time-blast-data-venv
 All positions and measurements are invented; no real vessel or private data is used.
 """
 from pathlib import Path
-import hashlib
-import json
 import duckdb
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,10 +48,4 @@ db.execute("COPY telemetry TO ? (FORMAT PARQUET, COMPRESSION ZSTD, ROW_GROUP_SIZ
 assert db.execute("SELECT count(*), min(t), max(t) FROM telemetry").fetchone() == (
     CONTEXT["rowCount"], CONTEXT["start"], CONTEXT["end"] - 60000
 )
-(DEST / "context.json").write_text(json.dumps(CONTEXT, indent=2, ensure_ascii=False) + "\n")
-(DEST / "manifest.json").write_text(json.dumps({
-    "generator": "scripts/generate-dataset.py", "duckdb": duckdb.__version__,
-    "file": "telemetry.parquet", "bytes": PARQUET.stat().st_size,
-    "sha256": hashlib.sha256(PARQUET.read_bytes()).hexdigest(), "context_id": CONTEXT["id"],
-}, indent=2) + "\n")
 print(f"Generated {CONTEXT['rowCount']:,} rows, {PARQUET.stat().st_size:,} bytes: {PARQUET}")

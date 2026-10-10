@@ -1,5 +1,4 @@
-// Copied from src/adapters/engine-asset.ts (legacy, slated for deletion in wave 2) so the
-// engine worker does not depend on the old adapters.
+// The prototype's gzip engine loader (formerly src/adapters/engine-asset.ts).
 /** Cold-start packaging only. Query results never pass through this Blob path. */
 export const MAX_ENGINE_ASSET_BYTES = 64 * 1024 * 1024;
 const WASM_HEADER = [0, 97, 115, 109, 1, 0, 0, 0];

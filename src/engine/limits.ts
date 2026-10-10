@@ -1,6 +1,6 @@
 /** Execution limits for model-written SQL. Row/byte budgets carry over the prototype's values
- * (src/adapters/arrow.ts MAX_RESULT_ROWS / MAX_RESULT_BYTES), which that code enforced on the
- * same Arrow batches; the legacy module is slated for deletion, so they live here now. */
+ * (formerly src/adapters/arrow.ts MAX_RESULT_ROWS / MAX_RESULT_BYTES), enforced on the same
+ * Arrow batches. */
 export interface QueryLimits {
   /** Maximum result rows streamed for one request. */
   maxRows: number;
