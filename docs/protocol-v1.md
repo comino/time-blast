@@ -153,6 +153,10 @@ decoded Arrow `Schema` / `RecordBatch` objects instead of bytes.
   immediately. Otherwise translate and execute at committed priority and `KEEP` when it is bound.
 - **Stale results.** A result is shown only if its request is still bound to a slot. An early
   wrong chart is a failure.
+- **Short drafts.** A draft shorter than `minChars` (after trimming) cancels speculative work
+  and `UNBIND`s the live slot.
+- **Forwarding.** `CONTEXT` from the database is stored and forwarded to inference (again after
+  every inference `READY`). `STATUS`, `ERROR` and `INFER_STATS` are forwarded to the UI.
 
 ## Data contracts
 
@@ -185,8 +189,14 @@ cacheable prefix.
 
 ```json
 {"live": true, "minChars": 3, "inferencePolicy": "latest", "latencyDialMs": null,
- "translationCache": true, "speculate": true}
+ "translationCache": true, "speculate": true, "freeSlots": [1, 2]}
 ```
+
+Every field is optional, and a `CONFIG` updates only the fields it names. `freeSlots` **adds**
+slots (already attached to the renderer by the UI) to the coordinator's pool. The coordinator
+binds live results to a pool slot. When it sends `KEEP(slot)`, that slot leaves the pool, and the
+UI attaches a new canvas and adds its id with another `CONFIG`. The UI keeps at least two
+slots in the pool so that typing right after Enter never waits for a canvas.
 
 ### Result shape convention
 

@@ -91,6 +91,18 @@ export interface RendererNode {
 }
 export interface SlotSize { width: number; height: number; devicePixelRatio: number }
 
+// ───────────────────────── factories (stable entry points; owners replace the stubs) ─────────────────────────
+// Routing lives in the engine host (src/engine/engine.worker.ts), not in the nodes:
+//   database → RESULT_SCHEMA/BATCH to renderer (objects) + HEADER_ONLY copies to coordinator;
+//              DONE to both; ERROR/STATUS to coordinator.
+//   renderer → DRAWN to coordinator; UI data (views/table/axes/export) straight to the UI.
+//   coordinator outbox → by LinkId.
+export type Emit = (frame: LocalFrame) => void;
+export type PostToUi = (message: EngineToUi, transfer?: Transferable[]) => void;
+export type CreateCoordinator = () => Promise<CoordinatorCore>;
+export type CreateRenderer = (emit: Emit, ui: PostToUi) => Promise<RendererNode>;
+export type CreateDatabase = (emit: Emit) => Promise<DatabaseNode>;
+
 // ───────────────────────── UI ⇄ engine worker (owner: UI agent ⇄ engine agent) ─────────────────────────
 
 /** Main thread → engine worker. Protocol frames travel as transferred ArrayBuffers
