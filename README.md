@@ -4,13 +4,15 @@
 
 Type a question. An LLM turns it into a query. DuckDB or ClickHouse executes it. A chart starts drawing as soon as it has a usable point. Spend the time *before* Enter preparing as much of that path as possible, and ruthlessly shorten whatever remains afterward.
 
-The application runs in the browser. Inference and database execution can each run locally or remotely. A local WebGPU model and DuckDB-Wasm should fit the same execution model as a hosted model and remote ClickHouse. Placement changes the adapter and the latency profile, not the meaning of a request or result.
+The interface, coordinator and DuckDB run in the browser. Inference can run locally through WebGPU or remotely through the Rust service. Independent database and coordinator placement contracts are present; their remote services, including ClickHouse, remain future work. Placement should change the adapter and latency profile without changing the meaning of a request or result.
 
-**Deployment direction:** embedded DuckDB-Wasm for the first prototype; ClickHouse as the primary intended backend, with a Rust service as the leading coordination/relay candidate. The interface is a spatial canvas of maps, charts, tables, and photos beside chat, inspired by [Data Canvas](https://github.com/comino/clickhouse-data-canvas).
+**Deployment direction:** embedded DuckDB-Wasm for the prototype; ClickHouse as the primary intended database backend. Rust now serves inference and is the leading candidate for the future database relay. The spatial canvas is inspired by [Data Canvas](https://github.com/comino/clickhouse-data-canvas); maps, charts and tables are implemented, while photos require a dataset with image URLs and an adapter.
 
 **Data-path requirement:** stream columnar buffers all the way into the chart, draw on the first complete timestamp/value point, and eliminate every avoidable copy. No full-result collection, per-row object conversion, or whole-workspace save may gate the first mark. Account explicitly for engine, browser, and GPU boundaries that still require copying.
 
 **Status:** working browser prototype and Rust inference backend. Embedded DuckDB-Wasm, a Rust/Wasm query compiler, local WebLLM or remote model inference, draft transport, speculative execution, and streaming canvas charts are implemented. The [Rust service](docs/backend-prototype.md) uses persistent WebSocket sessions and calls OpenRouter or a compatible inference endpoint directly through a pooled HTTP client. Remote database/ClickHouse execution remains a future milestone. The design notes below also contain experiments that are not implemented yet.
+
+**Start here:** [current status and handoff](docs/status.md) · [implemented browser contract](docs/prototype.md) · [Rust backend](docs/backend-prototype.md) · [deployment](deploy/README.md) · [verification](docs/verification.md).
 
 ## Run it
 
@@ -41,7 +43,7 @@ Auto and template-only modes remain explicit Runtime options. Auto uses conserva
 
 Model preparation also warms the selected output grammar with one fixed, non-user token, then clears that conversation. The model becomes ready only after this completes; subsequent questions reuse WebLLM's grammar cache. This moves cold grammar initialization into preparation without hiding its cost: an early question still reports any warmup wait. User token counts and generation statistics exclude the preparation token. Native GGUF tests do not establish browser MLC accuracy or speed.
 
-If the local model refuses, returns an invalid plan, or reaches its output token limit, it gets **one correction attempt** with its previous response and exact validation error. The corrected response must pass the same validation. Query details show attempt count, correction time and total work; final failures also show bounded raw model output. Cancellation and runtime/device errors do not retry. This cannot detect every valid plan with the wrong meaning: [native evaluations](evals/results/README.md) found such errors, including after a correction request. These CPU results use different quantization/runtime from the browser and do not establish browser accuracy or latency.
+The local WebGPU adapter and Rust inference service each allow **one correction attempt** if the model refuses, returns an invalid plan, or reaches its output token limit. The model receives its previous response and exact validation error; the correction must pass the same validation. Query details show attempt count, correction time and total work; final failures also show bounded raw model output. Cancellation and transport/runtime errors do not enter this correction loop. This cannot detect every valid plan with the wrong meaning: [hosted comparisons](docs/experiments/hosted-models-2026-10-10.md) and [native evaluations](evals/results/README.md) retain such failures. Native CPU results use different quantization/runtime from the browser and do not establish browser accuracy or latency.
 
 Try “Average speed by hour”, “Maximum wind by hour”, or “Show wave height over the last 7 days”. The narrow intent supports four metrics, avg/min/max, fixed time buckets, trailing windows, and vessel filtering/grouping. A request for 710 days retains that requested window and queries the available overlap: the bundled dataset supplies 14 days, while a remote dataset can supply more. Model output is validated and compiled from allowlisted fields; arbitrary generated SQL is never executed. A valid plan can still misunderstand natural language—inspect its meaning before relying on it.
 
@@ -51,7 +53,7 @@ An ordinary development build defaults to browser execution. A deployment can se
 
 ## What is implemented
 
-- Every input revision crosses a local MessageChannel immediately, then reaches the inference worker. Live execution and manual submission use the same immutable commit contract across placements.
+- Input revisions cross a local MessageChannel into the browser coordinator and selected inference adapter. The remote socket coalesces draft snapshots over 25 ms; Enter carries the complete committed text. Live execution and manual submission use the same immutable commit contract across placements.
 - **Live query** and **Prepare translation after typing** are enabled by default, starting at **20 characters** after trimming. Automatic inference and queries wait **2 seconds after the latest edit**; draft transport and model warmup remain immediate. Stale work is canceled, IME waits for composition to finish, and readiness preserves the existing deadline. Enter bypasses the pause. Stop, Clear canvas, and closing the live preview cancel pending execution.
 - Turn **Live query** off for manual submission with background preparation after the same 2-second pause. With live query off, turn **Prepare query results while I type** off to prepare SQL only and execute the database on Enter. The selected inference mode applies in every case: Auto may use templates, while Local WebGPU uses model-derived plans.
 - Qwen3-4B extracts literal quantities, vessel names and requested operations into constrained JSON. Code converts units and checks whether the extracted plan is executable; language interpretation stays with the model. Unsupported aggregate names remain expressible so validation can reject them. The smaller Qwen2.5 profiles retain full query fields, which worked better for them in screening. Every profile uses the same validated query contract downstream.
@@ -75,6 +77,9 @@ Aggregation still uses blocking `GROUP BY` and `ORDER BY` within each statement.
 # Unit/evaluator parity tests also require Python 3 (standard library only):
 pnpm test
 pnpm build
+# Rust inference service and benchmark scoring; no provider tokens needed:
+cargo test --locked --manifest-path crates/inference-server/Cargo.toml
+python3 scripts/benchmark-models.py --self-test
 # Only when changing the Rust compiler:
 rustup target add wasm32-unknown-unknown
 pnpm build:wasm
@@ -155,6 +160,8 @@ These are benchmark candidates, not claims that one language, transport, or GPU 
 
 ## Read the design
 
+Use the [handoff](docs/status.md), [browser contract](docs/prototype.md), and [backend contract](docs/backend-prototype.md) for current behavior. The following documents preserve the broader design and label unimplemented proposals; their protocol draft is not the shipped inference WebSocket protocol.
+
 1. [Architecture](docs/architecture.md): critical paths, placement, identities, and initial decisions.
 2. [Protocol draft](docs/protocol.md): drafts, commit, promotion, streaming points, cancellation, and recovery.
 3. [Inference](docs/inference.md): preparing models while typing and making speculation useful.
@@ -165,7 +172,7 @@ These are benchmark candidates, not claims that one language, transport, or GPU 
 
 The implemented prototype also has a [three-agent performance and correctness review](docs/reviews/README.md), with reproduced failures, regression checks, and explicit remaining limits.
 
-The next research pass develops the implementation choices:
+Supporting research notes describe the implementation choices and further experiments:
 
 - [Streaming without repacking](docs/streaming-without-repacking.md): database buffers through to first drawing, ownership, and the first-batch barrier.
 - [Rust and WebAssembly](docs/rust-and-wasm.md): where compiled kernels help, where bindings add copies, and what to compare.
@@ -174,6 +181,4 @@ The next research pass develops the implementation choices:
 
 ## Next experiments
 
-Extend the browser rig with recorded typing replay and latency distributions, then carry its contracts into a Rust service streaming ClickHouse. Compare speculation on/off and exact-template/local-model/remote-model paths using identical requests. Measure kernel or socket changes before declaring a winner.
-
-The first milestone is an honest latency distribution and a correct cancellation/promotion model. The next is a query whose result is ready before Enter. After that, optimize every remaining queue, copy, allocation, batch, and missed frame supported by the measurements.
+The prototype already exercises exact-result promotion, cancellation, local streaming and hosted inference. Next, implement the ClickHouse data service with equivalent freshness/cancellation semantics, broaden inference evaluation beyond the reused development cases, and measure cold/warm latency distributions under realistic typing and concurrent load. Hardware-WebGPU and physical input-to-light measurements remain open. See the [prioritized roadmap](docs/roadmap.md); measure kernel or socket changes before declaring a winner.

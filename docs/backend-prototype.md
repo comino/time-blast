@@ -13,6 +13,19 @@ speculation, exact request identities, and rendering. The service is a prototype
 with bounded resources; its socket-library choice does not establish that it is
 the fastest possible implementation or remove provider inference latency.
 
+The [live demo](https://time-blast.46-224-133-201.sslip.io) defaults to this service
+and OpenRouter's `google/gemini-2.5-flash-lite`. The
+[seven-model comparison](experiments/hosted-models-2026-10-10.md) retained that
+default based on the tested combination of exact plans, latency and price;
+results apply to this prompt/schema and small case set, not all uses of those
+models. Remote ClickHouse execution remains unimplemented.
+
+As of 2026-10-10, the deployed backend is from `197b445`. Source commit `661a1d9`
+adds the reasoning and temperature configuration below and the comparison runner,
+but was not deployed. The demo still uses its existing settings. See
+[deployment state and operations](../deploy/README.md) for release identities,
+token-free health checks and how to install a newly built binary.
+
 ## Run locally
 
 Use Rust 1.88 or later. From the repository root:
@@ -21,6 +34,9 @@ Use Rust 1.88 or later. From the repository root:
 cargo build --release --locked --manifest-path crates/inference-server/Cargo.toml
 pnpm dev
 ```
+
+Paths below assume Cargo's default target directory. When using
+`CARGO_TARGET_DIR`, use its corresponding `release/time-blast-inference` binary.
 
 In another terminal, select a provider endpoint and a model that supports strict
 JSON-schema output. Keep the API key in the service environment, never in the
@@ -66,10 +82,15 @@ controls:
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
+| `TIME_BLAST_PROVIDER_URL` | `https://openrouter.ai/api/v1/chat/completions` | Complete streaming Chat Completions endpoint, without URL credentials or query parameters. |
+| `TIME_BLAST_OPENROUTER` | Derived from endpoint hostname | `true` adds OpenRouter routing and reasoning options; `false` uses a generic compatible endpoint. |
+| `TIME_BLAST_API_KEY` | unset | Server-side credential; takes precedence over `OPENROUTER_API_KEY`. |
+| `OPENROUTER_API_KEY` | unset | Credential fallback when OpenRouter mode is enabled. |
 | `TIME_BLAST_MODEL` | `google/gemini-2.5-flash-lite` | Exact provider model ID. |
 | `TIME_BLAST_REASONING_EFFORT` | unset | OpenRouter only: `none`, `minimal`, `low`, `medium`, or `high`. Unset leaves the provider default; `none` requests disabled reasoning where supported. |
 | `TIME_BLAST_TEMPERATURE` | `0` | Sampling temperature from 0–2, or `provider` to omit the parameter for models that do not support it. |
 | `TIME_BLAST_BIND` | `127.0.0.1:8787` | Listening address. |
+| `TIME_BLAST_ALLOWED_ORIGINS` | Local Vite origins and the demo HTTPS origin | Comma-separated explicit browser origins; no wildcard. |
 | `TIME_BLAST_TIMEOUT_SECONDS` | `25` | Total inference deadline, including one correction; range 1–30 seconds. |
 | `TIME_BLAST_MAX_CONCURRENT` | `4` | Concurrent provider operations; excess work is rejected. |
 | `TIME_BLAST_REQUESTS_PER_MINUTE` | `30` | Process-wide admission budget for uncached requests. |
@@ -205,6 +226,28 @@ validation, one correction using the exact validation error, and rejection of
 an unlisted browser origin before any provider request. Its fixture timings do not establish real model accuracy,
 provider speed, tail latency, public network behavior, or production capacity.
 
+The supported/unsupported meaning audit and hosted matrix have token-free scorer
+self-tests. Actual provider calls are separate:
+
+```sh
+python3 tests/backend_meaning.py --self-test
+python3 scripts/benchmark-models.py --self-test
+# Requires a running service; spends provider tokens and disables plan reuse:
+python3 tests/backend_meaning.py \
+  --endpoint http://127.0.0.1:8787/infer \
+  --output /tmp/time-blast-backend-meaning.json
+python3 scripts/benchmark-backend.py \
+  --endpoint http://127.0.0.1:8787/infer --rounds 2 \
+  > /tmp/time-blast-backend-timing.json
+```
+
+The meaning audit checks eight complete expected outcomes; the timing runner
+repeats four supported questions. These are reused development cases, not a new
+held-out accuracy estimate. The
+[hosted comparison instructions](experiments/hosted-models-2026-10-10.md#reproduce-and-interpret)
+describe the twelve-case matrix, isolated service processes, per-model reasoning
+settings, raw reports, and routing/cold-state limitations.
+
 `browser_backend_live.py` instead uses the service's configured real provider
 and **spends provider tokens**. It accepts no credentials, disables exact plan
 reuse, and checks three full inferred plans against actual SQL, DuckDB point
@@ -238,3 +281,15 @@ browser monotonic clock. The canceled fixture observed its upstream connection
 close; the HTTP correction and origin-rejection checks passed. No browser model
 weights were requested and no page errors occurred. The provider in this run
 was the local deterministic SSE fixture, not a language model.
+
+The separately recorded
+[public real-provider browser smoke](benchmarks/rust-backend-public-live-2026-10-10.json)
+verified all three plans, SQL, views and point counts without a model cache hit:
+60,480 wave points, 8,640 speed points and a 144-point surface. Observed inference
+durations were 692 / 518 / 655 ms, and dispatch-to-first-draw submission was
+816 / 520 / 686 ms. The automatic case's two-second typing pause precedes
+dispatch and is excluded from these draw timings. These three observations are
+not a latency distribution or a measurement of screen presentation. The latest
+source passed 34 Rust backend tests and 717 application tests; see
+[verification details](verification.md) for the distinction between fixture,
+provider, browser and hardware-WebGPU evidence.

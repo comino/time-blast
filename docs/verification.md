@@ -2,6 +2,8 @@
 
 The prototype is functionally exercised. These checks are not evidence of physical input-to-light latency, model semantic accuracy across arbitrary language, or production service performance.
 
+See [current status and handoff](status.md) for the final implementation and live deployment. Sections below preserve dated evidence; older model defaults and test counts describe those earlier revisions.
+
 ## Hosted model comparison — 2026-10-10
 
 [Seven hosted models were screened](experiments/hosted-models-2026-10-10.md) with the same Rust query contract and twelve reused cases per configuration. Gemini 2.5 Flash Lite remains the deployed default: its two runs each matched eight supported plans and four required refusals, with supported-question medians of 551 ms and 454 ms. Gemini 3.1 Lite also matched all cases at 750 ms, with higher catalog prices. Other available candidates made interpretation errors or refused supported questions. Qwen Flash was excluded by the account's zero-data-retention policy and has no measured quality result. The report retains failures, settings, prices and methodological limits.
@@ -26,7 +28,7 @@ The [public HTTPS real-provider browser smoke](benchmarks/rust-backend-public-li
 
 The user [reported](benchmarks/user-reported-inference-cold-2026-10-10.json) 13.22 seconds of generation with Qwen3-4B: 9.31 seconds of grammar initialization inside the 9.35-second first-token stage, plus a reported 3.85-second decoding stage. Warmup wait was another 1.55 seconds. These are user-provided timings, not a controlled benchmark; overlapping engine stages must not be summed.
 
-The default is now **Qwen2.5-1.5B with 4-bit weights**, approximately 0.87 GB of weights. Both the previous 4B model and all selectable alternatives were already 4-bit quantized. The smaller model uses its previously evaluated full-field contract, which scored 7/8 on the public native regressions; it has known interpretation errors and no measured browser speedup factor. The optional 4B profile retains its existing contract.
+The browser-only default became **Qwen2.5-1.5B with 4-bit weights**, approximately 0.87 GB of weights. The public deployment now defaults to hosted inference as described above. Both the previous 4B model and all selectable alternatives were already 4-bit quantized. The smaller model uses its previously evaluated full-field contract, which scored 7/8 on the public native regressions; it has known interpretation errors and no measured browser speedup factor. The optional 4B profile retains its existing contract.
 
 Preparation now warms the exact selected schema with one fixed, non-user token through the public WebLLM API, then awaits `resetChat()`. Pinned runtime source confirms grammar caches survive this reset. Readiness follows completed preparation; queries submitted earlier still report their warmup wait. No dummy output enters plan validation, correction, caches or user token counts. Independent review checked the public nonstream path, the Qwen3 forced header, grammar-cache reuse and initialization ownership.
 
@@ -74,11 +76,11 @@ python3 tests/browser_live_query.py
 
 ## Automated checks
 
-- Final iteration: **675 application tests across 23 files**, **8 Rust tests**, and **8 controlled evaluator/provenance tests** pass, along with TypeScript checking and the Vite production build. The rebuilt Wasm artifact is committed with its Rust source. Independent reviews found no material blocker in the selected inference/profile/cache path or the complete-bucket execution path.
+- Earlier browser iteration: **675 application tests across 23 files**, **8 Rust compiler tests**, and **8 controlled evaluator/provenance tests** passed, along with TypeScript checking and the Vite production build. The rebuilt Wasm artifact is committed with its Rust source. Independent reviews found no material blocker in the selected inference/profile/cache path or the complete-bucket execution path.
 - TypeScript compilation and Vite production build pass.
 - Rust compiler tests pass; the built Wasm artifact is also instantiated and exercised by the JavaScript tests.
 - The test suite covers strict intent grammar/validation, actual model-worker message/cancellation behavior through controlled doubles, remote inference request/cancellation isolation, speculative promotion, stale query rejection, primitive Arrow backing-buffer identity/slices, stream truncation/EOS/error handling, bounded query admission, and ordered chart indices.
-- Transport tests cover canceled messages still queued in MessageChannel, stale remote epochs, repeated identical commits, and all four inference/database placement combinations under a remote scheduling double. No live remote service is implied.
+- Transport tests cover canceled messages still queued in MessageChannel, stale remote epochs, repeated identical commits, and all four inference/database placement combinations under a remote scheduling double. Those controlled checks do not establish live remote database/coordination support; the later Rust inference service has separate evidence above.
 
 The **2026-10-10 public HTTPS smoke passed** on code revision `64d3802`, release `20261010T000722Z-bebaed19`. It verifies the Qwen3-4B selection and enabled exact-plan cache, no template fallback when WebGPU is deliberately unavailable, then explicitly selects templates for real DuckDB checks. The enabled first-bucket strategy is visible in SQL details and trace events. The 1,209,600-row dataset produces 60,480 points; live typing waits two seconds, Enter bypasses the pause, prepared data promotes without another query, runtime changes retain DuckDB, and four independent cards preserve advanced views. Both reported surface/window questions pass. There are no page errors or failed app assets. This deployment check does not claim live browser model inference.
 
@@ -182,7 +184,7 @@ python3 tests/browser_views.py
 
 ## Warm preparation comparison
 
-Current default is local WebGPU inference, with templates bypassed. The browser live-query and public deployment scripts deliberately remove WebGPU availability, submit known template wording, and require a model error with no data or database timings. They then explicitly select templates for the existing real DuckDB checks. This verifies absence of silent fallback, not successful model generation. The historical template benchmark below requires an explicit template/Auto selection.
+At this earlier browser-only stage, the default was local WebGPU inference with templates bypassed. The browser live-query and public deployment scripts deliberately removed WebGPU availability, submitted known template wording, and required a model error with no data or database timings. They then explicitly selected templates for the existing real DuckDB checks. This verifies absence of silent fallback, not successful model generation. The historical template benchmark below requires an explicit template/Auto selection; the current public demo uses the hosted path documented above.
 
 [`benchmark-browser.json`](benchmark-browser.json) records 20 measured trials per mode and two discarded warmups per mode. The paired order alternated, the same database stayed loaded, all results contained 144 points, and the source was explicitly `LOCAL TEMPLATE`. This run used headless Chromium **151.0.7922.34**, `--disable-gpu`, on a shared Linux aarch64 host with four logical CPUs.
 

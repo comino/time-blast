@@ -1,6 +1,6 @@
 # Data plane: make useful data available early
 
-Status: design proposal; no adapters or performance results are implemented here.
+Status: data-plane design notes from October 9, 2026. The [browser prototype](prototype.md) now implements DuckDB-Wasm streaming and a first-complete-bucket path; [verification](verification.md) records its measurements. ClickHouse and the additional adapter/transport mechanisms below remain proposals. See [current status](status.md) for the implementation boundary.
 Primary documentation checked on **2026-10-09**. Pin engine/client versions and probe
 capabilities at startup; the links below describe current capabilities, not a guarantee
 about every deployed engine or browser.

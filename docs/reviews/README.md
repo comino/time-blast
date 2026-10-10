@@ -1,5 +1,9 @@
 # Performance and correctness review
 
+For the final prototype, hosted inference and deployment state, start with
+[the handoff](../status.md) and [verification record](../verification.md).
+This directory preserves dated reviews of earlier revisions.
+
 The [second independent review](review-2.md) covers the subsequent live-translation,
 larger-dataset, runtime-recovery and drawing-settlement changes. The evidence
 below records the earlier review and its follow-up; its timings are historical.

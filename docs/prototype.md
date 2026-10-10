@@ -1,6 +1,6 @@
-# Browser prototype: implemented contract
+# Prototype: implemented contracts and limits
 
-This document describes code in this repository. The other design documents explore the broader target, including features this prototype has not implemented.
+This document describes code in this repository as of 2026-10-10. The [public demo](https://time-blast.46-224-133-201.sslip.io) uses Rust backend inference through OpenRouter, with DuckDB-Wasm and the canvas in the browser. The other design documents explore the broader target, including features this prototype has not implemented. Service setup and operational bounds are in [the backend guide](backend-prototype.md).
 
 ## Execution and ownership
 
@@ -11,14 +11,16 @@ flowchart LR
   Coordinator -->|immutable request| Inference[Inference adapter]
   Inference --> Template[Conservative exact grammar]
   Inference --> Model[WebLLM WebGPU worker]
-  Inference --> HTTP[Optional inference service]
+  Inference --> Service[Rust inference service: WebSocket or HTTP]
+  Service --> Provider[OpenRouter or compatible provider]
   Template --> Plan[Validated intent]
   Model --> Plan
-  HTTP --> Plan
+  Provider --> Service
+  Service --> Plan
   Plan --> Rust[Rust/Wasm SQL compiler]
   Rust --> DB[Database adapter]
   DB --> Duck[DuckDB-Wasm worker]
-  DB --> Remote[Optional Arrow HTTP service]
+  DB --> Remote[Arrow HTTP adapter: service not included]
   Duck --> Columns[Retained column views]
   Remote --> Columns
   Columns --> Stage[Bounded speculative staging]
@@ -28,7 +30,7 @@ flowchart LR
 
 `src/core/types.ts` defines logical contracts. Their local calls do not require serialization. `main.ts` wires selected placements together and discards events from superseded runtimes. Changing speculation or coordinator placement preserves both warmed adapters. Changing inference preserves the database; changing the database preserves the model and supplies its new context.
 
-The default inference mode is `webgpu`: questions bypass deterministic templates, and an unavailable model does not fall back to them. Auto and template-only inference require an explicit Runtime selection. The exact model-plan cache still applies and is labeled. Runtime can disable it for fresh inference trials while retaining the warmed engine; changing its policy clears old plans and fences in-flight cache admission.
+The deployed default is `remote`: a persistent WebSocket connects to the Rust service, which calls OpenRouter with `google/gemini-2.5-flash-lite`. An ordinary development build without `VITE_INFERENCE_ENDPOINT` defaults to `webgpu`, using Qwen2.5-1.5B with four-bit weights. Either model mode bypasses deterministic templates and reports failure without a template fallback. Auto and template-only inference require an explicit Runtime selection. The exact model-plan cache still applies and is labeled. Runtime can disable it for fresh inference trials while retaining the warmed engine or service connection; changing its policy clears old plans and fences in-flight cache admission.
 
 `BrowserCoordinator` owns one speculative candidate and one foreground request. A commit promotes a matching in-flight or completed candidate, or starts a new job. The UI issues commits automatically with `liveQuery` enabled by default; manual mode issues them on Enter. Identity includes the exact prompt and immutable dataset context, with configuration isolated by the coordinator instance. Only already-staged data counts as a prepared-result hit. An in-flight reuse has a separate trace event. Queued draft/commit messages are fenced by cancellation epochs.
 
@@ -36,21 +38,21 @@ The default inference mode is `webgpu`: questions bypass deterministic templates
 
 With live query off and database speculation disabled, live translation stops after validated intent and Rust SQL compilation. The UI reports `SQL prepared before Enter`; Enter reuses that plan/SQL and starts the database, emitting `prepared_sql_promoted`. With database speculation enabled, the candidate may also execute the query and stage results. Live query commits eligible edits for visible execution regardless of the speculative preparation policy. These policies are independent of model placement, and do not perform incremental KV-cache updates.
 
-The model receives draft snapshots immediately in its worker, but those messages do **not** incrementally mutate a KV cache. Generation starts on a speculative pause or committed miss. Warmup downloads/initializes the model; full prepared inference moves the actual prompt evaluation before Enter. The implementation does not yet predict a sentence suffix, fork model caches, or preload every possible result.
+The local model worker receives draft snapshots immediately; the remote adapter coalesces them for 25 ms onto its established inference socket. Neither path incrementally mutates a model KV cache. Generation starts on an eligible pause or committed miss. Local warmup downloads/initializes the model; backend startup attempts to warm its provider transport, without claiming warmed provider weights or grammar. Full prepared inference moves actual prompt evaluation before Enter. The implementation does not yet predict a sentence suffix, fork model caches, or preload every possible result.
 
-Model preparation now also issues one fixed one-token completion through the public API with the exact selected response schema, then awaits `resetChat()`. In pinned WebLLM 0.2.85, that reset clears conversation/KV state and statistics while preserving the schema matcher/compiler. The worker exposes readiness only afterward. Preparation owns an unpublished engine and a shared initialization promise; canceled drafts cannot interrupt that shared warmup, and profile changes/disposal terminate its worker. Failures unload the unpublished engine before permitting a retry. This moves cold grammar setup ahead of user generation when preparation finishes early; it does not eliminate startup work or hide an early request's warmup wait. The preparation token never enters plan parsing, correction, caching or user generation telemetry.
+Local model preparation also issues one fixed one-token completion through the public API with the exact selected response schema, then awaits `resetChat()`. In pinned WebLLM 0.2.85, that reset clears conversation/KV state and statistics while preserving the schema matcher/compiler. The worker exposes readiness only afterward. Preparation owns an unpublished engine and a shared initialization promise; canceled drafts cannot interrupt that shared warmup, and profile changes/disposal terminate its worker. Failures unload the unpublished engine before permitting a retry. This moves cold grammar setup ahead of user generation when preparation finishes early; it does not eliminate startup work or hide an early request's warmup wait. The preparation token never enters plan parsing, correction, caching or user generation telemetry.
 
 Browser model profiles select concrete IDs from WebLLM 0.2.85's registry, with q4f16 when the worker adapter exposes `shader-f16` and q4f32 otherwise. Both store weights in four bits; the suffix distinguishes activation precision. Selected weights and Wasm libraries are pinned to immutable publisher revisions. Changing the profile recreates only inference, preserving DuckDB and fencing old model status/results. Generation uses `temperature: 0`, a constrained JSON schema and a 256-token ceiling. The default is Qwen2.5-1.5B, following a reported 14-second first run with 4B. Qwen2.5-0.5B and 1.5B use full fields, which performed better than literal extraction for those models in screening. The optional Qwen3-4B uses literal extraction v5: metric names, aggregate, bucket/window numbers and units, grouping, vessel name, view and remaining unsupported requirements. Code converts generated quantities and resolves vessel names, then applies the ordinary `QueryPlan` validator. `model-contract.ts` selects prompt, schema and decoder together from the concrete model ID; both precision variants use the same contract.
 
 The generation grammar includes an explicit `unsupported_request` refusal branch. The model sees the complete request and does all natural-language interpretation. No deterministic natural-language parser runs in WebGPU-only mode. Literal extraction permits unknown metrics, aggregates, vessel names and views to survive generation and be rejected by validation; it also retains multiple metrics and unsupported requirements. This avoids forcing all generated business values into supported enums, but cannot detect a requirement that the model silently omitted or misinterpreted. Only complete validated responses become SQL. Legacy prompt/decoder exports remain frozen for historical replay. Qwen3 generation explicitly disables thinking; only the exact documented empty header is normalized before JSON validation and correction history.
 
-The local adapter maintains an exact 64-entry LRU of validated model plans, scoped to its fixed model/prompt policy and immutable dataset context. Keys include exact prompt bytes, dataset ID, timestamps and ordered vessel names. Context changes, worker reset, cache-policy changes and disposal clear it. Cache epochs prevent an old in-flight generation from repopulating a cleared policy. Canceled/failed generations never populate it; returned plans are cloned and revalidated. Hits report `PLAN CACHE` with no reused generation timings/token counts. Every request still performs its database query. This is a result cache, not KV/prefix caching: WebLLM 0.2.85 resets independent system/user requests and exposes no supported prefix restore/truncation API. True prefix reuse needs a runtime extension or a capable server engine. Appending previous draft attempts as conversation would change semantics and grow context, so it is not used.
+The local adapter maintains an exact 64-entry LRU of validated model plans, scoped to its fixed model/prompt policy and immutable dataset context. Keys include exact prompt bytes, dataset ID, timestamps and ordered vessel names. Context changes, worker reset, cache-policy changes and disposal clear it. Cache epochs prevent an old in-flight generation from repopulating a cleared policy. Canceled/failed generations never populate it; returned plans are cloned and revalidated. Hits report `PLAN CACHE` with no reused generation timings/token counts. Every request still performs its database query. This caches query plans, never database results or KV/prefix state: WebLLM 0.2.85 resets independent system/user requests and exposes no supported prefix restore/truncation API. True prefix reuse needs a runtime extension or a capable server engine. Appending previous draft attempts as conversation would change semantics and grow context, so it is not used.
 
 The Rust compiler has no external dependencies. It accepts numerical/enumerated fields, fixes table/column names, binds the trailing window to the dataset end, and returns one SQL string. Requested windows may extend beyond dataset coverage: the plan preserves the original `windowHours` and SQL intersects that interval with the dataset's actual start/end. For example, 710 days remains 17,040 hours; it returns the available 14 days from the bundled fixture and can return 710 days from a sufficiently long remote dataset. The unsigned 32-bit Wasm hours argument permits positive whole hours through `0xffffffff`; this is a representation bound, not a dataset-duration policy. JavaScript validates values before integer ABI coercion; Rust validates them again. Results never traverse the compiler's Wasm memory.
 
 Failure events retain a separate `failedAt` timestamp and identify inference, SQL compilation or database execution as the failing phase. Available model source, warmup, generation and token diagnostics remain inspectable even when no executable query was produced. Failure never invents a validated intent, database completion or first draw. A database failure displays time to error; a pre-query failure leaves database timings empty. Model refusal wording attributes the judgment to the model. The card stops its loading state and clears failure metadata when reused for a new draft.
 
-The local worker allows at most two generations for one request. A refusal, invalid JSON/plan or token-limit truncation adds the failed assistant response and exact error as conversational correction context. It retains the original question, schema and full-meaning requirements; an unsupported request may still be refused. V5 feedback identifies unsupported entries as the model's claims and asks it to re-check capabilities, rather than declaring those claims proven. Removing an entry is allowed only when the complete plan represents the requirement. Runtime/device errors, unknown/abort finish reasons and cancellation do not trigger correction. Both attempts share the same queue owner and cancellation fence. No database query starts until a complete response validates. Remote inference services and database errors have no automatic repair in this implementation.
+The local worker allows at most two generations for one request. A refusal, invalid JSON/plan or token-limit truncation adds the failed assistant response and exact error as conversational correction context. It retains the original question, schema and full-meaning requirements; an unsupported request may still be refused. V5 feedback identifies unsupported entries as the model's claims and asks it to re-check capabilities, rather than declaring those claims proven. Removing an entry is allowed only when the complete plan represents the requirement. Runtime/device errors, unknown/abort finish reasons and cancellation do not trigger correction. Both attempts share the same queue owner and cancellation fence. No database query starts until a complete response validates. The included Rust inference service independently permits one correction for refusal, invalid output or token-limit truncation; both attempts share its total deadline and native allowlist. Other remote services determine their own repair policy. Database execution errors have no automatic model repair in this implementation.
 
 The 4,096-character input bound is a transport/UI limit, not a guarantee that any Unicode question fits the model's token context. Instructions and correction messages consume that context too. Context-capacity errors explain that the question needs shortening; they do not retry or unload the otherwise usable engine. No additional tokenizer is run on the browser main thread.
 
@@ -125,17 +127,39 @@ service owns validation, one correction attempt, bounded per-session plan reuse
 and provider timing diagnostics. Local DuckDB and rendering stay on their existing
 data path. The remote scheduling and database bridges below remain client contracts.
 
-Configure an HTTP(S) inference endpoint. POST JSON:
+The deployed endpoint is `wss://time-blast.46-224-133-201.sslip.io/api/inference/session`.
+The inference session uses `HELLO`/`READY` for a single immutable dataset context,
+`DRAFT` for the latest text, `INFER`/`RESULT` or `ERROR` for identified requests,
+`CANCEL` for upstream cancellation, and `CACHE_POLICY` to clear and fence cached
+plans. It is separate from the proposed scheduling service's `time-blast.v1`
+protocol below. The browser is still the coordinator in the public deployment.
+See [the service contract](backend-prototype.md#data-and-control-paths) for full
+message shapes and lifecycle bounds.
+
+The service calls streaming Chat Completions directly through pooled `reqwest`
+connections, receives incremental provider SSE, and emits only a complete
+validated plan. It uses Tokio, `fastwebsockets`, and `TCP_NODELAY`; those library
+choices do not by themselves establish a fastest transport. OpenRouter requests
+use latency-sorted routing and require support for the selected parameters.
+`TIME_BLAST_MODEL`, `TIME_BLAST_REASONING_EFFORT` and `TIME_BLAST_TEMPERATURE`
+configure model-dependent behavior on the server. Credentials never cross the
+browser protocol. There is no client authentication in this prototype; origin
+checks and process-local request budgets are not a production access-control or
+billing system.
+
+Alternatively, configure an HTTP(S) inference endpoint. POST JSON:
 
 ```json
 {"text":"...","revision":7,"draft":{"revision":7,"text":"...","contextId":"snapshot","sentAt":1234},"context":{},"schema":{}}
 ```
 
-`context` and `schema` contain the actual dataset and supported model response schema. Return `{"plan":{...},"model":"...","tokens":90}` or a bare valid plan. The browser validates every field. A proxy can call OpenRouter, a self-hosted model, or another provider. Keep credentials at the service. The browser adapter aborts superseded requests, bounds response JSON to 64 KiB, and does not assume the provider has a mutable prefilled session.
+`context` and `schema` contain the actual dataset and supported model response schema. Return `{"plan":{...},"model":"...","tokens":90}` or a bare valid plan. The browser validates every field. The included Rust service owns its schema independently and ignores the caller's `schema`; clients cannot broaden its executable operations. HTTP inference is stateless and has no shared plan cache. A compatible proxy can call OpenRouter, a self-hosted model, or another provider. Keep credentials at the service. The browser adapter aborts superseded requests, bounds response JSON to 64 KiB, and does not assume the provider has a mutable prefilled session.
 
 An explicitly configured **draft endpoint** receives coalesced POSTs containing `{"type":"DRAFT","draft":{...},"contextId":"..."}`. It is optional; the app never invents a route for an arbitrary inference service. Without it, speculation can still send a full generation request before Enter when enabled. With remote placements, text can therefore leave the browser before submission, as the UI states.
 
 ## Remote database adapter
+
+The browser adapter is implemented; a database service, including a ClickHouse bridge, is not included. The deployed demo uses local DuckDB. The following is the contract a future service must implement.
 
 Configure a base HTTP(S) URL:
 
@@ -149,6 +173,8 @@ Configure a base HTTP(S) URL:
 This is a bridge contract, not the raw ClickHouse HTTP interface. The service must independently validate the intent/SQL, permissions, context freshness and resource budgets. A browser is not an authorization boundary. A future Rust/ClickHouse bridge should preserve Arrow buffers where formats match and supply ordered first-window results deliberately.
 
 ## Remote coordination without bouncing data
+
+The client contract and controlled scheduling doubles are implemented; no remote coordinator service is shipped or deployed. This protocol is separate from the running Rust inference service.
 
 Browser or remote inference can be combined with browser or remote database execution under either coordinator setting. A remote coordinator is a **scheduling service**: the browser remains the execution gateway and final data consumer. That means browser-local data never needs a detour through the coordinator's server.
 
@@ -183,4 +209,28 @@ Preparation may predate commit; `Run → draw` uses `committedAt`, the automatic
 
 Current verification includes Rust tests, TypeScript checks/build, unit tests for exact promotion and cancellation, backing-buffer identity, Arrow termination/truncation, strict inference validation, and browser execution against real DuckDB. Browser scripts print their observed engine/browser versions and values. Software GPU inference checks must be reported separately from hardware latency. No p50/p95/p99 or microsecond speed claim follows from these functional checks.
 
-Next: recorded typing replays; timing distributions and speculative waste; ordered partial-window queries; adaptive first-batch sizing; a Rust ClickHouse bridge; actual remote service benchmarks; model semantic accuracy evaluation; GPU-renderer comparison; model cache/prefill experiments; shared-memory or transferred-buffer ownership where profiling shows benefit; hardware input-to-light measurement.
+The Rust backend now supplies measured generation, first content-token and
+correction durations plus provider usage when available. Its first-token span
+includes provider transport and queueing, not just model prefill. Socket `READY`
+does not establish a warm provider model, and closing an upstream stream does
+not prove that provider generation or billing stopped.
+
+The [seven-model hosted comparison](experiments/hosted-models-2026-10-10.md)
+retained Gemini 2.5 Flash Lite: both baseline runs matched 8/8 supported plans
+and refused 4/4 unsupported questions, with supported-response medians of 551 ms
+and 454 ms. These reused cases and uncontrolled provider routes do not establish
+general accuracy or tail latency. In the separate [public browser smoke](verification.md),
+three uncached real-model questions produced the intended plans and 60,480,
+8,640 and 144 points. Inference measured 518–692 ms and dispatch-to-first-draw
+measured 520–816 ms in those three runs; the two-second typing pause is before
+dispatch and excluded. These are dated observations, not latency guarantees.
+
+The latest implementation validation records 717 application tests and 34 Rust
+backend tests, plus TypeScript/Vite and release Rust builds. Completed hardware
+WebGPU inference still needs testing on a GPU-equipped browser; native GGUF and
+software-GPU checks do not fill that gap. Remote scheduling and ClickHouse
+services, sustained-load/tail latency, held-out semantic evaluations, and
+physical presentation timing remain unverified or unimplemented as described
+in [the roadmap](roadmap.md). Additional experiments include adaptive first-batch
+sizing, recorded typing replays and speculative waste, GPU rendering, model
+prefix reuse, and shared/transferred memory only where profiling shows a benefit.

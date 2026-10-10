@@ -2,6 +2,8 @@
 
 Status: proposed `tb/0` semantics, October 9, 2026. This is a design for a prototype, not a published or implemented wire standard. Binary framing and codec selection remain benchmark decisions.
 
+The implemented contracts are documented in the [browser prototype](prototype.md) and [Rust backend](backend-prototype.md). In particular, the deployed inference socket uses `time-blast.inference.v1`, not this proposed `tb/0` protocol. See [current status](status.md) for the placement and capability boundary.
+
 The protocol separates mutable drafts, immutable committed requests, speculative candidates, and incremental results. It describes the same behavior for local calls, worker messages, WebSocket, or WebTransport. It does not require a network serialization step for local execution.
 
 ## Identities

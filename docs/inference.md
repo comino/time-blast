@@ -1,6 +1,6 @@
 # Inference before Enter
 
-Status: design notes. The browser worker, local/remote adapter contracts, bounded correction and their verification limits are described in [the implemented prototype](prototype.md). The additional mechanisms below remain proposals unless stated there.
+Status: design notes from October 9, 2026. See [current status](status.md), the [browser prototype](prototype.md), and the [implemented Rust inference backend](backend-prototype.md) for shipped behavior. The additional mechanisms below remain proposals unless documented there; [verification](verification.md) records measured results and limits.
 Primary references checked on **2026-10-09**. Capabilities must be verified against the
 exact engine, model and deployment version selected for an experiment.
 
@@ -248,13 +248,11 @@ from choosing a particular model runtime, quantization level or protocol.
 
 ## Recommended inference deployment
 
-Recommendation, still unimplemented: start with a hosted structured-output adapter behind
-the proposed Rust coordinator; keep inference replaceable. Use DuckDB-Wasm for the first
-embedded prototype and make the production path coordinator → ClickHouse → chart.
-Then compare a direct hosted endpoint and a dedicated engine near the coordinator/data.
+The hosted structured-output adapter now runs behind the [Rust inference service](backend-prototype.md), with replaceable inference and DuckDB-Wasm execution in the browser. The coordinator → ClickHouse → chart path remains a proposal.
+Next compare a direct hosted endpoint and a dedicated engine near the coordinator/data.
 Treat browser inference as a parallel placement experiment for resident capable devices.
 
-The inference ladder should be:
+The following routing ladder remains a proposal. Current Runtime modes select inference explicitly; Auto can use templates, and validation repair retries the same model rather than escalating to a larger one.
 
 1. **Deterministic template:** recognize a supported request and fill validated slots
    without generation. Reuse an existing accepted intent when only typed parameters change.
@@ -279,7 +277,7 @@ support for the structured-output parameters actually sent with
 semantic fixtures. These routing controls are not an end-to-end latency guarantee.
 [OpenRouter provider routing](https://openrouter.ai/docs/guides/routing/provider-selection)
 
-Keep provider credentials in the proposed coordinator, reuse its HTTP connections, stream
+Keep provider credentials in the inference service, reuse its HTTP connections, stream
 model output for timing/preparation, and stop at the complete intent. Record provider/model
 identity, queue/prefill information when exposed, cache usage, output length and retry time.
 The winning metric is usable query completion followed by the correct chart point, not

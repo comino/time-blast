@@ -1,25 +1,61 @@
 # Roadmap and optimization backlog
 
-Status: proposed work. Nothing below is implemented or benchmarked yet.
+Status as of 2026-10-10: a deployed browser prototype and Rust inference service
+exist. The public demo uses OpenRouter's Gemini 2.5 Flash Lite, browser-local
+DuckDB-Wasm and Canvas2D. Local four-bit Qwen2.5-1.5B remains selectable. The
+tables below separate implemented capabilities from remaining work; detailed
+contracts are in [prototype.md](prototype.md), service operations in
+[backend-prototype.md](backend-prototype.md), and dated evidence in
+[verification.md](verification.md).
 
 ## Build sequence
 
-| Milestone | Deliverable | Exit criterion |
+| Milestone | Implemented | Remaining gate |
 | --- | --- | --- |
-| 0. Browser floor | Input, deterministic point source, prebuilt canvas, trace recorder | Reproducible input-to-draw distribution; physical timing method documented |
-| 1. Correct protocol | Draft/commit/generation reducer, bounded queues, simulated adapters | Stale, duplicated, reordered, canceled, and truncated event tests pass |
-| 2. Embedded data prototype | DuckDB-Wasm worker, columnar batch ownership, incremental chart | First complete point draws without whole-result collection or row-object conversion; reference-query and copy audits pass |
-| 3. Real inference | One model adapter and typed query intent; preserve local/remote contract | Semantic accuracy corpus passes the chosen threshold; cold/warm timings reported |
-| 4. Prepared commit | Draft mirroring, one speculative candidate, valid promotion | Demonstrate a result staged before Enter; misses remain correct and do not starve |
-| 5. Usable service direction | Native Rust coordinator and incremental ClickHouse relay | Same consumer contract and correctness; no full-result JSON or unnecessary repacking; explicit completion/errors |
-| 6. Whole-path experiments | Typing replay, second model placement, all four model/database placements | End-to-end distributions, hit rates, copied bytes, costs, and tail traces reproducible |
-| 7. Deeper optimization | Winning codec, memory, transport, rendering, and scheduler changes | Each change improves its declared objective without breaking the correctness/resource gates |
+| 0. Browser floor | Canvas, trace timings and deterministic template calibration; initial warm draw measurements | Reproducible end-to-end distributions and physical presentation measurement |
+| 1. Correct protocol | Exact draft/commit identities, cancellation epochs, bounded queues, stale-result rejection and controlled adapter tests | Repeat the same gates against real remote database/scheduling services |
+| 2. Embedded data prototype | DuckDB-Wasm worker, 1,209,600 synthetic readings, retained Arrow columns, first-complete-bucket execution and ten canvas views | Real datasets, broader query semantics, and measured memory/copy behavior across more devices |
+| 3. Real inference | Local WebLLM and deployed Rust/OpenRouter inference; typed intent validation and one correction attempt | Hardware-WebGPU verification, independent held-out meaning evaluations and provider tail latency |
+| 4. Prepared commit | Immediate draft transport, two-second idle execution, SQL/result promotion and bounded exact plan reuse | Typing replay, speculative hit rate, wasted work and contention measurements |
+| 5. Usable service direction | Rust inference sessions, pooled provider HTTP/SSE, upstream cancellation and deployment tooling | Production access controls/quotas, a Rust ClickHouse bridge, and a separate scheduling service if needed |
+| 6. Whole-path experiments | Public browser/real-provider smoke; seven-model comparison; adapter combinations under controlled doubles | Real remote database placements, sustained load and end-to-end p50/p95/p99 with costs and trace evidence |
+| 7. Deeper optimization | Local exact first-bucket experiment, demand-loaded renderers and bounded drawing slices | Admit further codec/memory/transport/GPU changes only when their measured benefit passes correctness and resource gates |
 
-Start milestone 0 without an LLM so inference variance cannot conceal browser mistakes. Keep it as a calibration fixture after real adapters arrive. The first prototype should support one narrow time-series query family end to end before expanding arbitrary SQL.
+Keep deterministic template mode as a calibration fixture; normal deployed and
+WebGPU modes use models without silently falling back to templates. The first
+slice supports four metrics, fixed aggregates/buckets, trailing windows and
+vessel filtering/grouping. Arbitrary generated SQL remains outside the contract.
 
-ClickHouse is the primary deployment target. DuckDB provides the initial controlled embedded path; native DuckDB in a service is optional, not a required production hop. Service and transport experiments can run alongside the embedded prototype, but this remains a research plan until building is requested.
+ClickHouse remains the intended deployment database. DuckDB supplies the
+controlled embedded path; native DuckDB in a service is optional. The Rust
+inference backend is implemented, but it is not a remote coordinator or database
+relay. The browser still coordinates the deployed workflow.
 
-## Tricks worth testing early
+## Next priorities
+
+1. Measure real-user typing and independent unseen questions. Include false
+   acceptance, valid-but-wrong plans, correction rates, cold/warm state and
+   canceled/speculative cost. The [seven-model screening](experiments/hosted-models-2026-10-10.md)
+   retains Gemini 2.5 Flash Lite for this configuration; it does not establish a
+   general model ranking or future best default.
+2. Build the Rust ClickHouse bridge against the existing Arrow contract. Verify
+   snapshot/freshness semantics, ordered first useful output, explicit completion,
+   cancellation and resource bounds before claiming placement equivalence.
+3. Establish sustained-load latency distributions and service operating limits.
+   Add authentication and durable/per-user budget policy before treating the
+   public inference prototype as a production service.
+4. Verify browser WebGPU on actual hardware and compare inference/rendering
+   contention. Use whole-path measurements to decide whether GPU geometry,
+   prefix reuse or memory handoff changes are worth their complexity.
+
+## Early techniques: implementation and follow-up
+
+The current implementation already keeps the inference socket open, mirrors
+drafts, generates compact validated intent, prepares on a two-second pause,
+promotes exact matches, draws the first marker and retains producer columns.
+Templates are explicit options, and local grammar warmup precedes model readiness.
+The table retains the rationale and tradeoffs; prefix warming at the provider,
+completion prediction and remote database co-location remain proposals.
 
 | Idea | Intended saving | Tradeoff or condition |
 | --- | --- | --- |
@@ -64,6 +100,11 @@ ClickHouse is the primary deployment target. DuckDB provides the initial control
 | Warm TLS resumption on reconnect | Reduce setup after broken connection | Browser-controlled; no exactly-once guarantee from transport |
 | Adaptive speculation using idle capacity | Spend resources when useful and available | Bad predictor creates load precisely when it hurts |
 
+The exact-first-bucket idea has a measured local implementation: it executes the
+first bucket and remainder **sequentially in one read-only DuckDB snapshot**,
+rather than in parallel. See the [paired experiment](experiments/first-bucket-query-2026-10-09.md).
+Parallel queries and a corresponding ClickHouse path still need separate testing.
+
 ## Server-side experiments for the last stretch
 
 An ordinary browser cannot expose every network or operating-system knob. A self-hosted coordinator or database adapter can still investigate them. These are optional deployment experiments, not requirements of the protocol.
@@ -89,8 +130,18 @@ An ordinary browser cannot expose every network or operating-system knob. A self
 
 ## Decisions still open
 
-Choose the first dataset/query family, supported browser/device matrix, and acceptable preview/freshness semantics. Those choices determine whether immutable snapshots, exact tiles, or streaming raw scans are available.
+The synthetic fleet and narrow query family are selected. Real datasets,
+supported browser/device coverage, mutable-data freshness and acceptable
+preview/refinement semantics remain open. Those choices determine whether exact
+tiles, immutable snapshots or streaming raw scans are appropriate.
 
-Pick one hosted or self-hosted inference engine and one browser model only after measuring semantic accuracy on that family. Do not select a model purely by tokens per second. Similarly, select a chart backend on first-point and continuation measurements, not a large static-chart throughput demo.
+Current hosted and browser model defaults are explicit and replaceable. Broaden
+semantic accuracy evaluation before changing them; model release date and
+tokens/second alone are insufficient. Similarly, select another renderer using
+first-point and continuation measurements, including contention with local
+inference.
 
-The first deployment can be a local development setup with no hosting commitment. Define deployment, numeric SLOs, and operational costs from the baseline results. Preserve the broad placement-independent protocol while keeping the first runnable slice small.
+The HTTPS public demo is deployed. Numeric latency SLOs, durable operational
+budgets and production capacity are not established. Preserve the placement
+contracts while extending the measured runnable path; do not confuse client
+adapters or deterministic service doubles with completed production integrations.

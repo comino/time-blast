@@ -1,10 +1,10 @@
 # Rust and Wasm: optimize the data path, count the boundaries
 
-Status: research and proposed experiments; no implementation or performance results.
+Status: research and experiment proposals from October 9, 2026. A Rust/Wasm query compiler and [Rust inference backend](backend-prototype.md) are now implemented. See the [browser prototype](prototype.md), [current status](status.md), and [verification](verification.md) for shipped behavior and measurements; the language/kernel comparisons below remain proposed experiments.
 Primary sources checked **2026-10-09**. Browser, compiler and package versions must be
 pinned for actual measurements; a supported language is not a latency guarantee.
 
-Rust is a strong candidate for a shared computational core and a later native service.
+Rust now implements query compilation and the native inference service.
 The hypothesis to test is that persistent, contiguous data processed in Rust beats the
 same complete path in optimized JavaScript. Rewriting browser orchestration alone does
 not establish that hypothesis: crossing into Wasm can add work to a short operation.

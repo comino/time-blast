@@ -1,18 +1,53 @@
-# HTTPS static hosting
+# Demo deployment and operations
 
 The public synthetic-data demo is served at
 https://time-blast.46-224-133-201.sslip.io by the host's existing Caddy service.
-The GitHub repository remains private. The Rust inference service can be exposed
-at `/api/inference/` through the included Caddy configuration. Database execution
-and rendering remain in the visiting browser.
+The GitHub repository remains private. Caddy exposes the running Rust inference
+service at `/api/inference/`; database execution and rendering remain in the
+visiting browser. The demo defaults to OpenRouter's
+`google/gemini-2.5-flash-lite`, retained after the
+[hosted model comparison](../docs/experiments/hosted-models-2026-10-10.md).
+
+## Verified deployment — 2026-10-10
+
+| Component | Live state |
+| --- | --- |
+| Static release | `/srv/time-blast/releases/20261010T173044Z-a1890942`, selected by `/srv/time-blast/current`. |
+| Frontend index SHA-256 | `0f31aedc69ea9a65938c89959f11b35c868ba8be17542eb410bd380eee416534` |
+| Rust service | `time-blast-inference.service`, active; `/srv/time-blast/backend/time-blast-inference` on `127.0.0.1:8787`. |
+| Deployed backend source | `197b445`; binary SHA-256 `cbe6e99402d1e1ef6445326e5e082dc84aa8f634fcbc2b61fed266d0159c6ff8`. |
+| Provider configuration | `/etc/time-blast/inference.env`, owned by `root:root`, mode `0600`. |
+| Browser inference endpoint | `wss://time-blast.46-224-133-201.sslip.io/api/inference/session`. |
+
+Source commit `661a1d9` adds reasoning-effort and sampling-temperature controls
+used in the model comparison. That binary has **not** replaced the live backend;
+the comparison started isolated local processes. The deployed model and its
+existing settings are unchanged. Build and deploy the newer service before
+expecting those new controls to take effect.
+
+This token-free health check verifies Caddy routing and service readiness:
+
+```sh
+curl --fail --silent --show-error \
+  https://time-blast.46-224-133-201.sslip.io/api/inference/health
+```
+
+It currently returns `status: "ready"`, model `google/gemini-2.5-flash-lite` and
+`providerWarmth: "unknown"`. It does not execute a model or database query.
+
+## Static hosting
 
 Build and atomically deploy:
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm build
+VITE_INFERENCE_ENDPOINT=wss://time-blast.46-224-133-201.sslip.io/api/inference/session pnpm build
 sudo python3 scripts/deploy-static.py dist
 ```
+
+Omitting `VITE_INFERENCE_ENDPOINT` produces a browser-WebGPU default instead.
+`deploy-static.py` installs the build and switches the release symlink; it does
+not edit Caddy, deploy the backend, or restart services.
 
 Initial Caddy setup: install `time-blast.Caddyfile` into
 `/etc/caddy/sites/time-blast.caddy`, then append exactly one
@@ -53,8 +88,37 @@ The script installs the service binary and systemd unit, writes a root-readable
 `/etc/time-blast/inference.env` on first installation and preserves it thereafter.
 Edit that file to change the provider/model; credentials never enter the build.
 The unit is specific to this demo host's `fred` service user. It binds loopback
-port 8787. Check `systemctl status time-blast-inference` and `/health` before
-installing the updated Caddy site and reloading Caddy.
+port 8787. Changing a source default does not replace an existing configured
+model. After editing the environment file with `sudoedit`, restart the service
+and check its reported model:
+
+```sh
+sudoedit /etc/time-blast/inference.env
+sudo systemctl restart time-blast-inference.service
+systemctl is-active time-blast-inference.service
+curl --fail --silent --show-error http://127.0.0.1:8787/health
+```
+
+Keep the file root-owned with mode `0600`; do not copy it into logs or the
+repository. A service restart closes inference sockets and resets its
+process-local plan caches and request budgets. Browser clients reconnect for
+subsequent requests. The install script atomically replaces the executable,
+installs the systemd unit, restarts it, and checks local health. It does not retain
+an old backend binary for rollback; keep a known-good executable before updates.
+Static and backend releases are independent.
+
+The commands above use Cargo's default target directory. If `CARGO_TARGET_DIR`
+is set, pass its `release/time-blast-inference` path to the installer. On this
+demo host, builds use the mounted volume to avoid the nearly full root disk:
+
+```sh
+export CARGO_HOME=/mnt/HC_Volume_105875173/hf-cache/time-blast-eval/rust-cargo
+export CARGO_TARGET_DIR=/mnt/HC_Volume_105875173/hf-cache/time-blast-eval/rust-target
+```
+
+Check the health endpoint before installing an updated Caddy site and reloading
+Caddy. The included `handle_path /api/inference/*` removes that prefix before
+forwarding to the service.
 
 Build the browser with its public endpoint to enable remote inference by default:
 
@@ -67,6 +131,19 @@ python3 tests/browser_production.py \
 
 That production smoke deliberately switches to local WebGPU/templates to check
 unavailable-model and real database regressions without spending provider tokens.
-Live model verification is separate. See [the backend contract and limits](../docs/backend-prototype.md).
+For a live three-question end-to-end smoke, which **spends provider tokens**:
+
+```sh
+python3 tests/browser_backend_live.py \
+  --url https://time-blast.46-224-133-201.sslip.io \
+  --output /tmp/time-blast-public-live.json
+```
+
+Omitting its endpoint override checks that the deployed build defaults to remote
+inference. The recorded public smoke verified three complete plans and
+60,480 / 8,640 / 144 chart points; see
+[verification results and measurement limits](../docs/verification.md).
+Health alone cannot establish those results. See also
+[the backend contract, local fixture tests and configuration](../docs/backend-prototype.md).
 The prototype has origin checks, bounded sessions/concurrency and process-local
 generation budgets, but no user authentication or durable billing quota.

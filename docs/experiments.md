@@ -1,6 +1,6 @@
 # Latency experiments and measurement
 
-Status: experiment plan, October 9, 2026. No results have been collected. All comparisons below are proposed tests, not performance claims.
+Status: experiment plan from October 9, 2026. The [verification record](verification.md) now links completed browser, first-bucket, and hosted-inference experiments; [current status](status.md) separates those results from remaining work. The matrix below remains a set of proposed comparisons, not a claim that every experiment has run.
 
 Optimize the latency of a correct answer under a declared resource budget. A favorable trace of a wrong query, a stale cache hit, or a draw that never reaches the screen is not a win.
 
