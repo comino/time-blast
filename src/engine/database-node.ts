@@ -124,14 +124,17 @@ export class DuckDatabaseNode implements DatabaseNode {
     this.pump();
   }
 
-  /** CANCEL carries the new epoch. Request 0 cancels everything; otherwise that request.
-   * Any work under an older epoch is dropped too (protocol-v1 "Identities and fencing"). */
+  /** protocol-v1 CANCEL: request 0 cancels everything and carries the new epoch (older-epoch
+   * EXECs are dropped from then on); request ≠ 0 cancels only that request, epoch unchanged. */
   private onCancel(epoch: number, request: number): void {
-    if (epoch < this.epoch) return;
-    this.epoch = epoch;
-    const hit = (job: Job) => request === 0 || job.request === request || job.epoch < epoch;
-    for (let i = this.queue.length - 1; i >= 0; i--) if (hit(this.queue[i])) this.queue.splice(i, 1);
-    if (this.running && hit(this.running)) this.running.canceled = true;
+    if (request === 0) {
+      if (epoch > this.epoch) this.epoch = epoch;
+      this.cancelAll();
+      return;
+    }
+    const index = this.queue.findIndex(job => job.request === request);
+    if (index >= 0) this.queue.splice(index, 1);
+    if (this.running?.request === request) this.running.canceled = true;
   }
 
   private cancelAll(): void {

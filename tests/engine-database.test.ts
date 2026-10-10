@@ -188,15 +188,18 @@ describe('database node', () => {
     expect(run.stats.map(s => s.outcome)).toEqual(sqls.map(() => 'done'));
   });
 
-  it('CANCEL stops a running query (by request and by epoch) and fences older epochs', async () => {
+  it('CANCEL: targeted stops one request; full (request 0) stops everything and fences older epochs', async () => {
     const run = makeNode();
     (run.node as unknown as { contextId: number }).contextId = 7;
     const slow = 'SELECT a.vessel, count(*) FROM telemetry a JOIN telemetry b ON a.vessel = b.vessel AND a.ts = b.ts GROUP BY 1';
+    // Targeted CANCEL (epoch unchanged): stops request 1 only; queued request 5 still runs.
     run.node.handle(exec(slow, { request: 1, epoch: 1 }));
-    run.node.handle(cancel(2, 1));
-    await settle(run, 1);
-    expect(run.stats[0].outcome).toBe('canceled');
-    expect(kinds(run.frames)).not.toContain(Kind.DONE);
+    run.node.handle(exec('SELECT 5 AS five', { request: 5, epoch: 1 }));
+    run.node.handle(cancel(1, 1));
+    await settle(run, 2);
+    expect(run.stats.map(s => [s.request, s.outcome])).toEqual([[1, 'canceled'], [5, 'done']]);
+    expect(run.frames.filter(f => f.kind === Kind.DONE).map(f => f.request)).toEqual([5]);
+    run.stats.splice(0, 1);
 
     run.node.handle(exec(slow, { request: 2, epoch: 2 }));
     // Node drains MessagePort messages ahead of timers, so interleave through the same
