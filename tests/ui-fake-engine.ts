@@ -75,6 +75,8 @@ export class FakeRail implements RailView {
   stats: Array<{ request: number; s: InferStats; total: number }> = [];
   errors: Array<{ e: ErrorInfo; request: number }> = [];
   lives: Array<[number | null, number]> = [];
+  keptSlots: Array<[number, string]> = [];
+  kept(slot: number, title: string): void { this.keptSlots.push([slot, title]); }
   status(s: StatusInfo): void { this.statuses.push(s); }
   context(c: unknown): void { this.contexts.push(c); }
   timing(t: TimingBreakdown, summary: RollingSummary, stats: InferStats | undefined): void { this.timings.push({ t, summary, stats }); }

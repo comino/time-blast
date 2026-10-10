@@ -1,0 +1,73 @@
+/* Batch-1 additions on top of styles.css (same palette and type). */
+
+/* Pool cards exist (their canvases are attached to the engine) but stay invisible until bound.
+   visibility, not display, so the ResizeObserver still reports their size. */
+.slot-card[data-idle=true]{visibility:hidden;pointer-events:none}
+.slot-card[data-live=true]{--card-accent:#ffd27a;border-style:dashed;border-color:#4d7f78}
+.slot-card[data-live=true] .live-indicator{color:#ffd27a}
+.slot-card .live-indicator b{font-weight:500}
+.slot-card .card-body{display:flex;flex-direction:column}
+.slot-card .plot-container{flex:1}
+.slot-card .data-table-wrap{flex:1}
+
+.axis-layer{position:absolute;inset:0;pointer-events:none;font:8px/1 var(--mono);color:#7fa3aa;font-variant-numeric:tabular-nums}
+.axis-layer>span{position:absolute;left:0;top:0;white-space:nowrap;will-change:transform}
+.axis-layer>.axis-y{text-align:right}
+
+.card-error{position:absolute;left:12px;right:12px;bottom:12px;z-index:4;display:flex;flex-direction:column;gap:4px;padding:9px 11px;border:1px solid #6a3f3a;border-left:2px solid var(--coral);border-radius:6px;background:#2a1a1df2;color:#f1b9aa;font-size:11px;line-height:1.45;overflow-wrap:anywhere}
+.card-error small{font:8px/1.5 var(--mono);color:#c99a90;max-height:5.5em;overflow:auto}
+
+.card-sql{flex:none;margin:0 16px;border-top:1px solid #233d47}
+.card-sql>summary{display:flex;align-items:center;gap:6px;padding:6px 0;cursor:pointer;list-style:none;font-size:9px;color:#89adb2}
+.card-sql>summary::-webkit-details-marker{display:none}
+.card-sql>summary .icon{width:12px;height:12px}
+.card-sql>summary .source-pill{margin-left:auto}
+.card-sql pre{max-height:120px;overflow:auto;margin:0 0 6px;padding:8px 9px;border-radius:5px;background:#0c1c27;white-space:pre-wrap;word-break:break-word;font:9px/1.7 var(--mono);color:#a4c9c0}
+.card-sql p{font:8px/1.6 var(--mono);color:#6e9c9d;margin:0 0 6px}
+.card-sql p:empty{display:none}
+
+.card-latency{display:flex;align-items:baseline;gap:7px;min-width:0}
+.card-latency small{font:7px var(--mono);letter-spacing:.04em;color:#719b9b;white-space:nowrap}
+.card-latency strong{font:12px var(--mono);font-variant-numeric:tabular-nums;color:#72dac2;white-space:nowrap}
+.cache-pill{font:6px var(--mono);letter-spacing:.05em;background:#3b3518;color:#ffd27a;padding:3px 4px;border-radius:3px;white-space:nowrap}
+
+.status-pills{padding:0 20px 12px;flex:none}
+.status-pills>div[data-state=cold] .stage-dot{background:#55737c}
+
+.timing-card{max-height:46%}
+.timing-card .pipeline-summary{font-size:9px}
+.timing-headline{font:13px var(--mono);font-weight:500;font-variant-numeric:tabular-nums;color:#72dac2;margin-left:6px}
+.timing-card .cache-pill{margin-left:4px}
+.timing-body{padding:0 20px 12px}
+.timing-meta{font:8px var(--mono);color:#6e98a3;margin-bottom:7px}
+.timing-stages{list-style:none;margin:0;padding:0;display:grid;gap:3px}
+.timing-stages li{display:grid;grid-template-columns:minmax(0,108px) minmax(0,1fr) 54px 54px;gap:6px;align-items:center;font:8px var(--mono);color:#9dbebd}
+.timing-stages li[data-headline=true]{color:#72dac2}
+.stage-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stage-bar{position:relative;height:5px;border-radius:3px;background:#17303b;overflow:hidden}
+.stage-bar i{position:absolute;top:0;bottom:0;background:#4bb69c;border-radius:3px}
+.stage-delta,.stage-offset{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.stage-delta{color:#7a9ea6}
+.timing-infer{font:8px/1.5 var(--mono);color:#a5cfcc;margin-top:8px;overflow-wrap:anywhere}
+.timing-infer:empty{display:none}
+.timing-rolling{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:10px 0 0}
+.timing-rolling dt{font:7px var(--mono);color:#719b9b}
+.timing-rolling dd{margin:2px 0 0;font:10px var(--mono);font-variant-numeric:tabular-nums;color:#c7e3dc;white-space:nowrap}
+.timing-note{font:7px/1.5 var(--mono);color:#5f8791;margin-top:8px}
+
+.drop-hint{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:#08111bcc;border:2px dashed #61dfbf;pointer-events:none}
+.drop-hint>div{display:flex;flex-direction:column;align-items:center;gap:8px;color:#c7e3dc;font-size:13px}
+.drop-hint .icon{width:36px;height:36px;color:#61dfbf}
+.drop-hint span{font-size:11px;color:#86aab0}
+
+.latency-dial>label{display:flex;justify-content:space-between}
+.latency-dial>label output{font:10px var(--mono);color:#72dac2}
+.latency-dial>div{display:flex;align-items:center;gap:8px}
+.latency-dial input[type=range]{flex:1;accent-color:#61dfbf}
+.runtime-section .checkbox-label{margin-top:8px}
+.runtime-section .small-button{margin-top:6px}
+
+@media(max-width:650px){
+  .timing-stages li{grid-template-columns:minmax(0,90px) minmax(0,1fr) 48px 48px}
+  .timing-rolling{grid-template-columns:repeat(3,minmax(0,1fr))}
+}

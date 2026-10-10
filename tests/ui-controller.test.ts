@@ -101,12 +101,13 @@ describe('slots and cards', () => {
   });
 
   it('KEEP pins the card and replenishes the pool with a newly attached slot', () => {
-    const { ui, host, engine } = booted();
+    const { ui, host, engine, rail } = booted();
     ui.input('waves', false, 1);
     ui.receive(engineFrame(Kind.BIND, { request: 3, revision: 1 }, slotPayload(1)));
     engine.clear();
     ui.receive(engineFrame(Kind.KEEP, { request: 3, revision: 1 }, slotPayload(1)));
     expect(host.cards.get(1)!.kept).toBe(true);
+    expect(rail.keptSlots).toEqual([[1, 'waves']]);
     expect(ui.keptSlots).toEqual([1]);
     expect(ui.freeSlots.sort()).toEqual([2, 3]);
     expect(ui.liveSlot).toBeNull();

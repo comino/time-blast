@@ -63,6 +63,8 @@ export interface RailView {
   error(e: ErrorInfo, request: number): void;
   /** A slot became live (BIND) or idle (UNBIND / null). */
   live(slot: number | null, revision: number): void;
+  /** A result was kept (KEEP): add it to the conversation history. */
+  kept(slot: number, title: string): void;
 }
 
 interface SlotEntry { card: SlotCard; kept: boolean; request: number; revision: number }
@@ -261,6 +263,7 @@ export class UiController {
       if (text !== undefined) entry.card.title(text, revision);
     }
     entry.card.keep();
+    this.rail.kept(slot, this.drafts.textOf(entry.revision) ?? '');
     if (this.live === slot) { this.live = null; this.rail.live(null, 0); }
     const fresh = this.fillPool();
     if (fresh.length) this.drafts.config({ freeSlots: fresh });
