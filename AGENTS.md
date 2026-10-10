@@ -9,7 +9,7 @@ note in this repo.
 - Research into one loop: **natural language → SQL → execute → see it**, made as fast as physically possible.
 - The metric is **thought → correct result**. Typing, Enter and inference are steps to shrink or remove.
 - Design for **~10× faster inference** than today. When it arrives, database, transport and drawing will dominate.
-- Chase microseconds for their own sake, but **measure every claim** and give **a concrete reason for every change**.
+- Chase microseconds for their own sake. **Complexity is embraced** when it saves measured time, even off the bottleneck. **Measure every claim** and give **a concrete reason for every change**.
 - Explore what speed enables: per-keystroke results, anticipating the next question, chart-as-query, voice.
 
 ## Hard rules

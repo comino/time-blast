@@ -55,6 +55,10 @@ microseconds not because a user needs them but because pursuing excellence needs
 no justification. Micro-optimizations — zero-copy paths, binary framing, frame
 deadlines, allocation discipline — are explicitly in scope.
 
+**Complexity is embraced.** If a technique saves microseconds, we build it, even
+when a simpler system would do the job and even when it's not the current
+bottleneck. "Overkill for a simple job" is not an objection here.
+
 The discipline that keeps this honest:
 
 - **Measure everything.** A speedup is a measurement, not a belief. Record cold
