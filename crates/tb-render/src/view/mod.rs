@@ -18,6 +18,7 @@ use crate::gpu::{Gpu, PassRecorder, PipelineDesc, PipelineTable};
 use crate::schema::{Roles, View};
 use crate::store::Store;
 
+pub mod geo;
 pub mod xy;
 
 /// Everything a family needs to record its draws for one frame.
@@ -70,7 +71,7 @@ pub struct FamilyDef {
 }
 
 /// Registered families, in registration order. Wave 2 appends matrix, geo and calendar.
-pub static FAMILIES: &[&FamilyDef] = &[&xy::DEF];
+pub static FAMILIES: &[&FamilyDef] = &[&xy::DEF, &geo::DEF];
 
 /// All pipelines: the shared `rule` pipeline first, then each family's.
 pub fn pipeline_table() -> PipelineTable {
