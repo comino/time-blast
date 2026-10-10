@@ -1,0 +1,29 @@
+[package]
+name = "time-blast-inference"
+version = "0.1.0"
+edition = "2024"
+publish = false
+rust-version = "1.88"
+
+[dependencies]
+axum = { version = "=0.8.8", features = ["http1", "http2", "json", "tokio"] }
+fastwebsockets = { version = "=0.10.0", features = ["upgrade", "unstable-split"] }
+futures-util = "0.3.31"
+reqwest = { version = "=0.12.28", default-features = false, features = ["rustls-tls", "json", "stream", "http2"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
+tokio = { version = "=1.53.1", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time", "io-util"] }
+tokio-util = "=0.7.19"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+
+[profile.dev]
+debug = 0
+incremental = false
+
+[profile.test]
+debug = 0
+incremental = false

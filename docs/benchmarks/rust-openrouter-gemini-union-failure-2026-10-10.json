@@ -1,0 +1,300 @@
+{
+  "kind": "real-provider-rust-http",
+  "endpoint": "http://127.0.0.1:8788/infer",
+  "rounds": 2,
+  "dateUtc": "2026-10-10T17:24:28Z",
+  "context": {
+    "id": "backend-live-evaluation-v1",
+    "label": "Synthetic fleet",
+    "rowCount": 1209600,
+    "start": 1788220800000,
+    "end": 1789430400000,
+    "vessels": [
+      "Aurora",
+      "Meridian",
+      "Kestrel",
+      "Solstice",
+      "Atlas",
+      "Nomad"
+    ],
+    "description": "Synthetic vessel telemetry"
+  },
+  "exact": 0,
+  "total": 8,
+  "medianWallMs": 779.3075,
+  "limits": "Small development check; known questions, not held-out accuracy or latency distributions. HTTP connections to Rust are new per request; provider connection pool is reused. No application plan-cache hits. Provider cache/cold state uncontrolled. No browser or photons.",
+  "requests": [
+    {
+      "round": 1,
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "httpStatus": 422,
+      "wallMs": 885.077,
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "exact": false,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-2.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.00064,
+          "generationMs": 825.490022,
+          "attempts": 2,
+          "repairMs": 336.717847,
+          "firstTokenMs": 443.190405,
+          "promptTokens": 1402,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      }
+    },
+    {
+      "round": 1,
+      "question": "Compare vessel speeds by minute over the last 24 hours",
+      "httpStatus": 422,
+      "wallMs": 724.515,
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "exact": false,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-2.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.00064,
+          "generationMs": 723.0930920000001,
+          "attempts": 2,
+          "repairMs": 382.008932,
+          "firstTokenMs": 270.376966,
+          "promptTokens": 1402,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      }
+    },
+    {
+      "round": 1,
+      "question": "Compare vessel wave height by hour over the last 1days as a 3D surface",
+      "httpStatus": 422,
+      "wallMs": 758.617,
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "exact": false,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-2.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.00092,
+          "generationMs": 754.5631040000001,
+          "attempts": 2,
+          "repairMs": 399.71043000000003,
+          "firstTokenMs": 310.011036,
+          "promptTokens": 1414,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      }
+    },
+    {
+      "round": 1,
+      "question": "Show a heatmap of vessel wind by hour over the last 7 days",
+      "httpStatus": 422,
+      "wallMs": 805.818,
+      "expected": {
+        "metric": "wind",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "heatmap"
+      },
+      "exact": false,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-2.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.0005600000000000001,
+          "generationMs": 802.602115,
+          "attempts": 2,
+          "repairMs": 389.071931,
+          "firstTokenMs": 350.891406,
+          "promptTokens": 1406,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      }
+    },
+    {
+      "round": 2,
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "httpStatus": 422,
+      "wallMs": 808.198,
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "exact": false,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-2.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.0011200000000000001,
+          "generationMs": 805.472405,
+          "attempts": 2,
+          "repairMs": 340.67539400000004,
+          "firstTokenMs": 372.709815,
+          "promptTokens": 1402,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      }
+    },
+    {
+      "round": 2,
+      "question": "Compare vessel speeds by minute over the last 24 hours",
+      "httpStatus": 422,
+      "wallMs": 766.91,
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "exact": false,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-2.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.0005600000000000001,
+          "generationMs": 764.717796,
+          "attempts": 2,
+          "repairMs": 397.73463799999996,
+          "firstTokenMs": 300.257271,
+          "promptTokens": 1402,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      }
+    },
+    {
+      "round": 2,
+      "question": "Compare vessel wave height by hour over the last 1days as a 3D surface",
+      "httpStatus": 422,
+      "wallMs": 755.225,
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "exact": false,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-2.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.00084,
+          "generationMs": 753.676009,
+          "attempts": 2,
+          "repairMs": 383.946925,
+          "firstTokenMs": 305.647642,
+          "promptTokens": 1414,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      }
+    },
+    {
+      "round": 2,
+      "question": "Show a heatmap of vessel wind by hour over the last 7 days",
+      "httpStatus": 422,
+      "wallMs": 791.705,
+      "expected": {
+        "metric": "wind",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "heatmap"
+      },
+      "exact": false,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-2.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.00092,
+          "generationMs": 789.658458,
+          "attempts": 2,
+          "repairMs": 391.78053800000004,
+          "firstTokenMs": 292.794545,
+          "promptTokens": 1406,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      }
+    }
+  ]
+}

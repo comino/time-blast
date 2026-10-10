@@ -1,0 +1,31 @@
+{
+  "schema": "wrapper-no-numeric-enum",
+  "question": "Show the correlation between wave height and speed while wind exceeds 30 knots",
+  "provider": "Google",
+  "wallMs": 391.04,
+  "response": "{\"result\":{\"error\":\"unsupported_request\"}}",
+  "finishReason": "stop",
+  "usage": {
+    "prompt_tokens": 797,
+    "completion_tokens": 10,
+    "total_tokens": 807,
+    "cost": 8.37e-05,
+    "is_byok": false,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 0,
+      "audio_tokens": 0,
+      "video_tokens": 0
+    },
+    "cost_details": {
+      "upstream_inference_cost": 8.37e-05,
+      "upstream_inference_prompt_cost": 7.97e-05,
+      "upstream_inference_completions_cost": 4e-06
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 0,
+      "image_tokens": 0,
+      "audio_tokens": 0
+    }
+  }
+}

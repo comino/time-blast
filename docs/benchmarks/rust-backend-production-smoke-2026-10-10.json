@@ -1,0 +1,32 @@
+{
+  "url": "https://time-blast.46-224-133-201.sslip.io",
+  "chromium": "145.0.7632.0",
+  "dataset_rows": 1209600,
+  "dense_chart_points": 60480,
+  "default_inference_mode": "remote",
+  "unavailable_webgpu_no_template_fallback": true,
+  "explicit_template_live_chart_without_enter": true,
+  "live_pin_without_query": true,
+  "stage_timings_visible": true,
+  "automatic_work_waits_two_seconds": true,
+  "enter_bypasses_typing_pause": true,
+  "live_translation_without_query": true,
+  "prepared_whitespace_promoted": true,
+  "database_reloads": 0,
+  "persistent_cards": 4,
+  "presentation_without_new_query": true,
+  "advanced_intents": [
+    "heatmap",
+    "surface",
+    "tracks",
+    "density"
+  ],
+  "calendar_switch": true,
+  "reported_window_prompts": [
+    "Compare vessel wave height by hour over the last 710 days as a 3D surface",
+    "Compare vessel wave height by hour over the last 1days as a 3D surface"
+  ],
+  "requested_window_preserved_with_actual_coverage": true,
+  "http_decoded_engines": 1,
+  "page_errors": []
+}

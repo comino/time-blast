@@ -136,14 +136,18 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
   function field(name: string): HTMLInputElement | HTMLSelectElement { return runtimeForm.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement; }
   function updateEndpointFields(): void {
     for (const name of ['coordinator', 'inference', 'database']) { const remote = field(`${name}Mode`).value === 'remote'; const endpoint = field(`${name}Endpoint`) as HTMLInputElement; endpoint.hidden = !remote; endpoint.required = remote; }
-    el('inference-draft-field').hidden = field('inferenceMode').value !== 'remote';
+    const socketInference = /^wss?:/i.test(field('inferenceEndpoint').value.trim());
+    el('inference-draft-field').hidden = field('inferenceMode').value !== 'remote' || socketInference;
+    field('inferenceDraftEndpoint').disabled = el('inference-draft-field').hidden;
     const browserDatabase = field('databaseMode').value === 'browser';
     el('dataset-profile-field').hidden = !browserDatabase;
     field('datasetProfile').disabled = !browserDatabase;
     const localModel = ['auto', 'webgpu'].includes(field('inferenceMode').value);
     root.querySelector<HTMLElement>('.model-load')!.hidden = !localModel;
     field('localModel').disabled = !localModel;
-    field('cacheModelPlans').disabled = !localModel;
+    const modelInference = localModel || (field('inferenceMode').value === 'remote' && socketInference);
+    el('plan-cache-field').hidden = !modelInference;
+    field('cacheModelPlans').disabled = !modelInference;
     const profile = BROWSER_MODEL_PROFILES.find(candidate => candidate.id === field('localModel').value);
     el('local-model-help').textContent = profile?.detail ?? '';
     const modelChanged = field('inferenceMode').value !== config.inferenceMode || field('localModel').value !== config.localModel;
@@ -163,6 +167,7 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
     (field('speculation') as HTMLInputElement).checked = value.speculation; el('runtime-error').textContent = ''; updateEndpointFields();
   }
   runtimeForm.addEventListener('change', updateEndpointFields);
+  field('inferenceEndpoint').addEventListener('input', updateEndpointFields);
   action('reset-settings').addEventListener('click', () => fillRuntime(DEFAULT_CONFIG));
   runtimeForm.addEventListener('submit', e => {
     e.preventDefault();
@@ -188,10 +193,10 @@ export function createUI(root: HTMLElement, callbacks: UICallbacks) {
       liveQuery, liveTranslation, translationMinChars: validMinimum ? minimum : config.translationMinChars,
     };
     for (const name of ['coordinator', 'inference', 'database'] as const) if (next[`${name}Mode`] === 'remote') {
-      try { const url = new URL(next[`${name}Endpoint`]); const valid = name === 'coordinator' ? ['ws:', 'wss:'] : ['http:', 'https:']; if (!valid.includes(url.protocol)) throw new Error(); }
-      catch { el('runtime-error').textContent = `Use a valid ${name === 'coordinator' ? 'ws:// or wss://' : 'http:// or https://'} ${name} endpoint.`; return; }
+      try { const url = new URL(next[`${name}Endpoint`]); const valid = name === 'coordinator' ? ['ws:', 'wss:'] : name === 'inference' ? ['http:', 'https:', 'ws:', 'wss:'] : ['http:', 'https:']; if (!valid.includes(url.protocol) || url.username || url.password || url.hash) throw new Error(); }
+      catch { el('runtime-error').textContent = `Use a valid ${name === 'coordinator' ? 'ws:// or wss://' : name === 'inference' ? 'http(s):// or ws(s)://' : 'http:// or https://'} ${name} endpoint without embedded credentials or fragments.`; return; }
     }
-    if (next.inferenceMode === 'remote' && next.inferenceDraftEndpoint) {
+    if (next.inferenceMode === 'remote' && !/^wss?:/i.test(next.inferenceEndpoint) && next.inferenceDraftEndpoint) {
       try { if (!['http:', 'https:'].includes(new URL(next.inferenceDraftEndpoint).protocol)) throw new Error(); }
       catch { el('runtime-error').textContent = 'Use a valid http:// or https:// draft endpoint, or leave it empty.'; return; }
     }

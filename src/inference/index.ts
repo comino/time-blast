@@ -4,7 +4,8 @@ import { abortError, assertNotAborted, MAX_PROMPT_CHARS, MODEL_RESPONSE_SCHEMA, 
 import { parseTemplate } from './templates';
 import { PlanCache } from './plan-cache';
 import { readInferenceDiagnostics } from './diagnostics';
-import { InferenceFailure, inferenceFailureDetails } from './failure';
+import { InferenceFailure, inferenceFailureDetails, readFailureResponse } from './failure';
+import { RemoteSocketInferenceAdapter } from './remote-socket';
 
 export { parseTemplate } from './templates';
 export { validateQueryPlan, parseModelPlan, QUERY_PLAN_SCHEMA, MODEL_RESPONSE_SCHEMA } from './plan';
@@ -18,6 +19,7 @@ export interface InferenceOptions {
   localModel?: LocalModelProfile;
   cacheModelPlans?: boolean;
   fetchImpl?: typeof fetch;
+  wsImpl?: typeof WebSocket;
 }
 
 function frozenContext(context: DatasetContext): DatasetContext {
@@ -295,8 +297,17 @@ export class RemoteInferenceAdapter implements InferenceAdapter {
   private draftTimer?: ReturnType<typeof setTimeout>;
   private draftSending = false;
   private fetcher: typeof fetch;
+  private cacheEnabled: boolean;
 
-  constructor(private options: InferenceOptions = {}) { this.fetcher = options.fetchImpl ?? fetch; }
+  constructor(private options: InferenceOptions = {}) {
+    this.fetcher = options.fetchImpl ?? fetch;
+    this.cacheEnabled = options.cacheModelPlans !== false;
+  }
+
+  setPlanCacheEnabled(enabled: boolean): void {
+    if (this.disposed) throw new Error('Inference adapter has been disposed.');
+    this.cacheEnabled = enabled;
+  }
 
   async prepare(context: DatasetContext): Promise<void> {
     if (this.disposed) throw new Error('Inference adapter has been disposed.');
@@ -324,18 +335,22 @@ export class RemoteInferenceAdapter implements InferenceAdapter {
     signal.addEventListener('abort', abort, { once: true });
     this.controllers.add(controller);
     let diagnostics: InferenceResult['diagnostics'], model: string | undefined;
+    let failureResponse: ReturnType<typeof readFailureResponse>;
     try {
       const response = await this.fetcher(this.endpoint, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: controller.signal,
-        body: JSON.stringify({ text: draft.text, revision: draft.revision, draft, context, schema: MODEL_RESPONSE_SCHEMA }),
+        body: JSON.stringify({ text: draft.text, revision: draft.revision, draft, context, schema: MODEL_RESPONSE_SCHEMA, cachePlans: this.cacheEnabled }),
       });
-      if (!response.ok) { void response.body?.cancel(); throw new Error(`Remote inference failed (${response.status}).`); }
-      const payload = await readBoundedJSON(response);
+      let payload: unknown;
+      try { payload = await readBoundedJSON(response); }
+      catch (error) { if (!response.ok) throw new Error(`Remote inference failed (${response.status}).`); throw error; }
       assertNotAborted(signal);
       if (controller.signal.aborted) throw abortError();
       const envelope = payload && typeof payload === 'object' && !Array.isArray(payload) ? payload as Record<string, unknown> : undefined;
       diagnostics = readInferenceDiagnostics(envelope?.diagnostics);
       model = typeof envelope?.model === 'string' ? envelope.model.slice(0, 200) : undefined;
+      failureResponse = readFailureResponse(envelope?.response);
+      if (!response.ok) throw new Error(typeof envelope?.message === 'string' ? envelope.message.slice(0, 2048) : `Remote inference failed (${response.status}).`);
       const plan = validateQueryPlan(envelope && 'plan' in envelope ? envelope.plan : payload, context);
       return { plan, source: 'remote',
         model,
@@ -344,7 +359,7 @@ export class RemoteInferenceAdapter implements InferenceAdapter {
       };
     } catch (error) {
       if (signal.aborted || controller.signal.aborted) throw abortError();
-      throw new InferenceFailure(error, { source: 'remote', model, diagnostics });
+      throw new InferenceFailure(error, { source: 'remote', model, diagnostics, response: failureResponse });
     } finally { signal.removeEventListener('abort', abort); this.controllers.delete(controller); }
   }
 
@@ -379,5 +394,7 @@ export class RemoteInferenceAdapter implements InferenceAdapter {
 }
 
 export function createInferenceAdapter(mode: InferenceMode, options: InferenceOptions = {}): InferenceAdapter {
-  return mode === 'remote' ? new RemoteInferenceAdapter(options) : new LocalInferenceAdapter(mode, options);
+  return mode === 'remote'
+    ? /^wss?:/i.test(options.endpoint?.trim() ?? '') ? new RemoteSocketInferenceAdapter(options) : new RemoteInferenceAdapter(options)
+    : new LocalInferenceAdapter(mode, options);
 }

@@ -1,0 +1,29 @@
+{
+  "browser": "145.0.7632.0",
+  "backendHealth": {
+    "maxSessions": 64,
+    "model": "test-model",
+    "providerWarmth": "unknown",
+    "status": "ready",
+    "transport": "fastwebsockets",
+    "version": 1
+  },
+  "provider": "local deterministic HTTP/SSE fixture; no real model",
+  "sourceRows": 1209600,
+  "chartPoints": [
+    60480,
+    144,
+    60480
+  ],
+  "sessionConnections": 1,
+  "contextTransmissions": 1,
+  "providerGenerations": 5,
+  "cacheHit": true,
+  "upstreamCancellation": true,
+  "httpValidationRepair": true,
+  "unlistedOriginRejected": true,
+  "liveQuietPeriodObservedMs": 2008.1999998092651,
+  "firstQueryDiagnostics": "Service admission: 0.0 ms \u00b7 Generation wall time: 37.8 ms \u00b7 First token: 6.5 ms \u00b7 Model attempts: 1 \u00b7 Input: 321 tokens \u00b7 Output: 47 tokens. Server generation includes provider transport. First-token and correction timings overlap the total.",
+  "webgpuModelDownloads": 0,
+  "errors": []
+}

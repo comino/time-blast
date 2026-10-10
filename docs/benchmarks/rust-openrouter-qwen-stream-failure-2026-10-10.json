@@ -1,0 +1,236 @@
+{
+  "kind": "real-provider-rust-http",
+  "endpoint": "http://127.0.0.1:8787/infer",
+  "rounds": 2,
+  "dateUtc": "2026-10-10T17:21:03Z",
+  "context": {
+    "id": "backend-live-evaluation-v1",
+    "label": "Synthetic fleet",
+    "rowCount": 1209600,
+    "start": 1788220800000,
+    "end": 1789430400000,
+    "vessels": [
+      "Aurora",
+      "Meridian",
+      "Kestrel",
+      "Solstice",
+      "Atlas",
+      "Nomad"
+    ],
+    "description": "Synthetic vessel telemetry"
+  },
+  "exact": 0,
+  "total": 8,
+  "medianWallMs": 8024.6265,
+  "limits": "Small development check; known questions, not held-out accuracy or latency distributions. HTTP connections to Rust are new per request; provider connection pool is reused. No application plan-cache hits. Provider cache/cold state uncontrolled. No browser or photons.",
+  "requests": [
+    {
+      "round": 1,
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "httpStatus": 502,
+      "wallMs": 7717.573,
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "exact": false,
+      "response": {
+        "message": "Provider repeated its completion marker.",
+        "model": "qwen/qwen3-30b-a3b-instruct-2507",
+        "diagnostics": {
+          "queueMs": 0.00512,
+          "generationMs": 7681.688975,
+          "attempts": 1,
+          "firstTokenMs": 7401.718037000001
+        }
+      }
+    },
+    {
+      "round": 1,
+      "question": "Compare vessel speeds by minute over the last 24 hours",
+      "httpStatus": 502,
+      "wallMs": 8609.725,
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "exact": false,
+      "response": {
+        "message": "Provider repeated its completion marker.",
+        "model": "qwen/qwen3-30b-a3b-instruct-2507",
+        "diagnostics": {
+          "queueMs": 0.0048400000000000006,
+          "generationMs": 8605.314831,
+          "attempts": 1,
+          "firstTokenMs": 6813.261350000001
+        }
+      }
+    },
+    {
+      "round": 1,
+      "question": "Compare vessel wave height by hour over the last 1days as a 3D surface",
+      "httpStatus": 502,
+      "wallMs": 6577.847,
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "exact": false,
+      "response": {
+        "message": "Provider repeated its completion marker.",
+        "model": "qwen/qwen3-30b-a3b-instruct-2507",
+        "diagnostics": {
+          "queueMs": 0.00572,
+          "generationMs": 6575.752673,
+          "attempts": 1,
+          "firstTokenMs": 6296.621826
+        }
+      }
+    },
+    {
+      "round": 1,
+      "question": "Show a heatmap of vessel wind by hour over the last 7 days",
+      "httpStatus": 502,
+      "wallMs": 6362.778,
+      "expected": {
+        "metric": "wind",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "heatmap"
+      },
+      "exact": false,
+      "response": {
+        "message": "Provider repeated its completion marker.",
+        "model": "qwen/qwen3-30b-a3b-instruct-2507",
+        "diagnostics": {
+          "queueMs": 0.00516,
+          "generationMs": 6360.146514,
+          "attempts": 1,
+          "firstTokenMs": 6173.874346
+        }
+      }
+    },
+    {
+      "round": 2,
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "httpStatus": 502,
+      "wallMs": 7053.284,
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "exact": false,
+      "response": {
+        "message": "Provider repeated its completion marker.",
+        "model": "qwen/qwen3-30b-a3b-instruct-2507",
+        "diagnostics": {
+          "queueMs": 0.0054,
+          "generationMs": 7051.393145,
+          "attempts": 1,
+          "firstTokenMs": 6626.433967
+        }
+      }
+    },
+    {
+      "round": 2,
+      "question": "Compare vessel speeds by minute over the last 24 hours",
+      "httpStatus": 502,
+      "wallMs": 10382.707,
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "exact": false,
+      "response": {
+        "message": "Provider repeated its completion marker.",
+        "model": "qwen/qwen3-30b-a3b-instruct-2507",
+        "diagnostics": {
+          "queueMs": 0.00592,
+          "generationMs": 10380.760946,
+          "attempts": 1,
+          "firstTokenMs": 7455.336397
+        }
+      }
+    },
+    {
+      "round": 2,
+      "question": "Compare vessel wave height by hour over the last 1days as a 3D surface",
+      "httpStatus": 502,
+      "wallMs": 9849.759,
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "exact": false,
+      "response": {
+        "message": "Provider repeated its completion marker.",
+        "model": "qwen/qwen3-30b-a3b-instruct-2507",
+        "diagnostics": {
+          "queueMs": 0.00612,
+          "generationMs": 9847.717281,
+          "attempts": 1,
+          "firstTokenMs": 8702.896841
+        }
+      }
+    },
+    {
+      "round": 2,
+      "question": "Show a heatmap of vessel wind by hour over the last 7 days",
+      "httpStatus": 502,
+      "wallMs": 8331.68,
+      "expected": {
+        "metric": "wind",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "heatmap"
+      },
+      "exact": false,
+      "response": {
+        "message": "Provider repeated its completion marker.",
+        "model": "qwen/qwen3-30b-a3b-instruct-2507",
+        "diagnostics": {
+          "queueMs": 0.010400999999999999,
+          "generationMs": 8329.543405999999,
+          "attempts": 1,
+          "firstTokenMs": 6731.094816
+        }
+      }
+    }
+  ]
+}

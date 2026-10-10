@@ -352,7 +352,7 @@ export class ResultCard {
       this.part('source').textContent = 'CACHED MODEL PLAN';
     } else if (source && source !== 'template') {
       const stages: string[] = [];
-      for (const [name, value] of [['Model warmup wait', d?.warmupMs], ['Worker queue', d?.queueMs],
+      for (const [name, value] of [['Model warmup wait', d?.warmupMs], [source === 'remote' ? 'Service admission' : 'Worker queue', d?.queueMs],
         ['Generation wall time', d?.generationMs], ['Correction pass', d?.repairMs], ['First token', d?.firstTokenMs],
         ['Prompt processing', d?.prefillMs], ['Token generation', d?.decodeMs],
         ['Grammar setup', d?.grammarInitMs], ['Grammar / token', d?.grammarPerTokenMs]] as const) {
@@ -363,7 +363,9 @@ export class ResultCard {
       if (d?.completionTokens !== undefined) stages.push(`Output: ${integer.format(d.completionTokens)} tokens`);
       if (d?.decodeTokensPerSecond !== undefined) stages.push(`Decode: ${fmt.format(d.decodeTokensPerSecond)} tokens/s`);
       if (d?.prefillTokensPerSecond !== undefined) stages.push(`Prefill: ${fmt.format(d.prefillTokensPerSecond)} tokens/s`);
-      detail.textContent = stages.length ? `${stages.join(' · ')}. ${source === 'webgpu' ? 'Prompt processing includes any grammar setup wait. ' : ''}Engine stages and grammar costs overlap; do not sum these values.`
+      detail.textContent = stages.length ? `${stages.join(' · ')}. ${source === 'remote'
+        ? 'Server generation includes provider transport. First-token and correction timings overlap the total.'
+        : 'Prompt processing includes any grammar setup wait. Engine stages and grammar costs overlap; do not sum these values.'}`
         : 'This inference service did not report a phase breakdown.';
     }
   }

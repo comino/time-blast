@@ -117,6 +117,14 @@ The workspace keeps at most eight cards and 64 MiB of unique result backing allo
 
 ## Remote inference adapter
 
+The [Rust inference prototype](backend-prototype.md) now implements this HTTP
+contract and a persistent `time-blast.inference.v1` WebSocket session. Runtime
+accepts a `ws://` or `wss://` inference endpoint to use that session, sending the
+dataset context once and drafts/cancellation on the existing connection. The
+service owns validation, one correction attempt, bounded per-session plan reuse
+and provider timing diagnostics. Local DuckDB and rendering stay on their existing
+data path. The remote scheduling and database bridges below remain client contracts.
+
 Configure an HTTP(S) inference endpoint. POST JSON:
 
 ```json
@@ -155,7 +163,7 @@ Connect using WebSocket subprotocol `time-blast.v1`. All messages are bounded JS
 
 Server replies with `READY {version:1}`, `PREPARE {epoch,revision,contextId}`, or `ACCEPT {epoch,commitId,revision,contextId}`. `ERROR {message}` reports scheduling failure. PREPARE permits one speculative execution for the current non-composing draft. ACCEPT commits exactly the pending immutable snapshot. Enter immediately cancels the previous foreground, even before ACCEPT, while retaining an exactly matching candidate. Stale epochs, revisions, repeated preparation, and previous commit IDs cannot authorize later work. The browser retains and promotes buffers itself. A 10-second readiness timeout and a 64 KiB socket send-queue budget (existing buffered bytes plus the next UTF-8 message) prevent silent indefinite setup/queue growth. Incoming messages are capped at 16 KiB UTF-8; prompts are checked before transport.
 
-This reference coordinator client and remote adapters are implemented; production services are not included. The adapter placement tests exercise the four inference/database combinations under remote scheduling using controlled service doubles. They do not claim a deployed remote service or a production ClickHouse integration.
+This reference coordinator client and remote database adapter are implemented; their services are not included. The separate Rust inference service is implemented. The adapter placement tests exercise the four inference/database combinations under remote scheduling using controlled service doubles. They do not claim a deployed scheduling service or a production ClickHouse integration.
 
 Remote live translation still needs a matching `PREPARE` for each revision; the client advertises its requested policy in HELLO, but cannot make a server grant scheduling permission sooner. Below-threshold and composing drafts cannot be prepared even if the server sends PREPARE. Local SQL-only candidates remain reusable on ACCEPT without an unnecessary database round trip through the coordinator.
 

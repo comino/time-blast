@@ -72,7 +72,7 @@ export interface InferenceAdapter {
   prepare(context: DatasetContext): Promise<void>;
   observeDraft(draft: Draft): void;
   resolve(draft: Draft, signal: AbortSignal): Promise<InferenceResult>;
-  /** Changes local exact-plan reuse without unloading a warmed model. */
+  /** Changes exact-plan reuse without unloading a warmed model or connection. */
   setPlanCacheEnabled?(enabled: boolean): void;
   dispose(): void;
 }

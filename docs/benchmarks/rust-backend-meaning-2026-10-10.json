@@ -1,0 +1,384 @@
+{
+  "audit": "eight-case-backend-meaning-v1",
+  "endpoint": "http://127.0.0.1:8788/infer",
+  "startedAt": "2026-10-10T17:29:56.185621+00:00",
+  "limitations": "Eight fixed acceptance cases; not a general accuracy estimate. HTTP has no plan cache. Model corrections remain enabled by the service.",
+  "manifestSha256": "263b706652005409df1ed66fe8ab9545255532b3e3a0c34ae391dd9b302d30f3",
+  "frozenBeforeRequests": {
+    "context": {
+      "id": "backend-meaning-frozen-2026-10-10",
+      "label": "North Atlantic synthetic telemetry acceptance context",
+      "rowCount": 1209600,
+      "start": 1788220800000,
+      "end": 1789430400000,
+      "vessels": [
+        "Aurora",
+        "Meridian",
+        "Kestrel",
+        "Solstice",
+        "Atlas",
+        "Nomad"
+      ],
+      "description": "Six fictional vessels, one reading every six seconds, 1–14 September 2026 UTC. Synthetic data."
+    },
+    "cases": [
+      {
+        "id": "named-vessel-max-wind-five-minutes",
+        "question": "Show Meridian's maximum wind speed in 5-minute buckets over the last 48 hours.",
+        "expected": {
+          "metric": "wind",
+          "aggregate": "max",
+          "bucketMinutes": 5,
+          "windowHours": 48,
+          "splitByVessel": false,
+          "vessel": 1,
+          "view": "line"
+        }
+      },
+      {
+        "id": "pooled-water-temperature-six-hours",
+        "question": "Show average water temperature across all vessels together in 6-hour buckets over the last 7 days.",
+        "expected": {
+          "metric": "water_temp",
+          "aggregate": "avg",
+          "bucketMinutes": 360,
+          "windowHours": 168,
+          "splitByVessel": false,
+          "vessel": null,
+          "view": "line"
+        }
+      },
+      {
+        "id": "vessel-density-hourly-day",
+        "question": "Show a density map of vessel speeds in hourly buckets over the last 24 hours.",
+        "expected": {
+          "metric": "speed",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "density"
+        }
+      },
+      {
+        "id": "wide-wave-surface-710-days",
+        "question": "Compare vessel wave heights by hour over the last 710 days as a 3D surface.",
+        "expected": {
+          "metric": "wave_height",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 17040,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "surface"
+        }
+      },
+      {
+        "id": "unsupported-value-filter",
+        "question": "Show hourly average vessel speed over the last 24 hours, but only include readings where wind is above 20 knots.",
+        "expected": {
+          "error": "unsupported_request"
+        }
+      },
+      {
+        "id": "unsupported-correlation",
+        "question": "Plot correlation between vessel speed and wave height over the last 7 days.",
+        "expected": {
+          "error": "unsupported_request"
+        }
+      },
+      {
+        "id": "unsupported-forecast",
+        "question": "Forecast vessel wave height for the next 24 hours.",
+        "expected": {
+          "error": "unsupported_request"
+        }
+      },
+      {
+        "id": "unsupported-photo-and-speed",
+        "question": "Show photos of Aurora alongside her average speed over the last 24 hours.",
+        "expected": {
+          "error": "unsupported_request"
+        }
+      }
+    ]
+  },
+  "results": [
+    {
+      "id": "named-vessel-max-wind-five-minutes",
+      "question": "Show Meridian's maximum wind speed in 5-minute buckets over the last 48 hours.",
+      "expected": {
+        "metric": "wind",
+        "aggregate": "max",
+        "bucketMinutes": 5,
+        "windowHours": 48,
+        "splitByVessel": false,
+        "vessel": 1,
+        "view": "line"
+      },
+      "httpStatus": 200,
+      "wallMs": 490.7170860096812,
+      "response": {
+        "plan": {
+          "metric": "wind",
+          "aggregate": "max",
+          "bucketMinutes": 5,
+          "windowHours": 48,
+          "splitByVessel": false,
+          "vessel": 1,
+          "view": "line"
+        },
+        "model": "google/gemini-2.5-flash-lite",
+        "tokens": 38,
+        "diagnostics": {
+          "queueMs": 0.0007999999999999999,
+          "generationMs": 459.46371600000003,
+          "attempts": 1,
+          "firstTokenMs": 344.137639,
+          "promptTokens": 809,
+          "completionTokens": 38
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan"
+    },
+    {
+      "id": "pooled-water-temperature-six-hours",
+      "question": "Show average water temperature across all vessels together in 6-hour buckets over the last 7 days.",
+      "expected": {
+        "metric": "water_temp",
+        "aggregate": "avg",
+        "bucketMinutes": 360,
+        "windowHours": 168,
+        "splitByVessel": false,
+        "vessel": null,
+        "view": "line"
+      },
+      "httpStatus": 200,
+      "wallMs": 443.57000570744276,
+      "response": {
+        "plan": {
+          "metric": "water_temp",
+          "aggregate": "avg",
+          "bucketMinutes": 360,
+          "windowHours": 168,
+          "splitByVessel": false,
+          "vessel": null,
+          "view": "line"
+        },
+        "model": "google/gemini-2.5-flash-lite",
+        "tokens": 43,
+        "diagnostics": {
+          "queueMs": 0.00092,
+          "generationMs": 442.02222,
+          "attempts": 1,
+          "firstTokenMs": 305.987392,
+          "promptTokens": 809,
+          "completionTokens": 43
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan"
+    },
+    {
+      "id": "vessel-density-hourly-day",
+      "question": "Show a density map of vessel speeds in hourly buckets over the last 24 hours.",
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "density"
+      },
+      "httpStatus": 200,
+      "wallMs": 419.54527888447046,
+      "response": {
+        "plan": {
+          "metric": "speed",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "density"
+        },
+        "model": "google/gemini-2.5-flash-lite",
+        "tokens": 39,
+        "diagnostics": {
+          "queueMs": 0.00108,
+          "generationMs": 417.91637199999997,
+          "attempts": 1,
+          "firstTokenMs": 311.341603,
+          "promptTokens": 806,
+          "completionTokens": 39
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan"
+    },
+    {
+      "id": "wide-wave-surface-710-days",
+      "question": "Compare vessel wave heights by hour over the last 710 days as a 3D surface.",
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 17040,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "httpStatus": 200,
+      "wallMs": 469.7162499651313,
+      "response": {
+        "plan": {
+          "metric": "wave_height",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 17040,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "surface"
+        },
+        "model": "google/gemini-2.5-flash-lite",
+        "tokens": 44,
+        "diagnostics": {
+          "queueMs": 0.00088,
+          "generationMs": 468.408788,
+          "attempts": 1,
+          "firstTokenMs": 308.752199,
+          "promptTokens": 809,
+          "completionTokens": 44
+        }
+      },
+      "correct": true,
+      "classification": "correct_plan"
+    },
+    {
+      "id": "unsupported-value-filter",
+      "question": "Show hourly average vessel speed over the last 24 hours, but only include readings where wind is above 20 knots.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 422,
+      "wallMs": 861.9211460463703,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-2.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.0007999999999999999,
+          "generationMs": 860.625804,
+          "attempts": 2,
+          "repairMs": 386.975647,
+          "firstTokenMs": 377.299642,
+          "promptTokens": 1688,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": true,
+      "classification": "correct_refusal"
+    },
+    {
+      "id": "unsupported-correlation",
+      "question": "Plot correlation between vessel speed and wave height over the last 7 days.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 422,
+      "wallMs": 837.3639690689743,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-2.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.00088,
+          "generationMs": 836.100668,
+          "attempts": 2,
+          "repairMs": 443.544326,
+          "firstTokenMs": 316.870537,
+          "promptTokens": 1666,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": true,
+      "classification": "correct_refusal"
+    },
+    {
+      "id": "unsupported-forecast",
+      "question": "Forecast vessel wave height for the next 24 hours.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 422,
+      "wallMs": 911.0816600732505,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-2.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.00039999999999999996,
+          "generationMs": 909.868239,
+          "attempts": 2,
+          "repairMs": 455.23992400000003,
+          "firstTokenMs": 389.045082,
+          "promptTokens": 1660,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": true,
+      "classification": "correct_refusal"
+    },
+    {
+      "id": "unsupported-photo-and-speed",
+      "question": "Show photos of Aurora alongside her average speed over the last 24 hours.",
+      "expected": {
+        "error": "unsupported_request"
+      },
+      "httpStatus": 422,
+      "wallMs": 771.5320521965623,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "google/gemini-2.5-flash-lite",
+        "diagnostics": {
+          "queueMs": 0.007041,
+          "generationMs": 770.183589,
+          "attempts": 2,
+          "repairMs": 370.690851,
+          "firstTokenMs": 321.315572,
+          "promptTokens": 1668,
+          "completionTokens": 20
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      },
+      "correct": true,
+      "classification": "correct_refusal"
+    }
+  ],
+  "complete": true,
+  "summary": {
+    "correct": 8,
+    "total": 8,
+    "correctSupported": 4,
+    "correctUnsupported": 4
+  }
+}

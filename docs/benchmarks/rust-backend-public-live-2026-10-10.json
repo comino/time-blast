@@ -1,0 +1,248 @@
+{
+  "startedAt": "2026-10-10T17:30:58.722831+00:00",
+  "url": "https://time-blast.46-224-133-201.sslip.io",
+  "kind": "real-provider browser correctness smoke",
+  "limit": "Three fixed questions, model-plan cache disabled; correction can add provider generations.",
+  "timingLimit": "Observed software timings only; no distribution, GPU isolation, or photon measurement.",
+  "success": true,
+  "cases": [
+    {
+      "id": "waves-minute-week",
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "trigger": "enter",
+      "expectedPlan": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "expectedPoints": 60480,
+      "correct": true,
+      "card": {
+        "state": "COMPLETE",
+        "source": "REMOTE MODEL",
+        "points": "60,480",
+        "representation": "line",
+        "queryMeta": "a4efa65b-1 \u00b7 revision 1 \u00b7 google/gemini-2.5-flash-lite",
+        "sql": "-- Logical query. Execution streams its first complete time bucket,\n-- then the remaining buckets in one read-only DuckDB snapshot.\nSELECT (floor(t / 60000) * 60000)::DOUBLE AS x,\n       avg(wave_height)::DOUBLE AS y, vessel::INTEGER AS series,\n       avg(lat)::DOUBLE AS lat, avg(lon)::DOUBLE AS lon\nFROM telemetry\nWHERE t >= 1788825600000 AND t < 1789430400000\nGROUP BY 1, 3\nORDER BY 1, 3",
+        "inferenceDetail": "Service admission: 0.0 ms \u00b7 Generation wall time: 689.3 ms \u00b7 First token: 559.4 ms \u00b7 Model attempts: 1 \u00b7 Input: 800 tokens \u00b7 Output: 41 tokens. Server generation includes provider transport. First-token and correction timings overlap the total.",
+        "latencyDetail": "SQL compile: 3.1 ms. Stage times may overlap; database total includes time to first batch. Run \u2192 draw starts at dispatch; data \u2192 draw starts at delivery to this card. Drawing measures submission, not screen presentation.",
+        "error": "Drawing begins as soon as data arrives.",
+        "timing": {
+          "runToDraw": "816.1 ms",
+          "inference": "692.3 ms",
+          "databaseFirst": "105.9 ms",
+          "databaseTotal": "374.0 ms",
+          "dataToDraw": "0.6 ms"
+        }
+      },
+      "inferenceRequests": [
+        {
+          "id": "remote-1",
+          "revision": 1,
+          "cachePlans": false
+        }
+      ],
+      "response": {
+        "id": "remote-1",
+        "result": {
+          "diagnostics": {
+            "attempts": 1,
+            "completionTokens": 41,
+            "firstTokenMs": 559.442459,
+            "generationMs": 689.312544,
+            "promptTokens": 800,
+            "queueMs": 0.00152
+          },
+          "model": "google/gemini-2.5-flash-lite",
+          "plan": {
+            "aggregate": "avg",
+            "bucketMinutes": 1,
+            "metric": "wave_height",
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line",
+            "windowHours": 168
+          },
+          "tokens": 41
+        },
+        "type": "RESULT"
+      },
+      "inputToInferenceDispatchMs": 47.200000286102295,
+      "expectedSqlFragments": [
+        "floor(t / 60000) * 60000",
+        "avg(wave_height)::DOUBLE AS y",
+        "vessel::INTEGER AS series",
+        "FROM telemetry",
+        "WHERE t >= 1788825600000 AND t < 1789430400000",
+        "GROUP BY 1, 3",
+        "ORDER BY 1, 3"
+      ]
+    },
+    {
+      "id": "speeds-minute-day",
+      "question": "Compare vessel speeds by minute over the last 24 hours",
+      "trigger": "live-after-two-seconds",
+      "expectedPlan": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "expectedPoints": 8640,
+      "correct": true,
+      "card": {
+        "state": "COMPLETE",
+        "source": "REMOTE MODEL",
+        "points": "8,640",
+        "representation": "line",
+        "queryMeta": "a4efa65b-2 \u00b7 revision 2 \u00b7 google/gemini-2.5-flash-lite",
+        "sql": "-- Logical query. Execution streams its first complete time bucket,\n-- then the remaining buckets in one read-only DuckDB snapshot.\nSELECT (floor(t / 60000) * 60000)::DOUBLE AS x,\n       avg(speed)::DOUBLE AS y, vessel::INTEGER AS series,\n       avg(lat)::DOUBLE AS lat, avg(lon)::DOUBLE AS lon\nFROM telemetry\nWHERE t >= 1789344000000 AND t < 1789430400000\nGROUP BY 1, 3\nORDER BY 1, 3",
+        "inferenceDetail": "Service admission: 0.0 ms \u00b7 Generation wall time: 516.4 ms \u00b7 First token: 337.8 ms \u00b7 Model attempts: 1 \u00b7 Input: 800 tokens \u00b7 Output: 38 tokens. Server generation includes provider transport. First-token and correction timings overlap the total.",
+        "latencyDetail": "Preparation began before this run. SQL compile: 0.2 ms. Stage times may overlap; database total includes time to first batch. Run \u2192 draw starts at dispatch; data \u2192 draw starts at delivery to this card. Drawing measures submission, not screen presentation.",
+        "error": "Drawing begins as soon as data arrives.",
+        "timing": {
+          "runToDraw": "520.2 ms",
+          "inference": "518.2 ms",
+          "databaseFirst": "9.6 ms",
+          "databaseTotal": "36.0 ms",
+          "dataToDraw": "0.3 ms"
+        }
+      },
+      "inferenceRequests": [
+        {
+          "id": "remote-2",
+          "revision": 2,
+          "cachePlans": false
+        }
+      ],
+      "response": {
+        "id": "remote-2",
+        "result": {
+          "diagnostics": {
+            "attempts": 1,
+            "completionTokens": 38,
+            "firstTokenMs": 337.79833599999995,
+            "generationMs": 516.3874480000001,
+            "promptTokens": 800,
+            "queueMs": 0.0014
+          },
+          "model": "google/gemini-2.5-flash-lite",
+          "plan": {
+            "aggregate": "avg",
+            "bucketMinutes": 1,
+            "metric": "speed",
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "line",
+            "windowHours": 24
+          },
+          "tokens": 38
+        },
+        "type": "RESULT"
+      },
+      "inputToInferenceDispatchMs": 2001.5,
+      "expectedSqlFragments": [
+        "floor(t / 60000) * 60000",
+        "avg(speed)::DOUBLE AS y",
+        "vessel::INTEGER AS series",
+        "FROM telemetry",
+        "WHERE t >= 1789344000000 AND t < 1789430400000",
+        "GROUP BY 1, 3",
+        "ORDER BY 1, 3"
+      ]
+    },
+    {
+      "id": "waves-hour-one-days-surface",
+      "question": "Compare vessel wave height by hour over the last 1days as a 3D surface",
+      "trigger": "enter",
+      "expectedPlan": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "expectedPoints": 144,
+      "correct": true,
+      "card": {
+        "state": "COMPLETE",
+        "source": "REMOTE MODEL",
+        "points": "144",
+        "representation": "surface",
+        "queryMeta": "a4efa65b-3 \u00b7 revision 3 \u00b7 google/gemini-2.5-flash-lite",
+        "sql": "-- Logical query. Execution streams its first complete time bucket,\n-- then the remaining buckets in one read-only DuckDB snapshot.\nSELECT (floor(t / 3600000) * 3600000)::DOUBLE AS x,\n       avg(wave_height)::DOUBLE AS y, vessel::INTEGER AS series,\n       avg(lat)::DOUBLE AS lat, avg(lon)::DOUBLE AS lon\nFROM telemetry\nWHERE t >= 1789344000000 AND t < 1789430400000\nGROUP BY 1, 3\nORDER BY 1, 3",
+        "inferenceDetail": "Service admission: 0.0 ms \u00b7 Generation wall time: 653.4 ms \u00b7 First token: 583.6 ms \u00b7 Model attempts: 1 \u00b7 Input: 641 tokens \u00b7 Output: 41 tokens. Server generation includes provider transport. First-token and correction timings overlap the total.",
+        "latencyDetail": "SQL compile: 0.2 ms. Stage times may overlap; database total includes time to first batch. Run \u2192 draw starts at dispatch; data \u2192 draw starts at delivery to this card. Drawing measures submission, not screen presentation.",
+        "error": "Drawing begins as soon as data arrives.",
+        "timing": {
+          "runToDraw": "685.9 ms",
+          "inference": "654.8 ms",
+          "databaseFirst": "15.2 ms",
+          "databaseTotal": "38.6 ms",
+          "dataToDraw": "2.0 ms"
+        }
+      },
+      "inferenceRequests": [
+        {
+          "id": "remote-3",
+          "revision": 3,
+          "cachePlans": false
+        }
+      ],
+      "response": {
+        "id": "remote-3",
+        "result": {
+          "diagnostics": {
+            "attempts": 1,
+            "completionTokens": 41,
+            "firstTokenMs": 583.61635,
+            "generationMs": 653.395414,
+            "promptTokens": 641,
+            "queueMs": 0.0018
+          },
+          "model": "google/gemini-2.5-flash-lite",
+          "plan": {
+            "aggregate": "avg",
+            "bucketMinutes": 60,
+            "metric": "wave_height",
+            "splitByVessel": true,
+            "vessel": null,
+            "view": "surface",
+            "windowHours": 24
+          },
+          "tokens": 41
+        },
+        "type": "RESULT"
+      },
+      "inputToInferenceDispatchMs": 26.5,
+      "expectedSqlFragments": [
+        "floor(t / 3600000) * 3600000",
+        "avg(wave_height)::DOUBLE AS y",
+        "vessel::INTEGER AS series",
+        "FROM telemetry",
+        "WHERE t >= 1789344000000 AND t < 1789430400000",
+        "GROUP BY 1, 3",
+        "ORDER BY 1, 3"
+      ]
+    }
+  ],
+  "browser": "145.0.7632.0",
+  "endpoint": "wss://time-blast.46-224-133-201.sslip.io/api/inference/session",
+  "planCacheEnabled": false,
+  "sourceRows": 1209600,
+  "webgpuAvailable": false,
+  "providerWarmth": "unknown; service readiness is not provider warmup",
+  "screenshot": "Not retained: captured during a later layout redraw; correctness/timings recorded before that redraw.",
+  "pageErrors": [],
+  "webgpuModelDownloads": [],
+  "inferenceRequestCount": 3
+}

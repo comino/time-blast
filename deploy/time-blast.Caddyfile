@@ -1,6 +1,13 @@
 time-blast.46-224-133-201.sslip.io {
 	root * /srv/time-blast/current
 
+	# Inference control and validated plans only. DuckDB/Arrow remain in-browser.
+	handle_path /api/inference/* {
+		reverse_proxy 127.0.0.1:8787 {
+			flush_interval -1
+		}
+	}
+
 	# The build ships compressed DuckDB engines. Decode in the HTTP stack so
 	# fetchEngineWasm can use the response directly, avoiding a JS decompression.
 	@engine path /assets/*.wasm.gz

@@ -1,0 +1,324 @@
+{
+  "kind": "real-provider-rust-http",
+  "endpoint": "http://127.0.0.1:8788/infer",
+  "rounds": 2,
+  "dateUtc": "2026-10-10T17:29:56Z",
+  "context": {
+    "id": "backend-live-evaluation-v1",
+    "label": "Synthetic fleet",
+    "rowCount": 1209600,
+    "start": 1788220800000,
+    "end": 1789430400000,
+    "vessels": [
+      "Aurora",
+      "Meridian",
+      "Kestrel",
+      "Solstice",
+      "Atlas",
+      "Nomad"
+    ],
+    "description": "Synthetic vessel telemetry"
+  },
+  "exact": 8,
+  "total": 8,
+  "medianWallMs": 521.38,
+  "limits": "Small development check; known questions, not held-out accuracy or latency distributions. HTTP connections to Rust are new per request; provider connection pool is reused. No application plan-cache hits. Provider cache/cold state uncontrolled. No browser or photons.",
+  "requests": [
+    {
+      "round": 1,
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "httpStatus": 200,
+      "wallMs": 591.521,
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "exact": true,
+      "response": {
+        "plan": {
+          "metric": "wave_height",
+          "aggregate": "avg",
+          "bucketMinutes": 1,
+          "windowHours": 168,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "line"
+        },
+        "model": "google/gemini-2.5-flash-lite",
+        "tokens": 41,
+        "diagnostics": {
+          "queueMs": 0.00064,
+          "generationMs": 559.690737,
+          "attempts": 1,
+          "firstTokenMs": 438.867327,
+          "promptTokens": 800,
+          "completionTokens": 41
+        }
+      }
+    },
+    {
+      "round": 1,
+      "question": "Compare vessel speeds by minute over the last 24 hours",
+      "httpStatus": 200,
+      "wallMs": 506.093,
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "exact": true,
+      "response": {
+        "plan": {
+          "metric": "speed",
+          "aggregate": "avg",
+          "bucketMinutes": 1,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "line"
+        },
+        "model": "google/gemini-2.5-flash-lite",
+        "tokens": 38,
+        "diagnostics": {
+          "queueMs": 0.0009599999999999999,
+          "generationMs": 504.616882,
+          "attempts": 1,
+          "firstTokenMs": 355.260988,
+          "promptTokens": 800,
+          "completionTokens": 38
+        }
+      }
+    },
+    {
+      "round": 1,
+      "question": "Compare vessel wave height by hour over the last 1days as a 3D surface",
+      "httpStatus": 200,
+      "wallMs": 491.614,
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "exact": true,
+      "response": {
+        "plan": {
+          "metric": "wave_height",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "surface"
+        },
+        "model": "google/gemini-2.5-flash-lite",
+        "tokens": 41,
+        "diagnostics": {
+          "queueMs": 0.0007999999999999999,
+          "generationMs": 490.136396,
+          "attempts": 1,
+          "firstTokenMs": 350.744791,
+          "promptTokens": 806,
+          "completionTokens": 41
+        }
+      }
+    },
+    {
+      "round": 1,
+      "question": "Show a heatmap of vessel wind by hour over the last 7 days",
+      "httpStatus": 200,
+      "wallMs": 488.618,
+      "expected": {
+        "metric": "wind",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "heatmap"
+      },
+      "exact": true,
+      "response": {
+        "plan": {
+          "metric": "wind",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 168,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "heatmap"
+        },
+        "model": "google/gemini-2.5-flash-lite",
+        "tokens": 40,
+        "diagnostics": {
+          "queueMs": 0.00076,
+          "generationMs": 487.240987,
+          "attempts": 1,
+          "firstTokenMs": 329.403029,
+          "promptTokens": 802,
+          "completionTokens": 40
+        }
+      }
+    },
+    {
+      "round": 2,
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "httpStatus": 200,
+      "wallMs": 528.973,
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "exact": true,
+      "response": {
+        "plan": {
+          "metric": "wave_height",
+          "aggregate": "avg",
+          "bucketMinutes": 1,
+          "windowHours": 168,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "line"
+        },
+        "model": "google/gemini-2.5-flash-lite",
+        "tokens": 41,
+        "diagnostics": {
+          "queueMs": 0.00052,
+          "generationMs": 527.579832,
+          "attempts": 1,
+          "firstTokenMs": 387.002767,
+          "promptTokens": 800,
+          "completionTokens": 41
+        }
+      }
+    },
+    {
+      "round": 2,
+      "question": "Compare vessel speeds by minute over the last 24 hours",
+      "httpStatus": 200,
+      "wallMs": 531.313,
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "exact": true,
+      "response": {
+        "plan": {
+          "metric": "speed",
+          "aggregate": "avg",
+          "bucketMinutes": 1,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "line"
+        },
+        "model": "google/gemini-2.5-flash-lite",
+        "tokens": 38,
+        "diagnostics": {
+          "queueMs": 0.0007199999999999999,
+          "generationMs": 530.160115,
+          "attempts": 1,
+          "firstTokenMs": 359.758864,
+          "promptTokens": 800,
+          "completionTokens": 38
+        }
+      }
+    },
+    {
+      "round": 2,
+      "question": "Compare vessel wave height by hour over the last 1days as a 3D surface",
+      "httpStatus": 200,
+      "wallMs": 513.787,
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "exact": true,
+      "response": {
+        "plan": {
+          "metric": "wave_height",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "surface"
+        },
+        "model": "google/gemini-2.5-flash-lite",
+        "tokens": 41,
+        "diagnostics": {
+          "queueMs": 0.00084,
+          "generationMs": 512.5010159999999,
+          "attempts": 1,
+          "firstTokenMs": 348.818799,
+          "promptTokens": 806,
+          "completionTokens": 41
+        }
+      }
+    },
+    {
+      "round": 2,
+      "question": "Show a heatmap of vessel wind by hour over the last 7 days",
+      "httpStatus": 200,
+      "wallMs": 542.152,
+      "expected": {
+        "metric": "wind",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "heatmap"
+      },
+      "exact": true,
+      "response": {
+        "plan": {
+          "metric": "wind",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 168,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "heatmap"
+        },
+        "model": "google/gemini-2.5-flash-lite",
+        "tokens": 40,
+        "diagnostics": {
+          "queueMs": 0.0005600000000000001,
+          "generationMs": 541.0192999999999,
+          "attempts": 1,
+          "firstTokenMs": 400.548717,
+          "promptTokens": 802,
+          "completionTokens": 40
+        }
+      }
+    }
+  ]
+}

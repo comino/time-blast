@@ -10,13 +10,15 @@ The application runs in the browser. Inference and database execution can each r
 
 **Data-path requirement:** stream columnar buffers all the way into the chart, draw on the first complete timestamp/value point, and eliminate every avoidable copy. No full-result collection, per-row object conversion, or whole-workspace save may gate the first mark. Account explicitly for engine, browser, and GPU boundaries that still require copying.
 
-**Status:** working browser prototype. Embedded DuckDB-Wasm, a Rust/Wasm query compiler, real WebLLM inference, draft transport, speculative execution, and streaming canvas charts are implemented. Remote adapters and their contracts are included; remote services and ClickHouse execution are the next milestone. The design notes below also contain experiments that are not implemented yet.
+**Status:** working browser prototype and Rust inference backend. Embedded DuckDB-Wasm, a Rust/Wasm query compiler, local WebLLM or remote model inference, draft transport, speculative execution, and streaming canvas charts are implemented. The [Rust service](docs/backend-prototype.md) uses persistent WebSocket sessions and calls OpenRouter or a compatible inference endpoint directly through a pooled HTTP client. Remote database/ClickHouse execution remains a future milestone. The design notes below also contain experiments that are not implemented yet.
 
 ## Run it
 
 Open the [live browser prototype](https://time-blast.46-224-133-201.sslip.io).
 The public demo uses synthetic data; the source repository remains private.
 HTTPS hosting and repeatable deployment are described in [deploy/README.md](deploy/README.md).
+
+The deployed demo defaults to **Rust backend inference → OpenRouter → Gemini 2.5 Flash Lite**, with DuckDB and the canvas in your browser. It needs no local model download. One persistent inference socket carries drafts, requests and cancellation. Local WebGPU remains selectable in Runtime settings. See [the service, configuration and verification limits](docs/backend-prototype.md).
 
 ```sh
 pnpm install --frozen-lockfile
@@ -31,7 +33,7 @@ Try **“Compare vessel wave height by minute over the last 7 days”** for **60
 
 Ask for the presentation directly: **“Show a heatmap of vessel wind by hour over the last 7 days”**, **“Compare vessel wave height by hour over the last 7 days as a 3D surface”**, or **“Show voyage tracks of vessel speeds by hour over the last 7 days”**. Rotate surfaces and scrub or play voyages inside their cards. All ten supported view types are part of the validated inference intent.
 
-The default **Local language model · WebGPU** mode uses local **Qwen2.5-1.5B with 4-bit weights** and bypasses templates, including for example questions. An unavailable model reports an error instead of falling back to rules. Its weights download is about **0.87 GB**; estimated GPU memory is **1.6 GB with f16**, or **1.9 GB with f32**. Runtime also offers 0.5B and 4B profiles, all with 4-bit weights. The smaller default follows a reported 14-second first run with 4B; it made more interpretation errors than 4B in the [native comparisons](evals/results/README.md). No speedup factor on the user's GPU is established. Changing models preserves the loaded database. For fresh inference trials, turn off **Reuse exact model plans**; this clears cached plans and keeps the model warm.
+Browser-only builds default to **Local language model · WebGPU**, which uses local **Qwen2.5-1.5B with 4-bit weights** and bypasses templates, including for example questions. An unavailable model reports an error instead of falling back to rules. Its weights download is about **0.87 GB**; estimated GPU memory is **1.6 GB with f16**, or **1.9 GB with f32**. Runtime also offers 0.5B and 4B profiles, all with 4-bit weights. The smaller default follows a reported 14-second first run with 4B; it made more interpretation errors than 4B in the [native comparisons](evals/results/README.md). No speedup factor on the user's GPU is established. Changing models preserves the loaded database. For fresh inference trials, turn off **Reuse exact model plans**; this clears cached plans and keeps the model warm.
 
 Auto and template-only modes remain explicit Runtime options. Auto uses conservative exact templates for recognized requests and the model for other wording; templates are labeled explicitly.
 
@@ -41,7 +43,7 @@ If the local model refuses, returns an invalid plan, or reaches its output token
 
 Try “Average speed by hour”, “Maximum wind by hour”, or “Show wave height over the last 7 days”. The narrow intent supports four metrics, avg/min/max, fixed time buckets, trailing windows, and vessel filtering/grouping. A request for 710 days retains that requested window and queries the available overlap: the bundled dataset supplies 14 days, while a remote dataset can supply more. Model output is validated and compiled from allowlisted fields; arbitrary generated SQL is never executed. A valid plan can still misunderstand natural language—inspect its meaning before relying on it.
 
-Default execution stays in your browser. Assets and model weights must download initially; offline-first installation is not implemented. Runtime settings independently select browser or remote coordination, inference, and database adapters. They require services implementing [the prototype contracts](docs/prototype.md); entering an OpenRouter or ClickHouse URL directly does not provide those contracts. No remote API keys are bundled or stored.
+An ordinary development build defaults to browser execution. A deployment can set `VITE_INFERENCE_ENDPOINT=wss://your-host/api/inference/session` to default to the Rust backend, keeping DuckDB and rendering local. Local model assets must download initially when WebGPU mode is selected; remote inference needs no browser model download. Runtime settings independently select browser or remote coordination, inference, and database adapters. They require services implementing [the prototype contracts](docs/prototype.md); entering an OpenRouter or ClickHouse URL directly does not provide those contracts. Provider API keys stay in the Rust service environment.
 
 ![The prototype showing real query results from the bundled synthetic dataset](docs/screenshots/prototype.png)
 

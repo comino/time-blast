@@ -3,6 +3,11 @@
 Status: approach collection, not an implementation decision or benchmark result.
 Primary documentation checked on 2026-10-09; pin crate versions, features, OS, and browser builds before testing.
 
+Update 2026-10-10: the [Rust inference prototype](backend-prototype.md) now uses
+Axum/Tokio with fastwebsockets and a pooled reqwest/rustls provider connection.
+The ClickHouse relay and comparative transport experiments below remain proposals;
+this implementation does not establish a globally fastest socket stack.
+
 A native Rust service acting as a bounded streaming relay for ClickHouse is the primary service candidate.
 The intended path is ClickHouse → Rust relay → browser columnar decoder → chart, beginning with the first complete drawable point.
 Browser DuckDB-Wasm is the initial prototype backend; native DuckDB embedded in Rust is an optional comparison, not the production destination.

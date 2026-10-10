@@ -1,0 +1,165 @@
+{
+  "kind": "real-provider-rust-http",
+  "endpoint": "http://127.0.0.1:8787/infer",
+  "rounds": 1,
+  "dateUtc": "2026-10-10T17:26:37Z",
+  "context": {
+    "id": "backend-live-evaluation-v1",
+    "label": "Synthetic fleet",
+    "rowCount": 1209600,
+    "start": 1788220800000,
+    "end": 1789430400000,
+    "vessels": [
+      "Aurora",
+      "Meridian",
+      "Kestrel",
+      "Solstice",
+      "Atlas",
+      "Nomad"
+    ],
+    "description": "Synthetic vessel telemetry"
+  },
+  "exact": 2,
+  "total": 4,
+  "medianWallMs": 17073.497,
+  "limits": "Small development check; known questions, not held-out accuracy or latency distributions. HTTP connections to Rust are new per request; provider connection pool is reused. No application plan-cache hits. Provider cache/cold state uncontrolled. No browser or photons.",
+  "requests": [
+    {
+      "round": 1,
+      "question": "Compare vessel wave height by minute over the last 7 days",
+      "httpStatus": 504,
+      "wallMs": 25031.67,
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "exact": false,
+      "response": {
+        "message": "Inference exceeded its total deadline.",
+        "model": "qwen/qwen3-30b-a3b-instruct-2507",
+        "diagnostics": {
+          "queueMs": 0.00116,
+          "generationMs": 25000.177856000002,
+          "attempts": 2,
+          "repairMs": 7059.805096,
+          "firstTokenMs": 16672.550756,
+          "promptTokens": 630,
+          "completionTokens": 8
+        }
+      }
+    },
+    {
+      "round": 1,
+      "question": "Compare vessel speeds by minute over the last 24 hours",
+      "httpStatus": 200,
+      "wallMs": 18359.379,
+      "expected": {
+        "metric": "speed",
+        "aggregate": "avg",
+        "bucketMinutes": 1,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "line"
+      },
+      "exact": true,
+      "response": {
+        "plan": {
+          "metric": "speed",
+          "aggregate": "avg",
+          "bucketMinutes": 1,
+          "windowHours": 24,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "line"
+        },
+        "model": "qwen/qwen3-30b-a3b-instruct-2507",
+        "tokens": 38,
+        "diagnostics": {
+          "queueMs": 0.0006799999999999999,
+          "generationMs": 18357.816945,
+          "attempts": 1,
+          "firstTokenMs": 7744.587055,
+          "promptTokens": 630,
+          "completionTokens": 38
+        }
+      }
+    },
+    {
+      "round": 1,
+      "question": "Compare vessel wave height by hour over the last 1days as a 3D surface",
+      "httpStatus": 422,
+      "wallMs": 15787.615,
+      "expected": {
+        "metric": "wave_height",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 24,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "surface"
+      },
+      "exact": false,
+      "response": {
+        "message": "The model marked this request as unsupported.",
+        "model": "qwen/qwen3-30b-a3b-instruct-2507",
+        "diagnostics": {
+          "queueMs": 0.00076,
+          "generationMs": 15786.141666000001,
+          "attempts": 2,
+          "repairMs": 6372.077601,
+          "firstTokenMs": 8945.963023,
+          "promptTokens": 1338,
+          "completionTokens": 17
+        },
+        "response": {
+          "text": "{\"result\":{\"error\":\"unsupported_request\"}}",
+          "truncated": false,
+          "finishReason": "stop"
+        }
+      }
+    },
+    {
+      "round": 1,
+      "question": "Show a heatmap of vessel wind by hour over the last 7 days",
+      "httpStatus": 200,
+      "wallMs": 8805.076,
+      "expected": {
+        "metric": "wind",
+        "aggregate": "avg",
+        "bucketMinutes": 60,
+        "windowHours": 168,
+        "splitByVessel": true,
+        "vessel": null,
+        "view": "heatmap"
+      },
+      "exact": true,
+      "response": {
+        "plan": {
+          "metric": "wind",
+          "aggregate": "avg",
+          "bucketMinutes": 60,
+          "windowHours": 168,
+          "splitByVessel": true,
+          "vessel": null,
+          "view": "heatmap"
+        },
+        "model": "qwen/qwen3-30b-a3b-instruct-2507",
+        "tokens": 40,
+        "diagnostics": {
+          "queueMs": 0.00084,
+          "generationMs": 8803.312324,
+          "attempts": 1,
+          "firstTokenMs": 7109.30201,
+          "promptTokens": 632,
+          "completionTokens": 40
+        }
+      }
+    }
+  ]
+}

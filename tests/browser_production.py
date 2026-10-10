@@ -11,7 +11,7 @@ import json
 from playwright.sync_api import sync_playwright
 
 
-def run(url, screenshot):
+def run(url, screenshot, default_inference='webgpu'):
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True, args=["--no-sandbox"])
         page = browser.new_page(viewport={"width": 1440, "height": 1000})
@@ -38,10 +38,17 @@ def run(url, screenshot):
         before = len(engines)
         assert before == 1, engines
         page.get_by_role('button', name='Runtime settings', exact=True).click()
-        assert page.locator('[name="inferenceMode"]').input_value() == 'webgpu'
+        assert page.locator('[name="inferenceMode"]').input_value() == default_inference
         assert page.locator('[name="localModel"]').input_value() == 'qwen-1.5b'
         assert page.locator('[name="cacheModelPlans"]').is_checked()
-        page.locator('[data-action="close-settings"]').click()
+        if default_inference == 'remote':
+            assert page.locator('[name="inferenceEndpoint"]').input_value().startswith('wss://')
+            # Keep the unavailable-model/no-fallback regression independent from
+            # live provider performance, even on a deployment defaulting remote.
+            page.locator('[name="inferenceMode"]').select_option('webgpu')
+            page.get_by_role('button', name='Apply runtime').click()
+        else:
+            page.locator('[data-action="close-settings"]').click()
         assert page.evaluate("!('gpu' in navigator)")
         assert page.locator('[data-action="live-query"]').get_attribute('aria-checked') == 'true'
         page.locator('[data-el="input"]').fill('Compare vessel speeds by hour over the last 24 hours')
@@ -257,7 +264,7 @@ def run(url, screenshot):
         assert not failed_assets, failed_assets
         assert not errors, errors
         print(json.dumps({"url": url, "chromium": browser.version, "dataset_rows": 1_209_600,
-                          "dense_chart_points": 60_480, "default_inference_mode": "webgpu",
+                          "dense_chart_points": 60_480, "default_inference_mode": default_inference,
                           "unavailable_webgpu_no_template_fallback": True,
                           "explicit_template_live_chart_without_enter": True,
                           "live_pin_without_query": True, "stage_timings_visible": True,
@@ -276,5 +283,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", required=True)
     parser.add_argument("--screenshot")
+    parser.add_argument("--default-inference", choices=['webgpu', 'remote'], default='webgpu')
     args = parser.parse_args()
-    run(args.url, args.screenshot)
+    run(args.url, args.screenshot, args.default_inference)

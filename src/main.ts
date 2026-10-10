@@ -12,7 +12,11 @@ let client:CoordinatorClient|undefined;
 let database:DatabaseAdapter|undefined;
 let inference:InferenceAdapter|undefined;
 let context:DatasetContext|undefined;
-let config={...DEFAULT_CONFIG};
+// Deployment chooses placement; an ordinary development build stays browser-only.
+// The endpoint is public configuration. Provider credentials exist only in Rust.
+const deployedInferenceEndpoint = import.meta.env.VITE_INFERENCE_ENDPOINT?.trim();
+let config={...DEFAULT_CONFIG,...(deployedInferenceEndpoint
+  ? {inferenceMode:'remote' as const,inferenceEndpoint:deployedInferenceEndpoint} : {})};
 let generation=0;
 let draftText='';
 let draftComposing=false;

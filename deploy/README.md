@@ -2,8 +2,9 @@
 
 The public synthetic-data demo is served at
 https://time-blast.46-224-133-201.sslip.io by the host's existing Caddy service.
-The GitHub repository remains private. No inference or database server is hosted
-here: the default runtime executes those components in the visiting browser.
+The GitHub repository remains private. The Rust inference service can be exposed
+at `/api/inference/` through the included Caddy configuration. Database execution
+and rendering remain in the visiting browser.
 
 Build and atomically deploy:
 
@@ -35,3 +36,37 @@ only after allowing open clients to expire; this script never deletes them.
 Browser tests must verify real queries over HTTPS, not just an HTML status code.
 Model downloads depend on the model host and require a supported WebGPU device;
 serving the page over HTTPS does not establish inference performance.
+
+## Rust inference service
+
+Build and test the service first:
+
+```sh
+cargo test --locked --manifest-path crates/inference-server/Cargo.toml
+cargo build --release --locked --manifest-path crates/inference-server/Cargo.toml
+# First install only: preserve the existing private API-key environment variable.
+sudo --preserve-env=OPENROUTER_API_KEY python3 scripts/deploy-inference.py \
+  crates/inference-server/target/release/time-blast-inference
+```
+
+The script installs the service binary and systemd unit, writes a root-readable
+`/etc/time-blast/inference.env` on first installation and preserves it thereafter.
+Edit that file to change the provider/model; credentials never enter the build.
+The unit is specific to this demo host's `fred` service user. It binds loopback
+port 8787. Check `systemctl status time-blast-inference` and `/health` before
+installing the updated Caddy site and reloading Caddy.
+
+Build the browser with its public endpoint to enable remote inference by default:
+
+```sh
+VITE_INFERENCE_ENDPOINT=wss://time-blast.46-224-133-201.sslip.io/api/inference/session pnpm build
+sudo python3 scripts/deploy-static.py dist
+python3 tests/browser_production.py \
+  --url https://time-blast.46-224-133-201.sslip.io --default-inference remote
+```
+
+That production smoke deliberately switches to local WebGPU/templates to check
+unavailable-model and real database regressions without spending provider tokens.
+Live model verification is separate. See [the backend contract and limits](../docs/backend-prototype.md).
+The prototype has origin checks, bounded sessions/concurrency and process-local
+generation budgets, but no user authentication or durable billing quota.
