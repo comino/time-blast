@@ -162,4 +162,7 @@ export interface AxisTicks {
   /** Plot area in CSS pixels relative to the canvas. */
   plot: { left: number; top: number; width: number; height: number };
   legend?: Array<{ label: string; color: string }>;
+  /** Free-positioned text (polar views): CSS px from the canvas's top-left, vertically centred;
+   * `anchor` 0 = starts at x, 0.5 = centred, 1 = ends at x. */
+  labels?: Array<{ x: number; y: number; label: string; anchor: number }>;
 }

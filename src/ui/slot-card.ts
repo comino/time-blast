@@ -41,6 +41,7 @@ export class SlotCardView implements SlotCard, BoardItem {
   private readonly q: Record<string, HTMLElement> = {};
   private readonly xLabels: HTMLSpanElement[] = [];
   private readonly yLabels: HTMLSpanElement[] = [];
+  private readonly freeLabels: HTMLSpanElement[] = [];
   private chosen: ViewName | null = null;
   private available: ViewName[] = [];
   private playing = 0;
@@ -139,6 +140,13 @@ export class SlotCardView implements SlotCard, BoardItem {
       const span = this.yLabels[i];
       if (span.textContent !== tick.label) span.textContent = tick.label;
       span.style.transform = `translate(${plot.left - 6}px,${tick.at}px) translate(-100%,-50%)`;
+    });
+    const free = ticks.labels ?? [];
+    this.labels(this.freeLabels, free.length, 'axis-free');
+    free.forEach((l, i) => {
+      const span = this.freeLabels[i];
+      if (span.textContent !== l.label) span.textContent = l.label;
+      span.style.transform = `translate(${l.x}px,${l.y}px) translate(${-l.anchor * 100}%,-50%)`;
     });
     layer.hidden = false;
     const legend = this.q.legend;

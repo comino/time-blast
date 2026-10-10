@@ -476,7 +476,8 @@ impl Renderer {
             if let (Some(f), true) = (r.family.as_mut(), r.view != View::Table) {
                 f.upload(r.view, &mut gpu);
                 let model = f.axes(r.view, &r.store);
-                let axes: AxesOut = layout(&model, s.css[0], s.css[1]);
+                let mut axes: AxesOut = layout(&model, s.css[0], s.css[1]);
+                f.decorate(r.view, &r.store, &mut axes);
                 let json = axes.to_json();
                 if json != s.axes_json || s.grid.id == 0 {
                     axes.grid(s.dpr, &mut s.grid_data);
@@ -678,7 +679,7 @@ mod tests {
         r.schema(1, 0, cols());
         let b = batch(&[(0, 1.0), (1000, 2.0)]);
         r.batch(1, 0, 2, &raw(&b));
-        assert_eq!(r.views(1), View::Line.bit() | View::Bar.bit() | View::Scatter.bit() | View::Table.bit());
+        assert_eq!(r.views(1), View::Line.bit() | View::Bar.bit() | View::Scatter.bit() | View::Seasons.bit() | View::Table.bit());
         r.clear_events();
         r.set_view(1, Some(View::Bar));
         let e = events(&r);
