@@ -48,6 +48,8 @@ python3 tests/browser_live_query.py
 - The test suite covers strict intent grammar/validation, actual model-worker message/cancellation behavior through controlled doubles, remote inference request/cancellation isolation, speculative promotion, stale query rejection, primitive Arrow backing-buffer identity/slices, stream truncation/EOS/error handling, bounded query admission, and ordered chart indices.
 - Transport tests cover canceled messages still queued in MessageChannel, stale remote epochs, repeated identical commits, and all four inference/database placement combinations under a remote scheduling double. No live remote service is implied.
 
+The **2026-10-10 public HTTPS smoke passed** on code revision `64d3802`, release `20261010T000722Z-bebaed19`. It verifies the Qwen3-4B selection and enabled exact-plan cache, no template fallback when WebGPU is deliberately unavailable, then explicitly selects templates for real DuckDB checks. The enabled first-bucket strategy is visible in SQL details and trace events. The 1,209,600-row dataset produces 60,480 points; live typing waits two seconds, Enter bypasses the pause, prepared data promotes without another query, runtime changes retain DuckDB, and four independent cards preserve advanced views. Both reported surface/window questions pass. There are no page errors or failed app assets. This deployment check does not claim live browser model inference.
+
 ## Browser checks
 
 Python Playwright with Chromium **145.0.7632.0** on this Linux host:
