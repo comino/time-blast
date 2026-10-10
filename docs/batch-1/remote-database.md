@@ -153,10 +153,12 @@ TIMESTAMP '2026-09-08' GROUP BY ALL ORDER BY 1, 2`
 | DuckDB-Wasm in worker, run 2 | 906 / 1020 | 437 / 675 | 519 / 774 | — |
 | ClickHouse remote, run 1 | 444 / 508 | 128 / 194 | 200 / 379 | 113 / 137 |
 | ClickHouse remote, run 2 | 269 / 315 | 144 / 239 | 249 / 361 | 131 / 151 |
+| DuckDB-Wasm in worker, run 3 | 750 / 958 | 339 / 846 | 406 / 923 | — |
+| ClickHouse remote, run 3 (with send window) | 442 / 564 | 219 / 461 | 381 / 763 | 205 / 234 |
 
 For reference, `docs/batch-1/engine.md` measured DuckDB-Wasm warm at 99–110 ms first batch on a
-quieter host. On this host ClickHouse remote is ~2–3× faster to the first batch than in-browser
-DuckDB, because aggregation runs multi-threaded in ClickHouse while DuckDB-Wasm is one thread
+quieter host. On this host ClickHouse remote reaches the first batch ~1.5–3× sooner than
+in-browser DuckDB (warm p50), because aggregation runs multi-threaded in ClickHouse while DuckDB-Wasm is one thread
 sharing the worker. Transfer adds: uplink (EXEC send → `EXEC_RECEIVED`, cross-process clocks on
 one host) p50 2.6 ms, downlink of the first 200 KB batch p50 10.6 ms.
 
