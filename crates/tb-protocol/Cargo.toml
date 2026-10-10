@@ -1,0 +1,9 @@
+[package]
+name = "tb-protocol"
+description = "Frame codec for time-blast protocol v1 (tb1). No dependencies; native and wasm32."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["rlib"]

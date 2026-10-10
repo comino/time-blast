@@ -1,0 +1,19 @@
+# Workspace for the browser/native hot-path crates. The inference server keeps its own
+# lockfile and release profile (it is deployed as a native binary) and depends on
+# tb-protocol by path. query-core is legacy and will be deleted in batch 1.
+[workspace]
+resolver = "2"
+members = ["crates/tb-protocol", "crates/tb-coordinator", "crates/tb-render"]
+exclude = ["crates/inference-server", "crates/query-core"]
+
+[workspace.package]
+edition = "2021"
+version = "0.1.0"
+publish = false
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

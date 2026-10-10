@@ -1,0 +1,11 @@
+[package]
+name = "tb-render"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+tb-protocol = { path = "../tb-protocol" }

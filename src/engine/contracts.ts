@@ -1,0 +1,131 @@
+/**
+ * Batch-1 contracts between the pieces built in parallel. See docs/plan-batch-1.md
+ * for ownership and docs/protocol-v1.md for frame semantics. Change these only with
+ * the coordinating agent; every owner builds against them.
+ */
+import type { RecordBatch, Schema } from 'apache-arrow';
+import type { Frame } from '../protocol/frame';
+
+// ───────────────────────── links ─────────────────────────
+
+export type LinkId = 'ui' | 'inference' | 'database' | 'renderer';
+
+/** A frame travelling inside one thread. RESULT_SCHEMA/BATCH carry Arrow objects;
+ * everything else carries bytes. Nothing is encoded on in-process links. */
+export type LocalFrame = Frame<Uint8Array> | Frame<Schema> | Frame<RecordBatch>;
+
+/** One end of a link. In-process, MessagePort and WebSocket links share this shape. */
+export interface Link {
+  readonly id: LinkId;
+  readonly placement: 'in-process' | 'worker' | 'remote';
+  send(frame: LocalFrame): void;
+  /** Exactly one listener per link end. */
+  listen(onFrame: (frame: LocalFrame) => void, onClose?: (reason: string) => void): void;
+  close(): void;
+}
+
+// ───────────────────────── coordinator (owner: coordinator agent) ─────────────────────────
+
+/** JS face of the Rust/Wasm sans-IO coordinator (crates/tb-coordinator). */
+export interface CoordinatorCore {
+  /** Feed one frame received on `link`. `now` is Unix ms. Payloads are copied into
+   * Wasm memory; RESULT_SCHEMA/BATCH must arrive HEADER_ONLY. */
+  input(link: LinkId, frame: Frame<Uint8Array>, now: number): void;
+  /** Advance timers (latency dial, deadlines). */
+  tick(now: number): void;
+  /** Frames the coordinator wants sent, in order. Draining clears the outbox. */
+  drain(): Array<[LinkId, Frame<Uint8Array>]>;
+  /** Earliest Unix ms at which `tick` must be called, or null. */
+  nextDeadline(): number | null;
+  dispose(): void;
+}
+
+// ───────────────────────── database node (owner: engine/database agent) ─────────────────────────
+
+export type DatasetSource =
+  | { kind: 'fixture'; name: 'vessels' | 'vessels-small' }
+  | { kind: 'file'; name: string; file: File }
+  | { kind: 'url'; name: string; url: string };
+
+export interface DatabaseNode {
+  /** Load data and compute the DatasetContext (protocol-v1 "DatasetContext"). */
+  open(source: DatasetSource, contextId: number): Promise<DatasetContext>;
+  /** Handle EXEC/CANCEL frames. Results go out through `emit`: RESULT_SCHEMA and BATCH
+   * as Arrow objects to the renderer, HEADER_ONLY copies plus DONE/ERROR to the coordinator. */
+  handle(frame: Frame<Uint8Array>): void;
+  dispose(): void;
+}
+
+export interface DatasetContext {
+  id: number;
+  name: string;
+  dialect: 'duckdb' | 'clickhouse';
+  description?: string;
+  tables: Array<{
+    name: string;
+    rows: number;
+    columns: Array<{ name: string; type: string; min?: string | number; max?: string | number; distinct?: number; values?: string[] }>;
+    sample?: unknown[][];
+  }>;
+}
+
+// ───────────────────────── renderer (owner: render agent) ─────────────────────────
+
+export type ViewName = 'line' | 'bar' | 'scatter' | 'table' | 'heatmap' | 'surface' | 'map' | 'density' | 'tracks' | 'seasons';
+export type ColumnRole = 'time' | 'category' | 'series' | 'value' | 'measure' | 'lat' | 'lon';
+
+/** JS face of the Rust/Wasm renderer (crates/tb-render) plus its WebGPU/WebGL2 shim. */
+export interface RendererNode {
+  /** Register a render target ahead of any result. */
+  attach(slot: number, canvas: OffscreenCanvas, size: SlotSize): void;
+  resize(slot: number, size: SlotSize): void;
+  detach(slot: number): void;
+  /** null = automatic choice from column roles. */
+  setView(slot: number, view: ViewName | null): void;
+  /** View-specific interaction: surface rotation, track playback position, … */
+  setParam(slot: number, name: string, value: number): void;
+  /** BIND/UNBIND, RESULT_SCHEMA, BATCH, DONE frames. Emits DRAWN to the coordinator. */
+  handle(frame: LocalFrame): void;
+  /** Views available for a slot's current result, for the UI's view picker. */
+  views(slot: number): ViewName[];
+}
+export interface SlotSize { width: number; height: number; devicePixelRatio: number }
+
+// ───────────────────────── UI ⇄ engine worker (owner: UI agent ⇄ engine agent) ─────────────────────────
+
+/** Main thread → engine worker. Protocol frames travel as transferred ArrayBuffers
+ * (`{frame}`); everything else is UI control that never leaves the page. */
+export type UiToEngine =
+  | { type: 'frame'; bytes: ArrayBuffer }
+  | { type: 'boot'; inference: InferencePlacement; dataset: DatasetSource }
+  | { type: 'dataset'; source: DatasetSource }
+  | { type: 'inference'; placement: InferencePlacement }
+  | { type: 'attach'; slot: number; canvas: OffscreenCanvas; size: SlotSize }
+  | { type: 'resize'; slot: number; size: SlotSize }
+  | { type: 'detach'; slot: number }
+  | { type: 'view'; slot: number; view: ViewName | null }
+  | { type: 'param'; slot: number; name: string; value: number }
+  | { type: 'export'; slot: number; format: 'csv' };
+
+export type InferencePlacement =
+  | { kind: 'remote'; endpoint: string }
+  | { kind: 'webgpu'; model: string };
+
+/** Engine worker → main thread. STATUS, RESULT, TIMING, KEEP, BIND, UNBIND, ERROR and
+ * INFER_STATS arrive as frames; the rest is UI data. */
+export type EngineToUi =
+  | { type: 'frame'; bytes: ArrayBuffer }
+  | { type: 'context'; context: DatasetContext }
+  | { type: 'views'; slot: number; available: ViewName[]; chosen: ViewName }
+  | { type: 'table'; slot: number; columns: string[]; rows: string[][]; total: number }
+  | { type: 'axes'; slot: number; ticks: AxisTicks }
+  | { type: 'export'; slot: number; blob: Blob; filename: string };
+
+/** Text is the boring part: the renderer computes tick positions, the UI draws labels in DOM. */
+export interface AxisTicks {
+  x: Array<{ at: number; label: string }>;
+  y: Array<{ at: number; label: string }>;
+  /** Plot area in CSS pixels relative to the canvas. */
+  plot: { left: number; top: number; width: number; height: number };
+  legend?: Array<{ label: string; color: string }>;
+}
