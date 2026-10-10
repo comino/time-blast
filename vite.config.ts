@@ -1,4 +1,5 @@
 import { defineConfig, type Plugin } from 'vite';
+import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
 // DuckDB engine binaries exceed common static-host per-file limits. Keep their
@@ -17,10 +18,25 @@ function compressedEngines():Plugin {
   };
 }
 
+// Cross-origin isolation: SharedArrayBuffer and 5 µs performance.now() resolution (100 µs
+// without). `credentialless` instead of `require-corp` so cross-origin CORS fetches (model
+// weights, DuckDB extensions) keep working without those hosts sending CORP headers.
+// Keep in sync with deploy/time-blast.Caddyfile.
+const isolation = {
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Cross-Origin-Embedder-Policy': 'credentialless',
+};
+
 export default defineConfig({
   plugins:[compressedEngines()],
-  server: { port: 5173, strictPort: true },
-  preview: { port: 4173, strictPort: true },
+  resolve: {
+    alias: {
+      // DuckDB-Wasm's blocking browser build is not in its package exports map (src/engine/duckdb-blocking.d.ts).
+      'duckdb-browser-blocking': fileURLToPath(new URL('./node_modules/@duckdb/duckdb-wasm/dist/duckdb-browser-blocking.mjs', import.meta.url)),
+    },
+  },
+  server: { port: 5173, strictPort: true, headers: isolation },
+  preview: { port: 4173, strictPort: true, headers: isolation },
   worker: { format: 'es' },
   optimizeDeps: { exclude: ['@duckdb/duckdb-wasm', '@mlc-ai/web-llm'] },
   build: { target: 'es2022', chunkSizeWarningLimit: 1600 },
