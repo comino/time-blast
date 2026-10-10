@@ -6,7 +6,8 @@ import { MAX_FAILED_RESPONSE_CHARS } from '../src/inference/failure';
 import type { WorkerRequest, WorkerResponse } from '../src/inference/messages';
 import type { LocalModelProfile } from '../src/core/types';
 
-const mock = vi.hoisted(() => ({ create: vi.fn(), interrupt: vi.fn(), load: vi.fn() }));
+const mock = vi.hoisted(() => ({ create: vi.fn(), interrupt: vi.fn(), load: vi.fn(), unload: vi.fn(), warmup: vi.fn(async () => {}) }));
+vi.mock('../src/inference/grammar-warmup', () => ({ prepareQueryGrammar: mock.warmup }));
 vi.mock('@mlc-ai/web-llm', () => ({
   prebuiltAppConfig: { model_list: [
     ...['0.5B', '1.5B'].flatMap(size => ['16', '32'].map(precision => ({
@@ -23,7 +24,11 @@ const draft = { text: 'Please show the fleet speed', revision: 1, contextId: con
 const fullPlan = { metric: 'speed', aggregate: 'avg', bucketMinutes: 60, windowHours: 24, splitByVessel: false, vessel: null, view: 'line' };
 const extracted = { metrics: ['speed'], aggregate: 'avg', bucket: { count: 1, unit: 'hour' },
   window: { count: 24, unit: 'hour' }, grouping: null, vessel: null, view: null, unsupported: [] };
-afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.resetModules(); mock.create.mockReset(); mock.interrupt.mockReset(); mock.load.mockReset(); });
+afterEach(() => {
+  vi.unstubAllGlobals(); vi.restoreAllMocks(); vi.resetModules();
+  mock.create.mockReset(); mock.interrupt.mockReset(); mock.load.mockReset(); mock.unload.mockReset();
+  mock.warmup.mockReset().mockResolvedValue(undefined);
+});
 
 async function worker(shaderF16 = true) {
   const messages: WorkerResponse[] = [];
@@ -31,12 +36,85 @@ async function worker(shaderF16 = true) {
     postMessage: (message: WorkerResponse) => messages.push(message),
     navigator: { gpu: { requestAdapter: async () => ({ features: new Set(shaderF16 ? ['shader-f16'] : []) }) } } };
   vi.stubGlobal('self', scope);
-  mock.load.mockResolvedValue({ chat: { completions: { create: mock.create } }, interruptGenerate: mock.interrupt });
+  mock.load.mockResolvedValue({ chat: { completions: { create: mock.create } }, interruptGenerate: mock.interrupt, unload: mock.unload });
   await import('../src/inference/webllm.worker');
   return { messages, send: (data: WorkerRequest) => scope.onmessage!({ data }) };
 }
 
 describe('actual inference worker with a controlled engine', () => {
+  it('shares grammar preparation and withholds readiness and user generation until it finishes', async () => {
+    let finish!: () => void;
+    mock.warmup.mockReturnValueOnce(new Promise<void>(resolve => { finish = resolve; }));
+    let now = 100; vi.spyOn(performance, 'now').mockImplementation(() => now);
+    mock.create.mockImplementation(async () => (async function* () {
+      now = 520; yield { choices: [{ delta: { content: JSON.stringify(fullPlan) }, finish_reason: 'stop' }] };
+      yield { choices: [], usage: { prompt_tokens: 100, completion_tokens: 20 } };
+    })());
+    const h = await worker();
+    h.send({ type: 'prepare', id: 'warm' });
+    await vi.waitFor(() => expect(mock.warmup).toHaveBeenCalledOnce());
+    h.send({ type: 'prepare', id: 'also-warm' });
+    h.send({ type: 'resolve', id: 'query', draft, context });
+    await Promise.resolve(); await Promise.resolve();
+    expect(h.messages).toContainEqual({ type: 'status', status: {
+      state: 'loading', label: 'Preparing query grammar', detail: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
+    } });
+    expect(h.messages.some(message => message.type === 'ready' || message.type === 'status' && message.status.state === 'ready')).toBe(false);
+    expect(mock.load).toHaveBeenCalledOnce(); expect(mock.create).not.toHaveBeenCalled();
+    now = 500; finish();
+    await vi.waitFor(() => expect(h.messages.some(message => message.type === 'result')).toBe(true));
+    expect(h.messages.filter(message => message.type === 'ready')).toHaveLength(2);
+    expect(mock.warmup).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ unload: mock.unload }), 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC');
+    expect(h.messages.find(message => message.type === 'result')).toMatchObject({ id: 'query', result: {
+      tokens: 20, diagnostics: { attempts: 1, warmupMs: 400, generationMs: 20, firstTokenMs: 20,
+        promptTokens: 100, completionTokens: 20 },
+    } });
+    expect(mock.create).toHaveBeenCalledOnce();
+  });
+
+  it('keeps shared grammar preparation alive when a waiting draft is canceled', async () => {
+    let finish!: () => void;
+    mock.warmup.mockReturnValueOnce(new Promise<void>(resolve => { finish = resolve; }));
+    mock.create.mockImplementation(async () => (async function* () {
+      yield { choices: [{ delta: { content: JSON.stringify(fullPlan) }, finish_reason: 'stop' }] };
+    })());
+    const h = await worker(); h.send({ type: 'resolve', id: 'old', draft, context });
+    await vi.waitFor(() => expect(mock.warmup).toHaveBeenCalledOnce());
+    h.send({ type: 'cancel', id: 'old' });
+    h.send({ type: 'resolve', id: 'new', draft: { ...draft, revision: 2 }, context });
+    expect(mock.interrupt).not.toHaveBeenCalled(); expect(mock.create).not.toHaveBeenCalled();
+    finish();
+    await vi.waitFor(() => expect(h.messages.some(message => message.type === 'result')).toBe(true));
+    expect(h.messages.find(message => message.type === 'error')).toMatchObject({ id: 'old', name: 'AbortError' });
+    expect(h.messages.filter(message => message.type === 'result')).toMatchObject([{ id: 'new' }]);
+    expect(mock.load).toHaveBeenCalledOnce(); expect(mock.warmup).toHaveBeenCalledOnce();
+    expect(mock.create).toHaveBeenCalledOnce(); expect(mock.interrupt).not.toHaveBeenCalled();
+    expect(mock.unload).not.toHaveBeenCalled();
+  });
+
+  it('unloads a failed grammar engine before retrying preparation and never exposes it as ready', async () => {
+    mock.warmup.mockRejectedValueOnce(new Error('Grammar compilation failed'));
+    let finishUnload!: () => void;
+    mock.unload.mockReturnValueOnce(new Promise<void>(resolve => { finishUnload = resolve; }));
+    mock.create.mockImplementation(async () => (async function* () {
+      yield { choices: [{ delta: { content: JSON.stringify(fullPlan) }, finish_reason: 'stop' }] };
+    })());
+    const h = await worker(); h.send({ type: 'prepare', id: 'failed' });
+    await vi.waitFor(() => expect(mock.unload).toHaveBeenCalledOnce());
+    h.send({ type: 'resolve', id: 'waiting', draft, context });
+    await Promise.resolve(); await Promise.resolve();
+    expect(h.messages.some(message => message.type === 'ready' || message.type === 'status' && message.status.state === 'ready')).toBe(false);
+    expect(mock.load).toHaveBeenCalledOnce(); expect(mock.create).not.toHaveBeenCalled();
+    finishUnload();
+    await vi.waitFor(() => expect(h.messages.filter(message => message.type === 'error')).toHaveLength(2));
+    expect(h.messages.filter(message => message.type === 'error').every(message => message.message === 'Grammar compilation failed')).toBe(true);
+    h.send({ type: 'resolve', id: 'retry', draft: { ...draft, revision: 2 }, context });
+    await vi.waitFor(() => expect(h.messages.some(message => message.type === 'result')).toBe(true));
+    expect(mock.load).toHaveBeenCalledTimes(2); expect(mock.warmup).toHaveBeenCalledTimes(2);
+    expect(mock.unload).toHaveBeenCalledOnce(); expect(mock.create).toHaveBeenCalledOnce();
+    expect(h.messages.find(message => message.type === 'result')).toMatchObject({ id: 'retry' });
+  });
+
   it.each((['qwen-1.5b', 'qwen3-4b'] as LocalModelProfile[]).flatMap(profile => [true, false].map(shaderF16 => ({ profile, shaderF16 }))))('loads $profile with shader-f16=$shaderF16', async ({ profile, shaderF16 }) => {
     const h = await worker(shaderF16);
     h.send({ type: 'prepare', id: 'warm', localModel: profile });
@@ -93,7 +171,9 @@ describe('actual inference worker with a controlled engine', () => {
     })()).mockImplementationOnce(async () => (async function* () {
       yield { choices: [{ delta: { content: EMPTY_THINKING_PREFIX + JSON.stringify(surface) }, finish_reason: 'stop' }] };
     })());
-    const h = await worker(); h.send({ type: 'resolve', id: 'surface', draft: { ...draft,
+    const h = await worker(); h.send({ type: 'prepare', id: 'warm', localModel: 'qwen3-4b' });
+    await vi.waitFor(() => expect(h.messages.some(message => message.type === 'ready')).toBe(true));
+    h.send({ type: 'resolve', id: 'surface', draft: { ...draft,
       text: 'Compare vessel wave height by hour over the last 1days as a 3D surface' }, context });
     await vi.waitFor(() => expect(h.messages.some(message => message.type === 'result')).toBe(true));
     expect(h.messages.find(message => message.type === 'result')).toMatchObject({ result: {
@@ -114,7 +194,9 @@ describe('actual inference worker with a controlled engine', () => {
     mock.create.mockImplementation(async () => (async function* () {
       yield { choices: [{ delta: { content: text }, finish_reason: 'stop' }] };
     })());
-    const h = await worker(); h.send({ type: 'resolve', id: 'median', draft, context });
+    const h = await worker(); h.send({ type: 'prepare', id: 'warm', localModel: 'qwen3-4b' });
+    await vi.waitFor(() => expect(h.messages.some(message => message.type === 'ready')).toBe(true));
+    h.send({ type: 'resolve', id: 'median', draft, context });
     await vi.waitFor(() => expect(h.messages.some(message => message.type === 'error')).toBe(true));
     expect(h.messages.find(message => message.type === 'error')).toMatchObject({ message: 'Unsupported aggregation.',
       inference: { response: { text, finishReason: 'stop' }, diagnostics: { attempts: 2 } } });
@@ -125,7 +207,7 @@ describe('actual inference worker with a controlled engine', () => {
   it('reports context capacity without retrying and allows the next shorter request', async () => {
     const error = new Error('Prompt tokens exceed context window size'); error.name = 'ContextWindowSizeExceededError';
     mock.create.mockRejectedValueOnce(error).mockImplementationOnce(async () => (async function* () {
-      yield { choices: [{ delta: { content: JSON.stringify(extracted) }, finish_reason: 'stop' }] };
+      yield { choices: [{ delta: { content: JSON.stringify(fullPlan) }, finish_reason: 'stop' }] };
     })());
     const h = await worker(); h.send({ type: 'resolve', id: 'long', draft, context });
     await vi.waitFor(() => expect(h.messages.some(message => message.type === 'error')).toBe(true));
@@ -140,29 +222,32 @@ describe('actual inference worker with a controlled engine', () => {
     expect(h.messages.find(message => message.type === 'result')).toMatchObject({ id: 'short' });
   });
 
-  it('uses the default model to extract literal quantities and returns a validated full plan plus phase telemetry', async () => {
+  it.each([true, false])('resolves without prepare using the quantized 1.5B default and full contract, with shader-f16=%s', async shaderF16 => {
     let now = 100;
     vi.spyOn(performance, 'now').mockImplementation(() => now);
     mock.create.mockImplementation(async () => (async function* () {
-      now = 120; yield { choices: [{ delta: { content: JSON.stringify(extracted) }, finish_reason: null }] };
+      now = 120; yield { choices: [{ delta: { content: JSON.stringify(fullPlan) }, finish_reason: null }] };
       now = 150; yield { choices: [{ delta: {}, finish_reason: 'stop' }] };
       yield { choices: [], usage: { prompt_tokens: 100, completion_tokens: 20, extra: {
         time_to_first_token_s: .012, time_per_output_token_s: .001,
         prefill_tokens_per_s: 100 / .012, decode_tokens_per_s: 1000,
       } } };
     })());
-    const h = await worker(); h.send({ type: 'resolve', id: 'one', draft, context });
+    const h = await worker(shaderF16); h.send({ type: 'resolve', id: 'one', draft, context });
     await vi.waitFor(() => expect(h.messages.some(m => m.type === 'result')).toBe(true));
     const result = h.messages.find(m => m.type === 'result');
-    expect(result?.type === 'result' && result.result).toMatchObject({ source: 'webgpu', tokens: 20,
+    const model = `Qwen2.5-1.5B-Instruct-q4f${shaderF16 ? '16' : '32'}_1-MLC`;
+    expect(result?.type === 'result' && result.result).toMatchObject({ source: 'webgpu', model, tokens: 20,
       plan: { metric: 'speed', aggregate: 'avg', bucketMinutes: 60, windowHours: 24, splitByVessel: false, vessel: null, view: 'line' },
       diagnostics: { attempts: 1, queueMs: 0, warmupMs: 0, generationMs: 50, firstTokenMs: 20, prefillMs: 12, decodeMs: 20, promptTokens: 100, completionTokens: 20 },
     });
     const request = mock.create.mock.calls[0][0];
-    expect(mock.load.mock.calls[0][0]).toBe('Qwen3-4B-q4f16_1-MLC');
-    expect(JSON.parse(request.response_format.schema)).toEqual(SEMANTIC_MODEL_RESPONSE_SCHEMA_V5);
+    expect(mock.load.mock.calls[0][0]).toBe(model);
+    expect(mock.load).toHaveBeenCalledOnce();
+    expect(JSON.parse(request.response_format.schema)).toEqual(MODEL_RESPONSE_SCHEMA);
+    expect(request.messages[0].content).toContain('Only fields: metric, aggregate, bucketMinutes');
     expect(request.messages[1].content).toBe(draft.text);
-    expect(request.extra_body?.enable_latency_breakdown).not.toBe(true);
+    expect(request.extra_body).toBeUndefined();
     expect(h.messages.filter(m => m.type === 'result')).toHaveLength(1);
     expect(mock.create).toHaveBeenCalledOnce();
     expect(result?.type === 'result' && result.result.diagnostics?.repairMs).toBeUndefined();
@@ -170,14 +255,14 @@ describe('actual inference worker with a controlled engine', () => {
   });
   it.each(['length', 'abort'])('never publishes a truncated or interrupted plan (%s)', async finish_reason => {
     mock.create.mockImplementation(async () => (async function* () {
-      yield { choices: [{ delta: { content: JSON.stringify(extracted) }, finish_reason }] };
+      yield { choices: [{ delta: { content: JSON.stringify(fullPlan) }, finish_reason }] };
     })());
     const h = await worker(); h.send({ type: 'resolve', id: 'short', draft, context });
     await vi.waitFor(() => expect(h.messages.some(m => m.type === 'error')).toBe(true));
     expect(h.messages.some(m => m.type === 'result')).toBe(false);
     expect(mock.create).toHaveBeenCalledTimes(finish_reason === 'length' ? 2 : 1);
     expect(h.messages.find(m => m.type === 'error')).toMatchObject({ inference: {
-      response: { text: JSON.stringify(extracted), truncated: false, finishReason: finish_reason },
+      response: { text: JSON.stringify(fullPlan), truncated: false, finishReason: finish_reason },
     } });
   });
   it.each([
@@ -188,8 +273,8 @@ describe('actual inference worker with a controlled engine', () => {
   ])('makes one model correction after %s and reports combined work', async (_kind, invalid, reason, feedback) => {
     let now = 100;
     vi.spyOn(performance, 'now').mockImplementation(() => now);
-    const repaired = { ...extracted, metrics: ['wave_height'], bucket: { count: 1, unit: 'minute' },
-      window: { count: 7, unit: 'day' }, grouping: 'vessel' };
+    const repaired = { ...fullPlan, metric: 'wave_height', bucketMinutes: 1,
+      windowHours: 168, splitByVessel: true };
     const question = { ...draft, text: 'Compare vessel wave height by minute over the last 7 days' };
     mock.create.mockImplementationOnce(async () => (async function* () {
       now = 120; yield { choices: [{ delta: { content: invalid }, finish_reason: reason }] };
@@ -211,6 +296,9 @@ describe('actual inference worker with a controlled engine', () => {
     expect(mock.create.mock.calls[0][0].messages).toHaveLength(2);
     const repair = mock.create.mock.calls[1][0];
     expect(repair.messages).toHaveLength(4);
+    expect(repair.messages[0]).toEqual(mock.create.mock.calls[0][0].messages[0]);
+    expect(JSON.parse(repair.response_format.schema)).toEqual(MODEL_RESPONSE_SCHEMA);
+    expect(repair.extra_body).toBeUndefined();
     expect(repair.messages[1]).toEqual({ role: 'user', content: question.text });
     expect(repair.messages[2]).toEqual({ role: 'assistant', content: invalid });
     expect(repair.messages[3]).toMatchObject({ role: 'user', content: expect.stringContaining(feedback) });
@@ -248,7 +336,7 @@ describe('actual inference worker with a controlled engine', () => {
     await vi.waitFor(() => expect(h.messages.some(m => m.type === 'error')).toBe(true));
     const error = h.messages.find(m => m.type === 'error');
     expect(error).toMatchObject({ type: 'error', id: 'failed', message: expect.stringContaining(message),
-      inference: { source: 'webgpu', model: 'Qwen3-4B-q4f16_1-MLC',
+      inference: { source: 'webgpu', model: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
         response: { text, truncated: false, finishReason: 'stop' }, diagnostics: {
         attempts: 2, repairMs: 50, queueMs: 0, warmupMs: 0, generationMs: 100, firstTokenMs: 20, prefillMs: 40, decodeMs: 54,
         promptTokens: 160, completionTokens: 18,
@@ -369,7 +457,7 @@ describe('actual inference worker with a controlled engine', () => {
       yield { choices: [{ delta: { content: '"speed"}' }, finish_reason: 'stop' }] };
     })());
     mock.create.mockImplementationOnce(async () => (async function* () {
-      yield { choices: [{ delta: { content: JSON.stringify(extracted) }, finish_reason: 'stop' }] };
+      yield { choices: [{ delta: { content: JSON.stringify(fullPlan) }, finish_reason: 'stop' }] };
     })());
     const h = await worker(); h.send({ type: 'resolve', id: 'old', draft, context });
     await vi.waitFor(() => expect(mock.create).toHaveBeenCalledTimes(2));

@@ -14,12 +14,12 @@ describe('browser model profiles', () => {
       expect(id).toContain(shaderF16 ? 'q4f16' : 'q4f32');
     }
   });
-  it('uses the same stronger default for settings and direct adapter callers', () => {
-    expect(DEFAULT_CONFIG.localModel).toBe('qwen3-4b');
+  it('uses the same smaller quantized default for settings and direct adapter callers', () => {
+    expect(DEFAULT_CONFIG.localModel).toBe('qwen-1.5b');
     expect(DEFAULT_CONFIG.localModel).toBe(DEFAULT_LOCAL_MODEL_PROFILE);
     expect(DEFAULT_CONFIG.cacheModelPlans).toBe(true);
-    expect(selectBrowserModel(undefined, true)).toBe('Qwen3-4B-q4f16_1-MLC');
-    expect(selectBrowserModel(undefined, false)).toBe('Qwen3-4B-q4f32_1-MLC');
+    expect(selectBrowserModel(undefined, true)).toBe('Qwen2.5-1.5B-Instruct-q4f16_1-MLC');
+    expect(selectBrowserModel(undefined, false)).toBe('Qwen2.5-1.5B-Instruct-q4f32_1-MLC');
   });
   it('offers the larger verified Qwen3 model without exposing smaller experimental profiles', () => {
     expect(BROWSER_MODEL_PROFILES.map(profile => profile.id)).toEqual(['qwen-0.5b', 'qwen-1.5b', 'qwen3-4b']);

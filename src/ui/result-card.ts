@@ -363,7 +363,7 @@ export class ResultCard {
       if (d?.completionTokens !== undefined) stages.push(`Output: ${integer.format(d.completionTokens)} tokens`);
       if (d?.decodeTokensPerSecond !== undefined) stages.push(`Decode: ${fmt.format(d.decodeTokensPerSecond)} tokens/s`);
       if (d?.prefillTokensPerSecond !== undefined) stages.push(`Prefill: ${fmt.format(d.prefillTokensPerSecond)} tokens/s`);
-      detail.textContent = stages.length ? `${stages.join(' · ')}. Engine stages and grammar costs overlap; do not sum these values.`
+      detail.textContent = stages.length ? `${stages.join(' · ')}. ${source === 'webgpu' ? 'Prompt processing includes any grammar setup wait. ' : ''}Engine stages and grammar costs overlap; do not sum these values.`
         : 'This inference service did not report a phase breakdown.';
     }
   }

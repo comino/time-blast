@@ -178,7 +178,7 @@ export type PipelineEvent =
   | { type: 'trace'; entry: TraceEvent };
 export type InferenceMode = 'auto' | 'webgpu' | 'templates' | 'remote';
 export type LocalModelProfile = 'qwen-0.5b' | 'qwen-1.5b' | 'qwen3-4b';
-export const DEFAULT_LOCAL_MODEL_PROFILE: LocalModelProfile = 'qwen3-4b';
+export const DEFAULT_LOCAL_MODEL_PROFILE: LocalModelProfile = 'qwen-1.5b';
 export type DatasetProfile = 'demo' | 'large';
 export interface RuntimeConfig {
   inferenceMode: InferenceMode;

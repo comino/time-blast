@@ -4,21 +4,21 @@ import { DEFAULT_LOCAL_MODEL_PROFILE, type LocalModelProfile } from '../core/typ
 export const BROWSER_MODEL_PROFILES = [
   {
     id: 'qwen-0.5b',
-    label: 'Qwen2.5 · 0.5B',
+    label: 'Qwen2.5 · 0.5B · 4-bit',
     detail: 'Smallest download. Frequently misinterpreted requests in native tests; inspect its query details.',
     f16: 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC',
     f32: 'Qwen2.5-0.5B-Instruct-q4f32_1-MLC',
   },
   {
     id: 'qwen-1.5b',
-    label: 'Qwen2.5 · 1.5B',
-    detail: 'Lighter than 4B, with more interpretation errors in native tests. Compare timing on this device.',
+    label: 'Qwen2.5 · 1.5B · 4-bit',
+    detail: 'Smaller default, about 0.87 GB of weights. More interpretation errors than 4B in native tests; compare timing on this device.',
     f16: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC',
     f32: 'Qwen2.5-1.5B-Instruct-q4f32_1-MLC',
   },
   {
     id: 'qwen3-4b',
-    label: 'Qwen3 · 4B',
+    label: 'Qwen3 · 4B · 4-bit',
     detail: 'About 2.3 GB of weights. Estimated GPU memory: 3.4 GB (f16) or 4.3 GB (f32).',
     f16: 'Qwen3-4B-q4f16_1-MLC',
     f32: 'Qwen3-4B-q4f32_1-MLC',

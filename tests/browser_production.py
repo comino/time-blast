@@ -39,7 +39,7 @@ def run(url, screenshot):
         assert before == 1, engines
         page.get_by_role('button', name='Runtime settings', exact=True).click()
         assert page.locator('[name="inferenceMode"]').input_value() == 'webgpu'
-        assert page.locator('[name="localModel"]').input_value() == 'qwen3-4b'
+        assert page.locator('[name="localModel"]').input_value() == 'qwen-1.5b'
         assert page.locator('[name="cacheModelPlans"]').is_checked()
         page.locator('[data-action="close-settings"]').click()
         assert page.evaluate("!('gpu' in navigator)")

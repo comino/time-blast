@@ -1,0 +1,26 @@
+{
+  "source": "User-pasted query details; not an independently controlled measurement",
+  "reported_date": "2026-10-10",
+  "model": "Qwen3-4B-q4f16_1-MLC",
+  "revision": 1,
+  "model_attempts": 1,
+  "warmup_wait_ms": 1550,
+  "worker_queue_ms": 0.1,
+  "generation_wall_ms": 13220,
+  "first_token_ms": 9350,
+  "prompt_processing_ms": 9350,
+  "grammar_setup_ms": 9310,
+  "grammar_per_token_ms": 0.1,
+  "token_generation_ms": 3850,
+  "input_tokens": 968,
+  "output_tokens": 86,
+  "decode_tokens_per_second": 22.3,
+  "reported_prefill_tokens_per_second": 103.5,
+  "sql_compile_ms": 2.5,
+  "limitations": [
+    "Device/browser identity and cache state were not supplied.",
+    "Engine prompt-processing and first-token stages include the grammar initialization wait; these values overlap and must not be summed.",
+    "Pinned WebLLM initializes vocabulary metadata, compiler and matcher during cold grammar setup and retains them across resetChat.",
+    "This observation motivates preparing the grammar before model readiness; it is not a measurement of the changed implementation or a smaller-model speedup."
+  ]
+}

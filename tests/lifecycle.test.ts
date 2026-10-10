@@ -73,10 +73,10 @@ describe('runtime adapter ownership',()=>{
     expect(state.databases).toHaveLength(1);expect(state.databases[0].dispose).not.toHaveBeenCalled();
     expect(state.models[0].dispose).toHaveBeenCalledOnce();
   });
-  it.each(['qwen-0.5b','qwen-1.5b'] as const)('changes the browser model to %s without rebuilding DuckDB and rejects old model status',async localModel=>{
+  it.each(['qwen-0.5b','qwen3-4b'] as const)('changes the browser model to %s without rebuilding DuckDB and rejects old model status',async localModel=>{
     await start();
     const original=state.models[0];
-    expect(original.options).toMatchObject({localModel:'qwen3-4b',cacheModelPlans:true});
+    expect(original.options).toMatchObject({localModel:'qwen-1.5b',cacheModelPlans:true});
     state.callbacks.onDraft('Compare a week of vessel waves',false);
     state.callbacks.onConfig({...DEFAULT_CONFIG,localModel});
     await vi.waitFor(()=>expect(state.clients).toHaveLength(2));
@@ -112,7 +112,7 @@ describe('runtime adapter ownership',()=>{
     state.callbacks.onConfig(config);
     await vi.waitFor(()=>expect(state.clients).toHaveLength(2));
     const selected=state.models.at(-1);
-    state.callbacks.onConfig({...config,localModel:'qwen-1.5b'});
+    state.callbacks.onConfig({...config,localModel:'qwen3-4b'});
     await vi.waitFor(()=>expect(state.clients).toHaveLength(3));
     expect(state.models).toHaveLength(2);
     expect(state.models.at(-1)).toBe(selected);

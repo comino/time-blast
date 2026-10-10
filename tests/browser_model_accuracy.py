@@ -2,7 +2,7 @@
 """Evaluate real browser inference against the meaning corpus, with no templates.
 
 Start Vite and run on a hardware-GPU host:
-  python3 tests/browser_model_accuracy.py --profile qwen3-4b --headed
+  python3 tests/browser_model_accuracy.py --profile qwen-1.5b --headed
 
 Defaults to eight public regressions. --split heldout --limit 64 includes the
 heldout set; --cases id1,id2 selects explicit cases. Weights download to an
@@ -363,7 +363,7 @@ async def run(args):
 def arguments():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--url", default="http://127.0.0.1:5173", help="Vite origin serving this checkout")
-    parser.add_argument("--profile", choices=["qwen-0.5b", "qwen-1.5b", "qwen3-4b"], default="qwen3-4b")
+    parser.add_argument("--profile", choices=["qwen-0.5b", "qwen-1.5b", "qwen3-4b"], default="qwen-1.5b")
     parser.add_argument("--corpus", type=pathlib.Path, default=ROOT / "evals/inference-corpus.json")
     parser.add_argument("--split", choices=["regression", "heldout", "all"], default="regression")
     parser.add_argument("--cases", help="Comma-separated case IDs; overrides split filtering")

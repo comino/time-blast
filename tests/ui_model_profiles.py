@@ -44,30 +44,32 @@ with sync_playwright() as p:
 
     settings.click()
     assert page.locator('[name="inferenceMode"]').input_value() == 'webgpu'
-    assert model.input_value() == 'qwen3-4b'
+    assert model.input_value() == 'qwen-1.5b'
+    assert 'Smaller default' in page.locator('[data-el="local-model-help"]').inner_text()
+    assert all('4-bit' in label for label in model.locator('option').all_text_contents())
     assert model.locator('option').evaluate_all('(options)=>options.map(option=>option.value)') == ['qwen-0.5b', 'qwen-1.5b', 'qwen3-4b']
     assert cache.is_checked() and prepare.is_enabled()
     prepare.click()
     assert page.evaluate('calls.warm') == 1
 
-    model.select_option('qwen-1.5b')
-    assert 'Lighter than 4B' in page.locator('[data-el="local-model-help"]').inner_text()
+    model.select_option('qwen-0.5b')
+    assert 'Smallest download' in page.locator('[data-el="local-model-help"]').inner_text()
     assert prepare.is_disabled()
     assert 'Apply runtime' in prepare.get_attribute('title')
     cache.uncheck()
     close.click()
     settings.click()
-    assert model.input_value() == 'qwen3-4b' and cache.is_checked(), 'Canceled edits must not change runtime'
+    assert model.input_value() == 'qwen-1.5b' and cache.is_checked(), 'Canceled edits must not change runtime'
     assert page.evaluate('calls.configs.length') == 0
 
-    model.select_option('qwen-1.5b')
+    model.select_option('qwen-0.5b')
     cache.uncheck()
     apply.click()
     config = page.evaluate('calls.configs.at(-1)')
-    assert config['localModel'] == 'qwen-1.5b' and config['cacheModelPlans'] is False
+    assert config['localModel'] == 'qwen-0.5b' and config['cacheModelPlans'] is False
     assert config['inferenceMode'] == 'webgpu' and config['databaseMode'] == 'browser'
     settings.click()
-    assert model.input_value() == 'qwen-1.5b' and not cache.is_checked()
+    assert model.input_value() == 'qwen-0.5b' and not cache.is_checked()
     assert prepare.is_enabled()
     prepare.click()
     assert page.evaluate('calls.warm') == 2
@@ -80,7 +82,7 @@ with sync_playwright() as p:
     assert prepare.is_enabled(), 'Cache policy alone must not imply a different model to prepare'
     apply.click()
     assert page.evaluate('calls.configs.at(-1).cacheModelPlans') is True
-    assert page.evaluate('calls.configs.at(-1).localModel') == 'qwen-1.5b'
+    assert page.evaluate('calls.configs.at(-1).localModel') == 'qwen-0.5b'
 
     settings.click()
     model.select_option('qwen3-4b')
@@ -111,9 +113,9 @@ with sync_playwright() as p:
     assert model.is_visible() and cache.is_visible()
     assert prepare.is_disabled(), 'Switching back to local inference requires Apply'
     page.get_by_role('button', name='Restore local defaults').click()
-    assert model.input_value() == 'qwen3-4b' and cache.is_checked()
+    assert model.input_value() == 'qwen-1.5b' and cache.is_checked()
     apply.click()
-    assert page.evaluate('calls.configs.at(-1).localModel') == 'qwen3-4b'
+    assert page.evaluate('calls.configs.at(-1).localModel') == 'qwen-1.5b'
 
     settings.click()
     count = page.evaluate('calls.configs.length')
@@ -134,7 +136,7 @@ with sync_playwright() as p:
     assert model.is_visible() and cache.is_visible()
     assert not errors, errors
     print(json.dumps({'chromium': browser.version, 'model_profiles': True,
-                      'qwen3_4b_profile': True, 'default_profile': 'qwen3-4b',
+                      'qwen3_4b_profile': True, 'default_profile': 'qwen-1.5b',
                       'apply_before_prepare': True, 'plan_cache_setting': True,
                       'inactive_controls': True, 'invalid_profile_rejected': True,
                       'mobile_settings': True, 'page_errors': errors}, indent=2))

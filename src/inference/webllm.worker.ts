@@ -9,6 +9,7 @@ import { selectBrowserModel } from './models';
 import { pinBrowserModelAssets } from './model-assets';
 import { EMPTY_THINKING_PREFIX, modelGenerationOptions, normalizeModelOutput } from './model-output';
 import { modelPlanContract } from './model-contract';
+import { prepareQueryGrammar } from './grammar-warmup';
 
 const scope = self as unknown as {
   onmessage: ((event: MessageEvent<WorkerRequest>) => void) | null;
@@ -23,22 +24,32 @@ const queue = new GenerationQueue();
 const send = (message: WorkerResponse) => scope.postMessage(message);
 
 async function prepare(requested?: string, profile?: LocalModelProfile): Promise<void> {
-  if (engine) return;
   if (initializing) return initializing;
+  if (engine) return;
   initializing = (async () => {
     if (!scope.navigator.gpu) throw new Error('WebGPU is unavailable in this browser worker. Limited templates remain available in Auto mode.');
     const adapter = await scope.navigator.gpu.requestAdapter();
     if (!adapter) throw new Error('No WebGPU adapter is available. Limited templates remain available in Auto mode.');
     model = requested ?? selectBrowserModel(profile, adapter.features.has('shader-f16'));
     if (!prebuiltAppConfig.model_list.some((record) => record.model_id === model)) throw new Error(`Unknown WebLLM model: ${model}`);
-    engine = await CreateMLCEngine(model, {
+    const created = await CreateMLCEngine(model, {
       appConfig: pinBrowserModelAssets(model, prebuiltAppConfig),
       initProgressCallback: (report) => send({ type: 'status', status: {
         state: 'loading', label: `Loading ${model}`, progress: Math.max(0, Math.min(1, report.progress)), detail: report.text,
       } }),
     });
+    try {
+      send({ type: 'status', status: { state: 'loading', label: 'Preparing query grammar', detail: model } });
+      await prepareQueryGrammar(created, model);
+    } catch (error) {
+      // The shared preparation owns this unpublished engine. Draft cancellation
+      // cannot interrupt it, and a later prepare may retry after cleanup.
+      try { await created.unload(); } catch { /* Preserve the preparation error. */ }
+      throw error;
+    }
+    engine = created;
     send({ type: 'status', status: { state: 'ready', label: 'Local WebGPU model ready', progress: 1, detail: model } });
-  })().catch(error=>{initializing=undefined;throw error;});
+  })().finally(() => { initializing = undefined; });
   return initializing;
 }
 

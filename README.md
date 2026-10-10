@@ -31,9 +31,11 @@ Try **“Compare vessel wave height by minute over the last 7 days”** for **60
 
 Ask for the presentation directly: **“Show a heatmap of vessel wind by hour over the last 7 days”**, **“Compare vessel wave height by hour over the last 7 days as a 3D surface”**, or **“Show voyage tracks of vessel speeds by hour over the last 7 days”**. Rotate surfaces and scrub or play voyages inside their cards. All ten supported view types are part of the validated inference intent.
 
-The default **Local language model · WebGPU** mode uses local **Qwen3-4B** and bypasses templates, including for example questions. An unavailable model reports an error instead of falling back to rules. Its initial weights download is about **2.3 GB**; estimated GPU memory is **3.4 GB with f16**, or **4.3 GB with f32**. Loading and model availability are visible. Runtime offers smaller Qwen2.5-0.5B and 1.5B profiles, which made more interpretation errors in the [native comparisons](evals/results/README.md). Changing models preserves the loaded database. For fresh inference trials, turn off **Reuse exact model plans**; this clears cached plans and keeps the model warm. Compare correctness and timing on the actual device; native GGUF tests do not establish browser MLC accuracy or speed.
+The default **Local language model · WebGPU** mode uses local **Qwen2.5-1.5B with 4-bit weights** and bypasses templates, including for example questions. An unavailable model reports an error instead of falling back to rules. Its weights download is about **0.87 GB**; estimated GPU memory is **1.6 GB with f16**, or **1.9 GB with f32**. Runtime also offers 0.5B and 4B profiles, all with 4-bit weights. The smaller default follows a reported 14-second first run with 4B; it made more interpretation errors than 4B in the [native comparisons](evals/results/README.md). No speedup factor on the user's GPU is established. Changing models preserves the loaded database. For fresh inference trials, turn off **Reuse exact model plans**; this clears cached plans and keeps the model warm.
 
 Auto and template-only modes remain explicit Runtime options. Auto uses conservative exact templates for recognized requests and the model for other wording; templates are labeled explicitly.
+
+Model preparation also warms the selected output grammar with one fixed, non-user token, then clears that conversation. The model becomes ready only after this completes; subsequent questions reuse WebLLM's grammar cache. This moves cold grammar initialization into preparation without hiding its cost: an early question still reports any warmup wait. User token counts and generation statistics exclude the preparation token. Native GGUF tests do not establish browser MLC accuracy or speed.
 
 If the local model refuses, returns an invalid plan, or reaches its output token limit, it gets **one correction attempt** with its previous response and exact validation error. The corrected response must pass the same validation. Query details show attempt count, correction time and total work; final failures also show bounded raw model output. Cancellation and runtime/device errors do not retry. This cannot detect every valid plan with the wrong meaning: [native evaluations](evals/results/README.md) found such errors, including after a correction request. These CPU results use different quantization/runtime from the browser and do not establish browser accuracy or latency.
 
@@ -85,7 +87,7 @@ python3 tests/browser_model_grammar.py
 python3 tests/browser_model_query.py
 python3 -m unittest discover -s evals -p 'test_*.py'
 # Requires a real available WebGPU adapter; downloads model weights:
-python3 tests/browser_model_accuracy.py --profile qwen3-4b --headed
+python3 tests/browser_model_accuracy.py --profile qwen-1.5b --headed
 ```
 
 `pnpm-lock.yaml` pins the JavaScript runtime dependencies. `scripts/generate-dataset.py` records how to regenerate the deterministic input. Tests cover buffer identity, streaming termination, cancellation races, promotion, intent validation, and actual compiled Wasm. The [meaning evaluation corpus and runners](evals/README.md) compare every plan field and record unsupported false acceptance separately. Recorded-model replay exercises real SQL/data/rendering; controlled engines and grammar checks do not establish model accuracy.

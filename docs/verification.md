@@ -1,10 +1,20 @@
-# Prototype verification — 2026-10-09
+# Prototype verification — 2026-10-09–10
 
 The prototype is functionally exercised. These checks are not evidence of physical input-to-light latency, model semantic accuracy across arbitrary language, or production service performance.
 
-## Inference reliability iteration
+## Smaller default and grammar preparation — 2026-10-10
 
-The default local profile is now **Qwen3-4B**, with a literal extraction contract selected together with its prompt, JSON grammar and decoder. The previous Qwen2.5-0.5B compact path scored **1/8 exact** on the reported regression set in native screening; the selected 4B contract scored **8/8**, all on its first attempt. On a separate, previously inspected 12-case development gate, its six supported requests were exact or had the proven single-vessel grouping equivalence, and all six unsupported requests remained non-executable. These are specific test results, not a general accuracy percentage.
+The user [reported](benchmarks/user-reported-inference-cold-2026-10-10.json) 13.22 seconds of generation with Qwen3-4B: 9.31 seconds of grammar initialization inside the 9.35-second first-token stage, plus a reported 3.85-second decoding stage. Warmup wait was another 1.55 seconds. These are user-provided timings, not a controlled benchmark; overlapping engine stages must not be summed.
+
+The default is now **Qwen2.5-1.5B with 4-bit weights**, approximately 0.87 GB of weights. Both the previous 4B model and all selectable alternatives were already 4-bit quantized. The smaller model uses its previously evaluated full-field contract, which scored 7/8 on the public native regressions; it has known interpretation errors and no measured browser speedup factor. The optional 4B profile retains its existing contract.
+
+Preparation now warms the exact selected schema with one fixed, non-user token through the public WebLLM API, then awaits `resetChat()`. Pinned runtime source confirms grammar caches survive this reset. Readiness follows completed preparation; queries submitted earlier still report their warmup wait. No dummy output enters plan validation, correction, caches or user token counts. Independent review checked the public nonstream path, the Qwen3 forced header, grammar-cache reuse and initialization ownership.
+
+**688 application tests across 24 files** and the production build pass. New tests cover all six model/precision combinations, exact schema/options, completion/reset ordering, concurrent preparation, canceled drafts, failed initialization cleanup/retry and telemetry boundaries. The browser settings test verifies the smaller default, quantization labels, profile switching and applying before preparation. Hardware-WebGPU speed and accuracy after this change remain unmeasured on this host.
+
+## Earlier inference reliability iteration
+
+The earlier update selected **Qwen3-4B**, with a literal extraction contract selected together with its prompt, JSON grammar and decoder. The previous Qwen2.5-0.5B compact path scored **1/8 exact** on the reported regression set in native screening; the selected 4B contract scored **8/8**, all on its first attempt. On a separate, previously inspected 12-case development gate, its six supported requests were exact or had the proven single-vessel grouping equivalence, and all six unsupported requests remained non-executable. These are specific test results, not a general accuracy percentage.
 
 The first independently authored 24-case audit found **13/16 supported exact-or-equivalent plans** and **6/8 unsupported requests kept non-executable**. Its remaining failures include a wrong bucket, false unsupported claims, and dropped absolute-date/forecast requirements. A well-formed wrong interpretation does not trigger validation repair. A later contract with explicit temporal scope passed the public eight but regressed the mixed supported gate, so it remains an unselected experiment. The [evaluation reports](../evals/results/README.md) retain failed candidates, raw outputs, frozen artifacts, corpus hashes, runtime details and scoring limitations.
 
