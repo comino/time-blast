@@ -20,7 +20,7 @@ import type {
   InferencePlacement, Link, LinkId, LocalFrame, PostToUi, RendererNode, UiToEngine,
 } from './contracts';
 import { decode, encode, Flag, header, json, Kind, Node, readJson, Stage, now as clockNow, type Frame } from '../protocol/frame';
-import { manipulate, type SqlTools } from './manipulate';
+import { CachedTools, manipulate, type SqlTools } from './manipulate';
 import { yieldToEventLoop } from './yield';
 
 export interface Timers {
@@ -91,6 +91,8 @@ export class EngineHost {
   /** The open dataset (dialect and column names for chart-as-query rewrites). */
   private context?: DatasetContext;
   private columns?: Set<string>;
+  /** DuckDB's parser behind a memo (undefined: not looked up yet; null: unavailable). */
+  private tools?: CachedTools | null;
   private disposed = false;
 
   constructor(private readonly deps: HostDeps) {
@@ -163,8 +165,11 @@ export class EngineHost {
       const hit = this.renderer?.hit(m.slot, m.request, m.gesture) ?? null;
       if (!hit) out = { sql: null, method: 'none', reason: 'nothing under the pointer (or the result changed)' };
       else {
-        const tools = (this.database as { sqlTools?: () => SqlTools | undefined } | undefined)?.sqlTools?.();
-        out = manipulate(m.sql, hit, m.gesture, { tools, dialect: this.context?.dialect ?? 'duckdb', columns: this.columns });
+        if (this.tools === undefined) {
+          const raw = (this.database as { sqlTools?: () => SqlTools | undefined } | undefined)?.sqlTools?.();
+          this.tools = raw ? new CachedTools(raw) : null;
+        }
+        out = manipulate(m.sql, hit, m.gesture, { tools: this.tools ?? undefined, dialect: this.context?.dialect ?? 'duckdb', columns: this.columns });
       }
     }
     const ms = performance.now() - t0;
@@ -220,6 +225,7 @@ export class EngineHost {
       }
       if (id !== this.contextSeq || this.disposed) return undefined;
       this.context = context;
+      this.tools = undefined;
       this.columns = new Set(context.tables.flatMap(t => t.columns.map(c => c.name.toLowerCase())));
       this.toCoordinator('database', { ...header(Kind.CONTEXT, { context: context.id }), stamps: [], payload: json(context) });
       this.deps.postToUi({ type: 'context', context });

@@ -322,6 +322,56 @@ export function refinedBucket(window: number, width: number, target = 48): strin
   return (finer.find(([us]) => window / us >= target) ?? finer[finer.length - 1])[1];
 }
 
+/** Literal expression nodes, patched from one parsed prototype (no parse per value). */
+const PROTO = "SELECT NULL, true, false, 'x', TIMESTAMP '2000-01-01 00:00:00', DATE '2000-01-01', CAST('1.5' AS DOUBLE), CAST('1' AS BIGINT)";
+function literalNode(tools: SqlTools, type: HitValue['type'], value: string | number | boolean): Ast {
+  const items = tools.parse(PROTO).statements[0].node.select_list;
+  let node: Ast, text: string | undefined;
+  if (typeof value === 'boolean') node = items[value ? 1 : 2];
+  else if (typeof value === 'string') { node = items[3]; text = value; }
+  else if (type === 'timestamp') { node = items[4]; text = formatMicros(value); }
+  else if (type === 'date') { node = items[5]; text = formatMicros(value).slice(0, 10); }
+  else if (Number.isInteger(value) && Math.abs(value) <= Number.MAX_SAFE_INTEGER) { node = items[7]; text = String(value); }
+  else { node = items[6]; text = String(value); }
+  if (text !== undefined) {
+    let patched = 0;
+    walk(node, n => { if (n?.class === 'CONSTANT' && n.value?.type?.id === 'VARCHAR') { n.value.value = text; patched++; return false; } });
+    if (patched !== 1) throw new Error('literal prototype changed shape');
+  }
+  return { ...node, alias: '' };
+}
+
+/** Memoized parser in front of DuckDB: parse results by text (returned as fresh copies, since
+ * the rewrite mutates them) and the trees of printed statements, so a gesture on a chart that a
+ * previous gesture produced needs no parse at all. Steady state: one print per gesture. */
+export class CachedTools implements SqlTools {
+  private readonly memo = new Map<string, Ast>();
+  readonly calls = { parse: 0, print: 0, ms: 0 };
+  constructor(private readonly inner: SqlTools, private readonly capacity = 256) {}
+  parse(sql: string): Ast {
+    let tree = this.memo.get(sql);
+    if (tree === undefined) {
+      const t0 = performance.now();
+      tree = this.inner.parse(sql);
+      this.calls.parse++; this.calls.ms += performance.now() - t0;
+      this.remember(sql, tree);
+    }
+    return structuredClone(tree);
+  }
+  print(trees: Ast[]): string[] {
+    const t0 = performance.now();
+    const out = this.inner.print(trees);
+    this.calls.print++; this.calls.ms += performance.now() - t0;
+    out.forEach((text, i) => { if (text) this.remember(text, structuredClone(trees[i])); });
+    return out;
+  }
+  private remember(sql: string, tree: Ast): void {
+    this.memo.delete(sql);
+    this.memo.set(sql, tree);
+    if (this.memo.size > this.capacity) this.memo.delete(this.memo.keys().next().value!);
+  }
+}
+
 const PLACEHOLDER = 'tb_manipulate_x';
 const OLD_WHERE = 'tb_manipulate_where';
 
@@ -356,15 +406,23 @@ function rewrite(sql: string, r: Restriction, tools: SqlTools, options: Manipula
   const expression = { ...structuredClone(item), alias: '' };
   const bucket = r.kind === 'range' && TIME_TYPES.has(r.type) ? bucketOf(expression) : undefined;
   let predicateText: string, target: Ast;
+  // Values are placeholders too: the template's text depends only on the shape, so it is parsed
+  // once per shape (CachedTools) and literal nodes are patched in.
+  const values: Array<[HitValue['type'], string | number | boolean]> = [];
+  const v = (type: HitValue['type'], value: string | number | boolean) => `tb_manipulate_v${values.push([type, value]) - 1}`;
   if (bucket && r.kind === 'range') {
     // Raw bounds: every row of the buckets [lo … hi] on screen, and nothing else.
     target = bucket.column;
-    const lo = literal('timestamp', r.lo, 'duckdb'), hi = literal('timestamp', r.hi, 'duckdb');
-    predicateText = `${PLACEHOLDER} >= ${lo} AND ${PLACEHOLDER} < ${hi} + ${typeof bucket.width === 'string' ? bucket.width : 'tb_manipulate_width'}`;
+    predicateText = `${PLACEHOLDER} >= ${v('timestamp', r.lo)} AND ${PLACEHOLDER} < ${v('timestamp', r.hi)} + ${typeof bucket.width === 'string' ? bucket.width : 'tb_manipulate_width'}`;
   } else {
     target = expression;
-    predicateText = predicate(PLACEHOLDER, r, 'duckdb');
+    switch (r.kind) {
+      case 'range': predicateText = r.lo === r.hi ? `${PLACEHOLDER} = ${v(r.type, r.lo)}` : `${PLACEHOLDER} >= ${v(r.type, r.lo)} AND ${PLACEHOLDER} <= ${v(r.type, r.hi)}`; break;
+      case 'in': predicateText = `${PLACEHOLDER} IN (${r.labels.map(l => v(r.type, r.type === 'boolean' ? l === 'true' : l)).join(', ')})`; break;
+      case 'eq': predicateText = r.value === null ? `${PLACEHOLDER} IS NULL` : `${PLACEHOLDER} = ${v(r.type, r.value)}`; break;
+    }
   }
+  const literals = values.map(([type, value]) => literalNode(tools, type, value));
   const template = tools.parse(`SELECT 1 FROM t WHERE ${node.where_clause ? `${OLD_WHERE} AND ` : ''}(${predicateText})`);
   if (!template || template.error) return { reason: `predicate does not parse: ${template?.error_message}` };
   const where = template.statements[0].node.where_clause;
@@ -377,6 +435,8 @@ function rewrite(sql: string, r: Restriction, tools: SqlTools, options: Manipula
       if (name === PLACEHOLDER) { h[k] = structuredClone(target); return; }
       if (name === OLD_WHERE) { h[k] = structuredClone(node.where_clause); return; }
       if (name === 'tb_manipulate_width' && bucket && typeof bucket.width !== 'string') { h[k] = structuredClone(bucket.width); return; }
+      const m = /^tb_manipulate_v(\d+)$/.exec(name);
+      if (m) { h[k] = literals[Number(m[1])]; return; }
     }
     for (const key of Array.isArray(n) ? n.keys() : Object.keys(n)) substitute(n, key as never);
   };

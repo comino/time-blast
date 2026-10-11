@@ -188,7 +188,8 @@ export class Renderer implements RendererNode {
     if (b.retained + bytes <= this.exportBytes) { b.batches.push(batch); b.retained += bytes; } else b.truncated = true;
     const firstPreview = b.preview!.rows.length === 0;
     if (!b.preview!.full) b.preview!.add(batch); else b.preview!.total += batch.numRows;
-    if (flags & Flags.URGENT) { b.timing.ingest = ingest; this.frame(true); } else this.schedule();
+    if (flags & Flags.STEADY) this.drainEvents();
+    else if (flags & Flags.URGENT) { b.timing.ingest = ingest; this.frame(true); } else this.schedule();
     // Text after pixels: the table preview never delays the first draw.
     if (firstPreview) this.postTable(b);
   }

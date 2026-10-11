@@ -33,8 +33,8 @@ pub const ACCEPTED: u32 = 1;
 pub const PREWARM_VERTEX_BUFFERS: usize = 8;
 pub const PREWARM_VERTEX_BYTES: u32 = 64 << 10;
 pub const URGENT: u32 = 2;
-/// `done` result flag: the request was adopted by the image on screen (an `ev::STEADY` event
-/// is queued; no frame is needed).
+/// `batch`/`done` result flag: the request was adopted by the image on screen (an `ev::STEADY`
+/// event is queued; no frame is needed).
 pub const STEADY: u32 = 4;
 /// AXES payload for a slot that shows no chart.
 pub const NO_AXES: &str = "{\"x\":[],\"y\":[],\"plot\":{\"left\":0,\"top\":0,\"width\":0,\"height\":0},\"legend\":[]}";
@@ -472,7 +472,13 @@ impl Renderer {
             let from = r.store.rows - rows;
             let same = shown.map_or(false, |sh| sh.view == r.view && r.store.same_rows(&sh.store, from, r.store.rows));
             if same {
-                // Identical so far: the image on screen already shows these rows.
+                // Identical so far: the image on screen already shows these rows. Once it has
+                // as many rows as the shown result, the image shows exactly what this result has
+                // delivered (as a first draw at this batch would): adopt it now. Later rows, if
+                // any, append to the adopted result and draw as usual.
+                if shown.map_or(false, |sh| sh.store.rows == r.store.rows) {
+                    return self.adopt(i);
+                }
                 return ACCEPTED;
             }
             r.hold = false;
@@ -510,7 +516,11 @@ impl Renderer {
         // A held result was never drawn: it counts as not ready even after catching up.
         let was_ready = r.ready() && !held;
         r.done = true;
-        s.dirty = true;
+        // The shown result's image already has every row (each batch redrew it): DONE alone
+        // changes nothing on screen.
+        if is_pending {
+            s.dirty = true;
+        }
         if is_pending && !was_ready {
             s.urgent = true;
             return ACCEPTED | URGENT;
@@ -538,7 +548,7 @@ impl Renderer {
         sh.request = p.request;
         sh.available = p.available;
         sh.store = p.store;
-        sh.done = true;
+        sh.done = p.done;
         let relabeled = sh.family.as_mut().map_or(false, |f| f.relabel(&sh.store));
         let (request, points) = (sh.request, sh.points());
         if let Some(sc) = s.scales.as_mut() {
@@ -928,15 +938,14 @@ mod tests {
         bind(&mut r, 1, 2);
         r.schema(2, 0, cols());
         let b = batch(&pts);
-        assert_eq!(r.batch(2, 0, b.rows, &raw(&b)), ACCEPTED, "identical batch: not urgent, nothing to draw");
-        assert!(r.frame(true).is_empty());
-        r.clear_events();
-        assert_eq!(r.done(2, 0), ACCEPTED | STEADY);
+        assert_eq!(r.batch(2, 0, b.rows, &raw(&b)), ACCEPTED | STEADY, "identical batch: adopted, nothing to draw");
         let e = events(&r);
         assert!(e.iter().any(|e| e[0] == ev::STEADY && e[1] == 1 && e[2] == 2 && e[3] == 2), "{e:?}");
         assert!(!e.iter().any(|e| e[0] == ev::AXES), "same names: no text change");
         assert_eq!(r.slots[0].shown.as_ref().unwrap().request, 2);
         assert!(r.slots[0].pending.is_none());
+        assert!(r.frame(true).is_empty());
+        assert_eq!(r.done(2, 0), ACCEPTED);
         assert!(r.frame(false).is_empty(), "no redraw");
         assert_eq!(r.steady_count, 1);
         // The adopted result is hit-testable as request 2.
@@ -953,8 +962,13 @@ mod tests {
         r.frame(false);
         r.frame_done();
         r.clear_events();
-        assert_eq!(show(&mut r, 2, named("avg_speed"), &pts) & STEADY, STEADY);
+        bind(&mut r, 1, 2);
+        r.schema(2, 0, named("avg_speed"));
+        r.clear_events();
+        let b = batch(&pts);
+        assert_eq!(r.batch(2, 0, b.rows, &raw(&b)), ACCEPTED | STEADY);
         let e = events(&r);
+        r.done(2, 0);
         let axes = e.iter().find(|e| e[0] == ev::AXES).expect("legend text refreshed");
         assert!(string_of(&r, axes).contains("avg_speed"));
         assert!(r.frame(false).is_empty(), "text only, no redraw");

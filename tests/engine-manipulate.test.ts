@@ -12,7 +12,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { openNode, sameResult, type BenchNode, type Outcome } from '../evals/database-bench';
 import { references, type Corpus } from '../evals/sql-eval';
-import { apply, formatMicros, manipulate, refinedBucket, restrictionOf, splitLead, wrap, type Restriction, type SqlTools } from '../src/engine/manipulate';
+import { apply, CachedTools, formatMicros, manipulate, refinedBucket, restrictionOf, splitLead, wrap, type Restriction, type SqlTools } from '../src/engine/manipulate';
 import type { Hit } from '../src/engine/contracts';
 
 const corpus = JSON.parse(readFileSync(new URL('../evals/sql-corpus.json', import.meta.url), 'utf8')) as Corpus;
@@ -75,14 +75,28 @@ const statements = [...new Set(corpus.cases.flatMap(c => references(c, corpus.no
 
 describe('manipulate: transformed SQL == original result filtered', () => {
   it('holds for every corpus statement and restriction (rewrite and wrap)', async () => {
-    const tally = { statements: 0, restrictions: 0, rewrite: 0, wrap: 0 };
+    const tally = { statements: 0, restrictions: 0, rewrite: 0, wrap: 0, chained: 0, chainedRewrite: 0 };
     const reasons = new Map<string, number>();
     const failures: string[] = [];
+    const cached = tools ? new CachedTools(tools) : undefined;
     for (const sql of statements) {
       const original = await bench.run(sql);
       if (!original.ok || original.rows.length < 2) continue;
       tally.statements++;
-      for (const r of restrictions(original)) {
+      const rs = restrictions(original);
+      // Chained gestures (e.g. brush, then click a series) on the SQL a gesture produced: the
+      // printed tree comes from CachedTools' memo, not a new parse.
+      const eq = rs.find(x => x.kind === 'eq' && x.value !== null);
+      if (cached && eq) for (const r of rs) {
+        if (r === eq || r.column === eq.column) continue;
+        const first = apply(sql, r, { tools: cached, columns });
+        const second = apply(first.sql!, eq, { tools: cached, columns });
+        tally.chained++; if (second.method === 'rewrite') tally.chainedRewrite++;
+        const got = await bench.run(second.sql!);
+        const v = sameResult(sql, filtered(filtered(original, r), eq), got);
+        if (!v.exact) failures.push(`chained ${v.reason}\n  original: ${sql}\n  sql: ${second.sql}\n  ${got.message ?? ''}`);
+      }
+      for (const r of rs) {
         tally.restrictions++;
         const expected = filtered(original, r);
         const check = async (label: string, text: string | null) => {
@@ -93,7 +107,7 @@ describe('manipulate: transformed SQL == original result filtered', () => {
         };
         await check('wrap', wrap(sql, r));
         if (tools) {
-          const m = apply(sql, r, { tools, columns });
+          const m = apply(sql, r, { tools: cached, columns });
           tally[m.method === 'rewrite' ? 'rewrite' : 'wrap']++;
           reasons.set(m.reason, (reasons.get(m.reason) ?? 0) + 1);
           await check(m.method, m.sql);
