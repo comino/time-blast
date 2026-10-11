@@ -75,8 +75,11 @@ struct Series {
     sorted: bool,
     rewrite: bool,
     last_x: f32,
-    /// Reversed copy of `pts` for back-to-front ribbons; rebuilt only when stale and needed.
+    /// Reversed copy of `pts` for back-to-front ribbons, built only when needed. It fills from
+    /// the end: `rev[rev_start..]` = `pts` reversed, so appended points are prepended at lower
+    /// offsets and an append uploads only the new points (bound at offset `rev_start * 8`).
     rev: Vec<[f32; 2]>,
+    rev_start: usize,
     rev_gpu: GpuVec,
 }
 
@@ -357,6 +360,33 @@ impl Matrix {
     }
 }
 
+/// Bring a series' reversed copy up to date: prepend new points (uploading only them), or
+/// rebuild with headroom when the order changed or the buffer is full.
+fn sync_reversed(s: &mut Series, gpu: &mut Gpu, rewrite: bool) {
+    let n = s.pts.len();
+    let have = s.rev.len() - s.rev_start;
+    if n == have && !rewrite {
+        return;
+    }
+    if rewrite || s.rev_gpu.id == 0 || n > s.rev.len() || have > n {
+        let cap = (n * 2).next_power_of_two().max(256);
+        s.rev.clear();
+        s.rev.resize(cap - n, [MISSING, MISSING]);
+        s.rev.extend(s.pts.iter().rev());
+        s.rev_start = cap - n;
+        s.rev_gpu.sync(gpu, as_bytes(&s.rev), KIND_VERTEX, true);
+        return;
+    }
+    let new = n - have;
+    let start = s.rev_start - new;
+    for (k, p) in s.pts[have..].iter().enumerate() {
+        s.rev[s.rev_start - 1 - k] = *p;
+    }
+    s.rev_start = start;
+    let bytes = as_bytes(&s.rev[start..start + new]);
+    gpu.words.extend_from_slice(&[crate::gpu::op::BUF_WRITE, s.rev_gpu.id, start as u32 * 8, bytes.as_ptr() as usize as u32, bytes.len() as u32]);
+}
+
 impl Family for Matrix {
     fn handles(&self, view: View) -> bool {
         matches!(view, View::Heatmap | View::Surface)
@@ -395,10 +425,8 @@ impl Family for Matrix {
             }
             let rewrite = std::mem::take(&mut s.rewrite);
             s.gpu.sync(gpu, as_bytes(&s.pts), KIND_VERTEX, rewrite);
-            if reversed && (rewrite || s.rev.len() != s.pts.len()) {
-                s.rev.clear();
-                s.rev.extend(s.pts.iter().rev());
-                s.rev_gpu.sync(gpu, as_bytes(&s.rev), KIND_VERTEX, true);
+            if reversed {
+                sync_reversed(s, gpu, rewrite);
             }
         }
         if view == View::Surface {
@@ -552,9 +580,9 @@ impl Family for Matrix {
                     if s.pts.len() < 2 {
                         continue;
                     }
-                    let id = if reversed { s.rev_gpu.id } else { s.gpu.id };
-                    f.pass.vertex_buffer(0, id, 0);
-                    f.pass.vertex_buffer(1, id, 8);
+                    let (id, at) = if reversed { (s.rev_gpu.id, s.rev_start as u32 * 8) } else { (s.gpu.id, 0) };
+                    f.pass.vertex_buffer(0, id, at);
+                    f.pass.vertex_buffer(1, id, at + 8);
                     f.pass.uniform(&Uniform { color: palette_rgba(i, 1.0), a: [base.a[0], base.a[1], self.lane(i) as f32, half], ..base });
                     f.pass.draw(4, s.pts.len() as u32 - 1);
                 }
@@ -1049,12 +1077,28 @@ mod tests {
         assert!(!m.set_param("elevation", 1.0));
         upload(&mut m, View::Surface, 50);
         let s0 = &m.series[0];
-        assert_eq!(s0.rev.first(), s0.pts.last());
+        assert_eq!(s0.rev[s0.rev_start..].first(), s0.pts.last());
+        assert_eq!(s0.rev.last(), s0.pts.first());
         let pass = draw(&mut m, View::Surface, [10.0, 10.0, 400.0, 300.0]);
         let ribbons: Vec<Uniform> = uniforms(&pass).into_iter().filter(|u| u.canvas[3] == 0.0).collect();
         assert!(ribbons[0].a[2] < ribbons[2].a[2], "front lane (series 0) drawn last");
         let rev = m.series[0].rev_gpu.id;
-        assert!(pass.words.windows(4).any(|w| w == [op::VB, 0, rev, 0]));
+        let at = m.series[0].rev_start as u32 * 8;
+        assert!(pass.words.windows(4).any(|w| w == [op::VB, 0, rev, at]));
+        assert!(pass.words.windows(4).any(|w| w == [op::VB, 1, rev, at + 8]));
+        // Streaming while reversed: new points are prepended; only they upload.
+        let mut store = store;
+        let more = [(1_760_000_000_000 + 5 * 60_000, "s00", Some(7.0)), (1_760_000_000_000 + 6 * 60_000, "s00", Some(8.0))];
+        store.append(2, &raw_time(&more));
+        m.ingest(&store, store.rows - 2, store.rows);
+        let start = m.series[0].rev_start;
+        let words = upload(&mut m, View::Surface, 80);
+        let s0 = &m.series[0];
+        assert_eq!(s0.rev_start, start - 2);
+        assert_eq!(s0.rev[s0.rev_start..].iter().rev().copied().collect::<Vec<_>>(), s0.pts);
+        let rev_writes: Vec<&[u32]> = words.chunks(5).filter(|w| w[0] == op::BUF_WRITE && w[1] == s0.rev_gpu.id).collect();
+        assert_eq!(rev_writes.len(), 1);
+        assert_eq!((rev_writes[0][2], rev_writes[0][4]), (s0.rev_start as u32 * 8, 16), "two points, at the new start");
         // Clamped to ±180.
         assert!(m.set_param("rotation", 720.0));
         assert_eq!(m.rotation, 180.0);
