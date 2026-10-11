@@ -13,29 +13,36 @@ The metric is **thought → correct result**. Typing and Enter are steps to shri
 
 ## Where the code is today
 
-**Batch 1 (2026-10-10) replaced the prototype's architecture on `main`.** The model writes SQL;
-every component speaks one binary protocol, [tb1](docs/protocol-v1.md). Plan and progress:
-[plan-batch-1.md](docs/plan-batch-1.md), per-area notes in [docs/batch-1/](docs/batch-1/).
+The [live demo](https://time-blast.46-224-133-201.sslip.io) runs `main`. Type a question about
+the data; a chart updates on every keystroke. Measured on the public demo: last keystroke →
+first draw **547 ms** with real inference (`openai/gpt-oss-120b` on Groq, **91 %** correct on the
+45-question executed-result eval). With inference taken out, our own pipeline takes **~40 ms**.
+Details and caveats: [docs/status.md](docs/status.md).
 
-| Piece | Where | State |
-| --- | --- | --- |
-| tb1 frame codec, TS + Rust, golden vectors | `src/protocol/`, `crates/tb-protocol/` | implemented, cross-tested |
-| Coordinator (drafts, per-keystroke translation, epochs, stale-result fencing, latency dial) | `crates/tb-coordinator/` → `public/wasm/tb-coordinator.wasm`, loader `src/engine/coordinator.ts` | implemented, native + Wasm tests |
-| Engine worker, links, DuckDB-Wasm database node (read-only guard, limits, Arrow streaming, Parquet/CSV drop) | `src/engine/` | implemented, Node tests + headless smoke |
-| Inference server on tb1 writing SQL (OpenRouter) | `crates/inference-server/` | implemented, tested, **not deployed** |
-| WebLLM inference node on tb1 | `src/inference-node/` | implemented, tested against a fake engine only |
-| Main-thread UI | `src/ui/app.ts` (+ modules it imports) | implemented, tested against a fake engine |
-| Rust/Wasm renderer (WebGPU/WebGL2) | `crates/tb-render/`, `src/engine/render/` | **in progress, not merged**: `main` has a stub |
-| NL→SQL eval by executed results | `evals/`, `scripts/eval-sql.mjs` | implemented; [results](docs/batch-1/evals.md) |
+```
+main thread (JS glue: input, cards, DOM text)
+   │ tb1 frames over MessagePort (transferred buffers)
+engine worker
+   ├─ coordinator  Rust/Wasm, sans-IO: per-keystroke translation, dedup, fencing, cache, latency dial
+   ├─ database     DuckDB-Wasm in-process (rollups, result cache, SQL guard) | or tb1 WebSocket → ClickHouse
+   ├─ renderer     Rust/Wasm + WebGPU/WebGL2, OffscreenCanvas per card, ten views
+   └─ inference    tb1 WebSocket → Rust server → OpenRouter/Groq (writes SQL) | or WebLLM worker
+```
 
-Because the renderer is not merged, **the new loop does not yet draw in a browser end to end.**
-The [public demo](https://time-blast.46-224-133-201.sslip.io) still runs the prototype build
-(7-field plan, Canvas2D), whose source was removed from `main` in the batch-1 cleanup (last at
-`1afe91c`). See [docs/status.md](docs/status.md).
+| Piece | Where |
+| --- | --- |
+| tb1 frame codec, TS + Rust, golden vectors ([spec](docs/protocol-v1.md)) | `src/protocol/`, `crates/tb-protocol/` |
+| Coordinator | `crates/tb-coordinator/` → `public/wasm/tb-coordinator.wasm` |
+| Engine worker, DuckDB-Wasm database node, ClickHouse node | `src/engine/`, `crates/database-server/` |
+| Renderer (WebGPU/WebGL2 from Rust/Wasm) | `crates/tb-render/` → `public/wasm/tb-render.wasm`, shim in `src/engine/render/` |
+| Inference server (Rust, tb1) and WebLLM node | `crates/inference-server/`, `src/inference-node/` |
+| UI: cards, chart-as-query, next-question chips, voice | `src/ui/` |
+| NL→SQL eval by executed results | `evals/`, `scripts/eval-sql.mjs` |
+| Perf harness, history and dashboard; real-hardware page | `pnpm perf`, [docs/perf/](docs/perf/README.md), `/measure.html` |
 
 The `vessels` fixture is generated inside DuckDB: `telemetry(ts, vessel, speed, wind,
-wave_height, water_temp, lat, lon)`, 1,209,600 rows (six vessels, every 6 s, 1–14 Sept 2026).
-`public/data/telemetry.parquet` is the smaller 120,960-row variant (`vessels-small`).
+wave_height, water_temp, lat, lon)`, 1,209,600 rows. Any Parquet/CSV file can be dropped onto
+the page; nothing on the hot path assumes this schema.
 
 ## Run it
 
@@ -64,46 +71,25 @@ python3 tests/engine_smoke.py   # see docs/batch-1/engine.md
 python3 tests/ui_smoke.py       # see docs/batch-1/ui.md
 ```
 
-Remaining legacy: `src/ui/chart.ts` (+ `bar-layout.ts`, `frame-work.ts`, `order.ts`, a trimmed
-`src/core/types.ts`) stays only as the Canvas2D baseline for the renderer benchmark; delete it with
-that benchmark.
-
 ## The central idea
 
-Enter should commit a prepared computation, wherever possible.
+Don't wait for Enter. Every keystroke is a draft revision: it is translated to SQL, executed and
+drawn, with stale work cancelled and stale results fenced out by identity. Identical SQL is
+deduplicated, and identical data keeps the chart still, so by the time the user finishes typing
+the answer is usually already on screen. Enter only keeps it. After a result settles, likely
+follow-up questions are run in the background, so clicking one is a cache hit.
 
-While the user types, we can already transmit draft revisions, identify relevant schema, warm a connection and model, reuse a stable prompt prefix, predict likely query plans, and execute bounded speculative reads. A matching result can already be sitting in browser memory when Enter arrives.
-
-The most aggressive path even prepares a hidden chart buffer before submission. Enter validates its identity and reveals it at the next rendering opportunity. A miss falls back immediately to the committed request; speculative work must not delay it.
-
-```mermaid
-flowchart LR
-    A[Typing] --> B[Versioned draft]
-    B --> C[Prepare model and context]
-    B --> D[Predict query candidates]
-    C --> D
-    D --> E[Bounded speculative reads]
-    E --> F[Stage points and chart buffers]
-    G[Enter] --> H{Valid prepared result?}
-    F --> H
-    H -->|Yes| I[Promote and render]
-    H -->|No| J[Finish committed query]
-    J --> K[Stream first useful point]
-    K --> I
-```
-
-This moves work earlier; it does not make that work free. Report speculative GPU time, scanned bytes, energy, and hit rate alongside latency.
+Speculation moves work earlier; it does not make it free. Report inference cost, scanned bytes and
+hit rate next to latency.
 
 ## What counts as fast
 
-The goal is **thought → correct result** ([vision](docs/vision.md)). The prototype's measured target is the narrower **Enter to the first visible correct point for the committed request**. Also measure first provisional preview, first useful chart coverage, and final exact completion. A wrong prediction, spinner, timestamp without a value, or stale chart is not a successful first point.
+The goal is **thought → correct result** ([vision](docs/vision.md)). The trace headline is last
+keystroke → first draw *submitted*; `/measure.html` adds GPU-presented frames on real hardware.
+Photons need external equipment. A wrong chart, spinner or stale chart shown early is a failure.
 
-There are two measurement levels:
-
-- Software: input event to receiving a valid point and submitting its draw. These are useful proxies, not photon measurements.
-- Physical: a triggered key event to light emitted by the corresponding chart region, measured with external equipment.
-
-The display is part of the system. At 60 Hz, nominal frame spacing is 16.67 ms; at 144 Hz it is 6.94 ms. Saving microseconds matters when it prevents missing a frame deadline, but does not guarantee an equal improvement at the eye. Browser rendering is scheduled around rendering opportunities. [HTML rendering model](https://html.spec.whatwg.org/multipage/webappapis.html#update-the-rendering).
+At 60 Hz a frame is 16.67 ms; at 144 Hz 6.94 ms. Saving microseconds matters when it makes a
+frame deadline. [HTML rendering model](https://html.spec.whatwg.org/multipage/webappapis.html#update-the-rendering).
 
 ## Building blocks
 
@@ -116,14 +102,14 @@ The display is part of the system. At 60 Hz, nominal frame spacing is 16.67 ms; 
 | Database | DuckDB-Wasm prototype; ClickHouse primary deployment target | Ordered scans, aggregate tiles, cached prefixes, narrow first-window reads |
 | Data stream | Reliable schema plus incremental columnar batches | A tiny first-point frame followed by bulk Arrow batches |
 | Transport | tb1 frames: in-process, MessagePort with transfer, binary WebSocket | WebTransport; shared-memory UI→engine ring |
-| Rendering | Rust/Wasm core, WebGPU (WebGL2 fallback) on OffscreenCanvas (in progress) | Pre-rendered speculative buffers |
+| Rendering | Rust/Wasm core, WebGPU (WebGL2 fallback) on OffscreenCanvas | Pre-rendered speculative buffers |
 | Measurement | Local monotonic spans and correctness oracle | Browser traces plus hardware input-to-light measurement |
 
 These are benchmark candidates, not claims that one language, transport, or GPU API is universally fastest. See the referenced design notes for runtime limitations.
 
 ## Read the design
 
-Current behavior: [status](docs/status.md), [protocol-v1](docs/protocol-v1.md), [docs/batch-1/](docs/batch-1/). The following documents predate the vision and preserve the broader design; [docs/README.md](docs/README.md) says which still hold.
+Current behavior: [status](docs/status.md), [protocol-v1](docs/protocol-v1.md), per-batch notes in [docs/batch-1/](docs/batch-1/), [docs/batch-2/](docs/batch-2/), [docs/batch-3/](docs/batch-3/). The following documents predate the vision and preserve the broader design; [docs/README.md](docs/README.md) says which still hold.
 
 1. [Architecture](docs/architecture.md): critical paths, placement, identities, and initial decisions.
 2. [Protocol draft](docs/protocol.md): drafts, commit, promotion, streaming points, cancellation, and recovery.
@@ -144,4 +130,4 @@ Supporting research notes describe the implementation choices and further experi
 
 ## Next experiments
 
-See [the priorities in docs/status.md](docs/status.md#pick-up-here-next).
+See [docs/status.md](docs/status.md#next).

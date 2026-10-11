@@ -17,7 +17,7 @@ background, and where it conflicts with the vision, the vision wins.
 | [protocol-v1.md](protocol-v1.md) | tb1: the one frame format and message vocabulary for every component and placement |
 | [batch-2/](batch-2/) | Batch 2 per area: [database.md](batch-2/database.md), [inference.md](batch-2/inference.md), [manipulation.md](batch-2/manipulation.md) (chart-as-query, steady charts), [voice-anticipation.md](batch-2/voice-anticipation.md) (voice input, next-question chips) |
 | [batch-1/](batch-1/) | What batch 1 built and measured, per area: coordinator, engine, inference, ui, render; [evals.md](batch-1/evals.md) scores NL→SQL by executed results |
-| [../deploy/README.md](../deploy/README.md) | Operating and updating the live demo (still the prototype build) |
+| [../deploy/README.md](../deploy/README.md) | Operating and updating the live demo (runs `main`) |
 
 ## Still-valid research and evidence
 

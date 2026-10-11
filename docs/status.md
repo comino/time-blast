@@ -1,6 +1,6 @@
 # Current status and handoff
 
-Updated **2026-10-11** (batch 1 merged; batch-2 database and inference work merged). Direction: [vision.md](vision.md). The source repository is
+Updated **2026-10-11** (batches 1–2 merged and deployed; batch 3 in progress). Direction: [vision.md](vision.md). The source repository is
 private; the [live synthetic-data demo](https://time-blast.46-224-133-201.sslip.io) is public and,
 since 2026-10-11, **runs batch 1 + batch 2** ([deploy/README.md](../deploy/README.md)): public
 check, real inference, last keystroke → first draw 547 ms.
@@ -53,8 +53,6 @@ everything else ~10 ms. Batch 2 cut the database to a few ms for most queries (b
   - no device-loss recovery;
   - no line thinning for multi-million-point series;
   - no lat/lon tick labels.
-- `render-bench` still compares against the legacy Canvas2D chart. `src/ui/chart.ts` and its
-  imports remain only for that.
 
 ## Batch 2 so far (merged on `main`)
 
@@ -94,10 +92,28 @@ plan: [plan-batch-2.md](plan-batch-2.md).
   commits. It is not measured with a real microphone (headless Chromium has no speech service).
 
 
+## Batch 3 (in progress)
+
+Plan: [plan-batch-3.md](plan-batch-3.md). **Direction (owner, 2026-10-11): bring the project to a
+finished, polished state soon. Hosted API inference is fine; no work on local inference or on
+hosted-inference latency.**
+
+- **Perf regression harness (done):** `pnpm perf` runs e2e, gesture, chip, boot, database and
+  micro benches, appends p50/p95 per stage to [perf/history.jsonl](perf/history.jsonl) keyed by
+  commit, checks [budgets](perf/budgets.json) (`--check` fails loudly) and feeds a dashboard
+  ([perf/index.html](perf/index.html)). Notes: [batch-3/measurement.md](batch-3/measurement.md).
+- **Real-hardware page (done, not yet run on hardware):** `/measure.html` runs the real pipeline
+  with an in-page fake inference node and reports keystroke → GPU-presented frame, boot stages,
+  GPU adapter and network RTT. Its JSON goes into the history with `pnpm perf --ingest`.
+- **Cold start** and **generality** (3–4 real datasets with their own eval corpora): wrapping up.
+- **Cleanup:** the legacy Canvas2D chart and its benchmark baseline are deleted; render-bench now
+  measures only the Rust/Wasm renderer.
+
 ## Next
 
-Real-GPU and photon measurements (need the owner's hardware), one model call per kept result for
-smarter follow-ups, repair on database errors, server-side speech-to-text.
+Finish batch 3, then polish: repair on database errors (the error goes back to the model for one
+retry), renderer robustness (one GPU device for all cards, device-loss recovery, line thinning),
+and an owner run of `/measure.html` on real hardware.
 
 ## Deployed
 

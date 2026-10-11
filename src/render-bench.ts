@@ -1,15 +1,12 @@
-/** render-bench.html: legacy Canvas2D StreamChart vs the Rust/Wasm renderer (WebGPU, WebGL2)
- * on identical synthetic Arrow batches, plus data-path micro-measurements and the functional
- * view/fencing harness used by tests/render_views.py. Results land in `window.__bench` /
- * `window.__views`. Runs on the main thread (the legacy chart needs DOM); the renderer runs
- * on transferred OffscreenCanvases exactly as in the engine worker. */
+/** render-bench.html: the Rust/Wasm renderer (WebGPU, WebGL2) on synthetic Arrow batches, plus
+ * data-path micro-measurements and the functional view/fencing harness used by
+ * tests/render_views.py. Results land in `window.__bench` / `window.__views`. The renderer runs on
+ * transferred OffscreenCanvases exactly as in the engine worker. */
 import { Dictionary, Float64, Int32, makeData, makeVector, Table, TimestampMicrosecond, Utf8, vectorFromArray, type RecordBatch } from 'apache-arrow';
 import type { AxisTicks, EngineToUi, LocalFrame, ViewName } from './engine/contracts';
 import { createRenderer, type Renderer } from './engine/render';
 import type { BackendKind } from './engine/render/backend';
 import { header, Kind, type Frame } from './protocol/frame';
-import { StreamChart } from './ui/chart';
-import type { ColumnBatch, QueryView } from './core/types';
 
 const VESSELS = ['Aurora', 'Borealis', 'Calypso', 'Discovery', 'Endeavour', 'Fjord'];
 const START = Date.UTC(2026, 0, 1);
@@ -39,19 +36,6 @@ function dataset(points: number, series = VESSELS.length): RecordBatch[] {
     }).batches[0]);
   }
   return batches;
-}
-
-/** The legacy adapter's ColumnBatch (conversion done before timing; it belongs to the old adapter). */
-function legacyBatches(batches: RecordBatch[]): ColumnBatch[] {
-  return batches.map(b => {
-    const ts = b.getChildAt(0)!.data[0].values as BigInt64Array, n = b.numRows;
-    const x = new Float64Array(n), series = new Int32Array(n);
-    const dict = b.getChildAt(1)!.data[0];
-    const idx = dict.values as Int32Array, names = dict.dictionary!.toArray() as string[];
-    for (let i = 0; i < n; i++) { x[i] = Number(ts[i] / 1000n); series[i] = VESSELS.indexOf(names[idx[i]]); }
-    const y = b.getChildAt(2)!.data[0].values as Float64Array;
-    return { x, y: y.subarray(0, n), series, length: n, byteLength: n * 20 };
-  });
 }
 
 // ───────────────────────── helpers ─────────────────────────
@@ -157,42 +141,6 @@ async function benchRenderer(h: Harness, slot: number, batches: RecordBatch[], r
   };
 }
 
-// ───────────────────────── bench: legacy Canvas2D ─────────────────────────
-
-async function benchLegacy(batches: ColumnBatch[], points: number, reps: number) {
-  const c = card(`legacy Canvas2D StreamChart · ${points} points`, `legacy-${points}`);
-  let drewAt = 0, settledAt = 0;
-  let settled: () => void = () => {};
-  const chart = new StreamChart(c.canvas, (_id, at) => { drewAt = at; }, () => {}, () => {}, (_id, s) => { if (s) { settledAt = performance.now(); settled(); } });
-  const view = {
-    id: 'bench', prompt: '', revision: 1, sql: '', source: 'template', timing: {},
-    plan: { metric: 'speed', aggregate: 'avg', bucketMinutes: 1, windowHours: points / VESSELS.length / 60, splitByVessel: true, vessel: null, view: 'line' },
-    context: { id: 'bench', label: 'bench', rowCount: points, start: START, end: START + points / VESSELS.length * 60_000, vessels: VESSELS, description: '' },
-  } as unknown as QueryView;
-  const first: number[] = [], append: number[] = [], total: number[] = [], redraw: number[] = [];
-  for (let rep = 0; rep < reps; rep++) {
-    await frameTick();
-    chart.begin(view);
-    const done = new Promise<void>(resolve => { settled = resolve; });
-    const t0 = performance.now();
-    chart.append(batches[0]);
-    first.push(drewAt - t0);
-    for (let k = 1; k < batches.length; k++) { const a = performance.now(); chart.append(batches[k]); append.push(performance.now() - a); }
-    await done;
-    total.push(settledAt - t0);
-    const again = new Promise<void>(resolve => { settled = resolve; });
-    const d = performance.now();
-    chart.setRepresentation('scatter');
-    await again;
-    redraw.push(settledAt - d);
-    chart.setRepresentation('line');
-    await new Promise<void>(resolve => { settled = resolve; });
-  }
-  chart.stop();
-  return { batchToFirstDrawMs: stats(first), appendMs: stats(append), allBatchesDrawnMs: stats(total), fullRedrawMs: stats(redraw),
-    note: 'Canvas2D work runs in 4 ms slices per animation frame (FrameWork); totals are wall time including frame pacing.' };
-}
-
 // ───────────────────────── data-path micro-measurements ─────────────────────────
 
 /** Per-call ms; each sample averages `inner` calls so timer granularity doesn't dominate. */
@@ -268,9 +216,6 @@ async function bench(): Promise<void> {
   }
   for (const points of sizes) {
     const batches = dataset(points);
-    phase(`legacy ${points}`);
-    runs[`legacy-canvas2d-${points}`] = await benchLegacy(legacyBatches(batches), points, reps);
-    log(results);
     for (const kind of backends) {
       phase(`${kind} ${points}`);
       const h = await harness(kind);
