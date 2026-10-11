@@ -1,0 +1,1062 @@
+{
+ "webgpu": {
+  "ok": true,
+  "result": {
+   "backend": "webgpu",
+   "label": "google swiftshader",
+   "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.0 Safari/537.36",
+   "reps": 5,
+   "mapPorts": {
+    "rows": 8,
+    "batches": 1,
+    "chosen": "map",
+    "points": 8,
+    "firstBatchCallMs": {
+     "n": 1,
+     "median": 32.08,
+     "p95": 32.08,
+     "max": 32.08
+    },
+    "firstDrawMs": {
+     "n": 1,
+     "median": 31.59,
+     "p95": 31.59,
+     "max": 31.59
+    },
+    "firstIngestMs": {
+     "n": 1,
+     "median": 17.615,
+     "p95": 17.615,
+     "max": 17.615
+    },
+    "firstBuildMs": {
+     "n": 1,
+     "median": 6.915,
+     "p95": 6.915,
+     "max": 6.915
+    },
+    "firstReplayMs": {
+     "n": 1,
+     "median": 4.95,
+     "p95": 4.95,
+     "max": 4.95
+    },
+    "coastFrameMs": {
+     "n": 1,
+     "median": 0.455,
+     "p95": 0.455,
+     "max": 0.455
+    },
+    "coastBuildMs": {
+     "n": 1,
+     "median": 0.195,
+     "p95": 0.195,
+     "max": 0.195
+    },
+    "coastReplayMs": {
+     "n": 1,
+     "median": 0.135,
+     "p95": 0.135,
+     "max": 0.135
+    },
+    "coastFrameUploadedBytes": 19248,
+    "batchIngestMs": {
+     "n": 0
+    },
+    "batchFrameMs": {
+     "n": 0
+    },
+    "batchBuildMs": {
+     "n": 0
+    },
+    "batchReplayMs": {
+     "n": 0
+    },
+    "allBatchesMs": {
+     "n": 1,
+     "median": 32.98,
+     "p95": 32.98,
+     "max": 32.98
+    },
+    "untilGpuDoneMs": {
+     "n": 1,
+     "median": 2396.575,
+     "p95": 2396.575,
+     "max": 2396.575
+    }
+   },
+   "tracks": {
+    "rows": 12000,
+    "batches": 6,
+    "chosen": "tracks",
+    "points": 2048,
+    "firstBatchCallMs": {
+     "n": 5,
+     "median": 4.7,
+     "p95": 73.7,
+     "max": 73.7
+    },
+    "firstDrawMs": {
+     "n": 5,
+     "median": 1.14,
+     "p95": 73.485,
+     "max": 73.485
+    },
+    "firstIngestMs": {
+     "n": 5,
+     "median": 0.23,
+     "p95": 49.48,
+     "max": 49.48
+    },
+    "firstBuildMs": {
+     "n": 5,
+     "median": 0.065,
+     "p95": 0.33,
+     "max": 0.33
+    },
+    "firstReplayMs": {
+     "n": 5,
+     "median": 0.255,
+     "p95": 0.52,
+     "max": 0.52
+    },
+    "coastFrameMs": {
+     "n": 5,
+     "median": 0.205,
+     "p95": 10.35,
+     "max": 10.35
+    },
+    "coastBuildMs": {
+     "n": 5,
+     "median": 0.045,
+     "p95": 0.075,
+     "max": 0.075
+    },
+    "coastReplayMs": {
+     "n": 5,
+     "median": 0.125,
+     "p95": 1.975,
+     "max": 1.975
+    },
+    "coastFrameUploadedBytes": 18992,
+    "batchIngestMs": {
+     "n": 25,
+     "median": 0.205,
+     "p95": 9.3,
+     "max": 11.245
+    },
+    "batchFrameMs": {
+     "n": 25,
+     "median": 0.25,
+     "p95": 39.89,
+     "max": 43.565
+    },
+    "batchBuildMs": {
+     "n": 25,
+     "median": 0.035,
+     "p95": 0.075,
+     "max": 33.435
+    },
+    "batchReplayMs": {
+     "n": 25,
+     "median": 0.14,
+     "p95": 15.575,
+     "max": 43.445
+    },
+    "allBatchesMs": {
+     "n": 5,
+     "median": 27.615,
+     "p95": 205.4,
+     "max": 205.4
+    },
+    "untilGpuDoneMs": {
+     "n": 5,
+     "median": 10324.17,
+     "p95": 19329.43,
+     "max": 19329.43
+    }
+   },
+   "density": {
+    "rows": 100000,
+    "batches": 49,
+    "chosen": "density",
+    "points": 2048,
+    "firstBatchCallMs": {
+     "n": 5,
+     "median": 6.78,
+     "p95": 18.035,
+     "max": 18.035
+    },
+    "firstDrawMs": {
+     "n": 5,
+     "median": 6.66,
+     "p95": 17.9,
+     "max": 17.9
+    },
+    "firstIngestMs": {
+     "n": 5,
+     "median": 0.1,
+     "p95": 0.11,
+     "max": 0.11
+    },
+    "firstBuildMs": {
+     "n": 5,
+     "median": 0.135,
+     "p95": 16.06,
+     "max": 16.06
+    },
+    "firstReplayMs": {
+     "n": 5,
+     "median": 1.615,
+     "p95": 6.51,
+     "max": 6.51
+    },
+    "coastFrameMs": {
+     "n": 5,
+     "median": 0.45,
+     "p95": 6.26,
+     "max": 6.26
+    },
+    "coastBuildMs": {
+     "n": 5,
+     "median": 0.105,
+     "p95": 0.17,
+     "max": 0.17
+    },
+    "coastReplayMs": {
+     "n": 5,
+     "median": 0.23,
+     "p95": 6.08,
+     "max": 6.08
+    },
+    "coastFrameUploadedBytes": 24880,
+    "batchIngestMs": {
+     "n": 240,
+     "median": 0.095,
+     "p95": 4.025,
+     "max": 7.79
+    },
+    "batchFrameMs": {
+     "n": 240,
+     "median": 0.335,
+     "p95": 9.825,
+     "max": 23.14
+    },
+    "batchBuildMs": {
+     "n": 240,
+     "median": 0.08,
+     "p95": 6.07,
+     "max": 14.195
+    },
+    "batchReplayMs": {
+     "n": 240,
+     "median": 0.105,
+     "p95": 6.28,
+     "max": 13.95
+    },
+    "allBatchesMs": {
+     "n": 5,
+     "median": 151.42,
+     "p95": 177.16,
+     "max": 177.16
+    },
+    "untilGpuDoneMs": {
+     "n": 5,
+     "median": 17812.95,
+     "p95": 49351.53,
+     "max": 49351.53
+    }
+   },
+   "mapShips": {
+    "rows": 12000,
+    "batches": 6,
+    "chosen": "map",
+    "points": 2048,
+    "firstBatchCallMs": {
+     "n": 5,
+     "median": 4.25,
+     "p95": 44.45,
+     "max": 44.45
+    },
+    "firstDrawMs": {
+     "n": 5,
+     "median": 4.155,
+     "p95": 39.45,
+     "max": 39.45
+    },
+    "firstIngestMs": {
+     "n": 5,
+     "median": 0.17,
+     "p95": 32.19,
+     "max": 32.19
+    },
+    "firstBuildMs": {
+     "n": 5,
+     "median": 0.05,
+     "p95": 0.06,
+     "max": 0.06
+    },
+    "firstReplayMs": {
+     "n": 5,
+     "median": 1.375,
+     "p95": 2.935,
+     "max": 2.935
+    },
+    "coastFrameMs": {
+     "n": 5,
+     "median": 0.145,
+     "p95": 0.25,
+     "max": 0.25
+    },
+    "coastBuildMs": {
+     "n": 5,
+     "median": 0.04,
+     "p95": 0.07,
+     "max": 0.07
+    },
+    "coastReplayMs": {
+     "n": 5,
+     "median": 0.075,
+     "p95": 0.145,
+     "max": 0.145
+    },
+    "coastFrameUploadedBytes": 18736,
+    "batchIngestMs": {
+     "n": 25,
+     "median": 0.18,
+     "p95": 4.185,
+     "max": 15.315
+    },
+    "batchFrameMs": {
+     "n": 25,
+     "median": 0.235,
+     "p95": 6.37,
+     "max": 6.51
+    },
+    "batchBuildMs": {
+     "n": 25,
+     "median": 0.035,
+     "p95": 0.075,
+     "max": 0.085
+    },
+    "batchReplayMs": {
+     "n": 25,
+     "median": 0.145,
+     "p95": 6.28,
+     "max": 6.44
+    },
+    "allBatchesMs": {
+     "n": 5,
+     "median": 16.37,
+     "p95": 63.63,
+     "max": 63.63
+    },
+    "untilGpuDoneMs": {
+     "n": 5,
+     "median": 16192.98,
+     "p95": 24796.2,
+     "max": 24796.2
+    }
+   },
+   "playbackFrameMs": 11.630000114440918,
+   "views": {
+    "1": [
+     "line",
+     "bar",
+     "scatter",
+     "table",
+     "map",
+     "density"
+    ],
+    "2": [
+     "table",
+     "map",
+     "density"
+    ],
+    "3": [
+     "line",
+     "bar",
+     "scatter",
+     "table",
+     "map",
+     "density",
+     "tracks"
+    ],
+    "4": [
+     "line",
+     "bar",
+     "scatter",
+     "table",
+     "map",
+     "density",
+     "tracks"
+    ]
+   },
+   "axes": [
+    {
+     "slot": 4,
+     "legend": [
+      {
+       "label": "vessel-1",
+       "color": "#ff906c"
+      },
+      {
+       "label": "vessel-2",
+       "color": "#74d4c3"
+      },
+      {
+       "label": "vessel-3",
+       "color": "#d4c17e"
+      },
+      {
+       "label": "vessel-4",
+       "color": "#83b9e3"
+      },
+      {
+       "label": "vessel-5",
+       "color": "#e39eaf"
+      },
+      {
+       "label": "vessel-6",
+       "color": "#b0c985"
+      },
+      {
+       "label": "grid 5\u00b0",
+       "color": "#5b6d78"
+      }
+     ]
+    },
+    {
+     "slot": 4,
+     "legend": [
+      {
+       "label": "vessel-1",
+       "color": "#ff906c"
+      },
+      {
+       "label": "vessel-2",
+       "color": "#74d4c3"
+      },
+      {
+       "label": "vessel-3",
+       "color": "#d4c17e"
+      },
+      {
+       "label": "vessel-4",
+       "color": "#83b9e3"
+      },
+      {
+       "label": "vessel-5",
+       "color": "#e39eaf"
+      },
+      {
+       "label": "vessel-6",
+       "color": "#b0c985"
+      },
+      {
+       "label": "grid 5\u00b0",
+       "color": "#5b6d78"
+      }
+     ]
+    },
+    {
+     "slot": 4,
+     "legend": [
+      {
+       "label": "vessel-1",
+       "color": "#ff906c"
+      },
+      {
+       "label": "vessel-2",
+       "color": "#74d4c3"
+      },
+      {
+       "label": "vessel-3",
+       "color": "#d4c17e"
+      },
+      {
+       "label": "vessel-4",
+       "color": "#83b9e3"
+      },
+      {
+       "label": "vessel-5",
+       "color": "#e39eaf"
+      },
+      {
+       "label": "vessel-6",
+       "color": "#b0c985"
+      },
+      {
+       "label": "grid 5\u00b0",
+       "color": "#5b6d78"
+      }
+     ]
+    },
+    {
+     "slot": 4,
+     "legend": [
+      {
+       "label": "vessel-1",
+       "color": "#ff906c"
+      },
+      {
+       "label": "vessel-2",
+       "color": "#74d4c3"
+      },
+      {
+       "label": "vessel-3",
+       "color": "#d4c17e"
+      },
+      {
+       "label": "vessel-4",
+       "color": "#83b9e3"
+      },
+      {
+       "label": "vessel-5",
+       "color": "#e39eaf"
+      },
+      {
+       "label": "vessel-6",
+       "color": "#b0c985"
+      },
+      {
+       "label": "grid 5\u00b0",
+       "color": "#5b6d78"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "webgl2": {
+  "ok": true,
+  "result": {
+   "backend": "webgl2",
+   "label": "webgl2",
+   "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.0 Safari/537.36",
+   "reps": 5,
+   "mapPorts": {
+    "rows": 8,
+    "batches": 1,
+    "chosen": "map",
+    "points": 8,
+    "firstBatchCallMs": {
+     "n": 1,
+     "median": 48.955,
+     "p95": 48.955,
+     "max": 48.955
+    },
+    "firstDrawMs": {
+     "n": 1,
+     "median": 48.445,
+     "p95": 48.445,
+     "max": 48.445
+    },
+    "firstIngestMs": {
+     "n": 1,
+     "median": 6.425,
+     "p95": 6.425,
+     "max": 6.425
+    },
+    "firstBuildMs": {
+     "n": 1,
+     "median": 35.805,
+     "p95": 35.805,
+     "max": 35.805
+    },
+    "firstReplayMs": {
+     "n": 1,
+     "median": 0.385,
+     "p95": 0.385,
+     "max": 0.385
+    },
+    "coastFrameMs": {
+     "n": 1,
+     "median": 22.455,
+     "p95": 22.455,
+     "max": 22.455
+    },
+    "coastBuildMs": {
+     "n": 1,
+     "median": 22.095,
+     "p95": 22.095,
+     "max": 22.095
+    },
+    "coastReplayMs": {
+     "n": 1,
+     "median": 0.24,
+     "p95": 0.24,
+     "max": 0.24
+    },
+    "coastFrameUploadedBytes": 19248,
+    "batchIngestMs": {
+     "n": 0
+    },
+    "batchFrameMs": {
+     "n": 0
+    },
+    "batchBuildMs": {
+     "n": 0
+    },
+    "batchReplayMs": {
+     "n": 0
+    },
+    "allBatchesMs": {
+     "n": 1,
+     "median": 71.91,
+     "p95": 71.91,
+     "max": 71.91
+    },
+    "untilGpuDoneMs": {
+     "n": 1,
+     "median": 105.495,
+     "p95": 105.495,
+     "max": 105.495
+    }
+   },
+   "tracks": {
+    "rows": 12000,
+    "batches": 6,
+    "chosen": "tracks",
+    "points": 2048,
+    "firstBatchCallMs": {
+     "n": 5,
+     "median": 6.19,
+     "p95": 50.255,
+     "max": 50.255
+    },
+    "firstDrawMs": {
+     "n": 5,
+     "median": 6.055,
+     "p95": 50.015,
+     "max": 50.015
+    },
+    "firstIngestMs": {
+     "n": 5,
+     "median": 2.285,
+     "p95": 11.99,
+     "max": 11.99
+    },
+    "firstBuildMs": {
+     "n": 5,
+     "median": 0.065,
+     "p95": 0.455,
+     "max": 0.455
+    },
+    "firstReplayMs": {
+     "n": 5,
+     "median": 3.34,
+     "p95": 22.6,
+     "max": 22.6
+    },
+    "coastFrameMs": {
+     "n": 5,
+     "median": 0.22,
+     "p95": 4.615,
+     "max": 4.615
+    },
+    "coastBuildMs": {
+     "n": 5,
+     "median": 0.055,
+     "p95": 4.39,
+     "max": 4.39
+    },
+    "coastReplayMs": {
+     "n": 5,
+     "median": 0.13,
+     "p95": 0.76,
+     "max": 0.76
+    },
+    "coastFrameUploadedBytes": 18992,
+    "batchIngestMs": {
+     "n": 25,
+     "median": 0.22,
+     "p95": 6.68,
+     "max": 9.95
+    },
+    "batchFrameMs": {
+     "n": 25,
+     "median": 0.395,
+     "p95": 19.245,
+     "max": 23.06
+    },
+    "batchBuildMs": {
+     "n": 25,
+     "median": 0.05,
+     "p95": 0.38,
+     "max": 4.5
+    },
+    "batchReplayMs": {
+     "n": 25,
+     "median": 0.15,
+     "p95": 19.12,
+     "max": 22.925
+    },
+    "allBatchesMs": {
+     "n": 5,
+     "median": 26.215,
+     "p95": 121.545,
+     "max": 121.545
+    },
+    "untilGpuDoneMs": {
+     "n": 5,
+     "median": 35.495,
+     "p95": 138.49,
+     "max": 138.49
+    }
+   },
+   "density": {
+    "rows": 100000,
+    "batches": 49,
+    "chosen": "density",
+    "points": 2048,
+    "firstBatchCallMs": {
+     "n": 5,
+     "median": 12.235,
+     "p95": 15.355,
+     "max": 15.355
+    },
+    "firstDrawMs": {
+     "n": 5,
+     "median": 5.865,
+     "p95": 15.235,
+     "max": 15.235
+    },
+    "firstIngestMs": {
+     "n": 5,
+     "median": 0.09,
+     "p95": 0.205,
+     "max": 0.205
+    },
+    "firstBuildMs": {
+     "n": 5,
+     "median": 0.3,
+     "p95": 12.99,
+     "max": 12.99
+    },
+    "firstReplayMs": {
+     "n": 5,
+     "median": 2.005,
+     "p95": 3.735,
+     "max": 3.735
+    },
+    "coastFrameMs": {
+     "n": 5,
+     "median": 0.185,
+     "p95": 0.27,
+     "max": 0.27
+    },
+    "coastBuildMs": {
+     "n": 5,
+     "median": 0.105,
+     "p95": 0.165,
+     "max": 0.165
+    },
+    "coastReplayMs": {
+     "n": 5,
+     "median": 0.06,
+     "p95": 0.085,
+     "max": 0.085
+    },
+    "coastFrameUploadedBytes": 24880,
+    "batchIngestMs": {
+     "n": 240,
+     "median": 0.08,
+     "p95": 3.105,
+     "max": 23.92
+    },
+    "batchFrameMs": {
+     "n": 240,
+     "median": 0.22,
+     "p95": 12.155,
+     "max": 26.82
+    },
+    "batchBuildMs": {
+     "n": 240,
+     "median": 0.08,
+     "p95": 7.115,
+     "max": 26.525
+    },
+    "batchReplayMs": {
+     "n": 240,
+     "median": 0.05,
+     "p95": 7.285,
+     "max": 26.205
+    },
+    "allBatchesMs": {
+     "n": 5,
+     "median": 176.68,
+     "p95": 224.68,
+     "max": 224.68
+    },
+    "untilGpuDoneMs": {
+     "n": 5,
+     "median": 185.77,
+     "p95": 240.96,
+     "max": 240.96
+    }
+   },
+   "mapShips": {
+    "rows": 12000,
+    "batches": 6,
+    "chosen": "map",
+    "points": 2048,
+    "firstBatchCallMs": {
+     "n": 5,
+     "median": 13.255,
+     "p95": 21.675,
+     "max": 21.675
+    },
+    "firstDrawMs": {
+     "n": 5,
+     "median": 4.825,
+     "p95": 21.575,
+     "max": 21.575
+    },
+    "firstIngestMs": {
+     "n": 5,
+     "median": 0.15,
+     "p95": 0.17,
+     "max": 0.17
+    },
+    "firstBuildMs": {
+     "n": 5,
+     "median": 0.05,
+     "p95": 0.085,
+     "max": 0.085
+    },
+    "firstReplayMs": {
+     "n": 5,
+     "median": 4.385,
+     "p95": 21.115,
+     "max": 21.115
+    },
+    "coastFrameMs": {
+     "n": 5,
+     "median": 0.125,
+     "p95": 0.16,
+     "max": 0.16
+    },
+    "coastBuildMs": {
+     "n": 5,
+     "median": 0.045,
+     "p95": 0.055,
+     "max": 0.055
+    },
+    "coastReplayMs": {
+     "n": 5,
+     "median": 0.07,
+     "p95": 0.085,
+     "max": 0.085
+    },
+    "coastFrameUploadedBytes": 18736,
+    "batchIngestMs": {
+     "n": 25,
+     "median": 0.145,
+     "p95": 10.755,
+     "max": 20.3
+    },
+    "batchFrameMs": {
+     "n": 25,
+     "median": 0.465,
+     "p95": 15.9,
+     "max": 23.355
+    },
+    "batchBuildMs": {
+     "n": 25,
+     "median": 0.03,
+     "p95": 0.055,
+     "max": 0.07
+    },
+    "batchReplayMs": {
+     "n": 25,
+     "median": 0.345,
+     "p95": 15.79,
+     "max": 23.265
+    },
+    "allBatchesMs": {
+     "n": 5,
+     "median": 52.885,
+     "p95": 67.67,
+     "max": 67.67
+    },
+    "untilGpuDoneMs": {
+     "n": 5,
+     "median": 56.955,
+     "p95": 78.125,
+     "max": 78.125
+    }
+   },
+   "playbackFrameMs": 3.2799997329711914,
+   "views": {
+    "1": [
+     "line",
+     "bar",
+     "scatter",
+     "table",
+     "map",
+     "density"
+    ],
+    "2": [
+     "table",
+     "map",
+     "density"
+    ],
+    "3": [
+     "line",
+     "bar",
+     "scatter",
+     "table",
+     "map",
+     "density",
+     "tracks"
+    ],
+    "4": [
+     "line",
+     "bar",
+     "scatter",
+     "table",
+     "map",
+     "density",
+     "tracks"
+    ]
+   },
+   "axes": [
+    {
+     "slot": 4,
+     "legend": [
+      {
+       "label": "vessel-1",
+       "color": "#ff906c"
+      },
+      {
+       "label": "vessel-2",
+       "color": "#74d4c3"
+      },
+      {
+       "label": "vessel-3",
+       "color": "#d4c17e"
+      },
+      {
+       "label": "vessel-4",
+       "color": "#83b9e3"
+      },
+      {
+       "label": "vessel-5",
+       "color": "#e39eaf"
+      },
+      {
+       "label": "vessel-6",
+       "color": "#b0c985"
+      },
+      {
+       "label": "grid 5\u00b0",
+       "color": "#5b6d78"
+      }
+     ]
+    },
+    {
+     "slot": 4,
+     "legend": [
+      {
+       "label": "vessel-1",
+       "color": "#ff906c"
+      },
+      {
+       "label": "vessel-2",
+       "color": "#74d4c3"
+      },
+      {
+       "label": "vessel-3",
+       "color": "#d4c17e"
+      },
+      {
+       "label": "vessel-4",
+       "color": "#83b9e3"
+      },
+      {
+       "label": "vessel-5",
+       "color": "#e39eaf"
+      },
+      {
+       "label": "vessel-6",
+       "color": "#b0c985"
+      },
+      {
+       "label": "grid 5\u00b0",
+       "color": "#5b6d78"
+      }
+     ]
+    },
+    {
+     "slot": 4,
+     "legend": [
+      {
+       "label": "vessel-1",
+       "color": "#ff906c"
+      },
+      {
+       "label": "vessel-2",
+       "color": "#74d4c3"
+      },
+      {
+       "label": "vessel-3",
+       "color": "#d4c17e"
+      },
+      {
+       "label": "vessel-4",
+       "color": "#83b9e3"
+      },
+      {
+       "label": "vessel-5",
+       "color": "#e39eaf"
+      },
+      {
+       "label": "vessel-6",
+       "color": "#b0c985"
+      },
+      {
+       "label": "grid 5\u00b0",
+       "color": "#5b6d78"
+      }
+     ]
+    },
+    {
+     "slot": 4,
+     "legend": [
+      {
+       "label": "vessel-1",
+       "color": "#ff906c"
+      },
+      {
+       "label": "vessel-2",
+       "color": "#74d4c3"
+      },
+      {
+       "label": "vessel-3",
+       "color": "#d4c17e"
+      },
+      {
+       "label": "vessel-4",
+       "color": "#83b9e3"
+      },
+      {
+       "label": "vessel-5",
+       "color": "#e39eaf"
+      },
+      {
+       "label": "vessel-6",
+       "color": "#b0c985"
+      },
+      {
+       "label": "grid 5\u00b0",
+       "color": "#5b6d78"
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "browser": "145.0.7632.0",
+ "software": true
+}

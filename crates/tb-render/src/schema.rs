@@ -169,11 +169,15 @@ impl Roles {
     }
 }
 
+/// `lat`/`latitude`, or a `*_lat`/`*_latitude` suffix (`start_lat`).
 fn is_lat(name: &str) -> bool {
-    matches!(name.to_ascii_lowercase().as_str(), "lat" | "latitude")
+    let n = name.to_ascii_lowercase();
+    matches!(n.as_str(), "lat" | "latitude") || n.ends_with("_lat") || n.ends_with("_latitude")
 }
+/// `lon`/`lng`/`long`/`longitude`, or the same as a `*_lon`-style suffix.
 fn is_lon(name: &str) -> bool {
-    matches!(name.to_ascii_lowercase().as_str(), "lon" | "lng" | "long" | "longitude")
+    let n = name.to_ascii_lowercase();
+    matches!(n.as_str(), "lon" | "lng" | "long" | "longitude") || ["_lon", "_lng", "_long", "_longitude"].iter().any(|s| n.ends_with(s))
 }
 /// Integer middle columns are series only when they look like identifiers; counts and sums
 /// are integers too and must stay measures.
@@ -369,6 +373,15 @@ mod tests {
         assert_eq!((r.lat, r.lon), (Some(2), Some(3)));
         assert_eq!(r.value, Some(4));
         assert_eq!(r.series, Some(1));
+    }
+
+    #[test]
+    fn lat_lon_by_suffix() {
+        let r = infer_roles(&[col("start_lat", TypeCode::F64), col("START_LNG", TypeCode::F32), col("n", TypeCode::I64)]);
+        assert_eq!((r.lat, r.lon, r.value), (Some(0), Some(1), Some(2)));
+        // Text columns never take a position role, and `latency` is not a latitude.
+        let r = infer_roles(&[col("latency", TypeCode::F64), col("home_lat", TypeCode::Utf8), col("x_lon", TypeCode::F64)]);
+        assert_eq!((r.lat, r.lon), (None, Some(2)));
     }
 
     #[test]

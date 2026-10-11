@@ -502,6 +502,9 @@ impl Renderer {
                 let y1 = (plot[1] + plot[3] + m).min(canvas[1]).ceil();
                 s.pass.scissor(x0 as u32, y0 as u32, (x1 - x0).max(0.0) as u32, (y1 - y0).max(0.0) as u32);
                 f.draw(r.view, &mut DrawFrame { pass: &mut s.pass, plot, canvas, dpr: s.dpr, axes: &axes });
+                if f.wants_frame() {
+                    s.dirty = true;
+                }
             } else if s.axes_json != NO_AXES {
                 // No chart (table view): clear the DOM labels of the previous view.
                 events.push((ev::AXES, s.id, r.request, 0, NO_AXES.to_string()));

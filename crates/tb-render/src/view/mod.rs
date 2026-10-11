@@ -19,6 +19,7 @@ use crate::schema::{Roles, View};
 use crate::store::Store;
 
 pub mod calendar;
+pub mod geo;
 pub mod xy;
 
 /// Everything a family needs to record its draws for one frame.
@@ -55,6 +56,11 @@ pub trait Family {
     }
     /// Destroy GPU buffers.
     fn release(&mut self, gpu: &mut Gpu);
+    /// Asked after `draw`: true schedules another frame for this slot (work deliberately
+    /// deferred off the first-draw path, e.g. static basemap geometry).
+    fn wants_frame(&self) -> bool {
+        false
+    }
 }
 
 pub struct FamilyDef {
@@ -68,7 +74,7 @@ pub struct FamilyDef {
 }
 
 /// Registered families, in registration order. Wave 2 appends matrix, geo and calendar.
-pub static FAMILIES: &[&FamilyDef] = &[&xy::DEF, &calendar::DEF];
+pub static FAMILIES: &[&FamilyDef] = &[&xy::DEF, &geo::DEF, &calendar::DEF];
 
 /// All pipelines: the shared `rule` pipeline first, then each family's.
 pub fn pipeline_table() -> PipelineTable {
