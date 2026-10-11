@@ -1,0 +1,1244 @@
+{
+ "kind": "time-blast.sql-eval",
+ "version": 1,
+ "date": "2026-10-11T01:07:38.531Z",
+ "label": "b2-mercury25",
+ "translator": "tb1",
+ "model": "inception/mercury-2.5",
+ "endpoint": "ws://127.0.0.1:8797/session",
+ "server": "model=inception/mercury-2.5 extra= reasoning=",
+ "corpus": {
+  "path": "evals/sql-corpus.json",
+  "cases": 45,
+  "version": 1
+ },
+ "environment": {
+  "node": "v23.11.1",
+  "platform": "linux",
+  "arch": "arm64",
+  "cpus": 4,
+  "duckdbWasm": "1.32.0"
+ },
+ "summary": {
+  "n": 45,
+  "counts": {
+   "exact": 0,
+   "equivalent": 0,
+   "shape-violation": 0,
+   "wrong": 0,
+   "sql-error": 45,
+   "rejected-by-guard": 0
+  },
+  "correct": 0,
+  "issues": {
+   "viewHintUnasked": 0,
+   "viewHintInvalid": 0,
+   "viewHintMissed": 0,
+   "rawRows": 0,
+   "foreignDialect": 0,
+   "wallClock": 0
+  },
+  "latency": {
+   "firstDeltaP50": 3725.7,
+   "firstDeltaP95": 3725.7
+  },
+  "tokens": {
+   "prompt": 90708,
+   "completion": 44862,
+   "cached": 0
+  },
+  "costUsd": 0.010358,
+  "costPerRequestUsd": 0.0002302
+ },
+ "cases": [
+  {
+   "id": "avg_speed_per_vessel",
+   "question": "average speed per vessel",
+   "tags": [
+    "aggregate"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 6,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 1008,
+    "costUsd": 0.00023228,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2027,
+    "reasoningTokens": 1008
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "readings_per_vessel",
+   "question": "how many readings per vessel",
+   "tags": [
+    "aggregate"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 6,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 994,
+    "costUsd": 0.00022902,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 1998,
+    "reasoningTokens": 989
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "overall_max_wave",
+   "question": "what was the highest wave height",
+   "tags": [
+    "aggregate",
+    "scalar"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 1,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 997,
+    "costUsd": 0.00022991,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2009,
+    "reasoningTokens": 997
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "fleet_avg_water_temp",
+   "question": "average water temperature across the fleet",
+   "tags": [
+    "aggregate",
+    "scalar"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 1,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 1003,
+    "costUsd": 0.00023129,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2021,
+    "reasoningTokens": 1003
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "min_max_speed_per_vessel",
+   "question": "minimum and maximum speed for each vessel",
+   "tags": [
+    "aggregate"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 6,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 1012,
+    "costUsd": 0.00023344,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2041,
+    "reasoningTokens": 1006
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "hourly_wind_last_2_days",
+   "question": "hourly average wind speed over the last 2 days",
+   "tags": [
+    "bucket",
+    "window"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 49,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 1015,
+    "costUsd": 0.00023453,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2057,
+    "reasoningTokens": 1015
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "daily_max_wave_per_vessel",
+   "question": "max wave height per vessel per day",
+   "tags": [
+    "bucket",
+    "series"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 84,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 997,
+    "costUsd": 0.00022994999999999998,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2010,
+    "reasoningTokens": 997
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "daily_min_max_water_temp",
+   "question": "daily minimum and maximum water temperature",
+   "tags": [
+    "bucket"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 14,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 1003,
+    "costUsd": 0.00023129,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2021,
+    "reasoningTokens": 1003
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "aurora_speed_15min_last_day",
+   "question": "Aurora's average speed in 15-minute buckets over the last day",
+   "tags": [
+    "bucket",
+    "filter",
+    "window"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 97,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 995,
+    "costUsd": 0.00023004999999999998,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2020,
+    "reasoningTokens": 992
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "six_hour_wind_per_vessel",
+   "question": "average wind per vessel in six-hour buckets",
+   "tags": [
+    "bucket",
+    "series"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 336,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 1003,
+    "costUsd": 0.00023153,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2027,
+    "reasoningTokens": 1003
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "hour_of_day_speed",
+   "question": "average speed by hour of day",
+   "tags": [
+    "bucket",
+    "cyclic"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 24,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 1012,
+    "costUsd": 0.00023336,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2039,
+    "reasoningTokens": 1012
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "weekday_wave",
+   "question": "average wave height by day of the week",
+   "tags": [
+    "bucket",
+    "cyclic",
+    "ambiguous"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 7,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 984,
+    "costUsd": 0.00022704,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 1986,
+    "reasoningTokens": 984
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "atlas_speed_10min_today",
+   "question": "speed of Atlas every 10 minutes today",
+   "tags": [
+    "bucket",
+    "filter",
+    "window"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 144,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 1009,
+    "costUsd": 0.00023295,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2040,
+    "reasoningTokens": 1009
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "aurora_water_temp_last_week",
+   "question": "water temperature trend for Aurora in the last week",
+   "tags": [
+    "window",
+    "filter",
+    "ambiguous"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 169,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 986,
+    "costUsd": 0.00022762,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 1993,
+    "reasoningTokens": 986
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "fastest_last_24h",
+   "question": "which vessel was fastest on average in the last 24 hours",
+   "tags": [
+    "window",
+    "top-n",
+    "ambiguous"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 1,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 977,
+    "costUsd": 0.00022583,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 1982,
+    "reasoningTokens": 977
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "wave_by_hour_last_12h",
+   "question": "compare wave height of all vessels by hour over the last 12 hours",
+   "tags": [
+    "window",
+    "bucket",
+    "series"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 78,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 1001,
+    "costUsd": 0.00023159,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2036,
+    "reasoningTokens": 1001
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "speed_last_30_min",
+   "question": "mean speed for the last 30 minutes in one-minute buckets",
+   "tags": [
+    "window",
+    "bucket"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 31,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 980,
+    "costUsd": 0.00022652000000000002,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 1988,
+    "reasoningTokens": 980
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "wind_sept_3_to_5",
+   "question": "Average wind from September 3 to September 5, 2026, hourly",
+   "tags": [
+    "window",
+    "absolute",
+    "ambiguous"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 72,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 1007,
+    "costUsd": 0.00023317,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2053,
+    "reasoningTokens": 1007
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "wave_last_hour_minutes",
+   "question": "Average wave height for the last hour in one-minute buckets",
+   "tags": [
+    "window",
+    "bucket"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 61,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 973,
+    "costUsd": 0.00022483,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 1972,
+    "reasoningTokens": 973
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "kestrel_vs_nomad_hourly",
+   "question": "compare speed of Kestrel and Nomad by hour",
+   "tags": [
+    "filter",
+    "series",
+    "bucket"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 672,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 1016,
+    "costUsd": 0.00023464,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2056,
+    "reasoningTokens": 1016
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "excluding_aurora_last_day",
+   "question": "Compare vessel speed by hour over the last day excluding Aurora",
+   "tags": [
+    "filter",
+    "series",
+    "window"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 125,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 1014,
+    "costUsd": 0.00023422,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2053,
+    "reasoningTokens": 1014
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "waves_above_4_per_vessel",
+   "question": "how many readings had waves above 4 metres, per vessel",
+   "tags": [
+    "filter",
+    "aggregate"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 6,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 990,
+    "costUsd": 0.00022882,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2008,
+    "reasoningTokens": 990
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "north_of_50_hourly_speed",
+   "question": "Hourly average speed for vessels north of latitude 50 in the last day",
+   "tags": [
+    "filter",
+    "geo",
+    "window",
+    "ambiguous"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 25,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 994,
+    "costUsd": 0.00023006,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2024,
+    "reasoningTokens": 994
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "unknown_vessel_poseidon",
+   "question": "Show hourly wind for Poseidon over the last 7 days",
+   "tags": [
+    "filter",
+    "ambiguous",
+    "no-data"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 0,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 978,
+    "costUsd": 0.00022606,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 1984,
+    "reasoningTokens": 978
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "solstice_strong_wind_hours",
+   "question": "in how many hours did Solstice see wind above 30 knots",
+   "tags": [
+    "filter",
+    "aggregate",
+    "scalar"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 1,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 1000,
+    "costUsd": 0.00023132,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2033,
+    "reasoningTokens": 1000
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "top10_hourly_waves",
+   "question": "table of the 10 highest hourly average wave heights",
+   "tags": [
+    "top-n",
+    "bucket",
+    "view",
+    "ambiguous"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 10,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 999,
+    "costUsd": 0.00023085,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2025,
+    "reasoningTokens": 999
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "top3_fastest_7d",
+   "question": "the three fastest vessels by average speed in the past 7 days",
+   "tags": [
+    "top-n",
+    "window"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 3,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 1017,
+    "costUsd": 0.00023511,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2064,
+    "reasoningTokens": 1017
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "windiest_day",
+   "question": "which day had the strongest average wind",
+   "tags": [
+    "top-n",
+    "bucket"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 1,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 983,
+    "costUsd": 0.00022681,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 1984,
+    "reasoningTokens": 983
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "coldest_water_vessel",
+   "question": "which vessel recorded the coldest water",
+   "tags": [
+    "top-n"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 1,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 1006,
+    "costUsd": 0.00023202,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2028,
+    "reasoningTokens": 1006
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "farthest_east",
+   "question": "which vessel got farthest east",
+   "tags": [
+    "top-n",
+    "geo"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 1,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 986,
+    "costUsd": 0.0002273,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 1985,
+    "reasoningTokens": 986
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "wind_speed_correlation",
+   "question": "correlation between wind and speed per vessel",
+   "tags": [
+    "comparison",
+    "aggregate"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 6,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 1017,
+    "costUsd": 0.00023467,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2053,
+    "reasoningTokens": 1017
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "water_temp_range_per_vessel",
+   "question": "difference between maximum and minimum water temperature per vessel",
+   "tags": [
+    "comparison",
+    "aggregate"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 6,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 986,
+    "costUsd": 0.00022758,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 1992,
+    "reasoningTokens": 986
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "speed_and_wave_hourly_7d",
+   "question": "Compare speed and wave height by hour over the last 7 days",
+   "tags": [
+    "comparison",
+    "bucket",
+    "window"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 169,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 989,
+    "costUsd": 0.00022867,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2008,
+    "reasoningTokens": 989
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "wave_wind_ratio_hourly",
+   "question": "Average ratio of wave height to wind speed per hour over the last day",
+   "tags": [
+    "comparison",
+    "bucket",
+    "window",
+    "ambiguous"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 25,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 989,
+    "costUsd": 0.00022875,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2010,
+    "reasoningTokens": 989
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "speed_kmh_per_vessel",
+   "question": "average speed of each vessel in km/h over the last day",
+   "tags": [
+    "comparison",
+    "units",
+    "window"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 6,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 994,
+    "costUsd": 0.0002297,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2015,
+    "reasoningTokens": 994
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "first_vs_second_week_speed",
+   "question": "average speed per vessel in the first week versus the second week",
+   "tags": [
+    "comparison",
+    "series"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 6,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 989,
+    "costUsd": 0.00022863,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2007,
+    "reasoningTokens": 989
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "latest_position",
+   "question": "latest position of every vessel",
+   "tags": [
+    "geo"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 6,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 981,
+    "costUsd": 0.00022619,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 1976,
+    "reasoningTokens": 981
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "meridian_yesterday",
+   "question": "where was Meridian yesterday",
+   "tags": [
+    "geo",
+    "window",
+    "ambiguous"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 24,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 999,
+    "costUsd": 0.00023029000000000002,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2011,
+    "reasoningTokens": 999
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "tracks_map",
+   "question": "show all vessel tracks on a map",
+   "tags": [
+    "geo",
+    "series",
+    "view"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 2016,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 1012,
+    "costUsd": 0.00023339999999999998,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2040,
+    "reasoningTokens": 1012
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "bounding_box_north",
+   "question": "how many readings were taken north of 50 degrees latitude, per vessel",
+   "tags": [
+    "geo",
+    "filter",
+    "aggregate"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 2,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 993,
+    "costUsd": 0.00022975,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2020,
+    "reasoningTokens": 993
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "aurora_daily_position",
+   "question": "Aurora's average position per day",
+   "tags": [
+    "geo",
+    "bucket",
+    "filter"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 14,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 990,
+    "costUsd": 0.00022850000000000002,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2000,
+    "reasoningTokens": 990
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "partial_per_ves",
+   "question": "average wave height per ves",
+   "tags": [
+    "ambiguous",
+    "partial"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 6,
+   "latency": {
+    "firstDeltaMs": 3725.6982439999992
+   },
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 982,
+    "costUsd": 0.00022637999999999998,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 1977,
+    "reasoningTokens": 962
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "single_word_wind",
+   "question": "wind",
+   "tags": [
+    "ambiguous",
+    "partial"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 336,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 1001,
+    "costUsd": 0.00023046999999999998,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2008,
+    "reasoningTokens": 1001
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "speed_last_week_vague",
+   "question": "speed last week",
+   "tags": [
+    "ambiguous",
+    "window"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 169,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 989,
+    "costUsd": 0.00022787,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 1988,
+    "reasoningTokens": 989
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  },
+  {
+   "id": "scatter_wind_wave",
+   "question": "scatter of wind vs wave height",
+   "tags": [
+    "ambiguous",
+    "view"
+   ],
+   "category": "sql-error",
+   "reason": "inference invalid_sql",
+   "referenceRows": 336,
+   "latency": {},
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 0,
+    "completionTokens": 1012,
+    "costUsd": 0.00023336,
+    "model": "inception/mercury-2.5",
+    "promptTokens": 2039,
+    "reasoningTokens": 1012
+   },
+   "error": {
+    "code": "invalid_sql",
+    "message": "No valid SQL after one repair: the reply was cut off (finish reason length).",
+    "stage": "inference"
+   }
+  }
+ ]
+}

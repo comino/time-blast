@@ -1,0 +1,1987 @@
+{
+ "kind": "time-blast.sql-eval",
+ "version": 1,
+ "date": "2026-10-11T01:04:24.633Z",
+ "label": "b2-llama8-groq",
+ "translator": "tb1",
+ "model": "meta-llama/llama-3.1-8b-instruct",
+ "endpoint": "ws://127.0.0.1:8797/session",
+ "server": "model=meta-llama/llama-3.1-8b-instruct extra={\"provider\":{\"only\":[\"groq\"],\"sort\":\"latency\",\"require_parameters\":true}} reasoning=",
+ "corpus": {
+  "path": "evals/sql-corpus.json",
+  "cases": 45,
+  "version": 1
+ },
+ "environment": {
+  "node": "v23.11.1",
+  "platform": "linux",
+  "arch": "arm64",
+  "cpus": 4,
+  "duckdbWasm": "1.32.0"
+ },
+ "summary": {
+  "n": 45,
+  "counts": {
+   "exact": 4,
+   "equivalent": 10,
+   "shape-violation": 2,
+   "wrong": 21,
+   "sql-error": 8,
+   "rejected-by-guard": 0
+  },
+  "correct": 0.311,
+  "issues": {
+   "viewHintUnasked": 0,
+   "viewHintInvalid": 0,
+   "viewHintMissed": 3,
+   "rawRows": 3,
+   "foreignDialect": 0,
+   "wallClock": 0
+  },
+  "latency": {
+   "firstDeltaP50": 115.9,
+   "firstDeltaP95": 136.1,
+   "sqlP50": 215.5,
+   "sqlP95": 511.5,
+   "providerFirstTokenP50": 109.7
+  },
+  "tokens": {
+   "prompt": 39965,
+   "completion": 3274,
+   "cached": 20480
+  },
+  "costUsd": 0.001748,
+  "costPerRequestUsd": 0.0000388
+ },
+ "cases": [
+  {
+   "id": "avg_speed_per_vessel",
+   "question": "average speed per vessel",
+   "tags": [
+    "aggregate"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "WITH avg_speed AS (\n  SELECT vessel, AVG(speed) AS avg_speed\n  FROM telemetry\n  GROUP BY vessel\n)\nSELECT vessel, avg_speed\nFROM avg_speed\nORDER BY avg_speed",
+   "referenceRows": 6,
+   "latency": {
+    "firstDeltaMs": 132.68422800000008,
+    "sqlMs": 187.5325580000008,
+    "providerFirstTokenMs": 123.50341796875,
+    "dbMs": 92.79356199999984
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 0,
+    "completionTokens": 41,
+    "costUsd": 0.00004743,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 883,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 6,
+   "columns": [
+    "vessel",
+    "avg_speed"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "readings_per_vessel",
+   "question": "how many readings per vessel",
+   "tags": [
+    "aggregate"
+   ],
+   "category": "exact",
+   "reason": "",
+   "sql": "SELECT vessel, COUNT(*) AS readings FROM telemetry GROUP BY vessel ORDER BY vessel",
+   "referenceRows": 6,
+   "latency": {
+    "firstDeltaMs": 138.39636900000005,
+    "sqlMs": 170.24937299999965,
+    "providerFirstTokenMs": 129.5791015625,
+    "dbMs": 94.4406710000003
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 0,
+    "completionTokens": 16,
+    "costUsd": 0.00004548,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 884,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 6,
+   "columns": [
+    "vessel",
+    "readings"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "overall_max_wave",
+   "question": "what was the highest wave height",
+   "tags": [
+    "aggregate",
+    "scalar"
+   ],
+   "category": "exact",
+   "reason": "",
+   "sql": "SELECT MAX(wave_height) AS max_wave_height FROM telemetry",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 112.3242680000003,
+    "sqlMs": 127.77422099999967,
+    "providerFirstTokenMs": 100.940673828125,
+    "dbMs": 13.572319999999308
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 13,
+    "costUsd": 0.00003249,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 885,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1,
+   "columns": [
+    "max_wave_height"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "fleet_avg_water_temp",
+   "question": "average water temperature across the fleet",
+   "tags": [
+    "aggregate",
+    "scalar"
+   ],
+   "category": "wrong",
+   "reason": "rows 6, expected 1",
+   "sql": "WITH avg_water_temp AS (\n  SELECT vessel, AVG(water_temp) AS avg_water_temp\n  FROM telemetry\n  WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days'\n  GROUP BY vessel\n)\nSELECT vessel, avg_water_temp\nFROM avg_water_temp\nORDER BY avg_water_temp",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 118.25805299999956,
+    "sqlMs": 542.8166449999999,
+    "providerFirstTokenMs": 112.1435546875,
+    "dbMs": 106.94449200000054
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 73,
+    "costUsd": 0.00003729,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 885,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 6,
+   "columns": [
+    "vessel",
+    "avg_water_temp"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "min_max_speed_per_vessel",
+   "question": "minimum and maximum speed for each vessel",
+   "tags": [
+    "aggregate"
+   ],
+   "category": "exact",
+   "reason": "",
+   "sql": "WITH vessel_speed AS (\n  SELECT vessel, MIN(speed) AS min_speed, MAX(speed) AS max_speed\n  FROM telemetry\n  GROUP BY vessel\n)\nSELECT vessel, min_speed, max_speed\nFROM vessel_speed\nORDER BY vessel",
+   "referenceRows": 6,
+   "latency": {
+    "firstDeltaMs": 122.13324099999954,
+    "sqlMs": 469.0362189999996,
+    "providerFirstTokenMs": 110.9013671875,
+    "dbMs": 120.04696400000103
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 50,
+    "costUsd": 0.0000355,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 886,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 6,
+   "columns": [
+    "vessel",
+    "min_speed",
+    "max_speed"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "hourly_wind_last_2_days",
+   "question": "hourly average wind speed over the last 2 days",
+   "tags": [
+    "bucket",
+    "window"
+   ],
+   "category": "wrong",
+   "reason": "rows 294, expected 49",
+   "sql": "WITH hourly_wind AS (\n  SELECT \n    time_bucket(INTERVAL '1 hour', ts) AS hour,\n    vessel,\n    AVG(wind) AS avg_wind\n  FROM \n    telemetry\n  WHERE \n    ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '2 days'\n  GROUP BY \n    hour, vessel\n)\nSELECT \n  hour,\n  vessel,\n  avg_wind\nFROM \n  hourly_wind\nORDER BY \n  hour, vessel",
+   "referenceRows": 49,
+   "latency": {
+    "firstDeltaMs": 127.86402300000009,
+    "sqlMs": 241.32706999999937,
+    "providerFirstTokenMs": 118.217041015625,
+    "dbMs": 166.23602199999914
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 104,
+    "costUsd": 0.00004002,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 890,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 294,
+   "columns": [
+    "hour",
+    "vessel",
+    "avg_wind"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "daily_max_wave_per_vessel",
+   "question": "max wave height per vessel per day",
+   "tags": [
+    "bucket",
+    "series"
+   ],
+   "category": "wrong",
+   "reason": "rows 48, expected 84",
+   "sql": "WITH daily_max AS (\n  SELECT vessel, time_bucket(INTERVAL '1 day', ts) AS day, MAX(wave_height) AS max_wave_height\n  FROM telemetry\n  WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days'\n  GROUP BY vessel, day\n)\nSELECT day, vessel, max_wave_height\nFROM daily_max\nORDER BY day, vessel",
+   "referenceRows": 84,
+   "latency": {
+    "firstDeltaMs": 136.05356700000084,
+    "sqlMs": 242.75933500000065,
+    "providerFirstTokenMs": 129.75341796875,
+    "dbMs": 106.86045099999865
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 0,
+    "completionTokens": 89,
+    "costUsd": 0.00005142,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 886,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 48,
+   "columns": [
+    "day",
+    "vessel",
+    "max_wave_height"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "daily_min_max_water_temp",
+   "question": "daily minimum and maximum water temperature",
+   "tags": [
+    "bucket"
+   ],
+   "category": "wrong",
+   "reason": "rows 48, expected 14",
+   "sql": "WITH daily AS (\n  SELECT \n    time_bucket(INTERVAL '1 day', ts) AS day,\n    vessel,\n    MIN(water_temp) AS min_water_temp,\n    MAX(water_temp) AS max_water_temp\n  FROM telemetry\n  WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days'\n  GROUP BY day, vessel\n)\nSELECT \n  day,\n  vessel,\n  min_water_temp,\n  max_water_temp\nFROM daily\nORDER BY day, vessel",
+   "referenceRows": 14,
+   "latency": {
+    "firstDeltaMs": 128.0493459999998,
+    "sqlMs": 252.38558600000033,
+    "providerFirstTokenMs": 127.299560546875,
+    "dbMs": 103.85951700000078
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 0,
+    "completionTokens": 111,
+    "costUsd": 0.00005313,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 885,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 48,
+   "columns": [
+    "day",
+    "vessel",
+    "min_water_temp",
+    "max_water_temp"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "aurora_speed_15min_last_day",
+   "question": "Aurora's average speed in 15-minute buckets over the last day",
+   "tags": [
+    "bucket",
+    "filter",
+    "window"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "WITH bucket AS (\n  SELECT time_bucket(INTERVAL '15 minutes', ts) AS bucket, speed\n  FROM telemetry\n  WHERE vessel = 'Aurora' AND ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 day'\n)\nSELECT bucket, AVG(speed) AS avg_speed\nFROM bucket\nGROUP BY bucket\nORDER BY bucket",
+   "referenceRows": 97,
+   "latency": {
+    "firstDeltaMs": 115.89821100000154,
+    "sqlMs": 215.53293400000075,
+    "providerFirstTokenMs": 115.166015625,
+    "dbMs": 12.95278899999903
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 81,
+    "costUsd": 0.00003838,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 894,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 97,
+   "columns": [
+    "bucket",
+    "avg_speed"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "six_hour_wind_per_vessel",
+   "question": "average wind per vessel in six-hour buckets",
+   "tags": [
+    "bucket",
+    "series"
+   ],
+   "category": "wrong",
+   "reason": "rows 2016, expected 336",
+   "sql": "WITH hourly AS (\n  SELECT \n    time_bucket(INTERVAL '1 hour', ts) AS ts,\n    vessel,\n    wind\n  FROM telemetry\n)\nSELECT \n  time_bucket(INTERVAL '6 hours', ts) AS ts,\n  vessel,\n  AVG(wind) AS avg_wind\nFROM hourly\nGROUP BY \n  ts,\n  vessel\nORDER BY \n  ts,\n  vessel",
+   "referenceRows": 336,
+   "latency": {
+    "firstDeltaMs": 117.83988499999941,
+    "sqlMs": 242.5467719999997,
+    "providerFirstTokenMs": 115.8232421875,
+    "dbMs": 210.6680469999992
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 83,
+    "costUsd": 0.00003819,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 887,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 2016,
+   "columns": [
+    "ts",
+    "vessel",
+    "avg_wind"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "hour_of_day_speed",
+   "question": "average speed by hour of day",
+   "tags": [
+    "bucket",
+    "cyclic"
+   ],
+   "category": "wrong",
+   "reason": "rows 144, expected 24",
+   "sql": "WITH hourly_speed AS (\n  SELECT \n    EXTRACT(HOUR FROM ts) AS hour,\n    vessel,\n    AVG(speed) AS avg_speed\n  FROM \n    telemetry\n  WHERE \n    ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days'\n  GROUP BY \n    EXTRACT(HOUR FROM ts),\n    vessel\n)\nSELECT \n  hour,\n  vessel,\n  avg_speed\nFROM \n  hourly_speed\nORDER BY \n  hour,\n  vessel",
+   "referenceRows": 24,
+   "latency": {
+    "firstDeltaMs": 107.61034400000062,
+    "sqlMs": 212.6046810000007,
+    "providerFirstTokenMs": 100.1640625,
+    "dbMs": 75.91290299999855
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 106,
+    "costUsd": 0.00003993,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 885,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 144,
+   "columns": [
+    "hour",
+    "vessel",
+    "avg_speed"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "weekday_wave",
+   "question": "average wave height by day of the week",
+   "tags": [
+    "bucket",
+    "cyclic",
+    "ambiguous"
+   ],
+   "category": "wrong",
+   "reason": "rows 42, expected 7",
+   "sql": "WITH day_of_week AS (\n  SELECT \n    EXTRACT(DOW FROM ts) AS dow,\n    vessel,\n    wave_height\n  FROM \n    telemetry\n  WHERE \n    ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days'\n)\nSELECT \n  dow,\n  vessel,\n  AVG(wave_height) AS avg_wave_height\nFROM \n  day_of_week\nGROUP BY \n  dow,\n  vessel\nORDER BY \n  dow,\n  vessel",
+   "referenceRows": 7,
+   "latency": {
+    "firstDeltaMs": 106.56576599999971,
+    "sqlMs": 233.97514000000047,
+    "providerFirstTokenMs": 104.700439453125,
+    "dbMs": 63.79148900000109
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 105,
+    "costUsd": 0.00003995,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 887,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 42,
+   "columns": [
+    "dow",
+    "vessel",
+    "avg_wave_height"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "atlas_speed_10min_today",
+   "question": "speed of Atlas every 10 minutes today",
+   "tags": [
+    "bucket",
+    "filter",
+    "window"
+   ],
+   "category": "sql-error",
+   "reason": "sql_error",
+   "sql": "SELECT time_bucket(ts, INTERVAL '10 minutes') AS time, speed FROM telemetry WHERE vessel = 'Atlas' AND ts >= TIMESTAMP '2026-09-14 00:00:00' ORDER BY time LIMIT 5000",
+   "referenceRows": 144,
+   "latency": {
+    "firstDeltaMs": 108.70432300000175,
+    "sqlMs": 171.74075800000173,
+    "providerFirstTokenMs": 108.02392578125,
+    "dbMs": 9.632770000000164
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 48,
+    "costUsd": 0.00003539,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 887,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "error": {
+    "code": "sql_error",
+    "message": "Binder Error: No function matches the given name and argument types 'time_bucket(TIMESTAMP, INTERVAL)'. You might need to add explicit type casts.\n\tCandidate functions:\n\ttime_bucket(INTERVAL, DATE) -> DATE\n\ttime_bucket(INTERVAL, DATE, DATE) -> DATE\n\ttime_bucket(INTERVAL, DATE, INTERVAL) -> DATE\n\ttime_bucket(INTERVAL, TIMESTAMP) -> TIMESTAMP\n\ttime_bucket(INTERVAL, TIMESTAMP, INTERVAL) -> TIMESTAMP\n",
+    "stage": "database"
+   }
+  },
+  {
+   "id": "aurora_water_temp_last_week",
+   "question": "water temperature trend for Aurora in the last week",
+   "tags": [
+    "window",
+    "filter",
+    "ambiguous"
+   ],
+   "category": "wrong",
+   "reason": "rows 100801, expected 169",
+   "sql": "WITH trend AS (\n  SELECT time_bucket(INTERVAL '1 hour', ts) AS hour, vessel, water_temp\n  FROM telemetry\n  WHERE vessel = 'Aurora' AND ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days'\n)\nSELECT hour, vessel, water_temp AS value\nFROM trend\nORDER BY hour, vessel",
+   "referenceRows": 169,
+   "latency": {
+    "firstDeltaMs": 108.2264750000013,
+    "sqlMs": 212.28867600000012,
+    "providerFirstTokenMs": 102.309326171875,
+    "dbMs": 466.44081200000073
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 82,
+    "costUsd": 0.00003816,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 888,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": true,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 100801,
+   "columns": [
+    "hour",
+    "vessel",
+    "value"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "fastest_last_24h",
+   "question": "which vessel was fastest on average in the last 24 hours",
+   "tags": [
+    "window",
+    "top-n",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "WITH avg_speed AS (\n  SELECT vessel, AVG(speed) AS avg_speed\n  FROM telemetry\n  WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '24 hours'\n  GROUP BY vessel\n)\nSELECT vessel, avg_speed\nFROM avg_speed\nORDER BY avg_speed DESC",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 107.85146800000075,
+    "sqlMs": 178.22783300000083,
+    "providerFirstTokenMs": 101.157470703125,
+    "dbMs": 10.54114699999991
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 67,
+    "costUsd": 0.00003711,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 891,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 6,
+   "columns": [
+    "vessel",
+    "avg_speed"
+   ],
+   "matchedReference": 3
+  },
+  {
+   "id": "wave_by_hour_last_12h",
+   "question": "compare wave height of all vessels by hour over the last 12 hours",
+   "tags": [
+    "window",
+    "bucket",
+    "series"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "WITH hourly_wave_height AS (\n  SELECT \n    time_bucket(INTERVAL '1 hour', ts) AS hour,\n    vessel,\n    AVG(wave_height) AS wave_height_avg\n  FROM telemetry\n  WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '12 hours'\n  GROUP BY hour, vessel\n)\nSELECT \n  hour,\n  vessel,\n  wave_height_avg\nFROM hourly_wave_height\nORDER BY hour, vessel",
+   "referenceRows": 78,
+   "latency": {
+    "firstDeltaMs": 124.327999000001,
+    "sqlMs": 234.45758800000112,
+    "providerFirstTokenMs": 121.29248046875,
+    "dbMs": 20.77176700000018
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 0,
+    "completionTokens": 99,
+    "costUsd": 0.00005257,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 893,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 78,
+   "columns": [
+    "hour",
+    "vessel",
+    "wave_height_avg"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "speed_last_30_min",
+   "question": "mean speed for the last 30 minutes in one-minute buckets",
+   "tags": [
+    "window",
+    "bucket"
+   ],
+   "category": "wrong",
+   "reason": "rows 186, expected 31",
+   "sql": "WITH time_bucketed AS (\n  SELECT time_bucket(INTERVAL '1 minute', ts) AS ts, vessel, AVG(speed) AS speed_avg\n  FROM telemetry\n  WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '30 minutes'\n  GROUP BY time_bucket(INTERVAL '1 minute', ts), vessel\n)\nSELECT ts, vessel, speed_avg\nFROM time_bucketed\nORDER BY ts, vessel",
+   "referenceRows": 31,
+   "latency": {
+    "firstDeltaMs": 125.60866200000055,
+    "sqlMs": 244.34904300000017,
+    "providerFirstTokenMs": 124.408935546875,
+    "dbMs": 12.25605700000051
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 96,
+    "costUsd": 0.00003943,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 891,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 186,
+   "columns": [
+    "ts",
+    "vessel",
+    "speed_avg"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "wind_sept_3_to_5",
+   "question": "Average wind from September 3 to September 5, 2026, hourly",
+   "tags": [
+    "window",
+    "absolute",
+    "ambiguous"
+   ],
+   "category": "wrong",
+   "reason": "rows 432, expected 72",
+   "sql": "WITH hourly AS (\n  SELECT time_bucket(INTERVAL '1 hour', ts) AS hour, vessel, AVG(wind) AS avg_wind\n  FROM telemetry\n  WHERE ts >= TIMESTAMP '2026-09-03 00:00:00' AND ts < TIMESTAMP '2026-09-06 00:00:00'\n  GROUP BY hour, vessel\n)\nSELECT hour, vessel, avg_wind\nFROM hourly\nORDER BY hour, vessel",
+   "referenceRows": 72,
+   "latency": {
+    "firstDeltaMs": 117.79564399999981,
+    "sqlMs": 223.39763200000016,
+    "providerFirstTokenMs": 117.1640625,
+    "dbMs": 60.46414999999979
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 96,
+    "costUsd": 0.00003963,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 895,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 432,
+   "columns": [
+    "hour",
+    "vessel",
+    "avg_wind"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "wave_last_hour_minutes",
+   "question": "Average wave height for the last hour in one-minute buckets",
+   "tags": [
+    "window",
+    "bucket"
+   ],
+   "category": "wrong",
+   "reason": "rows 12, expected 61",
+   "sql": "WITH hourly AS (\n  SELECT time_bucket(INTERVAL '1 hour', ts) AS hour, vessel, AVG(wave_height) AS avg_wave_height\n  FROM telemetry\n  WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 hour'\n  GROUP BY hour, vessel\n)\nSELECT hour, vessel, avg_wave_height\nFROM hourly",
+   "referenceRows": 61,
+   "latency": {
+    "firstDeltaMs": 123.2535399999997,
+    "sqlMs": 220.60442300000068,
+    "providerFirstTokenMs": 122.622314453125,
+    "dbMs": 8.427949000000808
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 81,
+    "costUsd": 0.00003818,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 890,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 12,
+   "columns": [
+    "hour",
+    "vessel",
+    "avg_wave_height"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "kestrel_vs_nomad_hourly",
+   "question": "compare speed of Kestrel and Nomad by hour",
+   "tags": [
+    "filter",
+    "series",
+    "bucket"
+   ],
+   "category": "exact",
+   "reason": "",
+   "sql": "WITH hourly_speed AS (\n  SELECT \n    time_bucket(INTERVAL '1 hour', ts) AS hour,\n    vessel,\n    AVG(speed) AS speed\n  FROM \n    telemetry\n  WHERE \n    vessel IN ('Kestrel', 'Nomad')\n  GROUP BY \n    hour, vessel\n)\nSELECT \n  hour,\n  vessel,\n  speed\nFROM \n  hourly_speed\nORDER BY \n  hour, vessel",
+   "referenceRows": 672,
+   "latency": {
+    "firstDeltaMs": 103.21426599999904,
+    "sqlMs": 207.74959499999932,
+    "providerFirstTokenMs": 100.442626953125,
+    "dbMs": 157.70231000000058
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 89,
+    "costUsd": 0.00003882,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 890,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 672,
+   "columns": [
+    "hour",
+    "vessel",
+    "speed"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "excluding_aurora_last_day",
+   "question": "Compare vessel speed by hour over the last day excluding Aurora",
+   "tags": [
+    "filter",
+    "series",
+    "window"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "WITH hourly_speed AS (\n  SELECT \n    time_bucket(INTERVAL '1 hour', ts) AS hour,\n    vessel,\n    AVG(speed) AS speed_avg\n  FROM \n    telemetry\n  WHERE \n    vessel != 'Aurora'\n  AND \n    ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 day'\n  GROUP BY \n    hour, vessel\n)\nSELECT \n  hour,\n  vessel,\n  speed_avg\nFROM \n  hourly_speed\nORDER BY \n  hour, vessel",
+   "referenceRows": 125,
+   "latency": {
+    "firstDeltaMs": 110.7504399999998,
+    "sqlMs": 236.96991300000082,
+    "providerFirstTokenMs": 99.608642578125,
+    "dbMs": 16.38097000000016
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 114,
+    "costUsd": 0.00004082,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 890,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 125,
+   "columns": [
+    "hour",
+    "vessel",
+    "speed_avg"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "waves_above_4_per_vessel",
+   "question": "how many readings had waves above 4 metres, per vessel",
+   "tags": [
+    "filter",
+    "aggregate"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT vessel, COUNT(*) FROM telemetry WHERE wave_height > 4 GROUP BY vessel ORDER BY vessel",
+   "referenceRows": 6,
+   "latency": {
+    "firstDeltaMs": 124.63068500000008,
+    "sqlMs": 141.29961999999978,
+    "providerFirstTokenMs": 105.761474609375,
+    "dbMs": 37.99387200000092
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 20,
+    "costUsd": 0.00003335,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 891,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 6,
+   "columns": [
+    "vessel",
+    "count_star()"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "north_of_50_hourly_speed",
+   "question": "Hourly average speed for vessels north of latitude 50 in the last day",
+   "tags": [
+    "filter",
+    "geo",
+    "window",
+    "ambiguous"
+   ],
+   "category": "sql-error",
+   "reason": "sql_error",
+   "sql": "SELECT time_bucket(ts, INTERVAL '1 hour') AS time, vessel, AVG(speed) AS avg_speed \nFROM telemetry \nWHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 day' AND lat > 50 \nGROUP BY time, vessel \nORDER BY time, vessel",
+   "referenceRows": 25,
+   "latency": {
+    "firstDeltaMs": 105.55474700000013,
+    "sqlMs": 194.96256900000117,
+    "providerFirstTokenMs": 104.61865234375,
+    "dbMs": 1.7091909999999189
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 67,
+    "costUsd": 0.00003726,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 894,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "error": {
+    "code": "sql_error",
+    "message": "Binder Error: No function matches the given name and argument types 'time_bucket(TIMESTAMP, INTERVAL)'. You might need to add explicit type casts.\n\tCandidate functions:\n\ttime_bucket(INTERVAL, DATE) -> DATE\n\ttime_bucket(INTERVAL, DATE, DATE) -> DATE\n\ttime_bucket(INTERVAL, DATE, INTERVAL) -> DATE\n\ttime_bucket(INTERVAL, TIMESTAMP) -> TIMESTAMP\n\ttime_bucket(INTERVAL, TIMESTAMP, INTERVAL) -> TIMESTAMP\n",
+    "stage": "database"
+   }
+  },
+  {
+   "id": "unknown_vessel_poseidon",
+   "question": "Show hourly wind for Poseidon over the last 7 days",
+   "tags": [
+    "filter",
+    "ambiguous",
+    "no-data"
+   ],
+   "category": "shape-violation",
+   "reason": "right values plus 1 extra column(s)",
+   "sql": "WITH hourly_wind AS (\n  SELECT \n    time_bucket(INTERVAL '1 hour', ts) AS hour,\n    vessel,\n    AVG(wind) AS wind_avg\n  FROM \n    telemetry\n  WHERE \n    vessel = 'Poseidon' AND\n    ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days'\n  GROUP BY \n    hour, vessel\n)\nSELECT \n  hour,\n  vessel,\n  wind_avg\nFROM \n  hourly_wind\nORDER BY \n  hour, vessel",
+   "referenceRows": 0,
+   "latency": {
+    "firstDeltaMs": 122.10887999999977,
+    "sqlMs": 262.23747899999944,
+    "providerFirstTokenMs": 112.893310546875,
+    "dbMs": 21.8145059999988
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 113,
+    "costUsd": 0.00004079,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 891,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 0,
+   "columns": [
+    "hour",
+    "vessel",
+    "wind_avg"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "solstice_strong_wind_hours",
+   "question": "in how many hours did Solstice see wind above 30 knots",
+   "tags": [
+    "filter",
+    "aggregate",
+    "scalar"
+   ],
+   "category": "wrong",
+   "reason": "values differ",
+   "sql": "SELECT COUNT(*) AS cnt FROM telemetry WHERE vessel = 'Solstice' AND wind > 30",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 1201.1972490000007,
+    "sqlMs": 1234.5094790000003,
+    "providerFirstTokenMs": 1195.78515625,
+    "dbMs": 9.503568000000087
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 20,
+    "costUsd": 0.0000334,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 892,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1,
+   "columns": [
+    "cnt"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "top10_hourly_waves",
+   "question": "table of the 10 highest hourly average wave heights",
+   "tags": [
+    "top-n",
+    "bucket",
+    "view",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "WITH hourly AS (\n  SELECT \n    time_bucket(INTERVAL '1 hour', ts) AS hour,\n    vessel,\n    AVG(wave_height) AS avg_wave_height\n  FROM telemetry\n  WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days'\n  GROUP BY hour, vessel\n)\nSELECT \n  hour,\n  vessel,\n  avg_wave_height\nFROM hourly\nORDER BY avg_wave_height DESC\nLIMIT 10",
+   "referenceRows": 10,
+   "latency": {
+    "firstDeltaMs": 109.79890199999863,
+    "sqlMs": 234.3239450000001,
+    "providerFirstTokenMs": 109.040283203125,
+    "dbMs": 91.8003830000016
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 100,
+    "costUsd": 0.00003965,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 889,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": true,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 10,
+   "columns": [
+    "hour",
+    "vessel",
+    "avg_wave_height"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "top3_fastest_7d",
+   "question": "the three fastest vessels by average speed in the past 7 days",
+   "tags": [
+    "top-n",
+    "window"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "WITH avg_speed AS (\n  SELECT vessel, AVG(speed) AS avg_speed\n  FROM telemetry\n  WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days'\n  GROUP BY vessel\n)\nSELECT vessel, avg_speed\nFROM avg_speed\nORDER BY avg_speed DESC\nLIMIT 3",
+   "referenceRows": 3,
+   "latency": {
+    "firstDeltaMs": 112.22482500000115,
+    "sqlMs": 188.85197999999946,
+    "providerFirstTokenMs": 102.24609375,
+    "dbMs": 54.39248200000293
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 71,
+    "costUsd": 0.00003748,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 892,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 3,
+   "columns": [
+    "vessel",
+    "avg_speed"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "windiest_day",
+   "question": "which day had the strongest average wind",
+   "tags": [
+    "top-n",
+    "bucket"
+   ],
+   "category": "wrong",
+   "reason": "rows 48, expected 1",
+   "sql": "WITH day AS (\n  SELECT \n    EXTRACT(DAY FROM ts) AS day,\n    vessel,\n    AVG(wind) AS avg_wind\n  FROM \n    telemetry\n  WHERE \n    ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days'\n  GROUP BY \n    EXTRACT(DAY FROM ts), vessel\n)\nSELECT \n  day,\n  vessel,\n  MAX(avg_wind) AS max_avg_wind\nFROM \n  day\nGROUP BY \n  day, vessel\nORDER BY \n  day, max_avg_wind DESC",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 118.59213799999998,
+    "sqlMs": 243.7370719999999,
+    "providerFirstTokenMs": 115.039794921875,
+    "dbMs": 78.37462600000072
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 120,
+    "costUsd": 0.0000411,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 886,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 48,
+   "columns": [
+    "day",
+    "vessel",
+    "max_avg_wind"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "coldest_water_vessel",
+   "question": "which vessel recorded the coldest water",
+   "tags": [
+    "top-n"
+   ],
+   "category": "wrong",
+   "reason": "rows 576, expected 1",
+   "sql": "SELECT vessel, water_temp AS coldest FROM telemetry WHERE water_temp = ( SELECT MIN ( water_temp ) FROM telemetry )",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 114.38686299999972,
+    "sqlMs": 154.00504400000136,
+    "providerFirstTokenMs": 108.765869140625,
+    "dbMs": 52.06648099999802
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 25,
+    "costUsd": 0.0000335,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 886,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 576,
+   "columns": [
+    "vessel",
+    "coldest"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "farthest_east",
+   "question": "which vessel got farthest east",
+   "tags": [
+    "top-n",
+    "geo"
+   ],
+   "category": "shape-violation",
+   "reason": "right values plus 1 extra column(s)",
+   "sql": "SELECT vessel, ts, lon AS max_lon FROM telemetry WHERE lon = ( SELECT MAX ( lon ) FROM telemetry )",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 116.71490400000039,
+    "sqlMs": 144.72315900000103,
+    "providerFirstTokenMs": 105.75,
+    "dbMs": 15.772758999999496
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 24,
+    "costUsd": 0.00003337,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 885,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1,
+   "columns": [
+    "vessel",
+    "ts",
+    "max_lon"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "wind_speed_correlation",
+   "question": "correlation between wind and speed per vessel",
+   "tags": [
+    "comparison",
+    "aggregate"
+   ],
+   "category": "wrong",
+   "reason": "rows 1014, expected 6",
+   "sql": "WITH vessel_speeds AS (\n  SELECT vessel, speed, wind, time_bucket(INTERVAL '1 hour', ts) AS hour\n  FROM telemetry\n  WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days'\n)\nSELECT vessel, hour, AVG(speed) AS avg_speed, AVG(wind) AS avg_wind, AVG(speed * wind) AS covar_sum, AVG(speed * wind) / (AVG(speed) * AVG(wind)) AS corr_coef\nFROM vessel_speeds\nGROUP BY vessel, hour\nORDER BY vessel, hour",
+   "referenceRows": 6,
+   "latency": {
+    "firstDeltaMs": 111.5788939999984,
+    "sqlMs": 282.5540379999984,
+    "providerFirstTokenMs": 111.033447265625,
+    "dbMs": 123.76530899999852
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 125,
+    "costUsd": 0.00004155,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 887,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1014,
+   "columns": [
+    "vessel",
+    "hour",
+    "avg_speed",
+    "avg_wind",
+    "covar_sum",
+    "corr_coef"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "water_temp_range_per_vessel",
+   "question": "difference between maximum and minimum water temperature per vessel",
+   "tags": [
+    "comparison",
+    "aggregate"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "WITH temp_range AS (\n  SELECT vessel, MAX(water_temp) - MIN(water_temp) AS temp_diff\n  FROM telemetry\n  GROUP BY vessel\n)\nSELECT vessel, temp_diff\nFROM temp_range\nORDER BY vessel",
+   "referenceRows": 6,
+   "latency": {
+    "firstDeltaMs": 121.02734100000089,
+    "sqlMs": 167.99149200000102,
+    "providerFirstTokenMs": 109.627197265625,
+    "dbMs": 154.57417400000122
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 48,
+    "costUsd": 0.00003544,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 888,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 6,
+   "columns": [
+    "vessel",
+    "temp_diff"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "speed_and_wave_hourly_7d",
+   "question": "Compare speed and wave height by hour over the last 7 days",
+   "tags": [
+    "comparison",
+    "bucket",
+    "window"
+   ],
+   "category": "wrong",
+   "reason": "rows 1014, expected 169",
+   "sql": "WITH hourly AS (\n  SELECT \n    time_bucket(INTERVAL '1 hour', ts) AS hour,\n    vessel,\n    speed,\n    wave_height\n  FROM telemetry\n  WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days'\n)\nSELECT \n  hour,\n  vessel,\n  AVG(speed) AS speed_avg,\n  AVG(wave_height) AS wave_height_avg\nFROM hourly\nGROUP BY hour, vessel\nORDER BY hour, vessel",
+   "referenceRows": 169,
+   "latency": {
+    "firstDeltaMs": 105.67134900000019,
+    "sqlMs": 221.6203600000008,
+    "providerFirstTokenMs": 105.185791015625,
+    "dbMs": 134.53830000000016
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 104,
+    "costUsd": 0.00004012,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 892,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1014,
+   "columns": [
+    "hour",
+    "vessel",
+    "speed_avg",
+    "wave_height_avg"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "wave_wind_ratio_hourly",
+   "question": "Average ratio of wave height to wind speed per hour over the last day",
+   "tags": [
+    "comparison",
+    "bucket",
+    "window",
+    "ambiguous"
+   ],
+   "category": "wrong",
+   "reason": "rows 150, expected 25",
+   "sql": "WITH hourly AS (\n  SELECT \n    time_bucket(INTERVAL '1 hour', ts) AS hour,\n    vessel,\n    AVG(wave_height / wind) AS ratio\n  FROM telemetry\n  WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 day'\n  GROUP BY hour, vessel\n)\nSELECT \n  hour,\n  vessel,\n  ratio\nFROM hourly\nORDER BY hour, vessel",
+   "referenceRows": 25,
+   "latency": {
+    "firstDeltaMs": 110.261391,
+    "sqlMs": 230.41539600000033,
+    "providerFirstTokenMs": 109.731201171875,
+    "dbMs": 26.864315000002534
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 93,
+    "costUsd": 0.00003929,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 893,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 150,
+   "columns": [
+    "hour",
+    "vessel",
+    "ratio"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "speed_kmh_per_vessel",
+   "question": "average speed of each vessel in km/h over the last day",
+   "tags": [
+    "comparison",
+    "units",
+    "window"
+   ],
+   "category": "sql-error",
+   "reason": "sql_error",
+   "sql": "SELECT vessel, speed * 3.6 AS avg_speed FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 day' GROUP BY vessel ORDER BY vessel LIMIT 5000",
+   "referenceRows": 6,
+   "latency": {
+    "firstDeltaMs": 113.32556399999885,
+    "sqlMs": 171.29710899999918,
+    "providerFirstTokenMs": 101.26416015625,
+    "dbMs": 1.5809880000015255
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 49,
+    "costUsd": 0.00003567,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 891,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "error": {
+    "code": "sql_error",
+    "message": "Binder Error: column \"speed\" must appear in the GROUP BY clause or must be part of an aggregate function.\nEither add it to the GROUP BY list, or use \"ANY_VALUE(speed)\" if the exact value of \"speed\" is not important.\n\nLINE 1: SELECT vessel, speed * 3.6 AS avg_speed FROM telemetry WHERE ts >= TIMESTAMP...\n                       ^",
+    "stage": "database"
+   }
+  },
+  {
+   "id": "first_vs_second_week_speed",
+   "question": "average speed per vessel in the first week versus the second week",
+   "tags": [
+    "comparison",
+    "series"
+   ],
+   "category": "sql-error",
+   "reason": "sql_error",
+   "sql": "WITH week AS (\n  SELECT time_bucket(INTERVAL '1 day', ts) AS day,\n         vessel,\n         EXTRACT(WEEK FROM ts) AS week\n  FROM telemetry\n  WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days'\n)\nSELECT day, vessel, AVG(speed) AS avg_speed\nFROM week\nGROUP BY day, vessel\nORDER BY day, vessel",
+   "referenceRows": 6,
+   "latency": {
+    "firstDeltaMs": 122.42856599999868,
+    "sqlMs": 235.3169629999975,
+    "providerFirstTokenMs": 117.629638671875,
+    "dbMs": 5.972426000000269
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 91,
+    "costUsd": 0.00003903,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 891,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "error": {
+    "code": "sql_error",
+    "message": "Binder Error: Referenced column \"speed\" not found in FROM clause!\nCandidate bindings: \"week\", \"vessel\"\n\nLINE 8: SELECT day, vessel, AVG(speed) AS avg_speed\n                                ^",
+    "stage": "database"
+   }
+  },
+  {
+   "id": "latest_position",
+   "question": "latest position of every vessel",
+   "tags": [
+    "geo"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT vessel, ts, lat AS lat_pos, lon AS lon_pos FROM telemetry ORDER BY ts DESC LIMIT 6",
+   "referenceRows": 6,
+   "latency": {
+    "firstDeltaMs": 124.5387219999975,
+    "sqlMs": 157.2827010000001,
+    "providerFirstTokenMs": 111.82470703125,
+    "dbMs": 213.9108640000013
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 24,
+    "costUsd": 0.00003332,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 884,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 6,
+   "columns": [
+    "vessel",
+    "ts",
+    "lat_pos",
+    "lon_pos"
+   ],
+   "matchedReference": 1
+  },
+  {
+   "id": "meridian_yesterday",
+   "question": "where was Meridian yesterday",
+   "tags": [
+    "geo",
+    "window",
+    "ambiguous"
+   ],
+   "category": "wrong",
+   "reason": "rows 5000, expected 24",
+   "sql": "SELECT lat AS lat, lon AS lon, COUNT(*) AS count FROM telemetry WHERE vessel = 'Meridian' AND ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 day' GROUP BY lat, lon ORDER BY lat, lon LIMIT 5000",
+   "referenceRows": 24,
+   "latency": {
+    "firstDeltaMs": 124.21339699999953,
+    "sqlMs": 190.83273499999996,
+    "providerFirstTokenMs": 111.423583984375,
+    "dbMs": 33.02098399999886
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 61,
+    "costUsd": 0.00003628,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 884,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 5000,
+   "columns": [
+    "lat",
+    "lon",
+    "count"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "tracks_map",
+   "question": "show all vessel tracks on a map",
+   "tags": [
+    "geo",
+    "series",
+    "view"
+   ],
+   "category": "sql-error",
+   "reason": "result_limit",
+   "sql": "WITH vessel_tracks AS (\n  SELECT vessel, time_bucket(INTERVAL '1 hour', ts) AS hour, lat, lon\n  FROM telemetry\n  WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days'\n)\nSELECT hour, vessel, lat, lon\nFROM vessel_tracks\nORDER BY hour, vessel",
+   "referenceRows": 2016,
+   "latency": {
+    "firstDeltaMs": 102.93854099999953,
+    "sqlMs": 201.2732799999976,
+    "providerFirstTokenMs": 94.516357421875,
+    "dbMs": 1471.812109999999
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 76,
+    "costUsd": 0.00003758,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 886,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": true,
+    "rawRows": true,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "error": {
+    "code": "result_limit",
+    "message": "Result exceeds 250000 rows or 33554432 bytes",
+    "stage": "database"
+   }
+  },
+  {
+   "id": "bounding_box_north",
+   "question": "how many readings were taken north of 50 degrees latitude, per vessel",
+   "tags": [
+    "geo",
+    "filter",
+    "aggregate"
+   ],
+   "category": "sql-error",
+   "reason": "sql_error",
+   "sql": "SELECT vessel, COUNT(*) FROM telemetry WHERE lat > 50 ORDER BY vessel",
+   "referenceRows": 2,
+   "latency": {
+    "firstDeltaMs": 109.8328619999993,
+    "sqlMs": 128.76391700000022,
+    "providerFirstTokenMs": 102.252685546875,
+    "dbMs": 1.0704590000023018
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 16,
+    "costUsd": 0.00003313,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 893,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "error": {
+    "code": "sql_error",
+    "message": "Binder Error: column \"vessel\" must appear in the GROUP BY clause or must be part of an aggregate function.\nEither add it to the GROUP BY list, or use \"ANY_VALUE(vessel)\" if the exact value of \"vessel\" is not important.\n\nLINE 1: SELECT vessel, COUNT(*) FROM telemetry WHERE lat > 50 ORDER BY...\n               ^",
+    "stage": "database"
+   }
+  },
+  {
+   "id": "aurora_daily_position",
+   "question": "Aurora's average position per day",
+   "tags": [
+    "geo",
+    "bucket",
+    "filter"
+   ],
+   "category": "wrong",
+   "reason": "values differ",
+   "sql": "WITH daily_pos AS (\n  SELECT \n    EXTRACT(DAY FROM ts) AS day,\n    vessel,\n    AVG(lat) AS lat_avg,\n    AVG(lon) AS lon_avg\n  FROM telemetry\n  WHERE vessel = 'Aurora'\n  GROUP BY EXTRACT(DAY FROM ts), vessel\n)\nSELECT \n  day,\n  lat_avg,\n  lon_avg\nFROM daily_pos\nORDER BY day",
+   "referenceRows": 14,
+   "latency": {
+    "firstDeltaMs": 113.4792869999983,
+    "sqlMs": 209.70598899999823,
+    "providerFirstTokenMs": 109.77978515625,
+    "dbMs": 75.95278300000064
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 85,
+    "costUsd": 0.00003835,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 887,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 14,
+   "columns": [
+    "day",
+    "lat_avg",
+    "lon_avg"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "partial_per_ves",
+   "question": "average wave height per ves",
+   "tags": [
+    "ambiguous",
+    "partial"
+   ],
+   "category": "sql-error",
+   "reason": "sql_error",
+   "sql": "SELECT vessel, time_bucket(ts, INTERVAL '1 hour') AS hour, AVG(wave_height) AS avg_wave_height \nFROM telemetry \nWHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days' \nGROUP BY vessel, hour \nORDER BY hour, vessel",
+   "referenceRows": 6,
+   "latency": {
+    "firstDeltaMs": 100.20093199999974,
+    "sqlMs": 172.2481259999986,
+    "providerFirstTokenMs": 99.6630859375,
+    "dbMs": 1.4796260000002803
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 65,
+    "costUsd": 0.0000366,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 884,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "error": {
+    "code": "sql_error",
+    "message": "Binder Error: No function matches the given name and argument types 'time_bucket(TIMESTAMP, INTERVAL)'. You might need to add explicit type casts.\n\tCandidate functions:\n\ttime_bucket(INTERVAL, DATE) -> DATE\n\ttime_bucket(INTERVAL, DATE, DATE) -> DATE\n\ttime_bucket(INTERVAL, DATE, INTERVAL) -> DATE\n\ttime_bucket(INTERVAL, TIMESTAMP) -> TIMESTAMP\n\ttime_bucket(INTERVAL, TIMESTAMP, INTERVAL) -> TIMESTAMP\n",
+    "stage": "database"
+   }
+  },
+  {
+   "id": "single_word_wind",
+   "question": "wind",
+   "tags": [
+    "ambiguous",
+    "partial"
+   ],
+   "category": "wrong",
+   "reason": "rows 1014, expected 336",
+   "sql": "WITH hourly AS (\n  SELECT time_bucket(INTERVAL '1 hour', ts) AS hour, vessel, AVG(wind) AS avg_wind\n  FROM telemetry\n  WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days'\n  GROUP BY hour, vessel\n)\nSELECT hour, vessel, avg_wind\nFROM hourly\nORDER BY hour, vessel",
+   "referenceRows": 336,
+   "latency": {
+    "firstDeltaMs": 111.96265900000071,
+    "sqlMs": 212.7239609999997,
+    "providerFirstTokenMs": 109.068603515625,
+    "dbMs": 170.61257699999987
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 84,
+    "costUsd": 0.00003792,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 880,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1014,
+   "columns": [
+    "hour",
+    "vessel",
+    "avg_wind"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "speed_last_week_vague",
+   "question": "speed last week",
+   "tags": [
+    "ambiguous",
+    "window"
+   ],
+   "category": "wrong",
+   "reason": "rows 5000, expected 169",
+   "sql": "WITH last_week AS (SELECT vessel, time_bucket(INTERVAL '1 hour', ts) AS hour, speed FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days')\nSELECT hour, vessel, speed FROM last_week ORDER BY hour, vessel LIMIT 5000",
+   "referenceRows": 169,
+   "latency": {
+    "firstDeltaMs": 102.07472500000222,
+    "sqlMs": 511.5123650000023,
+    "providerFirstTokenMs": 101.54541015625,
+    "dbMs": 151.2451949999995
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 68,
+    "costUsd": 0.00003674,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 882,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 5000,
+   "columns": [
+    "hour",
+    "vessel",
+    "speed"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "scatter_wind_wave",
+   "question": "scatter of wind vs wave height",
+   "tags": [
+    "ambiguous",
+    "view"
+   ],
+   "category": "sql-error",
+   "reason": "result_limit",
+   "sql": "WITH series AS (\n  SELECT vessel, \n         time_bucket(INTERVAL '1 hour', ts) AS time,\n         wind, \n         wave_height\n  FROM telemetry\n  WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days'\n)\nSELECT time, vessel, wind, wave_height\nFROM series\nORDER BY time, vessel",
+   "referenceRows": 336,
+   "latency": {
+    "firstDeltaMs": 118.13332900000023,
+    "sqlMs": 226.79517100000157,
+    "providerFirstTokenMs": 113.9365234375,
+    "dbMs": 1001.1558229999973
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 512,
+    "completionTokens": 81,
+    "costUsd": 0.00003793,
+    "model": "meta-llama/llama-3.1-8b-instruct",
+    "promptTokens": 885,
+    "reasoningTokens": 0
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": true,
+    "rawRows": true,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "error": {
+    "code": "result_limit",
+    "message": "Result exceeds 250000 rows or 33554432 bytes",
+    "stage": "database"
+   }
+  }
+ ]
+}
