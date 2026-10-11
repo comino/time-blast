@@ -35,7 +35,8 @@ export default defineConfig({
       'duckdb-browser-blocking': fileURLToPath(new URL('./node_modules/@duckdb/duckdb-wasm/dist/duckdb-browser-blocking.mjs', import.meta.url)),
     },
   },
-  server: { port: 5173, strictPort: true, headers: isolation },
+  // Agent worktrees live under .claude/; changes there must not reload the dev page.
+  server: { port: 5173, strictPort: true, headers: isolation, watch: { ignored: ['**/.claude/**', '**/target/**'] } },
   preview: { port: 4173, strictPort: true, headers: isolation },
   worker: { format: 'es' },
   optimizeDeps: { exclude: ['@duckdb/duckdb-wasm', '@mlc-ai/web-llm'] },
