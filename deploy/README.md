@@ -7,21 +7,31 @@ The GitHub repository remains private. Caddy exposes the Rust tb1 inference serv
 (engine worker). The server's default profile is `openai/gpt-oss-120b` on Groq, reasoning low
 ([batch-2/inference.md](../docs/batch-2/inference.md)).
 
-## Verified deployment — 2026-10-11 (batch 1 + batch 2)
+## Verified deployment — 2026-10-11 (batches 1–3)
 
 | Component | Live state |
 | --- | --- |
-| Source | `main` at deployment (frontend includes the card-subtitle fix after `a6678bd`) |
-| Static release | `/srv/time-blast/releases/20261011T083529Z-b73120fc`, selected by `/srv/time-blast/current`; index SHA-256 `1c4d863ac18ffe391539519731a0242481f2e598e86a78bc547bbdc3a5c04320` |
-| Rust service | `time-blast-inference.service`, `/srv/time-blast/backend/time-blast-inference` on `127.0.0.1:8787`, binary SHA-256 `002ae9b4c3900296172139a68f62815be673a7f8dd85df1ed289ef91e2ac4c86`; health reports `"protocol":"tb1"`, model `openai/gpt-oss-120b` |
+| Source | `main` at `f6882de` (batches 1–3, dataset picker) |
+| Static release | `/srv/time-blast/releases/20261011T130843Z-27f6869e`, selected by `/srv/time-blast/current`; index SHA-256 `be07328dd70421c7a9405ecc532d29050530200701f537c69dc0acdf9f3e6b73`; includes prebuilt `data/vessels/vessels.duckdb` and `/measure.html` |
+| Rust service | `time-blast-inference.service`, `/srv/time-blast/backend/time-blast-inference` on `127.0.0.1:8787`, binary SHA-256 `4efbf43726102cfcf39a78570badbf1a7ea4f17f46e76069365cc606c1708858` (prompt v6); health reports `"protocol":"tb1"`, model `openai/gpt-oss-120b` |
 | Provider configuration | `/etc/time-blast/inference.env` (`root:root`, `0600`): no `TIME_BLAST_MODEL` (server default applies), 600 requests/min, 30,000/day, `TIME_BLAST_DAILY_BUDGET_USD="3"` |
-| Caddy | `/etc/caddy/sites/time-blast.caddy` from `deploy/time-blast.Caddyfile`, adds COOP `same-origin` + COEP `credentialless` (page is cross-origin isolated) |
-| Rollback copies | `/etc/time-blast/inference.env.bak-20261011`, `/srv/time-blast/backend/time-blast-inference.bak-197b445`, `/etc/caddy/sites/time-blast.caddy.bak-20261011`, previous release `20261010T173044Z-a1890942` |
+| Caddy | `/etc/caddy/sites/time-blast.caddy` from `deploy/time-blast.Caddyfile` (unchanged), COOP `same-origin` + COEP `credentialless` |
+| Rollback copies | binary `/srv/time-blast/backend/time-blast-inference.bak-002ae9b` (batch-2 server), previous releases `20261011T130438Z-3f078165`, `20261011T083529Z-b73120fc` (batch 2), older backups from the batch-2 deploy |
 
-Public browser check (headless Chromium, software GPU, real inference over HTTPS): the page is
-cross-origin isolated; typing "average wind speed per vessel by hour" drew the correct per-vessel
-hourly line chart without Enter, last keystroke → first draw **547 ms** (inference ~366 ms,
-first database query ~138 ms cold, draw ~17 ms), no console errors, suggestion chips shown.
+Public browser check (headless Chromium, software GPU, real inference over HTTPS, fresh profile):
+cross-origin isolated, no console errors.
+
+- Boot to all components ready: 5.1–7.9 s on a first visit, 4.5 s on a repeat visit.
+- "average wind speed per vessel by hour" drew the per-vessel hourly lines without Enter: last
+  keystroke → first draw 588 ms (first token 311 ms, DB first batch 51 ms, draw 8 ms).
+- Switching datasets in settings: `flights` loaded in 7.5 s (3 tables) and drew a JOIN query
+  ("average arrival delay by carrier name") in 575 ms. `cities` loaded in 0.4 s (JOIN, 1013 ms).
+  `weather` loaded in 0.9 s (533 ms).
+- **Open issue:** the first two checks after the deploy failed to load all three new datasets
+  ("Could not load …"); it did not reproduce in four later runs. The suspect, unconfirmed, is the
+  runtime fetch of DuckDB's Parquet extension from extensions.duckdb.org. Self-hosting the
+  extensions would remove that dependency.
+
 No ClickHouse node is deployed.
 
 This token-free health check verifies Caddy routing and service readiness:

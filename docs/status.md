@@ -131,15 +131,19 @@ hosted-inference latency.**
 
 ## Next
 
-Finish batch 3, then polish: repair on database errors (the error goes back to the model for one
-retry), renderer robustness (one GPU device for all cards, device-loss recovery, line thinning),
-and an owner run of `/measure.html` on real hardware.
+Owner: open `/measure.html` on real hardware and ingest its JSON (`pnpm perf --ingest`). Then
+polish: self-host the DuckDB extensions (one unexplained failed dataset load after deploy), repair
+on database errors (the error goes back to the model for one retry), and renderer robustness (one
+GPU device for all cards, device-loss recovery, line thinning).
 
 ## Deployed
 
-Since 2026-10-11 the demo runs `main` (batch 1 + 2): tb1 server with `openai/gpt-oss-120b` on Groq,
-$3/day cap, per-keystroke rate limits, cross-origin isolated page. Details, hashes and rollback
-copies: [deploy/README.md](../deploy/README.md). The old prototype's documentation is historical:
+Since 2026-10-11 (afternoon) the demo runs `main` with batches 1–3: tb1 server with
+`openai/gpt-oss-120b` on Groq (prompt v6), $3/day cap, per-keystroke rate limits, cross-origin
+isolated page, prebuilt `vessels` database, all five datasets selectable in settings, and
+`/measure.html`. Public check: last keystroke → first draw 533–1013 ms with real inference across
+four datasets; boot to ready 5–8 s first visit, 4.5 s repeat. Details, hashes and rollback copies:
+[deploy/README.md](../deploy/README.md). The old prototype's documentation is historical:
 [prototype.md](prototype.md), [backend-prototype.md](backend-prototype.md).
 
 Operational debt: no user authentication; the budget counters are process-local and reset on
