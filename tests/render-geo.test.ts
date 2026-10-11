@@ -48,7 +48,7 @@ describe('tb-render geo family (null GPU backend, real Wasm core)', () => {
     const { r, frames, ui, backend } = await harness();
     const b = voyages(40);
     r.handle(bind(1, 1)); r.handle(schema(1, b));
-    expect(ui.filter(m => m.type === 'views').at(-1)).toMatchObject({ chosen: 'tracks', available: ['tracks', 'map', 'density', 'line', 'bar', 'scatter', 'seasons', 'table'] });
+    expect(ui.filter(m => m.type === 'views').at(-1)).toMatchObject({ chosen: 'tracks', available: ['tracks', 'map', 'density', 'line', 'bar', 'scatter', 'heatmap', 'surface', 'seasons', 'table'] });
     const before = backend.draws;
     r.handle(batch(1, b));
     expect(backend.draws).toBeGreaterThan(before);

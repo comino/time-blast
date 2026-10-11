@@ -56,21 +56,31 @@ pub struct AxesOut {
 /// Series palette (legacy `SERIES_COLORS`): mid-saturation, readable on dark and light cards.
 pub const PALETTE: [[u8; 3]; 6] = [[0xff, 0x90, 0x6c], [0x74, 0xd4, 0xc3], [0xd4, 0xc1, 0x7e], [0x83, 0xb9, 0xe3], [0xe3, 0x9e, 0xaf], [0xb0, 0xc9, 0x85]];
 
-/// Legend colour flag: `LEGEND_RGB | 0xRRGGBB` is an explicit colour instead of a palette index
-/// (colour-scale legends such as density or value maps).
-pub const LEGEND_RGB: usize = 1 << 30;
+/// Legend/palette "indices" at or above this flag are literal 0xRRGGBB colours (colour scales).
+pub const RGB_FLAG: usize = 1 << 24;
+/// The geo family's spelling of the same flag: `LEGEND_RGB | 0xRRGGBB`.
+pub const LEGEND_RGB: usize = RGB_FLAG;
+
+/// A legend colour index carrying a literal RGB colour instead of a palette entry.
+pub const fn rgb_index(c: [u8; 3]) -> usize {
+    RGB_FLAG | (c[0] as usize) << 16 | (c[1] as usize) << 8 | c[2] as usize
+}
+
+fn color_of(i: usize) -> [u8; 3] {
+    if i >= RGB_FLAG {
+        return [(i >> 16) as u8, (i >> 8) as u8, i as u8];
+    }
+    PALETTE[i % PALETTE.len()]
+}
 
 pub fn palette_hex(i: usize) -> String {
-    if i & LEGEND_RGB != 0 {
-        return format!("#{:06x}", i & 0xff_ffff);
-    }
-    let c = PALETTE[i % PALETTE.len()];
+    let c = color_of(i);
     format!("#{:02x}{:02x}{:02x}", c[0], c[1], c[2])
 }
 
 /// Premultiplied RGBA for palette entry `i` at opacity `alpha`.
 pub fn palette_rgba(i: usize, alpha: f32) -> [f32; 4] {
-    let c = PALETTE[i % PALETTE.len()];
+    let c = color_of(i);
     [c[0] as f32 / 255.0 * alpha, c[1] as f32 / 255.0 * alpha, c[2] as f32 / 255.0 * alpha, alpha]
 }
 
@@ -83,7 +93,8 @@ const TOP: f32 = 10.0;
 const RIGHT: f32 = 14.0;
 const BOTTOM: f32 = 24.0;
 
-fn ticks(scale: &AxisScale, length: f32, spacing: f32) -> Vec<(f64, String)> {
+/// `vertical`: labels stack (y axis), so category labels need a line height, not their width.
+fn ticks(scale: &AxisScale, length: f32, spacing: f32, vertical: bool) -> Vec<(f64, String)> {
     let count = ((length / spacing).floor() as usize).clamp(2, 12);
     match scale {
         AxisScale::None => Vec::new(),
@@ -99,9 +110,9 @@ fn ticks(scale: &AxisScale, length: f32, spacing: f32) -> Vec<(f64, String)> {
             if labels.is_empty() {
                 return Vec::new();
             }
-            let widest = labels.iter().take(200).map(|l| text_width(l)).fold(0.0f32, f32::max).min(120.0) + 10.0;
+            let need = if vertical { 16.0 } else { (labels.iter().take(200).map(|l| text_width(l)).fold(0.0f32, f32::max).min(120.0) + 10.0).max(spacing * 0.5) };
             let per = length / (domain.span() as f32).max(1.0);
-            let stride = ((widest.max(spacing * 0.5) / per.max(1e-3)).ceil() as usize).max(1);
+            let stride = ((need / per.max(1e-3)).ceil() as usize).max(1);
             labels.iter().enumerate().step_by(stride).map(|(i, l)| (i as f64, l.clone())).collect()
         }
     }
@@ -118,14 +129,14 @@ fn domain_of(scale: &AxisScale) -> Domain {
 
 /// Lay out the plot inside a `width × height` CSS-pixel canvas.
 pub fn layout(model: &AxisModel, width: f32, height: f32) -> AxesOut {
-    let y_ticks = ticks(&model.y, (height - TOP - BOTTOM).max(10.0), 42.0);
+    let y_ticks = ticks(&model.y, (height - TOP - BOTTOM).max(10.0), 42.0, true);
     let label_w = y_ticks.iter().map(|(_, l)| text_width(l)).fold(0.0f32, f32::max);
     let left = if matches!(model.y, AxisScale::None) { 8.0 } else { (label_w + 12.0).max(30.0).min(width * 0.4) };
     let bottom = if matches!(model.x, AxisScale::None) { 8.0 } else { BOTTOM };
     let plot = Rect { left, top: TOP, width: (width - left - RIGHT).max(1.0), height: (height - TOP - bottom).max(1.0) };
     let xd = domain_of(&model.x);
     let yd = domain_of(&model.y);
-    let x_ticks = ticks(&model.x, plot.width, 92.0);
+    let x_ticks = ticks(&model.x, plot.width, 92.0, false);
     let x = x_ticks
         .into_iter()
         .map(|(v, l)| (xd.map(v, plot.left as f64, (plot.left + plot.width) as f64) as f32, l))

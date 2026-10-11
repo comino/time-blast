@@ -10,7 +10,7 @@ use crate::axes::{layout, AxesOut};
 use crate::gpu::{as_bytes, json_str, op, Gpu, GpuVec, PassRecorder, PipelineTable, Pool, Uniform, KIND_UNIFORM, KIND_VERTEX};
 use crate::schema::{infer_roles, ColumnInfo, View};
 use crate::store::{RawColumn, Store};
-use crate::view::{available_views, choose_view, family_for, pipeline_table, DrawFrame, Family};
+use crate::view::{available_views, choose_view, family_for, pipeline_table, DrawFrame, Family, REFINE};
 
 /// Event kinds (wire values for the shim).
 pub mod ev {
@@ -72,7 +72,8 @@ impl ResultState {
         }
     }
     /// Pick the view for `hint` and (re)create the family when its geometry can't draw it.
-    fn select(&mut self, hint: Option<View>, pipes: &PipelineTable, gpu: &mut Gpu) -> bool {
+    /// A new family receives the slot's view params (e.g. a rotation set before this result).
+    fn select(&mut self, hint: Option<View>, pipes: &PipelineTable, gpu: &mut Gpu, params: &[(String, f64)]) -> bool {
         let view = choose_view(&self.available, hint);
         let changed = view != self.view;
         self.view = view;
@@ -82,6 +83,11 @@ impl ResultState {
                 f.release(gpu);
             }
             self.family = family_for(view, &self.store.roles).map(|def| (def.create)(&self.store.roles, view, pipes));
+            if let Some(f) = &mut self.family {
+                for (name, value) in params {
+                    f.set_param(name, *value);
+                }
+            }
             self.consumed = 0;
             self.catch_up();
         }
@@ -135,6 +141,9 @@ pub struct Slot {
     axes_json: String,
     pub params: Vec<(String, f64)>,
     pool: Pool,
+    /// The bound result's views/choice changed outside a call that drains events (a data-aware
+    /// choice during BATCH): post VIEWS with the next frame.
+    views_dirty: bool,
 }
 
 impl Slot {
@@ -157,6 +166,7 @@ impl Slot {
             axes_json: String::new(),
             params: Vec::new(),
             pool: Pool::default(),
+            views_dirty: false,
         }
     }
     fn result_mut(&mut self, request: u32) -> Option<&mut ResultState> {
@@ -282,7 +292,7 @@ impl Renderer {
         let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id, pool: &mut s.pool };
         let mut changed = false;
         for r in [s.pending.as_mut(), s.shown.as_mut()].into_iter().flatten() {
-            changed |= r.select(hint, &self.pipes, &mut gpu);
+            changed |= r.select(hint, &self.pipes, &mut gpu, &s.params);
         }
         if changed {
             s.dirty = true;
@@ -376,7 +386,7 @@ impl Renderer {
         };
         let s = &mut self.slots[i];
         let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id, pool: &mut s.pool };
-        result.select(s.hint, &self.pipes, &mut gpu);
+        result.select(s.hint, &self.pipes, &mut gpu, &s.params);
         let json = result.views_json();
         let view = result.view as u32;
         if s.shown.as_ref().map_or(false, |r| r.request == request) {
@@ -398,9 +408,23 @@ impl Renderer {
         let Some(i) = self.slot_index(slot) else { return 0 };
         let s = &mut self.slots[i];
         let is_pending = s.pending.as_ref().map_or(false, |r| r.request == request);
-        let Some(r) = s.result_mut(request) else { return 0 };
+        let hint = s.hint;
+        let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id, pool: &mut s.pool };
+        let Some(r) = (if is_pending { s.pending.as_mut() } else { s.shown.as_mut().filter(|r| r.request == request) }) else { return 0 };
         let was_ready = r.ready();
         r.store.append(rows, columns);
+        // Data-aware choice (e.g. many series → heatmap) before the first draw, never after.
+        if is_pending && !was_ready && hint.is_none() {
+            let mut available = r.available.clone();
+            for refine in REFINE {
+                refine(&r.store, &mut available);
+            }
+            if available != r.available {
+                r.available = available;
+                r.select(None, &self.pipes, &mut gpu, &s.params);
+                s.views_dirty = true;
+            }
+        }
         r.catch_up();
         let mut flags = ACCEPTED;
         if is_pending && !was_ready && r.ready() {
@@ -464,6 +488,12 @@ impl Renderer {
             }
             s.dirty = false;
             s.urgent = false;
+            if std::mem::take(&mut s.views_dirty) {
+                let req = s.bound.map(|b| b.request);
+                if let Some(r) = s.pending.as_ref().filter(|r| Some(r.request) == req).or(s.shown.as_ref().filter(|r| Some(r.request) == req)) {
+                    events.push((ev::VIEWS, s.id, r.request, r.view as u32, r.views_json()));
+                }
+            }
             let canvas = [(s.css[0] * s.dpr).round(), (s.css[1] * s.dpr).round()];
             gpu.words.extend_from_slice(&[op::CTX, s.id]);
             let Some(r) = s.shown.as_mut() else {
@@ -479,10 +509,14 @@ impl Renderer {
                 f.upload(r.view, &mut gpu);
                 let model = f.axes(r.view, &r.store);
                 let mut axes: AxesOut = layout(&model, s.css[0], s.css[1]);
+                let grid = f.place_axes(r.view, &mut axes);
                 f.decorate(r.view, &r.store, &mut axes);
                 let json = axes.to_json();
-                if json != s.axes_json || s.grid.id == 0 {
+                if json != s.axes_json || (s.grid.id == 0 && grid) {
                     axes.grid(s.dpr, &mut s.grid_data);
+                    if !grid {
+                        s.grid_data.clear();
+                    }
                     s.grid.sync(&mut gpu, as_bytes(&s.grid_data), KIND_VERTEX, true);
                     events.push((ev::AXES, s.id, r.request, 0, json.clone()));
                     s.axes_json = json;

@@ -20,6 +20,7 @@ use crate::store::Store;
 
 pub mod calendar;
 pub mod geo;
+pub mod matrix;
 pub mod xy;
 
 /// Everything a family needs to record its draws for one frame.
@@ -46,6 +47,11 @@ pub trait Family {
     fn upload(&mut self, view: View, gpu: &mut Gpu);
     /// Axis scales and legend for `view`. Called every drawn frame; must be cheap.
     fn axes(&self, view: View, store: &Store) -> AxisModel;
+    /// Adjust the laid-out axes for `view` (e.g. project tick positions of a 3D view).
+    /// Return false to skip the 2D grid lines. Default: keep the 2D layout and grid.
+    fn place_axes(&self, _view: View, _axes: &mut AxesOut) -> bool {
+        true
+    }
     /// Add free-positioned text (`AxesOut::labels`) after layout, e.g. polar labels.
     fn decorate(&self, _view: View, _store: &Store, _axes: &mut AxesOut) {}
     /// Record draws for `view`. Buffers are already uploaded.
@@ -74,7 +80,11 @@ pub struct FamilyDef {
 }
 
 /// Registered families, in registration order. Wave 2 appends matrix, geo and calendar.
-pub static FAMILIES: &[&FamilyDef] = &[&xy::DEF, &geo::DEF, &calendar::DEF];
+pub static FAMILIES: &[&FamilyDef] = &[&xy::DEF, &matrix::DEF, &geo::DEF, &calendar::DEF];
+
+/// Data-aware preference: consulted while a result's first drawable batch arrives and no view
+/// hint is set; may reorder `available` (the first entry becomes the automatic choice).
+pub static REFINE: &[fn(&Store, &mut Vec<View>)] = &[matrix::refine];
 
 /// All pipelines: the shared `rule` pipeline first, then each family's.
 pub fn pipeline_table() -> PipelineTable {
