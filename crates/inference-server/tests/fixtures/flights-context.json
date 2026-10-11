@@ -1,0 +1,361 @@
+{
+ "id": 1,
+ "name": "flights",
+ "dialect": "duckdb",
+ "description": "Every domestic flight of the reporting US carriers in June 2024 (BTS on-time data). scheduled_departure is local time at the origin; delays, taxi and air times in minutes (negative delay = early); distance in miles. flights.carrier = carriers.code; flights.origin and flights.dest = airports.code.",
+ "tables": [
+  {
+   "name": "flights",
+   "rows": 611132,
+   "columns": [
+    {
+     "name": "flight_date",
+     "type": "DATE",
+     "min": "2024-06-01",
+     "max": "2024-06-30"
+    },
+    {
+     "name": "scheduled_departure",
+     "type": "TIMESTAMP",
+     "min": "2024-06-01 00:07:00",
+     "max": "2024-06-30 23:59:00"
+    },
+    {
+     "name": "carrier",
+     "type": "VARCHAR",
+     "distinct": 15,
+     "values": [
+      "9E",
+      "AA",
+      "AS",
+      "B6",
+      "DL",
+      "F9",
+      "G4",
+      "HA",
+      "MQ",
+      "NK",
+      "OH",
+      "OO",
+      "UA",
+      "WN",
+      "YX"
+     ]
+    },
+    {
+     "name": "flight_number",
+     "type": "INTEGER",
+     "min": 1,
+     "max": 8819
+    },
+    {
+     "name": "tail_number",
+     "type": "VARCHAR",
+     "distinct": 4992
+    },
+    {
+     "name": "origin",
+     "type": "VARCHAR",
+     "distinct": 393
+    },
+    {
+     "name": "dest",
+     "type": "VARCHAR",
+     "distinct": 393
+    },
+    {
+     "name": "dep_delay",
+     "type": "DOUBLE",
+     "min": -49,
+     "max": 2983
+    },
+    {
+     "name": "arr_delay",
+     "type": "DOUBLE",
+     "min": -77,
+     "max": 2972
+    },
+    {
+     "name": "taxi_out",
+     "type": "DOUBLE",
+     "min": 1,
+     "max": 198
+    },
+    {
+     "name": "taxi_in",
+     "type": "DOUBLE",
+     "min": 1,
+     "max": 296
+    },
+    {
+     "name": "air_time",
+     "type": "DOUBLE",
+     "min": 6,
+     "max": 653
+    },
+    {
+     "name": "distance",
+     "type": "DOUBLE",
+     "min": 31,
+     "max": 5095
+    },
+    {
+     "name": "cancelled",
+     "type": "BOOLEAN"
+    },
+    {
+     "name": "cancellation_reason",
+     "type": "VARCHAR",
+     "distinct": 3,
+     "values": [
+      "carrier",
+      "national air system",
+      "weather"
+     ]
+    },
+    {
+     "name": "diverted",
+     "type": "BOOLEAN"
+    },
+    {
+     "name": "carrier_delay",
+     "type": "DOUBLE",
+     "min": 0,
+     "max": 2972
+    },
+    {
+     "name": "weather_delay",
+     "type": "DOUBLE",
+     "min": 0,
+     "max": 1289
+    },
+    {
+     "name": "nas_delay",
+     "type": "DOUBLE",
+     "min": 0,
+     "max": 1519
+    },
+    {
+     "name": "security_delay",
+     "type": "DOUBLE",
+     "min": 0,
+     "max": 1164
+    },
+    {
+     "name": "late_aircraft_delay",
+     "type": "DOUBLE",
+     "min": 0,
+     "max": 2690
+    }
+   ],
+   "sample": [
+    [
+     "2024-06-01",
+     "2024-06-01 00:07:00",
+     "F9",
+     1734,
+     "N305FR",
+     "DEN",
+     "MCO",
+     119,
+     100,
+     14,
+     11,
+     186,
+     1546,
+     false,
+     null,
+     false,
+     0,
+     0,
+     0,
+     0,
+     100
+    ],
+    [
+     "2024-06-01",
+     "2024-06-01 00:11:00",
+     "UA",
+     406,
+     "N27421",
+     "LAS",
+     "EWR",
+     -1,
+     -19,
+     13,
+     7,
+     253,
+     2227,
+     false,
+     null,
+     false,
+     null,
+     null,
+     null,
+     null,
+     null
+    ],
+    [
+     "2024-06-01",
+     "2024-06-01 00:13:00",
+     "AA",
+     1792,
+     "N996NN",
+     "LAS",
+     "DFW",
+     63,
+     57,
+     10,
+     11,
+     144,
+     1055,
+     false,
+     null,
+     false,
+     0,
+     0,
+     0,
+     0,
+     57
+    ]
+   ]
+  },
+  {
+   "name": "carriers",
+   "rows": 15,
+   "columns": [
+    {
+     "name": "code",
+     "type": "VARCHAR",
+     "distinct": 15,
+     "values": [
+      "9E",
+      "AA",
+      "AS",
+      "B6",
+      "DL",
+      "F9",
+      "G4",
+      "HA",
+      "MQ",
+      "NK",
+      "OH",
+      "OO",
+      "UA",
+      "WN",
+      "YX"
+     ]
+    },
+    {
+     "name": "name",
+     "type": "VARCHAR",
+     "distinct": 15,
+     "values": [
+      "Alaska Airlines Inc.",
+      "Allegiant Air",
+      "American Airlines Inc.",
+      "Delta Air Lines Inc.",
+      "Endeavor Air Inc.",
+      "Envoy Air",
+      "Frontier Airlines Inc.",
+      "Hawaiian Airlines Inc.",
+      "JetBlue Airways",
+      "PSA Airlines Inc.",
+      "Republic Airline",
+      "SkyWest Airlines Inc.",
+      "Southwest Airlines Co.",
+      "Spirit Air Lines",
+      "United Air Lines Inc."
+     ]
+    }
+   ],
+   "sample": [
+    [
+     "9E",
+     "Endeavor Air Inc."
+    ],
+    [
+     "AA",
+     "American Airlines Inc."
+    ],
+    [
+     "AS",
+     "Alaska Airlines Inc."
+    ]
+   ]
+  },
+  {
+   "name": "airports",
+   "rows": 340,
+   "columns": [
+    {
+     "name": "code",
+     "type": "VARCHAR",
+     "distinct": 393
+    },
+    {
+     "name": "name",
+     "type": "VARCHAR",
+     "distinct": 355
+    },
+    {
+     "name": "city",
+     "type": "VARCHAR",
+     "distinct": 322
+    },
+    {
+     "name": "state",
+     "type": "VARCHAR",
+     "distinct": 52
+    },
+    {
+     "name": "lat",
+     "type": "DOUBLE",
+     "min": -14.331,
+     "max": 71.285402
+    },
+    {
+     "name": "lon",
+     "type": "DOUBLE",
+     "min": -176.642783,
+     "max": 145.728848
+    },
+    {
+     "name": "elevation_ft",
+     "type": "INTEGER",
+     "min": 3,
+     "max": 7820
+    }
+   ],
+   "sample": [
+    [
+     "ABE",
+     "Lehigh Valley International Airport",
+     "Allentown/Bethlehem",
+     "PA",
+     40.651773,
+     -75.442797,
+     393
+    ],
+    [
+     "ABI",
+     "Abilene Regional Airport",
+     "Abilene",
+     "TX",
+     32.4113006592,
+     -99.68190002440001,
+     1791
+    ],
+    [
+     "ABQ",
+     "Albuquerque International Sunport",
+     "Albuquerque",
+     "NM",
+     35.039976,
+     -106.608925,
+     5355
+    ]
+   ]
+  }
+ ]
+}

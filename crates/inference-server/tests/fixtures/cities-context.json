@@ -1,0 +1,190 @@
+{
+ "id": 1,
+ "name": "cities",
+ "dialect": "duckdb",
+ "description": "Every populated place with at least 15,000 inhabitants (GeoNames cities15000) and every country. cities.country_code = countries.code. feature_code: PPLC capital, PPLA first-order admin seat, PPLA2..4 lower seats, PPL other place. elevation in metres (digital elevation model), area_km2 in km², population in people.",
+ "tables": [
+  {
+   "name": "cities",
+   "rows": 34159,
+   "columns": [
+    {
+     "name": "name",
+     "type": "VARCHAR",
+     "distinct": 34091
+    },
+    {
+     "name": "country_code",
+     "type": "VARCHAR",
+     "distinct": 294
+    },
+    {
+     "name": "feature_code",
+     "type": "VARCHAR",
+     "distinct": 17,
+     "values": [
+      "PPL",
+      "PPLA",
+      "PPLA2",
+      "PPLA3",
+      "PPLA4",
+      "PPLA5",
+      "PPLC",
+      "PPLF",
+      "PPLG",
+      "PPLH",
+      "PPLL",
+      "PPLQ",
+      "PPLR",
+      "PPLS",
+      "PPLW",
+      "PPLX",
+      "STLMT"
+     ]
+    },
+    {
+     "name": "population",
+     "type": "BIGINT",
+     "min": 0,
+     "max": 24874500
+    },
+    {
+     "name": "elevation",
+     "type": "INTEGER",
+     "min": -9999,
+     "max": 5022
+    },
+    {
+     "name": "timezone",
+     "type": "VARCHAR",
+     "distinct": 392
+    },
+    {
+     "name": "lat",
+     "type": "DOUBLE",
+     "min": -54.81084,
+     "max": 78.22334
+    },
+    {
+     "name": "lon",
+     "type": "DOUBLE",
+     "min": -176.17453,
+     "max": 179.36451
+    }
+   ],
+   "sample": [
+    [
+     "Andorra la Vella",
+     "AD",
+     "PPLC",
+     20430,
+     1037,
+     "Europe/Andorra",
+     42.50779,
+     1.52109
+    ],
+    [
+     "les Escaldes",
+     "AD",
+     "PPLA",
+     15853,
+     1033,
+     "Europe/Andorra",
+     42.50729,
+     1.53414
+    ],
+    [
+     "Abu Dhabi",
+     "AE",
+     "PPLC",
+     1807000,
+     6,
+     "Asia/Dubai",
+     24.45118,
+     54.39696
+    ]
+   ]
+  },
+  {
+   "name": "countries",
+   "rows": 252,
+   "columns": [
+    {
+     "name": "code",
+     "type": "VARCHAR",
+     "distinct": 294
+    },
+    {
+     "name": "name",
+     "type": "VARCHAR",
+     "distinct": 241
+    },
+    {
+     "name": "continent",
+     "type": "VARCHAR",
+     "distinct": 7,
+     "values": [
+      "Africa",
+      "Antarctica",
+      "Asia",
+      "Europe",
+      "North America",
+      "Oceania",
+      "South America"
+     ]
+    },
+    {
+     "name": "capital",
+     "type": "VARCHAR",
+     "distinct": 249
+    },
+    {
+     "name": "area_km2",
+     "type": "DOUBLE",
+     "min": 0,
+     "max": 17100000
+    },
+    {
+     "name": "population",
+     "type": "BIGINT",
+     "min": 0,
+     "max": 1411778724
+    },
+    {
+     "name": "currency",
+     "type": "VARCHAR",
+     "distinct": 107
+    }
+   ],
+   "sample": [
+    [
+     "AD",
+     "Andorra",
+     "Europe",
+     "Andorra la Vella",
+     468,
+     77006,
+     "EUR"
+    ],
+    [
+     "AE",
+     "United Arab Emirates",
+     "Asia",
+     "Abu Dhabi",
+     82880,
+     9630959,
+     "AED"
+    ],
+    [
+     "AF",
+     "Afghanistan",
+     "Asia",
+     "Kabul",
+     647500,
+     37172386,
+     "AFN"
+    ]
+   ]
+  }
+ ]
+}

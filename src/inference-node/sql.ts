@@ -64,6 +64,37 @@ function startsLikeQuery(ready: string): boolean | undefined {
   return isQueryStart(word);
 }
 
+/** DuckDB date-part keywords: as a bare column alias (`flight_date day,`) they are a syntax error;
+ * `AS day` works. Mirrors `PART_KEYWORDS` in sql.rs. */
+const PART_KEYWORDS = new Set(['day', 'days', 'hour', 'hours', 'minute', 'minutes', 'month', 'months', 'second', 'seconds', 'week', 'weeks', 'year', 'years']);
+const NOT_ALIAS_AFTER = new Set(['all', 'and', 'as', 'by', 'case', 'distinct', 'else', 'from', 'group', 'having', 'in', 'interval', 'is', 'join', 'not', 'on', 'or', 'order', 'select', 'then', 'when', 'where', 'with']);
+const asciiLower = (text: string): string => text.replace(/[A-Z]/g, c => c.toLowerCase());
+const aliasReason = (word: string): string => `the bare alias ${word} is a DuckDB keyword and does not parse; write AS ${word}`;
+
+/** A DuckDB part keyword used as a bare alias (twin of `keyword_alias` in sql.rs). Returns the
+ * repair reason, or undefined. */
+export function keywordAlias(sql: string): string | undefined {
+  const lexer = new Lexer(sql);
+  let prev: string | undefined, pending: string | undefined;
+  while (lexer.skipTrivia()) {
+    const c = sql[lexer.at];
+    let token: string | undefined;
+    if (c === "'" || c === '"' || c === '`') lexer.skipQuoted(c);
+    else { const word = lexer.nextWord(); token = word === undefined ? undefined : asciiLower(word); }
+    if (pending !== undefined) {
+      const word = pending;
+      pending = undefined;
+      if (token === ',' || token === 'from') return aliasReason(word);
+    }
+    if (token !== undefined) {
+      const afterExpression = prev === ')' || (prev !== undefined && /^[A-Za-z_]/.test(prev) && !NOT_ALIAS_AFTER.has(prev));
+      if (afterExpression && PART_KEYWORDS.has(token)) pending = token;
+    }
+    prev = token;
+  }
+  return pending === undefined ? undefined : aliasReason(pending);
+}
+
 /** Rejects replies that are obviously not one SELECT. Returns the reason, or undefined. */
 export function check(sql: string): string | undefined {
   const lexer = new Lexer(sql);

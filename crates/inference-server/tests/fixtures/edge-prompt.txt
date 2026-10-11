@@ -10,8 +10,8 @@ Result shape (the chart is chosen from column order and types):
 - Columns in this order: the x axis first (a time or a category), then optionally one text column that splits the result into series, then the numeric values with the main value last.
 - Name latitude and longitude columns lat and lon.
 - ORDER BY the x column, then the series column.
-- Return at most about 5000 rows. A query on a table with more than 5000 rows fails without GROUP BY or LIMIT, also for a map, tracks or a scatter plot: aggregate (GROUP BY a time bucket such as toStartOfInterval(ts, INTERVAL 1 hour), and the series if the question compares them) or use LIMIT.
-- Keep times as timestamps: bucket them with a function such as toStartOfInterval(ts, INTERVAL 1 hour), never format them as text.
+- Return at most about 5000 rows. A query on a table with more than 5000 rows fails without GROUP BY or LIMIT, also for a map, tracks or a scatter plot: aggregate (GROUP BY a time bucket such as toStartOfMonth(day), and the series if the question compares them) or use LIMIT.
+- Keep times as timestamps: bucket them with a function such as toStartOfMonth(day), never format them as text.
 - Write no comments. Exception: if the question contains a presentation word (chart, plot, bar, line, scatter, map, table, heatmap, ...), start with the line -- view: <name>, name exactly one of line, bar, scatter, table, heatmap, surface, map, density, tracks, seasons. Most questions contain none; then the reply starts with SELECT or WITH.
 
 Time:

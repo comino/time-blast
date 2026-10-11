@@ -70,16 +70,42 @@ pub fn dialect_name(dialect: &str) -> &'static str {
     }
 }
 
-fn bucket_example(dialect: &str) -> &'static str {
-    match dialect {
-        "clickhouse" => "toStartOfInterval(ts, INTERVAL 1 hour)",
-        _ => "time_bucket(INTERVAL '1 hour', ts)",
+/// The column the bucketing examples use: the first TIMESTAMP column (in table order), else the
+/// first DATE column, with whether it is a TIMESTAMP. `None` when the dataset has no time column.
+fn time_column(context: &DatasetContext) -> Option<(&str, bool)> {
+    let find = |prefix: &str| {
+        context.tables.iter().find_map(|table| {
+            table
+                .columns
+                .iter()
+                .find(|c| c.ty.to_ascii_uppercase().starts_with(prefix))
+                .map(|c| c.name.as_str())
+        })
+    };
+    find("TIMESTAMP")
+        .map(|c| (c, true))
+        .or_else(|| find("DATE").map(|c| (c, false)))
+}
+
+/// A bucketing expression on the dataset's own time column, in its dialect.
+fn bucket_example(dialect: &str, column: &str, timestamp: bool) -> String {
+    let c = ident(column);
+    match (dialect, timestamp) {
+        ("clickhouse", true) => format!("toStartOfInterval({c}, INTERVAL 1 hour)"),
+        ("clickhouse", false) => format!("toStartOfMonth({c})"),
+        (_, true) => format!("time_bucket(INTERVAL '1 hour', {c})"),
+        (_, false) => format!("date_trunc('month', {c})"),
     }
 }
 
 /// The stable, cacheable system message.
 pub fn system_prompt(context: &DatasetContext) -> String {
     let dialect = dialect_name(&context.dialect);
+    let bucket = time_column(context).map(|(c, ts)| bucket_example(&context.dialect, c, ts));
+    let group = match &bucket {
+        Some(b) => format!("GROUP BY a time bucket such as {b}, and the series if the question compares them"),
+        None => "GROUP BY a category, and the series if the question compares them".to_string(),
+    };
     let mut out = String::with_capacity(4096);
     out.push_str(&format!(
         "You translate a question about the dataset below into exactly one {dialect} SQL query.\n\
@@ -94,29 +120,27 @@ Result shape (the chart is chosen from column order and types):\n\
 - Columns in this order: the x axis first (a time or a category), then optionally one text column that splits the result into series, then the numeric values with the main value last.\n\
 - Name latitude and longitude columns lat and lon.\n\
 - ORDER BY the x column, then the series column.\n\
-- Return at most about 5000 rows. A query on a table with more than 5000 rows fails without GROUP BY or LIMIT, also for a map, tracks or a scatter plot: aggregate (GROUP BY a time bucket such as {bucket}, and the series if the question compares them) or use LIMIT.\n\
-- Keep times as timestamps: bucket them with a function such as {bucket}, never format them as text.\n\
-- Write no comments. Exception: if the question contains a presentation word (chart, plot, bar, line, scatter, map, table, heatmap, ...), start with the line -- view: <name>, name exactly one of {VIEWS}. Most questions contain none; then the reply starts with SELECT or WITH.\n\
-\n\
-Time:\n",
-        bucket = bucket_example(&context.dialect),
+- Return at most about 5000 rows. A query on a table with more than 5000 rows fails without GROUP BY or LIMIT, also for a map, tracks or a scatter plot: aggregate ({group}) or use LIMIT.\n"
     ));
-    match latest_timestamp(context) {
-        Some((table, column, ty, max)) => {
-            out.push_str(&format!(
-                "- \"Now\" is the latest timestamp in the data, not today's date: {}.{} = {}. Relative times such as \"last 7 days\" or \"today\" count back from it.\n",
-                ident(table),
-                ident(column),
-                literal(max)
-            ));
-            out.push_str(&format!(
-                "- Write a relative window as {}. Use {dialect} functions only (no SQLite DATETIME() or strftime).\n",
-                window_example(&context.dialect, column, ty, max)
-            ));
-        }
-        None => out.push_str(
-            "- Relative times such as \"last 7 days\" count back from the latest timestamp in the data (its max()), not from today's date.\n",
-        ),
+    if let Some(b) = &bucket {
+        out.push_str(&format!(
+            "- Keep times as timestamps: bucket them with a function such as {b}, never format them as text.\n"
+        ));
+    }
+    out.push_str(&format!(
+        "- Write no comments. Exception: if the question contains a presentation word (chart, plot, bar, line, scatter, map, table, heatmap, ...), start with the line -- view: <name>, name exactly one of {VIEWS}. Most questions contain none; then the reply starts with SELECT or WITH.\n"
+    ));
+    if let Some((table, column, ty, max)) = latest_timestamp(context) {
+        out.push_str(&format!(
+            "\nTime:\n- \"Now\" is the latest timestamp in the data, not today's date: {}.{} = {}. Relative times such as \"last 7 days\" or \"today\" count back from it.\n",
+            ident(table),
+            ident(column),
+            literal(max)
+        ));
+        out.push_str(&format!(
+            "- Write a relative window as {}. Use {dialect} functions only (no SQLite DATETIME() or strftime).\n",
+            window_example(&context.dialect, column, ty, max)
+        ));
     }
     out.push_str(&format!("\nDataset: {}", clean(&context.name)));
     if let Some(description) = context
@@ -156,7 +180,34 @@ Time:\n",
             }
         }
     }
+    let shared = shared_columns(context);
+    if !shared.is_empty() {
+        out.push_str(&format!(
+            "\nColumns in more than one table: {}. Qualify them with the table name or an alias.\n",
+            shared.join(", ")
+        ));
+    }
     out
+}
+
+/// Column names (ASCII case-insensitive) that occur in two or more tables, in order of first
+/// appearance: unqualified, they make a join ambiguous.
+fn shared_columns(context: &DatasetContext) -> Vec<String> {
+    let mut seen: Vec<(String, &str, usize)> = Vec::new();
+    for (t, table) in context.tables.iter().enumerate() {
+        for column in &table.columns {
+            let key = column.name.to_ascii_lowercase();
+            match seen.iter_mut().find(|(k, _, _)| *k == key) {
+                Some(entry) if entry.2 != t => entry.2 = usize::MAX,
+                Some(_) => {}
+                None => seen.push((key, column.name.as_str(), t)),
+            }
+        }
+    }
+    seen.into_iter()
+        .filter(|(_, _, t)| *t == usize::MAX)
+        .map(|(_, name, _)| ident(name))
+        .collect()
 }
 
 /// The question, last and alone so the prefix above stays cacheable.
@@ -322,6 +373,15 @@ mod tests {
         check_golden("vessels-context.json", "vessels-prompt.txt");
     }
 
+    /// Real public datasets (docs/batch-3/generality.md): a time column not named `ts`, a DATE
+    /// before a TIMESTAMP across three tables, and no time column at all.
+    #[test]
+    fn public_dataset_prompts_match_golden() {
+        for name in ["weather", "flights", "cities"] {
+            check_golden(&format!("{name}-context.json"), &format!("{name}-prompt.txt"));
+        }
+    }
+
     #[test]
     fn edge_prompt_matches_golden() {
         check_golden("edge-context.json", "edge-prompt.txt");
@@ -348,6 +408,17 @@ mod tests {
         ] {
             assert_eq!(js_number(x), s, "{x}");
         }
+    }
+
+    /// JSON numbers must parse to the same f64 as in JavaScript (serde_json `float_roundtrip`).
+    #[test]
+    fn json_numbers_parse_like_javascript() {
+        for text in ["-99.68190002440001", "32.4113006592", "0.30000000000000004", "1.7976931348623157e308"] {
+            let value: Value = serde_json::from_str(text).unwrap();
+            assert_eq!(literal(&value), js_number(text.parse::<f64>().unwrap()), "{text}");
+        }
+        let value: Value = serde_json::from_str("-99.68190002440001").unwrap();
+        assert_eq!(literal(&value), "-99.68190002440001");
     }
 
     #[test]

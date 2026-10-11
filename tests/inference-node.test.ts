@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { decode, encode, header, json, Kind, Node, readJson, readText, Stage, text, type Frame } from '../src/protocol/frame';
 import { createInferenceNode, type ChatChunk, type EngineLike } from '../src/inference-node/node';
 import { repairMessage, systemPrompt, userMessage } from '../src/inference-node/prompt';
-import { check, rawRows, rowCheckInputs, SqlStream } from '../src/inference-node/sql';
+import { check, keywordAlias, rawRows, rowCheckInputs, SqlStream } from '../src/inference-node/sql';
 import { generationOptions, resolveModelId } from '../src/inference-node/models';
 import type { DatasetContext } from '../src/engine/contracts';
 
@@ -11,7 +11,7 @@ const fixture = (name: string) => readFileSync(new URL(`../crates/inference-serv
 const vessels = JSON.parse(fixture('vessels-context.json')) as DatasetContext;
 
 describe('prompt builder twin of crates/inference-server/src/prompt.rs', () => {
-  it.each([['vessels-context.json', 'vessels-prompt.txt'], ['edge-context.json', 'edge-prompt.txt']])(
+  it.each(['vessels', 'edge', 'weather', 'flights', 'cities'].map(name => [`${name}-context.json`, `${name}-prompt.txt`]))(
     '%s renders the shared golden prompt byte for byte', (context, golden) => {
       expect(systemPrompt(JSON.parse(fixture(context)))).toBe(fixture(golden));
     });
@@ -28,6 +28,7 @@ describe('SQL extraction twin of crates/inference-server/src/sql.rs', () => {
     stream: Array<{ chunks: string[]; deltas: string; sql: string }>;
     check: Array<{ sql: string; error: string | null }>;
     rows: Array<{ sql: string; error: string | null }>;
+    alias: Array<{ sql: string; error: string | null }>;
   };
   it.each(cases.stream)('streams $chunks', ({ chunks, deltas, sql }) => {
     const stream = new SqlStream();
@@ -44,6 +45,11 @@ describe('SQL extraction twin of crates/inference-server/src/sql.rs', () => {
     expect(large).toEqual([['telemetry', 1209600]]);
     expect(time).toEqual(['ts']);
     const reason = rawRows(sql, large, time);
+    if (error === null) expect(reason).toBeUndefined();
+    else expect(reason).toContain(error);
+  });
+  it.each(cases.alias)('keyword alias $sql', ({ sql, error }) => {
+    const reason = keywordAlias(sql);
     if (error === null) expect(reason).toBeUndefined();
     else expect(reason).toContain(error);
   });

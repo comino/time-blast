@@ -322,7 +322,12 @@ async fn translate(
                 completion.finish_reason.as_deref().unwrap_or("missing")
             ))
         } else {
-            sql::check(&sql).and_then(|()| match row_check && attempt == 1 {
+            sql::check(&sql)
+                .and_then(|()| match attempt == 1 && job.prepared.context.dialect == "duckdb" {
+                    true => sql::keyword_alias(&sql).map_or(Ok(()), Err),
+                    false => Ok(()),
+                })
+                .and_then(|()| match row_check && attempt == 1 {
                 true => sql::raw_rows(
                     &sql,
                     &job.prepared.large_tables,

@@ -15,7 +15,9 @@ fastwebsockets = { version = "=0.10.0", features = ["upgrade", "unstable-split"]
 futures-util = "0.3.31"
 reqwest = { version = "=0.12.28", default-features = false, features = ["rustls-tls", "json", "stream", "http2"] }
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.145"
+# float_roundtrip: parse JSON numbers exactly like JavaScript, so prompt.rs and prompt.ts render
+# the same digits (the default fast path is off by an ulp on e.g. -99.68190002440001).
+serde_json = { version = "1.0.145", features = ["float_roundtrip"] }
 tokio = { version = "=1.53.1", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time", "io-util"] }
 tokio-util = "=0.7.19"
 

@@ -13,8 +13,6 @@ export const VIEWS = 'line, bar, scatter, table, heatmap, surface, map, density,
 
 export const dialectName = (dialect: string): string => (dialect === 'clickhouse' ? 'ClickHouse' : 'DuckDB');
 
-const bucketExample = (dialect: string): string =>
-  dialect === 'clickhouse' ? 'toStartOfInterval(ts, INTERVAL 1 hour)' : "time_bucket(INTERVAL '1 hour', ts)";
 
 const asciiUpper = (text: string): string => text.replace(/[a-z]/g, (c) => c.toUpperCase());
 const clean = (text: string): string => text.replace(/[\u0000-\u001f]/g, ' ');
@@ -50,6 +48,29 @@ function latestTimestamp(context: DatasetContext): [string, string, string, unkn
   return undefined;
 }
 
+/** The column the bucketing examples use: the first TIMESTAMP column (in table order), else the
+ * first DATE column, with whether it is a TIMESTAMP. Mirrors `time_column` in prompt.rs. */
+function timeColumn(context: DatasetContext): [string, boolean] | undefined {
+  const find = (prefix: string) => {
+    for (const table of context.tables) {
+      const column = table.columns.find(c => asciiUpper(c.type).startsWith(prefix));
+      if (column) return column.name;
+    }
+    return undefined;
+  };
+  const ts = find('TIMESTAMP');
+  if (ts !== undefined) return [ts, true];
+  const date = find('DATE');
+  return date !== undefined ? [date, false] : undefined;
+}
+
+/** A bucketing expression on the dataset's own time column. Mirrors `bucket_example` in prompt.rs. */
+function bucketExample(dialect: string, column: string, timestamp: boolean): string {
+  const c = ident(column);
+  if (dialect === 'clickhouse') return timestamp ? `toStartOfInterval(${c}, INTERVAL 1 hour)` : `toStartOfMonth(${c})`;
+  return timestamp ? `time_bucket(INTERVAL '1 hour', ${c})` : `date_trunc('month', ${c})`;
+}
+
 /** `ts >= TIMESTAMP '…' - INTERVAL '7 days'` in the dataset's dialect. Mirrors `window_example` in prompt.rs. */
 function windowExample(dialect: string, column: string, type: string, max: unknown): string {
   const date = !asciiUpper(type).startsWith('TIMESTAMP');
@@ -60,6 +81,11 @@ function windowExample(dialect: string, column: string, type: string, max: unkno
 
 export function systemPrompt(context: DatasetContext): string {
   const dialect = dialectName(context.dialect);
+  const time = timeColumn(context);
+  const bucket = time ? bucketExample(context.dialect, time[0], time[1]) : undefined;
+  const group = bucket
+    ? `GROUP BY a time bucket such as ${bucket}, and the series if the question compares them`
+    : 'GROUP BY a category, and the series if the question compares them';
   let out =
     `You translate a question about the dataset below into exactly one ${dialect} SQL query.\n` +
     '\n' +
@@ -73,16 +99,14 @@ export function systemPrompt(context: DatasetContext): string {
     '- Columns in this order: the x axis first (a time or a category), then optionally one text column that splits the result into series, then the numeric values with the main value last.\n' +
     '- Name latitude and longitude columns lat and lon.\n' +
     '- ORDER BY the x column, then the series column.\n' +
-    `- Return at most about 5000 rows. A query on a table with more than 5000 rows fails without GROUP BY or LIMIT, also for a map, tracks or a scatter plot: aggregate (GROUP BY a time bucket such as ${bucketExample(context.dialect)}, and the series if the question compares them) or use LIMIT.\n` +
-    `- Keep times as timestamps: bucket them with a function such as ${bucketExample(context.dialect)}, never format them as text.\n` +
-    `- Write no comments. Exception: if the question contains a presentation word (chart, plot, bar, line, scatter, map, table, heatmap, ...), start with the line -- view: <name>, name exactly one of ${VIEWS}. Most questions contain none; then the reply starts with SELECT or WITH.\n` +
-    '\n' +
-    'Time:\n';
+    `- Return at most about 5000 rows. A query on a table with more than 5000 rows fails without GROUP BY or LIMIT, also for a map, tracks or a scatter plot: aggregate (${group}) or use LIMIT.\n`;
+  if (bucket) out += `- Keep times as timestamps: bucket them with a function such as ${bucket}, never format them as text.\n`;
+  out += `- Write no comments. Exception: if the question contains a presentation word (chart, plot, bar, line, scatter, map, table, heatmap, ...), start with the line -- view: <name>, name exactly one of ${VIEWS}. Most questions contain none; then the reply starts with SELECT or WITH.\n`;
   const latest = latestTimestamp(context);
-  out += latest
-    ? `- "Now" is the latest timestamp in the data, not today's date: ${ident(latest[0])}.${ident(latest[1])} = ${literal(latest[3])}. Relative times such as "last 7 days" or "today" count back from it.\n` +
-      `- Write a relative window as ${windowExample(context.dialect, latest[1], latest[2], latest[3])}. Use ${dialect} functions only (no SQLite DATETIME() or strftime).\n`
-    : '- Relative times such as "last 7 days" count back from the latest timestamp in the data (its max()), not from today\'s date.\n';
+  if (latest) {
+    out += `\nTime:\n- "Now" is the latest timestamp in the data, not today's date: ${ident(latest[0])}.${ident(latest[1])} = ${literal(latest[3])}. Relative times such as "last 7 days" or "today" count back from it.\n` +
+      `- Write a relative window as ${windowExample(context.dialect, latest[1], latest[2], latest[3])}. Use ${dialect} functions only (no SQLite DATETIME() or strftime).\n`;
+  }
   out += `\nDataset: ${clean(context.name)}`;
   if (context.description && context.description.trim() !== '') out += ` (${clean(context.description)})`;
   out += '\n';
@@ -103,7 +127,24 @@ export function systemPrompt(context: DatasetContext): string {
       for (const row of table.sample.slice(0, MAX_SAMPLE_ROWS)) out += `  (${row.map(literal).join(', ')})\n`;
     }
   }
+  const shared = sharedColumns(context);
+  if (shared.length) out += `\nColumns in more than one table: ${shared.join(', ')}. Qualify them with the table name or an alias.\n`;
   return out;
+}
+
+/** Column names (ASCII case-insensitive) that occur in two or more tables, in order of first
+ * appearance. Mirrors `shared_columns` in prompt.rs. */
+function sharedColumns(context: DatasetContext): string[] {
+  const seen = new Map<string, { name: string; table: number }>();
+  context.tables.forEach((table, t) => {
+    for (const column of table.columns) {
+      const key = column.name.replace(/[A-Z]/g, c => c.toLowerCase());
+      const entry = seen.get(key);
+      if (!entry) seen.set(key, { name: column.name, table: t });
+      else if (entry.table !== t) entry.table = -1;
+    }
+  });
+  return [...seen.values()].filter(e => e.table === -1).map(e => ident(e.name));
 }
 
 export const userMessage = (question: string): string => question.trim();
