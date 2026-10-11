@@ -27,6 +27,8 @@ pub enum Kind {
     Draft = 0x10,
     Commit = 0x11,
     Cancel = 0x12,
+    /// UI → coordinator: execute this SQL for a slot (chart-as-query; no translation).
+    Query = 0x13,
     Infer = 0x18,
     SqlDelta = 0x19,
     Sql = 0x1A,
@@ -44,9 +46,9 @@ pub enum Kind {
 }
 
 impl Kind {
-    pub const ALL: [Kind; 23] = [
+    pub const ALL: [Kind; 24] = [
         Kind::Hello, Kind::Ready, Kind::Context, Kind::Status, Kind::Error, Kind::Config,
-        Kind::Draft, Kind::Commit, Kind::Cancel, Kind::Infer, Kind::SqlDelta, Kind::Sql,
+        Kind::Draft, Kind::Commit, Kind::Cancel, Kind::Query, Kind::Infer, Kind::SqlDelta, Kind::Sql,
         Kind::InferStats, Kind::Exec, Kind::ResultSchema, Kind::Batch, Kind::Done, Kind::Bind,
         Kind::Unbind, Kind::Drawn, Kind::Result, Kind::Timing, Kind::Keep,
     ];
@@ -59,7 +61,7 @@ impl Kind {
         match self {
             Kind::Hello => "HELLO", Kind::Ready => "READY", Kind::Context => "CONTEXT",
             Kind::Status => "STATUS", Kind::Error => "ERROR", Kind::Config => "CONFIG",
-            Kind::Draft => "DRAFT", Kind::Commit => "COMMIT", Kind::Cancel => "CANCEL",
+            Kind::Draft => "DRAFT", Kind::Commit => "COMMIT", Kind::Cancel => "CANCEL", Kind::Query => "QUERY",
             Kind::Infer => "INFER", Kind::SqlDelta => "SQL_DELTA", Kind::Sql => "SQL",
             Kind::InferStats => "INFER_STATS", Kind::Exec => "EXEC",
             Kind::ResultSchema => "RESULT_SCHEMA", Kind::Batch => "BATCH", Kind::Done => "DONE",
