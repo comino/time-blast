@@ -27,5 +27,23 @@
     {"sql": "SELECT 1; DROP TABLE t", "error": "more than one"},
     {"sql": "SELECT 'unterminated", "error": "ended inside"},
     {"sql": "SELECT 1 /* open", "error": "ended inside"}
+  ],
+  "rows": [
+    {"sql": "SELECT wind FROM telemetry", "error": "raw rows of telemetry (1209600 rows)"},
+    {"sql": "-- view: map\nSELECT lat, lon, vessel FROM telemetry ORDER BY ts", "error": "raw rows of telemetry (1209600 rows)"},
+    {"sql": "SELECT time_bucket(INTERVAL '10 minute', ts) AS t, speed FROM telemetry WHERE vessel = 'Atlas' ORDER BY t", "error": "raw rows of telemetry (1209600 rows)"},
+    {"sql": "SELECT ts, avg(speed) OVER (ORDER BY ts ROWS 10 PRECEDING) AS s FROM \"Telemetry\"", "error": "raw rows of telemetry (1209600 rows)"},
+    {"sql": "SELECT wind, wave_height FROM telemetry LIMIT 100000", "error": "its LIMIT 100000 exceeds 5000 rows"},
+    {"sql": "SELECT 'count(' AS x, wind FROM telemetry -- GROUP BY", "error": "raw rows of telemetry (1209600 rows)"},
+    {"sql": "SELECT vessel, avg(speed) AS s FROM telemetry GROUP BY vessel ORDER BY vessel", "error": null},
+    {"sql": "SELECT max(wave_height) AS m FROM telemetry", "error": null},
+    {"sql": "SELECT countIf(wind > 30) AS n FROM telemetry", "error": null},
+    {"sql": "SELECT DISTINCT vessel FROM telemetry", "error": null},
+    {"sql": "SELECT wind, wave_height FROM telemetry USING SAMPLE 2000", "error": null},
+    {"sql": "SELECT wind, wave_height FROM telemetry LIMIT 5000", "error": null},
+    {"sql": "SELECT vessel, lat, lon FROM telemetry WHERE ts = TIMESTAMP '2026-09-14 23:59:54'", "error": null},
+    {"sql": "SELECT vessel, lat, lon FROM telemetry QUALIFY row_number() OVER (PARTITION BY vessel ORDER BY ts DESC) = 1", "error": null},
+    {"sql": "SELECT ts, speed FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days'", "error": "raw rows of telemetry (1209600 rows)"},
+    {"sql": "SELECT x FROM other_table", "error": null}
   ]
 }

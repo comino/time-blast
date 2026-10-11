@@ -33,6 +33,9 @@ pub struct ProviderConfig {
     pub max_tokens: u32,
     pub timeout: Duration,
     pub max_concurrent: usize,
+    /// Extra top-level request fields (`TIME_BLAST_REQUEST_EXTRA`), merged last: e.g. an
+    /// OpenRouter `provider` routing object (replaces the default), `service_tier`, `verbosity`.
+    pub extra: serde_json::Map<String, Value>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -173,6 +176,9 @@ impl Provider {
             if let Some(effort) = config.reasoning_effort {
                 request["reasoning"] = json!({"effort":effort});
             }
+        }
+        for (key, value) in &config.extra {
+            request[key.as_str()] = value.clone();
         }
         request
     }
@@ -554,6 +560,7 @@ mod tests {
             max_tokens: 300,
             timeout: Duration::from_secs(1),
             max_concurrent: 1,
+            extra: Default::default(),
         }
     }
 
@@ -575,5 +582,18 @@ mod tests {
         assert!(body.get("temperature").is_none() && body.get("provider").is_none());
         assert!(Provider::new(config(false, Some(ReasoningEffort::Low), None)).is_err());
         assert!(Provider::new(config(true, None, Some(f64::NAN))).is_err());
+    }
+
+    #[test]
+    fn request_extra_replaces_routing_and_adds_fields() {
+        let mut c = config(true, None, Some(0.0));
+        c.extra = json!({"provider":{"only":["cerebras"]},"service_tier":"priority"})
+            .as_object()
+            .unwrap()
+            .clone();
+        let body = Provider::new(c).unwrap().request_body(&[]);
+        assert_eq!(body["provider"], json!({"only":["cerebras"]}));
+        assert_eq!(body["service_tier"], "priority");
+        assert_eq!(body["stream"], true);
     }
 }

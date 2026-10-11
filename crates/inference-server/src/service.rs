@@ -37,6 +37,8 @@ pub struct App {
     pub totals: Mutex<Totals>,
     pub cache: SqlCache,
     pub session_concurrency: usize,
+    /// Repair replies that would return raw rows of a large table (`TIME_BLAST_ROW_CHECK`).
+    pub row_check: bool,
     pub shutdown: CancellationToken,
 }
 
@@ -133,6 +135,7 @@ impl App {
             totals: Mutex::new(Totals::default()),
             cache: SqlCache::new(config.cache_entries),
             session_concurrency: config.session_concurrency,
+            row_check: config.row_check,
             shutdown: CancellationToken::new(),
         }))
     }

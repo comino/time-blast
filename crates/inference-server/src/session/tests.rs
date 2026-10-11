@@ -157,6 +157,7 @@ async fn harness_with(replies: Vec<Reply>, tweak: impl FnOnce(&mut Config)) -> H
             max_tokens: 512,
             timeout: Duration::from_secs(5),
             max_concurrent: 8,
+            extra: Default::default(),
         },
         allowed_origins: vec!["http://localhost:5173".into()],
         requests_per_minute: 1000,
@@ -164,6 +165,7 @@ async fn harness_with(replies: Vec<Reply>, tweak: impl FnOnce(&mut Config)) -> H
         daily_budget_usd: 1.0,
         session_concurrency: 2,
         cache_entries: 64,
+        row_check: true,
     };
     tweak(&mut config);
     let app = App::new(config).unwrap();
@@ -441,6 +443,52 @@ async fn one_repair_attempt_after_prose_and_deltas_come_from_the_repair() {
             .unwrap()
             .starts_with("That reply was rejected: the reply must start with SELECT")
     );
+}
+
+#[tokio::test]
+async fn raw_rows_of_a_large_table_get_one_repair_and_the_sql_frame_is_authoritative() {
+    let raw = "SELECT ts, wind FROM telemetry ORDER BY ts";
+    let fixed = "SELECT time_bucket(INTERVAL '1 hour', ts) AS t, avg(wind) AS w FROM telemetry GROUP BY t ORDER BY t";
+    let h = harness(vec![Reply::content(&[raw]), Reply::content(&[fixed])]).await;
+    let mut c = Client::connect(h.addr).await;
+    c.greet().await;
+    c.send(infer(1, 0, "wind")).await;
+    let frames = c.until(Kind::InferStats, 1).await;
+    // Attempt 1 streamed before the check could run; the SQL frame carries the repair.
+    let deltas: String = of(&frames, Kind::SqlDelta)
+        .iter()
+        .map(|f| text(f))
+        .collect();
+    assert_eq!(deltas, raw);
+    assert_eq!(text(of(&frames, Kind::Sql)[0]), fixed);
+    let stats: Value = serde_json::from_slice(&frames.last().unwrap().payload).unwrap();
+    assert_eq!(stats["attempts"], json!(2));
+    let requests = h.upstream.requests.lock().unwrap();
+    let repair = requests[1]["messages"][3]["content"].as_str().unwrap();
+    assert!(
+        repair.starts_with("That reply was rejected: it returns raw rows of telemetry (1209600 rows)"),
+        "{repair}"
+    );
+}
+
+#[tokio::test]
+async fn raw_rows_on_the_repair_or_with_the_check_off_are_returned_as_is() {
+    let raw = "SELECT ts, wind FROM telemetry";
+    let h = harness(vec![Reply::content(&[raw]), Reply::content(&[raw])]).await;
+    let mut c = Client::connect(h.addr).await;
+    c.greet().await;
+    c.send(infer(1, 0, "wind")).await;
+    let frames = c.until(Kind::InferStats, 1).await;
+    assert_eq!(text(of(&frames, Kind::Sql)[0]), raw);
+    assert!(of(&frames, Kind::Error).is_empty());
+
+    let h = harness_with(vec![Reply::content(&[raw])], |c| c.row_check = false).await;
+    let mut c = Client::connect(h.addr).await;
+    c.greet().await;
+    c.send(infer(1, 0, "wind")).await;
+    let frames = c.until(Kind::InferStats, 1).await;
+    assert_eq!(text(of(&frames, Kind::Sql)[0]), raw);
+    assert_eq!(h.upstream.requests.lock().unwrap().len(), 1);
 }
 
 #[tokio::test]
