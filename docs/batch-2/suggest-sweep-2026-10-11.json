@@ -1,0 +1,45 @@
+{
+ "date": "2026-10-11T07:49:45.831Z",
+ "summary": {
+  "bases": 893,
+  "basesRun": 836,
+  "withSuggestions": 771,
+  "meanPerBase": 2.6,
+  "variants": 2177,
+  "ok": 2177,
+  "failed": 0,
+  "emptyResults": 72,
+  "byKind": {
+   "window": {
+    "n": 413,
+    "ok": 413,
+    "empty": 23
+   },
+   "agg": {
+    "n": 547,
+    "ok": 547,
+    "empty": 16
+   },
+   "view": {
+    "n": 698,
+    "ok": 698,
+    "empty": 17
+   },
+   "split": {
+    "n": 152,
+    "ok": 152
+   },
+   "bucket": {
+    "n": 367,
+    "ok": 367,
+    "empty": 16
+   }
+  },
+  "generateUs": {
+   "p50": 316.4,
+   "p95": 2097.3,
+   "max": 7767.1
+  }
+ },
+ "failed": []
+}

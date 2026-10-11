@@ -77,6 +77,8 @@ export class UiController {
   config: CoordinatorConfig = { ...DEFAULT_COORDINATOR_CONFIG };
   context: DatasetContext | null = null;
   sessionCostUsd = 0;
+  /** Sees every decoded engine frame first; returning true consumes it (src/ui/suggest-controller.ts). */
+  observer?: (frame: Frame) => boolean;
   private readonly slots = new Map<number, SlotEntry>();
   private readonly pool = new Set<number>();
   private readonly requests = new Map<number, number>();
@@ -117,6 +119,8 @@ export class UiController {
     this.config = { ...this.config, ...rest };
     this.drafts.config(rest);
   }
+  /** Post an already encoded frame (PRIME, WARM EXEC); the buffer is transferred. */
+  sendFrame(bytes: ArrayBuffer): void { this.port.postMessage({ type: 'frame', bytes }, [bytes]); }
   setInference(placement: InferencePlacement): void { this.post({ type: 'inference', placement }); }
   setDataset(source: DatasetSource): void {
     this.post({ type: 'dataset', source });
@@ -175,6 +179,7 @@ export class UiController {
   }
 
   private frame(frame: Frame): void {
+    if (this.observer?.(frame)) return;
     switch (frame.kind) {
       case Kind.BIND: return this.bind(u32(frame.payload), frame.request, frame.revision);
       case Kind.UNBIND: return this.unbind(u32(frame.payload), frame.request);
