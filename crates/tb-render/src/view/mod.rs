@@ -18,6 +18,7 @@ use crate::gpu::{Gpu, PassRecorder, PipelineDesc, PipelineTable};
 use crate::schema::{Roles, View};
 use crate::store::Store;
 
+pub mod calendar;
 pub mod matrix;
 pub mod xy;
 
@@ -50,6 +51,8 @@ pub trait Family {
     fn place_axes(&self, _view: View, _axes: &mut AxesOut) -> bool {
         true
     }
+    /// Add free-positioned text (`AxesOut::labels`) after layout, e.g. polar labels.
+    fn decorate(&self, _view: View, _store: &Store, _axes: &mut AxesOut) {}
     /// Record draws for `view`. Buffers are already uploaded.
     fn draw(&mut self, view: View, frame: &mut DrawFrame);
     /// View-specific interaction (rotation, playback, …). Return true to request a redraw.
@@ -71,7 +74,7 @@ pub struct FamilyDef {
 }
 
 /// Registered families, in registration order. Wave 2 appends matrix, geo and calendar.
-pub static FAMILIES: &[&FamilyDef] = &[&xy::DEF, &matrix::DEF];
+pub static FAMILIES: &[&FamilyDef] = &[&xy::DEF, &matrix::DEF, &calendar::DEF];
 
 /// Data-aware preference: consulted while a result's first drawable batch arrives and no view
 /// hint is set; may reorder `available` (the first entry becomes the automatic choice).
@@ -133,7 +136,7 @@ mod tests {
     #[test]
     fn automatic_choice_follows_x_kind() {
         let time = roles(&[("ts", TypeCode::Timestamp), ("v", TypeCode::F64)]);
-        assert_eq!(available_views(&time), [View::Line, View::Bar, View::Scatter, View::Table]);
+        assert_eq!(available_views(&time), [View::Line, View::Bar, View::Scatter, View::Seasons, View::Table]);
         let cat = roles(&[("name", TypeCode::Utf8), ("v", TypeCode::F64)]);
         assert_eq!(choose_view(&available_views(&cat), None), View::Bar);
         let num = roles(&[("wind", TypeCode::F64), ("speed", TypeCode::F64)]);

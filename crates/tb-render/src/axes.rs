@@ -48,6 +48,9 @@ pub struct AxesOut {
     pub legend: Vec<(String, usize)>,
     /// y position (CSS px) of the value-zero baseline when inside the plot.
     pub zero: Option<f32>,
+    /// Free-positioned text from `Family::decorate`: (x, y CSS px, label, horizontal anchor
+    /// 0 start / 0.5 middle / 1 end); vertically centred on y.
+    pub labels: Vec<(f32, f32, String, f32)>,
 }
 
 /// Series palette (legacy `SERIES_COLORS`): mid-saturation, readable on dark and light cards.
@@ -146,7 +149,7 @@ pub fn layout(model: &AxisModel, width: f32, height: f32) -> AxesOut {
         AxisScale::Linear(d) if d.lo <= 0.0 && d.hi >= 0.0 => Some(d.map(0.0, (plot.top + plot.height) as f64, plot.top as f64) as f32),
         _ => None,
     };
-    AxesOut { plot, x, y, legend: model.legend.clone(), zero }
+    AxesOut { plot, x, y, legend: model.legend.clone(), zero, labels: Vec::new() }
 }
 
 impl AxesOut {
@@ -178,7 +181,18 @@ impl AxesOut {
             }
             s.push_str(&format!("{{\"label\":{},\"color\":\"{}\"}}", json_str(label), palette_hex(*color)));
         }
-        s.push_str("]}");
+        s.push(']');
+        if !self.labels.is_empty() {
+            s.push_str(",\"labels\":[");
+            for (i, (x, y, label, anchor)) in self.labels.iter().enumerate() {
+                if i > 0 {
+                    s.push(',');
+                }
+                s.push_str(&format!("{{\"x\":{},\"y\":{},\"label\":{},\"anchor\":{}}}", round2(*x), round2(*y), json_str(label), anchor));
+            }
+            s.push(']');
+        }
+        s.push('}');
         s
     }
 

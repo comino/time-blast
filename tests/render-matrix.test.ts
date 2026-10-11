@@ -44,7 +44,7 @@ describe('tb-render matrix views (null GPU backend, real Wasm core)', () => {
     const { r, ui, frames } = await harness();
     const b = grid(6, 20);
     r.handle(bind(1, 1)); r.handle(schema(1, b)); r.handle(batch(1, b));
-    expect(lastViews(ui)).toMatchObject({ available: ['line', 'bar', 'scatter', 'heatmap', 'surface', 'table'], chosen: 'line' });
+    expect(lastViews(ui)).toMatchObject({ available: ['line', 'bar', 'scatter', 'heatmap', 'surface', 'seasons', 'table'], chosen: 'line' });
     expect(frames.filter(f => f.kind === Kind.DRAWN)).toHaveLength(1);
   });
 
@@ -54,7 +54,7 @@ describe('tb-render matrix views (null GPU backend, real Wasm core)', () => {
     r.handle(bind(1, 2)); r.handle(schema(2, b));
     expect(lastViews(ui).chosen).toBe('line');
     r.handle(batch(2, b));
-    expect(lastViews(ui)).toMatchObject({ chosen: 'heatmap', available: ['heatmap', 'line', 'bar', 'scatter', 'surface', 'table'] });
+    expect(lastViews(ui)).toMatchObject({ chosen: 'heatmap', available: ['heatmap', 'line', 'bar', 'scatter', 'surface', 'seasons', 'table'] });
     expect(frames.filter(f => f.kind === Kind.DRAWN)).toHaveLength(1);
     const ticks = lastAxes(ui);
     expect(ticks.legend!.length).toBeGreaterThanOrEqual(2);

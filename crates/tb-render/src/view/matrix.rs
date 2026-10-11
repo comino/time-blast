@@ -937,7 +937,7 @@ mod tests {
     fn applicability_keeps_line_default_and_never_picks_surface() {
         let tsv = roles(&[("ts", TypeCode::Timestamp), ("station", TypeCode::Utf8), ("v", TypeCode::F64)]);
         let a = available_views(&tsv);
-        assert_eq!(a, [View::Line, View::Bar, View::Scatter, View::Heatmap, View::Surface, View::Table]);
+        assert_eq!(a[..5], [View::Line, View::Bar, View::Scatter, View::Heatmap, View::Surface]);
         assert_eq!(choose_view(&a, None), View::Line);
         assert_eq!(choose_view(&a, Some(View::Surface)), View::Surface);
         // category × category × value: a 2-category heatmap is offered after bars.

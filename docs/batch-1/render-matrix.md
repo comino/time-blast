@@ -63,15 +63,15 @@ All of these are backwards compatible; no existing family or literal needs chang
 
 | File | Change |
 |---|---|
-| `crates/tb-render/src/view/mod.rs` | `pub mod matrix;`, `&matrix::DEF` in `FAMILIES`; new `Family::place_axes(&self, View, &mut AxesOut) -> bool` (default: keep the layout and draw the grid); new `pub static REFINE: &[fn(&Store, &mut Vec<View>)]` (= `[matrix::refine]`). |
-| `crates/tb-render/src/renderer.rs` | `ResultState::select` takes `params` and replays the slot's params (e.g. rotation) into a newly created family, at its two call sites `set_view` and `schema`. `Renderer::batch` runs `REFINE` while a pending result has no drawable point and no hint, reselects, and sets the new private `Slot::views_dirty`. `Renderer::frame` posts VIEWS for `views_dirty` slots (the JS shim drains events only after frames, and `tb_frame` clears events). `frame` also calls `place_axes` after `layout`, clears the grid when it returns false, and guards the axes-repost condition (`grid.id == 0 && grid`). |
+| `crates/tb-render/src/view/mod.rs` | `pub mod matrix;`, `&matrix::DEF` in `FAMILIES` (between xy and calendar); new `Family::place_axes(&self, View, &mut AxesOut) -> bool` (default: keep the layout and draw the grid); new `pub static REFINE: &[fn(&Store, &mut Vec<View>)]` (= `[matrix::refine]`). |
+| `crates/tb-render/src/renderer.rs` | `ResultState::select` takes `params` and replays the slot's params (e.g. rotation) into a newly created family, at its two call sites `set_view` and `schema`. `Renderer::batch` runs `REFINE` while a pending result has no drawable point and no hint, reselects, and sets the new private `Slot::views_dirty`. `Renderer::frame` posts VIEWS for `views_dirty` slots (the JS shim drains events only after frames, and `tb_frame` clears events). `frame` also calls `place_axes` after `layout` (before calendar's `decorate`; both hooks coexist), clears the grid when it returns false, and guards the axes-repost condition (`grid.id == 0 && grid`). |
 | `crates/tb-render/src/axes.rs` | `RGB_FLAG`/`rgb_index`: legend "palette indices" at or above `1 << 24` carry a literal RGB colour (`palette_hex`/`palette_rgba` honour it). `ticks()` gets a `vertical` flag: y-axis category labels thin by line height (16 px) instead of label width (before, every other heatmap row lost its label). |
 | `tests/render-node.test.ts` | Expected views for time × series × value now include heatmap and surface. |
 | `public/wasm/tb-render.wasm` | Rebuilt (binary conflict expected; the integrator rebuilds). |
 
 ## Verification
 
-- `cargo test -p tb-render`: 51 tests, 10 of them new in `matrix.rs`. They cover applicability and
+- `cargo test -p tb-render`: 62 tests after merging main, 10 of them in `matrix.rs`. They cover applicability and
   ranks, refine at 12 versus 13 series, cell geometry and bucket width, category centring, a
   streaming append that uploads only the tail while the colour domain moves in uniforms, the
   camera fitting the plot at every 15° rotation with a constant scale, back-to-front lane order,

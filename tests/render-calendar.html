@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>tb-render seasons</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; padding: 12px; background: #08111b; color: #d6e9e8; font: 12px/1.4 ui-monospace, monospace; }
+    #grid { display: grid; grid-template-columns: repeat(2, 520px); gap: 12px; }
+    figure { margin: 0; background: #10212d; border: 1px solid #29414d; border-radius: 6px; padding: 8px; }
+    figcaption { color: #7695a2; font-size: 11px; margin-bottom: 4px; }
+    .plot { position: relative; width: 100%; height: 320px; }
+    .plot canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+    .labels span { position: absolute; left: 0; top: 0; font-size: 8px; color: #7fa3aa; white-space: nowrap; }
+    pre { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div id="grid"></div>
+  <pre id="out">running…</pre>
+  <!-- Seasons-view harness for tests/render_calendar.py: renders the Rust/Wasm seasonal wheel
+       through the real RendererNode on WebGPU or WebGL2 and measures first-draw cost. -->
+  <script type="module">
+    import { Float64, makeData, makeVector, Table, TimestampMicrosecond, Dictionary, Utf8, Int32, vectorFromArray } from 'apache-arrow';
+    import { createRenderer } from '/src/engine/render/index.ts';
+    import { header, Kind } from '/src/protocol/frame.ts';
+
+    const out = document.getElementById('out'), grid = document.getElementById('grid');
+    const params = new URLSearchParams(location.search);
+    const backend = params.get('backend') ?? 'webgpu', reps = Number(params.get('reps') ?? 9);
+    // `view` (default seasons) applies to the timed case only, for comparing against xy views.
+    const timedView = params.get('view') ?? 'seasons';
+    const BATCH = 2048, MIN = 60_000_000n, DAY = 86_400_000_000n;
+
+    /** `n` rows from `start` (µs) every `step` µs, optional series names, smooth seasonal values. */
+    function dataset(n, start, step, series = null) {
+      const batches = [];
+      for (let from = 0; from < n; from += BATCH) {
+        const rows = Math.min(BATCH, n - from), ts = new BigInt64Array(rows), v = new Float64Array(rows), names = [];
+        for (let k = 0; k < rows; k++) {
+          const i = from + k, s = series ? i % series.length : 0, j = series ? Math.floor(i / series.length) : i;
+          ts[k] = start + BigInt(j) * step;
+          const hours = Number(ts[k] / 3_600_000_000n);
+          v[k] = 10 + s * 3 + 6 * Math.sin(hours / 24 * 2 * Math.PI) + 4 * Math.sin(hours / 8766 * 2 * Math.PI) + Math.sin(i * 12.9898) * 0.3;
+          if (series) names.push(series[s]);
+        }
+        const cols = { ts: makeVector(makeData({ type: new TimestampMicrosecond(), length: rows, data: ts })) };
+        if (series) cols.series = vectorFromArray(names, new Dictionary(new Utf8(), new Int32()));
+        cols.value = makeVector(makeData({ type: new Float64(), length: rows, data: v }));
+        batches.push(new Table(cols).batches[0]);
+      }
+      return batches;
+    }
+    const u32 = v => { const b = new Uint8Array(4); new DataView(b.buffer).setUint32(0, v, true); return b; };
+    const bind = (slot, request) => ({ ...header(Kind.BIND, { request, revision: request, epoch: 0 }), stamps: [], payload: u32(slot) });
+    const schema = (request, b) => ({ ...header(Kind.RESULT_SCHEMA, { request }), stamps: [], payload: b.schema });
+    const batch = (request, b) => ({ ...header(Kind.BATCH, { request }), stamps: [], payload: b });
+    const done = request => ({ ...header(Kind.DONE, { request }), stamps: [], payload: new Uint8Array(16) });
+    const tick = () => new Promise(r => requestAnimationFrame(() => r()));
+    const stats = xs => { const s = [...xs].sort((a, b) => a - b), q = p => s[Math.min(s.length - 1, Math.floor(p * (s.length - 1) + 0.5))], r = v => Math.round(v * 1000) / 1000;
+      return { n: s.length, median: r(q(0.5)), p95: r(q(0.95)), min: r(s[0]), max: r(s[s.length - 1]) }; };
+
+    async function main() {
+      const frames = [], ui = [], cards = new Map();
+      const renderer = await createRenderer(f => frames.push(f), m => {
+        ui.push(m);
+        if (m.type === 'axes') {
+          const box = cards.get(m.slot); box.textContent = '';
+          for (const l of m.ticks.labels ?? []) {
+            const s = document.createElement('span'); s.textContent = l.label;
+            s.style.transform = `translate(${l.x}px,${l.y}px) translate(${-l.anchor * 100}%,-50%)`; box.append(s);
+          }
+        }
+      }, { backend });
+      const cases = [
+        { slot: 1, title: '14 d × 1 min (20,160 rows) → weekly wheel', data: dataset(20_160, 1_791_331_200_000_000n, MIN) },
+        { slot: 2, title: '3 years daily × 2 series → yearly small multiples', data: dataset(2 * 1096, 1_704_067_200_000_000n, DAY, ['north', 'south']) },
+        { slot: 3, title: '30 h × 5 min → 24 h clock', data: dataset(360, 1_791_331_200_000_000n, 5n * MIN) },
+        { slot: 4, title: 'one row → drawn on the first batch', data: dataset(1, 1_791_331_200_000_000n, MIN) },
+      ];
+      for (const c of cases) {
+        const fig = document.createElement('figure'); fig.dataset.card = String(c.slot);
+        fig.innerHTML = `<figcaption>${backend} · ${c.title}</figcaption><div class="plot"><canvas></canvas><div class="labels"></div></div>`;
+        grid.append(fig);
+        cards.set(c.slot, fig.querySelector('.labels'));
+        const box = fig.querySelector('.plot').getBoundingClientRect();
+        renderer.attach(c.slot, fig.querySelector('canvas').transferControlToOffscreen(), { width: box.width, height: box.height, devicePixelRatio: devicePixelRatio || 1 });
+      }
+      await tick();
+      let request = 1;
+      const summary = { backend: renderer.backend.kind, label: renderer.backend.label, cases: {} };
+      for (const c of cases) {
+        renderer.setView(c.slot, 'seasons');
+        const r = request++;
+        renderer.handle(bind(c.slot, r)); renderer.handle(schema(r, c.data[0]));
+        for (const b of c.data) renderer.handle(batch(r, b));
+        renderer.handle(done(r));
+        summary.cases[c.slot] = { request: r };
+      }
+      await tick(); await renderer.backend.presented(); await tick();
+      for (const c of cases) {
+        const r = summary.cases[c.slot].request;
+        const views = ui.filter(m => m.type === 'views' && m.slot === c.slot).pop();
+        const axes = ui.filter(m => m.type === 'axes' && m.slot === c.slot).pop();
+        summary.cases[c.slot] = {
+          chosen: views?.chosen, available: views?.available,
+          drawn: frames.some(f => f.kind === Kind.DRAWN && f.request === r && f.stamps.some(s => s.stage === 16)),
+          caption: axes?.ticks.labels?.[0]?.label, labels: (axes?.ticks.labels ?? []).length,
+        };
+      }
+      // First-draw cost for the 20,160-row weekly case: BATCH(first) → FIRST_DRAW_SUBMITTED,
+      // plus the whole stream and the time until the GPU finished.
+      const first = [], ingest = [], build = [], replay = [], all = [], presented = [];
+      renderer.setView(1, timedView);
+      for (let k = 0; k < reps; k++) {
+        await tick();
+        const r = request++;
+        renderer.handle(bind(1, r)); renderer.handle(schema(r, cases[0].data[0]));
+        const t0 = performance.now();
+        renderer.handle(batch(r, cases[0].data[0]));
+        const st = frames.filter(f => f.kind === Kind.DRAWN && f.request === r)[0].stamps;
+        first.push(st[1].at - st[0].at);
+        const t = renderer.timing(r); ingest.push(t.ingest); build.push(t.build); replay.push(t.replay);
+        for (const b of cases[0].data.slice(1)) renderer.handle(batch(r, b));
+        renderer.handle(done(r)); renderer.frame(false);
+        all.push(performance.now() - t0);
+        await renderer.backend.presented();
+        presented.push(performance.now() - t0);
+      }
+      summary.weekly20160 = { firstBatchToFirstDrawSubmittedMs: stats(first), firstIngestMs: stats(ingest), firstBuildMs: stats(build), firstReplayMs: stats(replay),
+        allBatchesAndFinalFrameCpuMs: stats(all), untilGpuDoneMs: stats(presented), lastFrame: { ...renderer.metrics.lastFrame } };
+      await tick(); await renderer.backend.presented(); await tick();
+      window.__calendar = summary;
+      out.textContent = JSON.stringify(summary, null, 1);
+    }
+    main().catch(e => { window.__error = String(e?.stack ?? e); out.textContent = window.__error; });
+  </script>
+</body>
+</html>
