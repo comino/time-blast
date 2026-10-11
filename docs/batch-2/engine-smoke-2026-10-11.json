@@ -1,0 +1,845 @@
+{
+  "page": {
+    "crossOriginIsolated": true,
+    "sharedArrayBuffer": true,
+    "timerResolutionUs": 5,
+    "cors": [
+      {
+        "url": "https://huggingface.co/mlc-ai/Qwen2.5-0.5B-Instruct-q4f16_1-MLC/resolve/main/mlc-chat-config.json",
+        "ok": true,
+        "status": 200
+      },
+      {
+        "url": "https://raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs/main/README.md",
+        "ok": true,
+        "status": 200
+      },
+      {
+        "url": "https://extensions.duckdb.org/v1.4.3/wasm_eh/parquet.duckdb_extension.wasm",
+        "ok": true,
+        "status": 200
+      }
+    ]
+  },
+  "worker": {
+    "ok": true,
+    "result": {
+      "crossOriginIsolated": true,
+      "sharedArrayBuffer": true,
+      "boot": {
+        "bundle": "eh",
+        "version": "v1.4.3",
+        "instantiateMs": 2203.039999961853,
+        "parquetMs": 633.8649997711182,
+        "parquet": true,
+        "jsonMs": 273.17500019073486,
+        "json": true,
+        "totalMs": 3506.744999885559
+      },
+      "openVessels": {
+        "loadMs": 2747.6799998283386,
+        "contextMs": 355.914999961853,
+        "statisticsMs": 258.1449999809265,
+        "totalMs": 3147.6900000572205,
+        "rows": 1209600,
+        "columns": [
+          {
+            "name": "ts",
+            "type": "TIMESTAMP",
+            "min": "2026-09-01 00:00:00",
+            "max": "2026-09-14 23:59:54"
+          },
+          {
+            "name": "vessel",
+            "type": "VARCHAR",
+            "distinct": 6,
+            "values": [
+              "Atlas",
+              "Aurora",
+              "Kestrel",
+              "Meridian",
+              "Nomad",
+              "Solstice"
+            ]
+          },
+          {
+            "name": "speed",
+            "type": "DOUBLE",
+            "min": 6.04,
+            "max": 18.4
+          },
+          {
+            "name": "wind",
+            "type": "DOUBLE",
+            "min": 7,
+            "max": 41.42
+          },
+          {
+            "name": "wave_height",
+            "type": "DOUBLE",
+            "min": 0.95,
+            "max": 5.73
+          },
+          {
+            "name": "water_temp",
+            "type": "DOUBLE",
+            "min": 13.77,
+            "max": 18.65
+          },
+          {
+            "name": "lat",
+            "type": "DOUBLE",
+            "min": 36,
+            "max": 53.57604
+          },
+          {
+            "name": "lon",
+            "type": "DOUBLE",
+            "min": -59.5,
+            "max": -26.69235
+          }
+        ]
+      },
+      "bootToReadyMs": 6661.704999923706,
+      "guardUs": {
+        "n": 1000,
+        "min": 20,
+        "p50": 30,
+        "p95": 65,
+        "max": 3380
+      },
+      "yieldUs": {
+        "n": 1000,
+        "min": 5,
+        "p50": 15,
+        "p95": 25,
+        "max": 170
+      },
+      "arrowObjectsAreSharedClasses": true,
+      "aggregate60k": {
+        "sql": "SELECT date_trunc('minute', ts) AS t, vessel, avg(speed) AS speed FROM telemetry WHERE ts < TIMESTAMP '2026-09-08' GROUP BY ALL ORDER BY 1, 2",
+        "cold": {
+          "request": 1,
+          "outcome": "done",
+          "source": "raw",
+          "guardMs": 0.19500017166137695,
+          "polls": 8,
+          "fetchRetries": 0,
+          "yields": 19,
+          "batches": 30,
+          "rows": 60480,
+          "bytes": 1610720,
+          "schemaMs": 186.1899995803833,
+          "firstBatchMs": 188.93499994277954,
+          "doneMs": 253.5449995994568
+        },
+        "warm": {
+          "guardMs": {
+            "n": 20,
+            "min": 0.08,
+            "p50": 0.09,
+            "p95": 0.145,
+            "max": 0.145
+          },
+          "schemaMs": {
+            "n": 20,
+            "min": 78.99,
+            "p50": 90.26,
+            "p95": 159.04,
+            "max": 159.04
+          },
+          "firstBatchMs": {
+            "n": 20,
+            "min": 79.37,
+            "p50": 90.615,
+            "p95": 159.43,
+            "max": 159.43
+          },
+          "doneMs": {
+            "n": 20,
+            "min": 90.32,
+            "p50": 108.86,
+            "p95": 201.345,
+            "max": 201.345
+          },
+          "stampExecToFirstBatchMs": {
+            "n": 20,
+            "min": 79.365,
+            "p50": 90.615,
+            "p95": 159.425,
+            "max": 159.425
+          },
+          "stampExecToDoneMs": {
+            "n": 20,
+            "min": 90.325,
+            "p50": 108.865,
+            "p95": 201.355,
+            "max": 201.355
+          },
+          "rows": 60480,
+          "bytes": 1610720,
+          "batches": 30,
+          "polls": {
+            "n": 20,
+            "min": 7,
+            "p50": 7,
+            "p95": 8,
+            "max": 8
+          },
+          "yields": {
+            "n": 20,
+            "min": 9,
+            "p50": 10,
+            "p95": 14,
+            "max": 14
+          },
+          "fetchRetries": {
+            "n": 20,
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "max": 0
+          },
+          "handleMs": {
+            "n": 20,
+            "min": 12.615,
+            "p50": 15.075,
+            "p95": 31.785,
+            "max": 31.785
+          }
+        }
+      },
+      "scan": {
+        "sql": "SELECT ts, speed FROM telemetry WHERE vessel = 'Aurora' AND ts < TIMESTAMP '2026-09-12'",
+        "rows": 158400,
+        "batches": 465,
+        "firstBatchMs": {
+          "n": 10,
+          "min": 7.4,
+          "p50": 10.46,
+          "p95": 39.61,
+          "max": 39.61
+        },
+        "doneMs": {
+          "n": 10,
+          "min": 80.29,
+          "p50": 102.165,
+          "p95": 199.58,
+          "max": 199.58
+        },
+        "yields": {
+          "n": 10,
+          "min": 18,
+          "p50": 20,
+          "p95": 32,
+          "max": 32
+        },
+        "fetchRetries": {
+          "n": 10,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "max": 0
+        }
+      },
+      "scanYieldEveryBatch": {
+        "doneMs": {
+          "n": 10,
+          "min": 82.64,
+          "p50": 100.71,
+          "p95": 256.605,
+          "max": 256.605
+        },
+        "yields": {
+          "n": 10,
+          "min": 466,
+          "p50": 466,
+          "p95": 468,
+          "max": 468
+        },
+        "batches": 465
+      },
+      "tiny": {
+        "doneMs": {
+          "n": 25,
+          "min": 0.64,
+          "p50": 0.73,
+          "p95": 3.27,
+          "max": 3.68
+        },
+        "firstBatchMs": {
+          "n": 25,
+          "min": 0.6,
+          "p50": 0.68,
+          "p95": 3.235,
+          "max": 3.63
+        }
+      },
+      "cancel": [
+        {
+          "phase": "execute",
+          "waitMs": 13.905,
+          "cancelToStopMs": 0.43,
+          "outcome": "canceled"
+        },
+        {
+          "phase": "execute",
+          "waitMs": 11.895,
+          "cancelToStopMs": 0.11,
+          "outcome": "canceled"
+        },
+        {
+          "phase": "execute",
+          "waitMs": 11.805,
+          "cancelToStopMs": 0.09,
+          "outcome": "canceled"
+        },
+        {
+          "phase": "execute",
+          "waitMs": 10.665,
+          "cancelToStopMs": 0.1,
+          "outcome": "canceled"
+        },
+        {
+          "phase": "execute",
+          "waitMs": 11.875,
+          "cancelToStopMs": 0.115,
+          "outcome": "canceled"
+        },
+        {
+          "phase": "stream",
+          "waitMs": 7.68,
+          "cancelToStopMs": 0.12,
+          "outcome": "canceled"
+        },
+        {
+          "phase": "stream",
+          "waitMs": 6.315,
+          "cancelToStopMs": 0.075,
+          "outcome": "canceled"
+        },
+        {
+          "phase": "stream",
+          "waitMs": 10.78,
+          "cancelToStopMs": 0.085,
+          "outcome": "canceled"
+        },
+        {
+          "phase": "stream",
+          "waitMs": 5.385,
+          "cancelToStopMs": 0.09,
+          "outcome": "canceled"
+        },
+        {
+          "phase": "stream",
+          "waitMs": 8.295,
+          "cancelToStopMs": 0.12,
+          "outcome": "canceled"
+        }
+      ],
+      "rejected": {
+        "DROP TABLE telemetry": "sql_error",
+        "SET memory_limit='4GB'": "sql_error",
+        "SELECT 1; SELECT 2": "sql_rejected",
+        "SELECT * FROM read_csv('https://example.com/x.csv')": "sql_error"
+      },
+      "batch2": {
+        "openMs": 1843.244999885559,
+        "rollupWallMs": 5999.0650000572205,
+        "rollups": [
+          {
+            "table": "telemetry",
+            "grain": "minute",
+            "rows": 120960,
+            "ms": 728.9400000572205
+          },
+          {
+            "table": "telemetry",
+            "grain": "hour",
+            "rows": 2016,
+            "ms": 48.15000009536743
+          },
+          {
+            "table": "telemetry",
+            "grain": "day",
+            "rows": 84,
+            "ms": 8.809999942779541
+          },
+          {
+            "table": "*",
+            "ms": 0,
+            "done": true
+          }
+        ],
+        "queriesDuringBuild": [
+          {
+            "atMs": 142.6,
+            "firstBatchMs": 131.21,
+            "source": "raw"
+          },
+          {
+            "atMs": 280.7,
+            "firstBatchMs": 119.92,
+            "source": "raw"
+          },
+          {
+            "atMs": 405.2,
+            "firstBatchMs": 109.64,
+            "source": "raw"
+          },
+          {
+            "atMs": 547.7,
+            "firstBatchMs": 126.85,
+            "source": "raw"
+          },
+          {
+            "atMs": 698.8,
+            "firstBatchMs": 139.53,
+            "source": "raw"
+          },
+          {
+            "atMs": 847.6,
+            "firstBatchMs": 133.41,
+            "source": "raw"
+          },
+          {
+            "atMs": 979.4,
+            "firstBatchMs": 123.47,
+            "source": "raw"
+          },
+          {
+            "atMs": 1065.8,
+            "firstBatchMs": 77.98,
+            "source": "raw"
+          },
+          {
+            "atMs": 1161.1,
+            "firstBatchMs": 86.59,
+            "source": "raw"
+          },
+          {
+            "atMs": 1293.3,
+            "firstBatchMs": 111.69,
+            "source": "raw"
+          },
+          {
+            "atMs": 1478.5,
+            "firstBatchMs": 165.11,
+            "source": "raw"
+          },
+          {
+            "atMs": 1649.4,
+            "firstBatchMs": 153.69,
+            "source": "raw"
+          },
+          {
+            "atMs": 1850.4,
+            "firstBatchMs": 180.26,
+            "source": "raw"
+          },
+          {
+            "atMs": 2016.6,
+            "firstBatchMs": 157.55,
+            "source": "raw"
+          },
+          {
+            "atMs": 2108.2,
+            "firstBatchMs": 82.38,
+            "source": "raw"
+          },
+          {
+            "atMs": 2198.7,
+            "firstBatchMs": 81.97,
+            "source": "raw"
+          },
+          {
+            "atMs": 2288.7,
+            "firstBatchMs": 81.09,
+            "source": "raw"
+          },
+          {
+            "atMs": 2381.7,
+            "firstBatchMs": 83.6,
+            "source": "raw"
+          },
+          {
+            "atMs": 2479.7,
+            "firstBatchMs": 88.35,
+            "source": "raw"
+          },
+          {
+            "atMs": 2577.4,
+            "firstBatchMs": 82.88,
+            "source": "raw"
+          },
+          {
+            "atMs": 2689.4,
+            "firstBatchMs": 103.28,
+            "source": "raw"
+          },
+          {
+            "atMs": 2778.2,
+            "firstBatchMs": 79.84,
+            "source": "raw"
+          },
+          {
+            "atMs": 2868.5,
+            "firstBatchMs": 81.92,
+            "source": "raw"
+          },
+          {
+            "atMs": 2958.7,
+            "firstBatchMs": 80.82,
+            "source": "raw"
+          },
+          {
+            "atMs": 3059.9,
+            "firstBatchMs": 81.24,
+            "source": "raw"
+          },
+          {
+            "atMs": 3255.1,
+            "firstBatchMs": 185.89,
+            "source": "raw"
+          },
+          {
+            "atMs": 3344.5,
+            "firstBatchMs": 80.79,
+            "source": "raw"
+          },
+          {
+            "atMs": 3468.4,
+            "firstBatchMs": 107.79,
+            "source": "raw"
+          },
+          {
+            "atMs": 3602.8,
+            "firstBatchMs": 126.38,
+            "source": "raw"
+          },
+          {
+            "atMs": 3715.8,
+            "firstBatchMs": 91.34,
+            "source": "raw"
+          },
+          {
+            "atMs": 3901,
+            "firstBatchMs": 175.89,
+            "source": "raw"
+          },
+          {
+            "atMs": 4019.5,
+            "firstBatchMs": 107.38,
+            "source": "raw"
+          },
+          {
+            "atMs": 4149.7,
+            "firstBatchMs": 121.5,
+            "source": "raw"
+          },
+          {
+            "atMs": 4347.3,
+            "firstBatchMs": 161.18,
+            "source": "raw"
+          },
+          {
+            "atMs": 4480.9,
+            "firstBatchMs": 120.97,
+            "source": "raw"
+          },
+          {
+            "atMs": 4598.9,
+            "firstBatchMs": 106.34,
+            "source": "raw"
+          },
+          {
+            "atMs": 4724.5,
+            "firstBatchMs": 111.79,
+            "source": "raw"
+          },
+          {
+            "atMs": 4822.5,
+            "firstBatchMs": 85.66,
+            "source": "raw"
+          },
+          {
+            "atMs": 4917.7,
+            "firstBatchMs": 86.95,
+            "source": "raw"
+          },
+          {
+            "atMs": 5007.5,
+            "firstBatchMs": 81.94,
+            "source": "raw"
+          }
+        ],
+        "queries": {
+          "per_vessel": {
+            "source": "rollup",
+            "grain": "day",
+            "coldRewriteMs": 18.230000019073486,
+            "raw": {
+              "n": 9,
+              "min": 17.59,
+              "p50": 36.11,
+              "p95": 45.36,
+              "max": 45.36
+            },
+            "optimized": {
+              "n": 9,
+              "min": 2.875,
+              "p50": 4.07,
+              "p95": 7.315,
+              "max": 7.315
+            },
+            "cacheHit": {
+              "n": 9,
+              "min": 0.03,
+              "p50": 0.04,
+              "p95": 0.27,
+              "max": 0.27
+            }
+          },
+          "hourly_vessel": {
+            "source": "rollup",
+            "grain": "hour",
+            "coldRewriteMs": 6.135000228881836,
+            "raw": {
+              "n": 9,
+              "min": 109.9,
+              "p50": 111.98,
+              "p95": 138.32,
+              "max": 138.32
+            },
+            "optimized": {
+              "n": 9,
+              "min": 4.035,
+              "p50": 4.52,
+              "p95": 7.215,
+              "max": 7.215
+            },
+            "cacheHit": {
+              "n": 9,
+              "min": 0.04,
+              "p50": 0.05,
+              "p95": 0.15,
+              "max": 0.15
+            }
+          },
+          "daily_vessel_max": {
+            "source": "rollup",
+            "grain": "day",
+            "coldRewriteMs": 3.3350000381469727,
+            "raw": {
+              "n": 9,
+              "min": 68.105,
+              "p50": 73.955,
+              "p95": 101.195,
+              "max": 101.195
+            },
+            "optimized": {
+              "n": 9,
+              "min": 3.08,
+              "p50": 3.245,
+              "p95": 6.4,
+              "max": 6.4
+            },
+            "cacheHit": {
+              "n": 9,
+              "min": 0.035,
+              "p50": 0.04,
+              "p95": 0.105,
+              "max": 0.105
+            }
+          },
+          "hourly_7d_edges": {
+            "source": "rollup",
+            "grain": "hour+edges",
+            "coldRewriteMs": 6.329999923706055,
+            "raw": {
+              "n": 9,
+              "min": 43.035,
+              "p50": 44.465,
+              "p95": 63.085,
+              "max": 63.085
+            },
+            "optimized": {
+              "n": 9,
+              "min": 5.65,
+              "p50": 6.12,
+              "p95": 6.975,
+              "max": 6.975
+            },
+            "cacheHit": {
+              "n": 9,
+              "min": 0.04,
+              "p50": 0.06,
+              "p95": 0.115,
+              "max": 0.115
+            }
+          },
+          "minute_vessel_week": {
+            "source": "rollup",
+            "grain": "minute",
+            "coldRewriteMs": 4.090000152587891,
+            "raw": {
+              "n": 9,
+              "min": 80.015,
+              "p50": 89.52,
+              "p95": 190.06,
+              "max": 190.06
+            },
+            "optimized": {
+              "n": 9,
+              "min": 30.335,
+              "p50": 46.185,
+              "p95": 67.465,
+              "max": 67.465
+            },
+            "cacheHit": {
+              "n": 9,
+              "min": 0.035,
+              "p50": 0.045,
+              "p95": 0.14,
+              "max": 0.14
+            }
+          },
+          "aurora_15min_day": {
+            "source": "raw",
+            "grain": null,
+            "coldRewriteMs": 6.355000019073486,
+            "raw": {
+              "n": 9,
+              "min": 5.33,
+              "p50": 5.935,
+              "p95": 14.715,
+              "max": 14.715
+            },
+            "optimized": {
+              "n": 9,
+              "min": 5.32,
+              "p50": 6.045,
+              "p95": 15.395,
+              "max": 15.395
+            },
+            "cacheHit": {
+              "n": 9,
+              "min": 0.04,
+              "p50": 0.045,
+              "p95": 0.105,
+              "max": 0.105
+            }
+          },
+          "measure_filter": {
+            "source": "raw",
+            "grain": null,
+            "coldRewriteMs": 1.799999713897705,
+            "raw": {
+              "n": 9,
+              "min": 6.86,
+              "p50": 7.01,
+              "p95": 7.365,
+              "max": 7.365
+            },
+            "optimized": {
+              "n": 9,
+              "min": 6.91,
+              "p50": 7.135,
+              "p95": 7.775,
+              "max": 7.775
+            },
+            "cacheHit": {
+              "n": 9,
+              "min": 0.03,
+              "p50": 0.04,
+              "p95": 0.095,
+              "max": 0.095
+            }
+          },
+          "arg_max": {
+            "source": "raw",
+            "grain": null,
+            "coldRewriteMs": 1.9800000190734863,
+            "raw": {
+              "n": 9,
+              "min": 244.665,
+              "p50": 254.49,
+              "p95": 274.08,
+              "max": 274.08
+            },
+            "optimized": {
+              "n": 9,
+              "min": 247.075,
+              "p50": 250.595,
+              "p95": 345.075,
+              "max": 345.075
+            },
+            "cacheHit": {
+              "n": 9,
+              "min": 0.035,
+              "p50": 0.04,
+              "p95": 0.13,
+              "max": 0.13
+            }
+          }
+        }
+      },
+      "openVesselsSmall": {
+        "loadMs": 239.04500007629395,
+        "contextMs": 32.61999988555908,
+        "statisticsMs": 17.980000019073486,
+        "totalMs": 271.9199995994568,
+        "rows": 120960,
+        "columns": [
+          "t:DOUBLE",
+          "vessel:INTEGER",
+          "speed:DOUBLE",
+          "wind:DOUBLE",
+          "wave_height:DOUBLE",
+          "water_temp:DOUBLE",
+          "lat:DOUBLE",
+          "lon:DOUBLE"
+        ]
+      },
+      "openCsv": {
+        "loadMs": 223.30999994277954,
+        "contextMs": 31.860000133514404,
+        "statisticsMs": 14,
+        "totalMs": 255.40000009536743,
+        "table": "drop_test",
+        "rows": 5000,
+        "columns": [
+          {
+            "name": "column0",
+            "type": "BIGINT",
+            "min": 0,
+            "max": 4999
+          },
+          {
+            "name": "column1",
+            "type": "VARCHAR",
+            "distinct": 2,
+            "values": [
+              "a",
+              "b"
+            ]
+          },
+          {
+            "name": "column2",
+            "type": "DOUBLE",
+            "min": 0,
+            "max": 2499.5
+          }
+        ]
+      },
+      "statusFrames": 9,
+      "dropped": 0
+    }
+  },
+  "browser": "145.0.7632.0",
+  "headers": {
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Embedder-Policy": "credentialless"
+  },
+  "consoleErrors": []
+}

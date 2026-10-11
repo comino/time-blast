@@ -31,7 +31,8 @@ async function run() {
   let openStats: unknown;
   let waiter: ((s: ExecStats) => void) | undefined;
   const node = new DuckDatabaseNode(bindings, f => frames.push(f), {
-    fixtureUrl, onExecStats: s => { execStats.push(s); waiter?.(s); }, onOpenStats: s => { openStats = s; },
+    // Batch-1 path (raw tables, no result cache) for the measurements below; batch 2 is measured separately.
+    fixtureUrl, rollups: false, resultCache: false, onExecStats: s => { execStats.push(s); waiter?.(s); }, onOpenStats: s => { openStats = s; },
   });
 
   let o0 = performance.now();
@@ -106,7 +107,7 @@ async function run() {
   };
   console.log('[smoke] Yield policy');
   // Yield policy: time-sliced (default, SLICE_MS) versus a yield after every batch.
-  const everyBatch = new DuckDatabaseNode(bindings, () => {}, { sliceMs: 0, onExecStats: s => { execStats.push(s); waiter?.(s); } });
+  const everyBatch = new DuckDatabaseNode(bindings, () => {}, { sliceMs: 0, rollups: false, resultCache: false, onExecStats: s => { execStats.push(s); waiter?.(s); } });
   (everyBatch as unknown as { contextId: number }).contextId = 1;
   const perBatch: ExecStats[] = [];
   for (let i = 0; i < 11; i++) {
@@ -155,6 +156,9 @@ async function run() {
   }
   out.rejected = rejected;
 
+  console.log('[smoke] Batch 2: rollups and result cache');
+  out.batch2 = await batch2(bindings, aggregate);
+
   console.log('[smoke] Parquet fixture');
   // Parquet fixture and a dropped CSV file.
   o0 = performance.now();
@@ -168,6 +172,77 @@ async function run() {
   out.openCsv = { ...(openStats as object), totalMs: performance.now() - o0, table: dropped.tables[0].name, rows: dropped.tables[0].rows, columns: dropped.tables[0].columns };
   out.statusFrames = frames.filter(f => f.kind === Kind.STATUS).length;
   out.dropped = node.dropped;
+  return out;
+}
+
+/** Batch 2 (docs/batch-2/database.md): a second node opens vessels with rollups; queries run
+ * while they build, then the same statements are timed on a raw node (rollups and cache off, same
+ * tables) and the rollup node, paired, and replayed from a result cache. */
+const BATCH2_QUERIES: Record<string, string> = {
+  per_vessel: 'SELECT vessel, avg(speed) AS speed FROM telemetry GROUP BY vessel ORDER BY vessel',
+  hourly_vessel: "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour, vessel, avg(wind) AS wind FROM telemetry GROUP BY ALL ORDER BY 1, 2",
+  daily_vessel_max: "SELECT date_trunc('day', ts) AS day, vessel, max(wave_height) AS wave_height FROM telemetry GROUP BY ALL ORDER BY 1, 2",
+  hourly_7d_edges: "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour, avg(speed) AS speed FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days' GROUP BY 1 ORDER BY 1",
+  minute_vessel_week: "SELECT date_trunc('minute', ts) AS t, vessel, avg(speed) AS speed FROM telemetry WHERE ts < TIMESTAMP '2026-09-08' GROUP BY ALL ORDER BY 1, 2",
+  aurora_15min_day: "SELECT time_bucket(INTERVAL '15 minutes', ts) AS t, avg(speed) AS speed FROM telemetry WHERE vessel = 'Aurora' AND ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 day' GROUP BY 1 ORDER BY 1",
+  measure_filter: 'SELECT vessel, count(*) AS readings FROM telemetry WHERE wave_height > 4 GROUP BY vessel ORDER BY vessel',
+  arg_max: 'SELECT vessel, arg_max(lat, ts) AS lat, arg_max(lon, ts) AS lon FROM telemetry GROUP BY vessel ORDER BY vessel',
+};
+
+async function batch2(bindings: ConstructorParameters<typeof DuckDatabaseNode>[0], during: string) {
+  const out: Record<string, unknown> = {};
+  let waiters = new Map<number, (s: ExecStats) => void>();
+  let request = 10_000;
+  const onExecStats = (s: ExecStats) => { const w = waiters.get(s.request); if (w) { waiters.delete(s.request); w(s); } };
+  const execOn = (n: DuckDatabaseNode, context: number, sql: string) => new Promise<ExecStats>(resolve => {
+    const id = ++request;
+    waiters.set(id, s => queueMicrotask(() => resolve(s)));
+    n.handle({ ...header(Kind.EXEC, { request: id, epoch: 1_000, context }), stamps: [], payload: text(sql) });
+  });
+  const rollups: unknown[] = [];
+  let built!: () => void;
+  const done = new Promise<void>(resolve => { built = resolve; });
+  const opt = new DuckDatabaseNode(bindings, () => {}, { resultCache: false, onExecStats, onRollupStats: s => { rollups.push(s); if (s.done) built(); } });
+  const o0 = performance.now();
+  await opt.open({ kind: 'fixture', name: 'vessels' }, 4);
+  console.log('[smoke] batch 2: opened, building rollups');
+  out.openMs = performance.now() - o0;
+  const b0 = performance.now();
+  let building = true;
+  void done.then(() => { building = false; });
+  const whileBuilding: unknown[] = [];
+  while (building && whileBuilding.length < 40) {
+    const s = await execOn(opt, 4, during);
+    whileBuilding.push({ atMs: +(performance.now() - b0).toFixed(1), firstBatchMs: +s.firstBatchMs!.toFixed(2), source: s.source });
+  }
+  await done;
+  console.log('[smoke] batch 2: rollups', JSON.stringify(rollups));
+  out.rollupWallMs = performance.now() - b0;
+  out.rollups = rollups;
+  out.queriesDuringBuild = whileBuilding;
+  const cache = new DuckDatabaseNode(bindings, () => {}, { rollups: false, onExecStats });
+  const raw = new DuckDatabaseNode(bindings, () => {}, { rollups: false, resultCache: false, onExecStats });
+  (raw as unknown as { contextId: number }).contextId = 4;
+  (cache as unknown as { contextId: number }).contextId = 4;
+  const queries: Record<string, unknown> = {};
+  for (const [name, sql] of Object.entries(BATCH2_QUERIES)) {
+    console.log('[smoke] batch 2:', name);
+    await execOn(raw, 4, sql);
+    const first = await execOn(opt, 4, sql);
+    const rawMs: number[] = [], optMs: number[] = [], hitMs: number[] = [];
+    for (let i = 0; i < 9; i++) {
+      if (i % 2) { optMs.push((await execOn(opt, 4, sql)).firstBatchMs!); rawMs.push((await execOn(raw, 4, sql)).firstBatchMs!); }
+      else { rawMs.push((await execOn(raw, 4, sql)).firstBatchMs!); optMs.push((await execOn(opt, 4, sql)).firstBatchMs!); }
+    }
+    await execOn(cache, 4, sql);
+    for (let i = 0; i < 9; i++) { const s = await execOn(cache, 4, sql); if (s.source === 'cache') hitMs.push(s.firstBatchMs!); }
+    queries[name] = { source: first.source, grain: first.grain, coldRewriteMs: first.rewriteMs, raw: quantiles(rawMs), optimized: quantiles(optMs), cacheHit: hitMs.length ? quantiles(hitMs) : undefined };
+  }
+  out.queries = queries;
+  cache.dispose();
+  raw.dispose();
+  opt.dispose();
+  waiters = new Map();
   return out;
 }
 

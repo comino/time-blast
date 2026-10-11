@@ -1,0 +1,154 @@
+{
+ "ok": true,
+ "result": {
+  "crossOriginIsolated": true,
+  "hardwareConcurrency": 4,
+  "blockingEh": {
+   "boot": {
+    "bundle": "eh",
+    "version": "v1.4.3",
+    "instantiateMs": 1703.3899998664856,
+    "parquetMs": 734.0950002670288,
+    "parquet": true,
+    "jsonMs": 365.7999997138977,
+    "json": true,
+    "totalMs": 3136.904999732971
+   },
+   "generateMs": 1855.210000038147,
+   "minute_vessel_week": {
+    "n": 9,
+    "p50": 139.09,
+    "p95": 237.28,
+    "min": 98.35,
+    "max": 237.28
+   },
+   "hourly_vessel": {
+    "n": 9,
+    "p50": 134.86,
+    "p95": 144.3,
+    "min": 126.92,
+    "max": 144.3
+   },
+   "per_vessel": {
+    "n": 9,
+    "p50": 71.25,
+    "p95": 73.13,
+    "min": 69.68,
+    "max": 73.13
+   },
+   "hourly_7d": {
+    "n": 9,
+    "p50": 38.68,
+    "p95": 42.19,
+    "min": 37.91,
+    "max": 42.19
+   },
+   "scalar_max": {
+    "n": 9,
+    "p50": 5.81,
+    "p95": 9.2,
+    "min": 5.6,
+    "max": 9.2
+   }
+  },
+  "asyncEh": {
+   "instantiateMs": 1782.8599996566772,
+   "generateMs": 1169.7800002098083,
+   "version": "v1.4.3",
+   "threads1": {
+    "actual": 1,
+    "minute_vessel_week": {
+     "n": 9,
+     "p50": 91.14,
+     "p95": 106.75,
+     "min": 87.34,
+     "max": 106.75
+    },
+    "hourly_vessel": {
+     "n": 9,
+     "p50": 122.06,
+     "p95": 133.68,
+     "min": 119.92,
+     "max": 133.68
+    },
+    "per_vessel": {
+     "n": 9,
+     "p50": 72.13,
+     "p95": 77.17,
+     "min": 67.27,
+     "max": 77.17
+    },
+    "hourly_7d": {
+     "n": 9,
+     "p50": 41.59,
+     "p95": 49.57,
+     "min": 37.64,
+     "max": 49.57
+    },
+    "scalar_max": {
+     "n": 9,
+     "p50": 7.93,
+     "p95": 17.13,
+     "min": 6.74,
+     "max": 17.13
+    }
+   }
+  },
+  "asyncCoi": {
+   "instantiateMs": 4676.295000076294,
+   "generateMs": 2164.5,
+   "version": "v1.4.3",
+   "threads1": {
+    "error": "RangeError: offset is out of bounds"
+   },
+   "threads2": {
+    "error": "RangeError: offset is out of bounds"
+   },
+   "threads4": {
+    "actual": 4,
+    "minute_vessel_week": {
+     "n": 9,
+     "p50": 225.85,
+     "p95": 331.92,
+     "min": 145.85,
+     "max": 331.92
+    },
+    "hourly_vessel": {
+     "n": 9,
+     "p50": 112.31,
+     "p95": 137.52,
+     "min": 90.62,
+     "max": 137.52
+    },
+    "per_vessel": {
+     "n": 9,
+     "p50": 69.66,
+     "p95": 86.36,
+     "min": 61.73,
+     "max": 86.36
+    },
+    "hourly_7d": {
+     "n": 9,
+     "p50": 35.2,
+     "p95": 48.14,
+     "min": 25.07,
+     "max": 48.14
+    },
+    "scalar_max": {
+     "n": 9,
+     "p50": 9.32,
+     "p95": 13.09,
+     "min": 4.46,
+     "max": 13.09
+    }
+   }
+  }
+ },
+ "browser": "145.0.7632.0",
+ "log": [
+  "[vite] connecting...",
+  "[vite] connected.",
+  "RangeError: offset is out of bounds\n    at Uint8Array.set (<anonymous>)\n    at ha.runQuery (http://127.0.0.1:44439/node_modules/.pnpm/@duckdb+duckdb-wasm@1.32.0/node_modules/@duckdb/duckdb-wasm/dist/duckdb-browser-coi.worker.js:1:852849)\n    at xo.onMessage (http://127.0.0.1:44439/node_modules/.pnpm/@duckdb+duckdb-wasm@1.32.0/node_modules/@duckdb/duckdb-wasm/dist/duckdb-browser-coi.worker.js:1:863608)\n    at globalThis.onmessage (http://127.0.0.1:44439/node_modules/.pnpm/@duckdb+duckdb-wasm@1.32.0/node_modules/@duckdb/duckdb-wasm/dist/duckdb-browser-coi.worker.js:1:886742)",
+  "RangeError: offset is out of bounds\n    at Uint8Array.set (<anonymous>)\n    at ha.runQuery (http://127.0.0.1:44439/node_modules/.pnpm/@duckdb+duckdb-wasm@1.32.0/node_modules/@duckdb/duckdb-wasm/dist/duckdb-browser-coi.worker.js:1:852849)\n    at xo.onMessage (http://127.0.0.1:44439/node_modules/.pnpm/@duckdb+duckdb-wasm@1.32.0/node_modules/@duckdb/duckdb-wasm/dist/duckdb-browser-coi.worker.js:1:863608)\n    at globalThis.onmessage (http://127.0.0.1:44439/node_modules/.pnpm/@duckdb+duckdb-wasm@1.32.0/node_modules/@duckdb/duckdb-wasm/dist/duckdb-browser-coi.worker.js:1:886742)"
+ ]
+}

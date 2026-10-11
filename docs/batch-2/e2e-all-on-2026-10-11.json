@@ -1,0 +1,132 @@
+{
+ "fake": "ws://127.0.0.1:38011",
+ "browser": "145.0.7632.0",
+ "bootToContextS": 9.0,
+ "realistic": {
+  "samples": 12,
+  "finalKeystrokeDedup": 12,
+  "drawnHeadlineMs": []
+ },
+ "headlineMs": {
+  "n": 12,
+  "median": 39.24,
+  "p95": 64.51,
+  "min": 11.33,
+  "max": 133.54
+ },
+ "presentedMs": {
+  "n": 5,
+  "median": 27.47,
+  "p95": 75.22,
+  "min": 19.01,
+  "max": 75.22
+ },
+ "stageDeltaMs": {
+  "key": {
+   "n": 12,
+   "median": 0.0,
+   "p95": 0,
+   "min": 0,
+   "max": 0
+  },
+  "draft sent": {
+   "n": 12,
+   "median": 0.26,
+   "p95": 0.81,
+   "min": 0.19,
+   "max": 1.33
+  },
+  "coordinator": {
+   "n": 12,
+   "median": 0.53,
+   "p95": 2.71,
+   "min": 0.15,
+   "max": 3.92
+  },
+  "inference sent": {
+   "n": 12,
+   "median": 0.0,
+   "p95": 0,
+   "min": 0,
+   "max": 0
+  },
+  "inference received": {
+   "n": 12,
+   "median": 0.56,
+   "p95": 4.15,
+   "min": 0.36,
+   "max": 6.87
+  },
+  "first SQL delta": {
+   "n": 12,
+   "median": 0.02,
+   "p95": 0.02,
+   "min": 0.01,
+   "max": 0.03
+  },
+  "SQL complete": {
+   "n": 12,
+   "median": 0.1,
+   "p95": 0.24,
+   "min": 0.07,
+   "max": 0.35
+  },
+  "SQL received": {
+   "n": 12,
+   "median": 1.3,
+   "p95": 3.11,
+   "min": 0.51,
+   "max": 3.81
+  },
+  "exec sent": {
+   "n": 12,
+   "median": 0.0,
+   "p95": 0,
+   "min": 0,
+   "max": 0
+  },
+  "exec received": {
+   "n": 12,
+   "median": 0.1,
+   "p95": 0.12,
+   "min": 0.07,
+   "max": 0.17
+  },
+  "DB first batch": {
+   "n": 12,
+   "median": 32.75,
+   "p95": 51.36,
+   "min": 8.42,
+   "max": 114.72
+  },
+  "DB done": {
+   "n": 12,
+   "median": 3.37,
+   "p95": 8.5,
+   "min": 0.84,
+   "max": 8.94
+  },
+  "render first batch": {
+   "n": 12,
+   "median": -3.37,
+   "p95": -1.19,
+   "min": -8.93,
+   "max": -0.84
+  },
+  "first draw submitted": {
+   "n": 12,
+   "median": 1.28,
+   "p95": 6.85,
+   "min": 0.51,
+   "max": 8.4
+  },
+  "presented": {
+   "n": 5,
+   "median": 11.61,
+   "p95": 63.89,
+   "min": 4.54,
+   "max": 63.89
+  }
+ },
+ "infers": 95
+}
