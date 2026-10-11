@@ -61,6 +61,9 @@ const stats = (xs: number[]) => {
   const r = (v: number) => Math.round(v * 10000) / 10000;
   return { n: s.length, median: r(q(0.5)), p95: r(q(0.95)), min: r(s[0]), max: r(s[s.length - 1]) };
 };
+/** Resolve with the promise or after `ms` (software GPUs can stall completion callbacks). */
+const within = <T>(p: Promise<T>, ms = 10_000) => Promise.race([p, new Promise<void>(resolve => setTimeout(resolve, ms))]);
+const phase = (name: string) => { (window as any).__phase = name; };
 const frameTick = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
 const u32 = (v: number) => { const b = new Uint8Array(4); new DataView(b.buffer).setUint32(0, v, true); return b; };
 const bindFrame = (slot: number, request: number, epoch = 0): LocalFrame => ({ ...header(Kind.BIND, { request, revision: request, epoch }), stamps: [], payload: u32(slot) });
@@ -132,13 +135,13 @@ async function benchRenderer(h: Harness, slot: number, batches: RecordBatch[], r
     r.handle(doneFrame(request));
     r.frame(false);
     total.push(performance.now() - t0);
-    await r.backend.presented();
+    await within(r.backend.presented());
     // Full redraw of every point: a same-size resize forces a full frame (geometry stays on the GPU).
     const box = h.cards.get(slot)!.plot.getBoundingClientRect();
     const d = performance.now();
     r.resize(slot, { width: box.width, height: box.height, devicePixelRatio: devicePixelRatio || 1 });
     redraw.push(performance.now() - d);
-    await r.backend.presented();
+    await within(r.backend.presented());
     redrawGpu.push(performance.now() - d);
     // Full rebuild: switch geometry (scatter) and back; re-ingest + full upload.
     const b = performance.now();
@@ -223,14 +226,14 @@ async function microBench(h: Harness, batches: RecordBatch[]) {
     // Upload the raw Arrow f64 column straight from its ArrayBuffer (alternative a: no Wasm hop).
     result.webgpuWriteBufferRawArrowF64 = time(30, () => device.queue.writeBuffer(vertex, 0, column.buffer, 0, src.byteLength), 1);
     const done: number[] = [];
-    for (let i = 0; i < 20; i++) { const t = performance.now(); device.queue.writeBuffer(vertex, 0, column.buffer, 0, src.byteLength); await device.queue.onSubmittedWorkDone(); done.push(performance.now() - t); }
+    for (let i = 0; i < 20; i++) { const t = performance.now(); device.queue.writeBuffer(vertex, 0, column.buffer, 0, src.byteLength); await within(device.queue.onSubmittedWorkDone()); done.push(performance.now() - t); }
     result.webgpuUploadUntilDoneMs = stats(done);
     // Lower bound for GPU-computed stats the CPU needs (axis labels): copy 16 bytes + mapAsync.
     const trips: number[] = [];
     for (let i = 0; i < 20; i++) {
       const t = performance.now();
       const enc = device.createCommandEncoder(); enc.copyBufferToBuffer(vertex, 0, read, 0, 16); device.queue.submit([enc.finish()]);
-      await read.mapAsync(1); read.getMappedRange(); read.unmap();
+      await within(read.mapAsync(1)); try { read.getMappedRange(); read.unmap(); } catch { /* timed out */ }
       trips.push(performance.now() - t);
     }
     result.webgpuReadbackRoundTripMs = stats(trips);
@@ -265,9 +268,11 @@ async function bench(): Promise<void> {
   }
   for (const points of sizes) {
     const batches = dataset(points);
+    phase(`legacy ${points}`);
     runs[`legacy-canvas2d-${points}`] = await benchLegacy(legacyBatches(batches), points, reps);
     log(results);
     for (const kind of backends) {
+      phase(`${kind} ${points}`);
       const h = await harness(kind);
       attach(h, 1, `${kind} · ${points} points`);
       await frameTick();
@@ -277,6 +282,7 @@ async function bench(): Promise<void> {
     }
   }
   const h = await harness(backends.includes('webgpu') ? 'webgpu' : 'null');
+  phase('data path');
   results.dataPath = await microBench(h, dataset(Math.max(...sizes)));
   results.jsHeapBytes = (performance as any).memory?.usedJSHeapSize ?? null;
   (window as any).__bench = results;
@@ -302,14 +308,14 @@ async function views(): Promise<void> {
     for (const b of batches) h.renderer.handle(batchFrame(request, b));
     h.renderer.handle(doneFrame(request));
   }
-  await frameTick(); await h.renderer.backend.presented(); await frameTick();
+  await frameTick(); await within(h.renderer.backend.presented()); await frameTick();
   summary.drawn = h.frames.filter(f => f.kind === Kind.DRAWN && f.stamps.some(s => s.stage === 16)).map(f => f.request);
   summary.views = h.ui.filter(m => m.type === 'views').map(m => (m as any).chosen);
   // Fencing: A draws; B binds; stale A batches must not draw; B's first batch replaces A.
   const A = nextRequest++, B = nextRequest++;
   const r = h.renderer;
   r.handle(bindFrame(9, A)); r.handle(schemaFrame(A, data[0])); r.handle(batchFrame(A, data[0]));
-  await frameTick(); await r.backend.presented();
+  await frameTick(); await within(r.backend.presented());
   r.handle(bindFrame(9, B)); r.handle(schemaFrame(B, data[1]));
   const passesBefore = r.metrics.frames;
   r.handle(batchFrame(A, data[1])); r.handle(batchFrame(A, data[2]));
@@ -320,7 +326,7 @@ async function views(): Promise<void> {
   };
   (window as any).__fencing = {
     /** Called by the test after its "before" screenshot. */
-    drawB: async () => { r.handle(batchFrame(B, data[1])); await frameTick(); await r.backend.presented(); await frameTick();
+    drawB: async () => { r.handle(batchFrame(B, data[1])); await frameTick(); await within(r.backend.presented()); await frameTick();
       return h.frames.filter(f => f.kind === Kind.DRAWN && f.request === B && f.stamps.some(s => s.stage === 16)).length; },
   };
   (window as any).__views = summary;
