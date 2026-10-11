@@ -102,10 +102,11 @@ unknown kinds, truncated frames, and nonzero reserved stamp fields.
 | 0x19 | `SQL_DELTA` | inference → coordinator | request | UTF-8 fragment of the SQL being generated. Flag `0x02 RESET`: discard earlier deltas (a repair restarted the SQL) |
 | 0x1A | `SQL` | inference → coordinator | request | UTF-8 complete SQL. Flag `0x01 CACHED` (inference-side cache) |
 | 0x1B | `INFER_STATS` | inference → coordinator → UI | request | JSON `{model, provider?, promptTokens, completionTokens, cachedTokens?, reasoningTokens?, costUsd?, attempts, cancelled?}`; also sent for cancelled requests that reached the provider |
-| 0x20 | `EXEC` | coordinator → database | request, context | UTF-8 SQL. Flag `0x01 SPECULATIVE` |
+| 0x1C | `PRIME` | UI → inference | context | JSON `{question, sql}`: answer an INFER for exactly this question (trimmed, whitespace collapsed, case-folded) with this SQL. See "Suggestions" |
+| 0x20 | `EXEC` | coordinator → database; UI → database (WARM only) | request, context | UTF-8 SQL. Flags `0x01 SPECULATIVE`, `0x02 WARM` (see "Suggestions") |
 | 0x21 | `RESULT_SCHEMA` | database → renderer (+ header-only → coordinator) | request | Arrow IPC encapsulated **schema** message |
 | 0x22 | `BATCH` | database → renderer (+ header-only → coordinator) | request | Arrow IPC encapsulated **record batch** message |
-| 0x23 | `DONE` | database → coordinator, renderer | request | `u64 rows, u64 bytes` (16 bytes). Flags: `0x01 ROLLUP` (served from a pre-aggregated rollup), `0x02 RESULT_CACHE` (replayed from the result cache) |
+| 0x23 | `DONE` | database → coordinator, renderer (WARM: → sender) | request | `u64 rows, u64 bytes` (16 bytes). Flags: `0x01 ROLLUP` (served from a pre-aggregated rollup), `0x02 RESULT_CACHE` (replayed from the result cache), `0x04 WARM` (answers a WARM EXEC; nothing was streamed) |
 
 A cancelled request gets neither `DONE` nor `ERROR` from the database. Database `ERROR` codes:
 `sql_rejected` (guard: not exactly one read-only query), `sql_error`, `timeout`, `result_limit`,
@@ -120,6 +121,29 @@ small literals as `Uint8`; ClickHouse contexts carry ClickHouse type names and t
 Concatenating the `RESULT_SCHEMA` payload, every `BATCH` payload and an Arrow end-of-stream
 marker gives a valid Arrow IPC stream. On in-process links, `RESULT_SCHEMA` and `BATCH` carry the
 decoded Arrow `Schema` / `RecordBatch` objects instead of bytes.
+
+### Suggestions (anticipation)
+
+Two additions let a UI prepare likely next questions without bypassing the coordinator for
+anything visible ([batch-2/voice-anticipation.md](batch-2/voice-anticipation.md)):
+
+- **`EXEC` flag `WARM`**: the database runs the statement at the lowest priority (only when no
+  other EXEC is queued; a real EXEC preempts a running warm-up, which is requeued) and stores the
+  result in its result cache. It emits **no** `RESULT_SCHEMA`/`BATCH`, only `DONE` (flag `WARM`,
+  plus `RESULT_CACHE` if it was already cached) or `ERROR` (`not_cacheable` for statements the cache
+  never stores, plus the usual codes). Warm-ups are newest first, at most 8 waiting. A WARM EXEC
+  carries a **sender-assigned request id with bit 31 set** (`0x8000_0000 | n`); coordinator request
+  ids stay below 2³¹, so the two never collide. Epoch fencing and full `CANCEL` apply as usual.
+- **`PRIME`**: `{question, sql}` for the inference node. A later `INFER` whose question matches
+  is answered with `SQL` (flag `CACHED`) + `INFER_STATS` (`model: "primed"`, cost 0) echoing the
+  INFER's identities and stamps `INFER_RECEIVED`/`SQL_COMPLETE`. Scoped to the header's context,
+  bounded (LRU, 128). In the browser topology the engine host answers primed INFERs at its end of
+  the inference link, so no frame reaches the remote node; a remote node that receives `PRIME`
+  may ignore it (the Rust server does).
+- **Routing:** the host passes `PRIME` and WARM EXECs from the UI past the coordinator (to the
+  inference edge and the database), drops non-WARM EXECs and WARM EXECs without bit 31 from the
+  UI, and sends every database frame of a bit-31 request back to the UI only (never to the
+  renderer or coordinator). A click on a suggestion is an ordinary `COMMIT`.
 
 ### Presentation
 

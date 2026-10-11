@@ -26,6 +26,10 @@ valid = [
     dict(name='bind', kind=0x30, epoch=3, request=9, revision=44, payload=struct.pack('<I', 2)),
     dict(name='drawn', kind=0x32, epoch=3, request=9, stamps=[(16, 5, 1760000000660.0)], payload=struct.pack('<II', 2, 8640)),
     dict(name='config', kind=0x06, payload=json.dumps({"live": True, "minChars": 3}, separators=(',', ':')).encode()),
+    dict(name='prime', kind=0x1C, context=7,
+         payload=json.dumps({"question": "max speed per vessel", "sql": "SELECT vessel, max(speed) AS speed FROM telemetry GROUP BY 1"}, separators=(',', ':')).encode()),
+    dict(name='exec-warm', kind=0x20, flags=0x02, epoch=3, request=0x80000001, context=7, payload=b'SELECT 1'),
+    dict(name='done-warm-cache', kind=0x23, flags=0x06, epoch=3, request=0x80000001, payload=struct.pack('<QQ', 1, 64)),
     dict(name='max-ids', kind=0x34, epoch=0xFFFFFFFF, request=0xFFFFFFFF, revision=0xFFFFFFFF, context=0xFFFFFFFF),
 ]
 out = {'valid': [], 'invalid': []}

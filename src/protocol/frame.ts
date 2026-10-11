@@ -9,7 +9,7 @@ export const SUBPROTOCOL = 'tb1';
 export const Kind = {
   HELLO: 0x01, READY: 0x02, CONTEXT: 0x03, STATUS: 0x04, ERROR: 0x05, CONFIG: 0x06,
   DRAFT: 0x10, COMMIT: 0x11, CANCEL: 0x12,
-  INFER: 0x18, SQL_DELTA: 0x19, SQL: 0x1a, INFER_STATS: 0x1b,
+  INFER: 0x18, SQL_DELTA: 0x19, SQL: 0x1a, INFER_STATS: 0x1b, PRIME: 0x1c,
   EXEC: 0x20, RESULT_SCHEMA: 0x21, BATCH: 0x22, DONE: 0x23,
   BIND: 0x30, UNBIND: 0x31, DRAWN: 0x32, RESULT: 0x33, TIMING: 0x34, KEEP: 0x35,
 } as const;
@@ -22,7 +22,14 @@ export const Flag = {
   RESET: 0x02,
   /** DONE: served from a pre-aggregated rollup / replayed from the result cache. */
   ROLLUP: 0x01, RESULT_CACHE: 0x02,
+  /** EXEC: warm the database node's result cache: run and cache, stream nothing; the sender
+   * gets only DONE (with DONE_WARM) or ERROR. */
+  WARM: 0x02,
+  /** DONE: answers a WARM EXEC. */
+  DONE_WARM: 0x04,
 } as const;
+/** Request ids a UI assigns itself (WARM EXECs) carry this bit; coordinator ids stay below it. */
+export const SENDER_REQUEST_BIT = 0x8000_0000;
 export const Node = { UI: 1, COORDINATOR: 2, INFERENCE: 3, DATABASE: 4, RENDERER: 5, PROVIDER: 6 } as const;
 export const Stage = {
   KEY_INPUT: 1, DRAFT_SENT: 2, COORD_RECEIVED: 3, INFER_SENT: 4, INFER_RECEIVED: 5,

@@ -31,6 +31,7 @@ pub enum Kind {
     SqlDelta = 0x19,
     Sql = 0x1A,
     InferStats = 0x1B,
+    Prime = 0x1C,
     Exec = 0x20,
     ResultSchema = 0x21,
     Batch = 0x22,
@@ -44,11 +45,11 @@ pub enum Kind {
 }
 
 impl Kind {
-    pub const ALL: [Kind; 23] = [
+    pub const ALL: [Kind; 24] = [
         Kind::Hello, Kind::Ready, Kind::Context, Kind::Status, Kind::Error, Kind::Config,
         Kind::Draft, Kind::Commit, Kind::Cancel, Kind::Infer, Kind::SqlDelta, Kind::Sql,
         Kind::InferStats, Kind::Exec, Kind::ResultSchema, Kind::Batch, Kind::Done, Kind::Bind,
-        Kind::Unbind, Kind::Drawn, Kind::Result, Kind::Timing, Kind::Keep,
+        Kind::Unbind, Kind::Drawn, Kind::Result, Kind::Timing, Kind::Keep, Kind::Prime,
     ];
 
     pub fn from_u8(value: u8) -> Option<Kind> {
@@ -61,7 +62,7 @@ impl Kind {
             Kind::Status => "STATUS", Kind::Error => "ERROR", Kind::Config => "CONFIG",
             Kind::Draft => "DRAFT", Kind::Commit => "COMMIT", Kind::Cancel => "CANCEL",
             Kind::Infer => "INFER", Kind::SqlDelta => "SQL_DELTA", Kind::Sql => "SQL",
-            Kind::InferStats => "INFER_STATS", Kind::Exec => "EXEC",
+            Kind::InferStats => "INFER_STATS", Kind::Prime => "PRIME", Kind::Exec => "EXEC",
             Kind::ResultSchema => "RESULT_SCHEMA", Kind::Batch => "BATCH", Kind::Done => "DONE",
             Kind::Bind => "BIND", Kind::Unbind => "UNBIND", Kind::Drawn => "DRAWN",
             Kind::Result => "RESULT", Kind::Timing => "TIMING", Kind::Keep => "KEEP",
@@ -77,12 +78,17 @@ pub mod flags {
     pub const CACHED: u8 = 0x01;
     /// EXEC: speculative (lower priority than committed work).
     pub const SPECULATIVE: u8 = 0x01;
+    /// EXEC: warm the database node's result cache. Run and cache; emit no RESULT_SCHEMA/BATCH,
+    /// only DONE (with WARM) or ERROR to the sender.
+    pub const WARM: u8 = 0x02;
     /// SQL_DELTA: discard earlier deltas of this request (a repair restarted the SQL).
     pub const RESET: u8 = 0x02;
     /// DONE: the result was served from a pre-aggregated rollup.
     pub const ROLLUP: u8 = 0x01;
     /// DONE: the result was replayed from the database node's result cache.
     pub const RESULT_CACHE: u8 = 0x02;
+    /// DONE: answers a WARM EXEC (nothing was streamed).
+    pub const DONE_WARM: u8 = 0x04;
     /// Payload deliberately omitted (e.g. BATCH copy sent to the coordinator).
     pub const HEADER_ONLY: u8 = 0x80;
 }
