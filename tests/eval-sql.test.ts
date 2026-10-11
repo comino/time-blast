@@ -30,6 +30,13 @@ describe('compareResults', () => {
     expect(compareResults(ref, { columns: [...ref.columns, { name: 'n', kind: 'numeric' }], rows: ref.rows.map(r => [...r, 1]) }).category).toBe('shape-violation');
     expect(compareResults(ref, { columns: ref.columns, rows: [...ref.rows].reverse() }, true)).toMatchObject({ category: 'shape-violation', reason: 'right rows in the wrong order' });
   });
+  it('latitude/longitude columns may stand anywhere (the renderer finds them by name)', () => {
+    const map = { columns: cols(['name', 'text'], ['lat', 'numeric'], ['lon', 'numeric'], ['population', 'numeric']), rows: [['A', 1, 2, 10], ['B', 3, 4, 20]] };
+    const moved = { columns: cols(['lat', 'numeric'], ['lon', 'numeric'], ['name', 'text'], ['population', 'numeric']), rows: map.rows.map(([n, a, o, p]) => [a, o, n, p]) };
+    expect(compareResults(map, moved).category).toBe('equivalent');
+    const valueFirst = { columns: cols(['population', 'numeric'], ['lat', 'numeric'], ['lon', 'numeric'], ['name', 'text']), rows: map.rows.map(([n, a, o, p]) => [p, a, o, n]) };
+    expect(compareResults(map, valueFirst).category).toBe('shape-violation');
+  });
   it('wrong: values, row count, missing column', () => {
     expect(compareResults(ref, { columns: ref.columns, rows: [[1, 'A', 10], [1, 'B', 11], [2, 'A', 13]] }).category).toBe('wrong');
     expect(compareResults(ref, { columns: ref.columns, rows: ref.rows.slice(1) }).category).toBe('wrong');
