@@ -314,4 +314,10 @@ class PlacedDatabase implements DatabaseNode {
     this.remote?.dispose();
     this.localNode?.dispose();
   }
+
+  /** DuckDB's parser/printer for chart-as-query (src/engine/manipulate.ts) when the active node is
+   * the local DuckDB; undefined for the remote node (manipulations then wrap). */
+  sqlTools(): unknown {
+    return (this.active as { sqlTools?: () => unknown } | undefined)?.sqlTools?.();
+  }
 }

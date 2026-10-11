@@ -2,7 +2,7 @@
  * WebGPU/WebGL2 shim. Runs in the engine worker on one OffscreenCanvas per slot.
  * See docs/batch-1/render.md. */
 import type { RecordBatch, Schema } from 'apache-arrow';
-import type { CreateRenderer, Emit, LocalFrame, PostToUi, RendererNode, SlotSize, ViewName, ColumnRole } from '../contracts';
+import type { CreateRenderer, Emit, Hit, LocalFrame, PointerGesture, PostToUi, RendererNode, SlotSize, ViewName, ColumnRole } from '../contracts';
 import { Flag, header, json, Kind, Node, now as clock, Stage, type Frame, type Stamp } from '../../protocol/frame';
 import { NullBackend, WebGl2Backend, WebGpuBackend, type BackendKind, type GpuBackend } from './backend';
 import { AUTO_VIEW, Ev, Flags, RenderCore, VIEW_NAMES } from './core';
@@ -18,6 +18,8 @@ export interface RendererOptions {
   now?: () => number;
   /** Cap on result bytes retained for CSV export per request. */
   exportBytes?: number;
+  /** Steady charts (default on): keep the image when a new result equals the one on screen. */
+  steady?: boolean;
 }
 
 /** Per bound request. */
@@ -52,6 +54,8 @@ export class Renderer implements RendererNode {
   private readonly slots = new Map<number, { canvas: OffscreenCanvas; size: SlotSize; request?: number }>();
   private readonly requests = new Map<number, Bound>();
   private scheduled = false;
+  /** Results adopted by an identical image (steady charts). */
+  steadyCount = 0;
   private readonly raf: RafLike;
   readonly scheduler: 'requestAnimationFrame' | 'setTimeout';
   readonly metrics: RenderMetrics = { frames: 0, lastFrame: { build: 0, replay: 0, commands: 0, calls: 0, uploadedBytes: 0 }, lastBatch: { ingest: 0, copiedBytes: 0, rows: 0 } };
@@ -196,8 +200,16 @@ export class Renderer implements RendererNode {
     const flags = this.core.x.tb_done(request, epoch);
     if (!(flags & Flags.ACCEPTED)) return;
     b.done = true;
-    if (flags & Flags.URGENT) this.frame(true); else this.schedule();
+    if (flags & Flags.STEADY) this.drainEvents();
+    else if (flags & Flags.URGENT) this.frame(true); else this.schedule();
     this.postTable(b);
+  }
+
+  hit(slot: number, request: number, gesture: PointerGesture): Hit | null {
+    const [kind, a, b] = gesture.kind === 'point' ? [0, gesture.x, gesture.y]
+      : gesture.kind === 'brush' ? [1, gesture.x0, gesture.x1] : [2, gesture.index, 0];
+    const length = this.core.x.tb_hit(slot, request, kind, a, b);
+    return length ? JSON.parse(this.core.text(this.core.x.tb_out_ptr(), length)) as Hit : null;
   }
 
   private postTable(b: Bound): void {
@@ -244,6 +256,21 @@ export class Renderer implements RendererNode {
         this.ui({ type: 'views', slot: e.slot, available: parsed.available, chosen: parsed.chosen, columns: parsed.columns });
       } else if (e.kind === Ev.AXES) {
         this.ui({ type: 'axes', slot: e.slot, ticks: JSON.parse(e.text) });
+      } else if (e.kind === Ev.STEADY) {
+        // Steady chart: the image on screen already shows this result. Its first draw is the
+        // moment that was proven (DONE of an identical result); it is already presented, so
+        // FIRST_DRAW_SUBMITTED and FIRST_PRESENTED carry the same instant (docs/batch-2/manipulation.md).
+        const b = this.requests.get(e.request);
+        if (!b || b.firstDrawn) continue;
+        b.firstDrawn = true;
+        const at = this.now();
+        b.timing.submitted = at; b.timing.presented = at;
+        this.steadyCount++;
+        this.drawn(b, e.slot, e.a, [
+          ...(b.firstBatchAt !== undefined ? [{ stage: Stage.RENDER_FIRST_BATCH, node: Node.RENDERER, at: b.firstBatchAt }] : []),
+          { stage: Stage.FIRST_DRAW_SUBMITTED, node: Node.RENDERER, at },
+          { stage: Stage.FIRST_PRESENTED, node: Node.RENDERER, at },
+        ]);
       } else if (e.kind === Ev.FIRST_DRAW) {
         const b = this.requests.get(e.request);
         if (!b || b.firstDrawn) continue;
@@ -294,6 +321,10 @@ export const createRenderer = (async (emit: Emit, ui: PostToUi, options: Rendere
   const core = await RenderCore.load(options.wasm ?? new URL(`${import.meta.env?.BASE_URL ?? '/'}wasm/tb-render.wasm`, globalThis.location?.href ?? 'http://localhost/'));
   const backend = await pickBackend(core, options.backend ?? 'auto');
   const renderer = new Renderer(core, backend, emit, ui, options.now, options.exportBytes);
+  // Measurement switch: `VITE_TB_STEADY=0 pnpm dev` turns steady charts off for A/B runs.
+  const env = (import.meta.env ?? {}) as Record<string, string | undefined>;
+  const steady = options.steady ?? !(env.VITE_TB_STEADY === '0' || env.VITE_TB_STEADY === 'false');
+  core.x.tb_set_steady(steady ? 1 : 0);
   const state = backend.kind === 'null' ? 'error' : 'ready';
   emit({ ...header(Kind.STATUS), stamps: [], payload: json({ component: 'renderer', state, label: backend.kind,
     detail: `${backend.label}; scheduler ${renderer.scheduler}` }) });

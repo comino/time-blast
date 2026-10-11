@@ -212,3 +212,57 @@ describe('resize coalescing', () => {
     expect(engine.posted.map(p => p.message)).toEqual([{ type: 'resize', slot: 1, size: { width: 20, height: 20, devicePixelRatio: 1 } }]);
   });
 });
+
+describe('chart-as-query', () => {
+  const result = (slot: number, sql: string) => jsonPayload({ slot, sql, columns: [], view: null, cached: false });
+  function shown() {
+    const t = booted();
+    t.ui.receive({ type: 'context', context: { id: 5, name: 'vessels', dialect: 'duckdb', tables: [] } });
+    t.ui.input('speed by hour', false, 1);
+    t.ui.receive(engineFrame(Kind.BIND, { request: 7, revision: 1 }, slotPayload(1)));
+    t.ui.receive(engineFrame(Kind.RESULT, { request: 7, revision: 1 }, result(1, 'SELECT a')));
+    t.engine.clear();
+    return t;
+  }
+  it('a gesture posts manipulate with the card SQL, request, revision, epoch, context and pointer time', () => {
+    const { engine, ui, host, clock } = shown();
+    clock.t = 50;
+    expect(host.cards.get(1)!.handlers.gesture(1, { kind: 'brush', x0: 10, x1: 90 }, 40)).toBe(true);
+    expect(engine.messages('manipulate')).toEqual([{ type: 'manipulate', slot: 1, request: 7, revision: 1, epoch: 0, context: 5,
+      sql: 'SELECT a', gesture: { kind: 'brush', x0: 10, x1: 90 }, keyAt: 1_000_040, sentAt: 1_000_050 }]);
+    // Nothing shown on slot 2: no request.
+    expect(ui.gesture(2, { kind: 'point', x: 1, y: 1 }, 41)).toBe(false);
+  });
+  it('confirmed manipulations build a history; Back and a double-click walk it; a new question clears it', () => {
+    const { engine, ui, host } = shown();
+    const card = host.cards.get(1)!;
+    ui.gesture(1, { kind: 'brush', x0: 1, x1: 2 }, 10);
+    ui.receive({ type: 'manipulated', slot: 1, from: 'SELECT a', sql: 'SELECT b', method: 'rewrite', reason: 'ok', ms: 1.5 });
+    expect([card.drillDepth, card.drillNote]).toEqual([1, 'rewrite · 1.5 ms']);
+    ui.receive(engineFrame(Kind.BIND, { request: 8, revision: 1 }, slotPayload(1)));
+    ui.receive(engineFrame(Kind.RESULT, { request: 8, revision: 1 }, result(1, 'SELECT b')));
+    // A click that drills, then the double-click's back undoes it and goes back once more.
+    ui.gesture(1, { kind: 'point', x: 5, y: 5 }, 100);
+    ui.receive({ type: 'manipulated', slot: 1, from: 'SELECT b', sql: 'SELECT c', method: 'wrap', reason: 'LIMIT', ms: 0.2 });
+    expect(card.drillDepth).toBe(2);
+    engine.clear();
+    card.handlers.back(1, 300, true);
+    expect(engine.messages('manipulate').map(m => m.gesture)).toEqual([{ kind: 'sql', sql: 'SELECT a' }]);
+    expect(card.drillDepth).toBe(0);
+    // Nothing under the pointer: no history entry, the reason is shown.
+    ui.gesture(1, { kind: 'point', x: 5, y: 5 }, 400);
+    ui.receive({ type: 'manipulated', slot: 1, from: 'SELECT b', sql: null, method: 'none', reason: 'nothing under the pointer', ms: 0.1 });
+    expect([card.drillDepth, card.drillNote]).toEqual([0, 'nothing under the pointer']);
+    // History survives the manipulation's own BIND (same revision), not a new question.
+    ui.gesture(1, { kind: 'brush', x0: 1, x1: 2 }, 500);
+    ui.receive({ type: 'manipulated', slot: 1, from: 'SELECT b', sql: 'SELECT d', method: 'rewrite', reason: 'ok', ms: 1 });
+    ui.receive(engineFrame(Kind.BIND, { request: 9, revision: 1 }, slotPayload(1)));
+    expect(card.drillDepth).toBe(1);
+    ui.input('wind', false, 600);
+    ui.receive(engineFrame(Kind.BIND, { request: 10, revision: 2 }, slotPayload(1)));
+    expect(card.drillDepth).toBe(0);
+    engine.clear();
+    ui.back(1, 700);
+    expect(engine.messages('manipulate')).toEqual([]);
+  });
+});

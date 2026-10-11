@@ -54,6 +54,8 @@ export class FakeCard implements SlotCard {
   timing(t: TimingBreakdown): void { this.lastTiming = t; }
   inferStats(s: InferStats): void { this.lastStats = s; }
   error(e: ErrorInfo): void { this.errors.push(e); }
+  drillDepth = 0; drillNote = '';
+  drill(depth: number, note: string): void { this.drillDepth = depth; this.drillNote = note; }
   destroy(): void { this.destroyed = true; this.visible = false; }
 }
 

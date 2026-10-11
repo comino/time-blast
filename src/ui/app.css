@@ -71,3 +71,10 @@
   .timing-stages li{grid-template-columns:minmax(0,90px) minmax(0,1fr) 48px 48px}
   .timing-rolling{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
+/* chart-as-query */
+.slot-card .plot-container{cursor:crosshair;outline:none}
+.brush-band{position:absolute;left:0;top:0;z-index:3;pointer-events:none;background:#74d4c326;border-left:1px solid #74d4c3;border-right:1px solid #74d4c3}
+.back-button{margin-left:auto;padding:3px 7px;border:1px solid #335663;border-radius:4px;font:8px var(--mono);color:#74d4c3}
+.back-button:hover{background:#1d3a44}
+.drill-note{font:7px var(--mono);color:#668e97;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
+.legend span[data-i]{cursor:pointer}

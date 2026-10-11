@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { EngineHost, type HostDeps, type Timers } from '../src/engine/host';
 import { createInProcessPair } from '../src/engine/links';
 import type {
-  CoordinatorCore, DatabaseNode, DatasetContext, Emit, EngineToUi, Link, LinkId, LocalFrame, PostToUi, RendererNode, UiToEngine,
+  CoordinatorCore, DatabaseNode, DatasetContext, Emit, EngineToUi, Hit, Link, LinkId, LocalFrame, PointerGesture, PostToUi, RendererNode, UiToEngine,
 } from '../src/engine/contracts';
 import { decode, encode, Flag, header, json, Kind, readJson, text, type Frame } from '../src/protocol/frame';
 
@@ -51,6 +51,8 @@ class FakeRenderer implements RendererNode {
   setParam(slot: number, name: string, value: number) { this.calls.push(`param ${slot} ${name}=${value}`); }
   views() { return []; }
   export(slot: number) { this.calls.push(`export ${slot}`); }
+  hitResult: Hit | null = null;
+  hit(slot: number, request: number, gesture: PointerGesture) { this.calls.push(`hit ${slot} ${request} ${gesture.kind}`); return this.hitResult; }
   handle(f: LocalFrame) {
     this.frames.push(f);
     // Draw synchronously on the first batch: DRAWN is emitted from inside handle().
@@ -126,6 +128,34 @@ function setup(options: { gated?: boolean; failRenderer?: boolean } = {}) {
 }
 
 describe('engine host', () => {
+  it('turns a chart gesture into a QUERY frame on the UI link (hit-test, wrap without a parser, stamps)', async () => {
+    const t = setup();
+    await t.host.ready;
+    await t.host.openDataset({ kind: 'fixture', name: 'vessels' });
+    t.coordinator.inputs.length = 0;
+    const base = { type: 'manipulate' as const, slot: 2, request: 9, revision: 4, epoch: 3, context: 1, keyAt: 900, sentAt: 901,
+      sql: "SELECT vessel, avg(speed) AS speed FROM telemetry GROUP BY 1" };
+    // Nothing under the pointer: the UI hears why, the coordinator hears nothing.
+    t.host.onMessage({ ...base, gesture: { kind: 'point', x: 10, y: 20 } });
+    expect(t.coordinator.inputs).toHaveLength(0);
+    expect(t.posted.at(-1)![0]).toMatchObject({ type: 'manipulated', slot: 2, sql: null, method: 'none' });
+    t.renderer.hitResult = { request: 9, view: 'bar', x: { column: 0, name: 'vessel', type: 'text', label: "O'Neil", null: false } };
+    t.host.onMessage({ ...base, gesture: { kind: 'point', x: 10, y: 20 } });
+    expect(t.renderer.calls.filter(c => c.startsWith('hit'))).toEqual(['hit 2 9 point', 'hit 2 9 point']);
+    const [link, q] = t.coordinator.inputs.at(-1)!;
+    expect(link).toBe('ui');
+    expect([q.kind, q.epoch, q.revision, q.context]).toEqual([Kind.QUERY, 3, 4, 1]);
+    expect(new DataView(q.payload.buffer, q.payload.byteOffset).getUint32(0, true)).toBe(2);
+    const sql = new TextDecoder().decode(q.payload.subarray(4));
+    expect(sql).toBe(`SELECT * FROM (\n${base.sql}\n) AS tb_drill WHERE "vessel" = 'O''Neil'`);
+    expect(q.stamps.map(s => [s.stage, s.node, s.at])).toEqual([[1, 1, 900], [2, 1, 901], [9, 2, 1000]]);
+    expect(t.posted.at(-1)![0]).toMatchObject({ type: 'manipulated', slot: 2, from: base.sql, sql, method: 'wrap' });
+    // Back: the SQL runs as is, no hit-test.
+    t.host.onMessage({ ...base, gesture: { kind: 'sql', sql: 'SELECT 1' } });
+    expect(new TextDecoder().decode(t.coordinator.inputs.at(-1)![1].payload.subarray(4))).toBe('SELECT 1');
+    expect(t.renderer.calls.filter(c => c.startsWith('hit'))).toHaveLength(2);
+  });
+
   it('queues UI frames, slot attaches and dataset opens until the nodes exist, then delivers in order', async () => {
     const t = setup({ gated: true });
     const canvas = {} as OffscreenCanvas;
