@@ -1,0 +1,15 @@
+/* Follow-up chips (suggest-chips.ts) and the push-to-talk button (voice-button.ts). */
+.suggest-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.suggest-chips[hidden]{display:none}
+.suggest-chips button{font-size:9px;line-height:1;padding:5px 8px;border-radius:999px;border:1px solid #34575e;background:#112630;color:#9fcfc4;cursor:pointer;display:flex;align-items:center;gap:5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.suggest-chips button::before{content:'';width:5px;height:5px;border-radius:50%;background:#567a7b;flex:none}
+.suggest-chips button[data-status=ready]::before{background:var(--teal)}
+.suggest-chips button:hover{border-color:#58b89f;color:#d5e8e6}
+.composer-footer>.voice-button{width:29px;height:29px;flex:none;border-radius:6px;border:1px solid #34575e;background:#153039;color:#9fcfc4;display:flex;align-items:center;justify-content:center;touch-action:none}
+.voice-button .icon{width:15px;height:15px}
+.voice-button[data-state=listening]{background:#5b2430;border-color:#d0707f;color:#ffd9de}
+.voice-button[data-state=starting]{border-color:#ddcc8c}
+.voice-button:disabled{opacity:.4;cursor:not-allowed}
+.composer-footer>.voice-status{font-size:8px;color:#9bbab5;margin-right:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.voice-status[data-state=error]{color:#e79aa6}
+.voice-status:empty{display:none}

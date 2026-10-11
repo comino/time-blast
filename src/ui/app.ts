@@ -12,6 +12,7 @@ import { Board } from './board';
 import { Rail } from './rail';
 import { SettingsPanel } from './settings-panel';
 import { SlotCardView } from './slot-card';
+import { mountInteractions } from './suggest-voice';
 import type { SlotSize } from '../engine/contracts';
 
 const root = document.querySelector<HTMLElement>('#app')!;
@@ -151,6 +152,9 @@ root.querySelectorAll<HTMLButtonElement>('[data-prompt]').forEach(button => butt
   input.dispatchEvent(new InputEvent('input', { inputType: 'insertReplacementText' }));
 }));
 
+// Voice input and next-question chips (docs/batch-2/voice-anticipation.md).
+const interactions = mountInteractions(root, input, controller, scheduleChrome);
+
 // ───────────── boot ─────────────
 controller.boot(inference, DEFAULT_DATASET, initialConfig);
 input.focus();
@@ -160,4 +164,5 @@ input.focus();
   controller,
   costs: () => Array.from(costs.subarray(0, Math.min(costCount, COST_RING))),
   framesSent: () => controller.drafts.sent,
+  interactions,
 };
