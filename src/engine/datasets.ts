@@ -60,13 +60,14 @@ export function parseManifest(value: unknown): ManifestEntry[] {
 const CACHE_NAME = 'time-blast-datasets-v1';
 const ETAG_HEADER = 'x-time-blast-etag';
 
-export interface FetchedBytes { bytes: Uint8Array; source: 'network' | 'cache' | 'revalidated'; ms: number }
+export interface Fetched { blob: Blob; source: 'network' | 'cache' | 'revalidated'; ms: number }
 
 /** Fetch a large immutable-until-replaced file once and keep it in the Cache API. A repeat visit
  * sends one conditional request (If-None-Match with the stored ETag): 304 → the stored copy,
  * 200 → the new file replaces it. Without the Cache API (Node, opaque origins) or on any cache
- * error this is a plain fetch. */
-export async function fetchPersisted(url: string, fetchImpl: typeof fetch = fetch): Promise<FetchedBytes> {
+ * error this is a plain fetch. The result is a Blob: DuckDB reads it block by block
+ * (FileReaderSync), so the file is never copied into JS or Wasm memory as a whole. */
+export async function fetchPersisted(url: string, fetchImpl: typeof fetch = fetch): Promise<Fetched> {
   const t0 = performance.now();
   let cache: Cache | undefined;
   try { cache = typeof caches === 'undefined' ? undefined : await caches.open(CACHE_NAME); } catch { cache = undefined; }
@@ -74,15 +75,14 @@ export async function fetchPersisted(url: string, fetchImpl: typeof fetch = fetc
   const etag = stored?.headers.get(ETAG_HEADER);
   const response = await fetchImpl(url, etag ? { cache: 'no-store', headers: { 'If-None-Match': etag } } : { cache: 'no-store' });
   if (response.status === 304 && stored) {
-    return { bytes: new Uint8Array(await stored.arrayBuffer()), source: 'cache', ms: performance.now() - t0 };
+    return { blob: await stored.blob(), source: 'cache', ms: performance.now() - t0 };
   }
   if (!response.ok) throw new Error(`fetch ${url} failed (${response.status})`);
-  const buffer = await response.arrayBuffer();
+  const blob = await response.blob();
   const tag = response.headers.get('etag');
   if (cache && tag) {
-    // Store a copy; the caller's bytes stay usable (registerFileBuffer copies them anyway).
     const headers = new Headers({ 'content-type': 'application/octet-stream', [ETAG_HEADER]: tag });
-    void cache.put(url, new Response(buffer.slice(0), { headers })).catch(() => { /* quota: next visit refetches */ });
+    void cache.put(url, new Response(blob, { headers })).catch(() => { /* quota: next visit refetches */ });
   }
-  return { bytes: new Uint8Array(buffer), source: stored ? 'revalidated' : 'network', ms: performance.now() - t0 };
+  return { blob, source: stored ? 'revalidated' : 'network', ms: performance.now() - t0 };
 }

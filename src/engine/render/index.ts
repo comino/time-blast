@@ -11,7 +11,7 @@ import { TablePreview, toCsv } from './table';
 
 export interface RendererOptions {
   /** Wasm bytes or URL; default `${BASE_URL}wasm/tb-render.wasm`. */
-  wasm?: BufferSource | URL | string;
+  wasm?: BufferSource | URL | string | WebAssembly.Module | Promise<WebAssembly.Module>;
   /** Force a backend; default 'auto' = WebGPU, else WebGL2, else null (no pixels). */
   backend?: 'auto' | BackendKind;
   /** Clock in Unix ms (tests). */

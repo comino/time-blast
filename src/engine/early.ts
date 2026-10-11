@@ -50,6 +50,18 @@ export function compileDuckDB(): Promise<CompiledDuckDB> {
   })();
 }
 
+const wasmModules = new Map<string, Promise<WebAssembly.Module>>();
+/** Compile one of our own Wasm modules (`public/wasm/<name>.wasm`) while streaming, once. */
+export function compileOwnWasm(name: 'tb-coordinator' | 'tb-render'): Promise<WebAssembly.Module> {
+  let pending = wasmModules.get(name);
+  if (!pending) {
+    pending = WebAssembly.compileStreaming(fetch(absolute(`${base()}wasm/${name}.wasm`)));
+    wasmModules.set(name, pending);
+    pending.catch(() => wasmModules.delete(name));
+  }
+  return pending;
+}
+
 let manifest: Promise<ManifestEntry[]> | undefined;
 export function manifestUrl(): string { return absolute(`${base()}data/datasets.json`); }
 export function dataUrl(path: string): string { return absolute(`${base()}${path.replace(/^\//, '')}`); }
@@ -62,19 +74,19 @@ export function loadManifest(): Promise<ManifestEntry[]> {
   })();
 }
 
-const prebuilt = new Map<string, Promise<Uint8Array>>();
+const prebuilt = new Map<string, Promise<Blob>>();
 /** A prebuilt database's bytes (Cache API persisted), fetched once per URL. A failed fetch is forgotten. */
-export function fetchPrebuilt(url: string): Promise<Uint8Array> {
+export function fetchPrebuilt(url: string): Promise<Blob> {
   let pending = prebuilt.get(url);
   if (!pending) {
-    pending = fetchPersisted(url).then(r => r.bytes);
+    pending = fetchPersisted(url).then(r => { bootMark('dataset.download', undefined, `${r.source} ${(r.blob.size / 1048576).toFixed(1)} MiB ${r.ms.toFixed(0)} ms`); return r.blob; });
     prebuilt.set(url, pending);
     pending.catch(() => prebuilt.delete(url));
   }
   return pending;
 }
 /** Take (and forget) prefetched bytes: the engine copies them into Wasm memory once. */
-export function takePrebuilt(url: string): Promise<Uint8Array> {
+export function takePrebuilt(url: string): Promise<Blob> {
   const pending = fetchPrebuilt(url);
   prebuilt.delete(url);
   return pending;
@@ -93,6 +105,13 @@ export function extensionUrl(name: string, bundle: Bundle, version = DUCKDB_VERS
 }
 /** Warm the HTTP cache for extensions DuckDB loads with a synchronous XHR at boot, so the XHR finds
  * the bytes local instead of blocking the worker on the network. */
+const extensionsFetched = new Set<string>();
 export function prefetchExtensions(names: string[], bundle: Bundle = duckBundle()): void {
-  for (const name of names) void fetch(extensionUrl(name, bundle)).then(r => r.arrayBuffer()).catch(() => {});
+  for (const name of names) {
+    const url = extensionUrl(name, bundle);
+    if (extensionsFetched.has(url)) continue;
+    extensionsFetched.add(url);
+    const t0 = bootClock();
+    void fetch(url).then(r => r.arrayBuffer()).then(b => bootMark(`ext.${name}.prefetch`, t0, `${b.byteLength} B`)).catch(() => {});
+  }
 }

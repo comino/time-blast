@@ -37,9 +37,15 @@ export interface BootStats {
   totalMs: number;
 }
 
-export interface BootOptions { parquet?: boolean; json?: boolean }
+export interface BootOptions {
+  parquet?: boolean;
+  json?: boolean;
+  /** Return before loading extensions and locking settings; `lockdown` does that later. The
+   * database node runs it right after the first dataset open and holds EXECs until it is done. */
+  deferLockdown?: boolean;
+}
 
-export async function bootDuckDB({ parquet = true, json = true }: BootOptions = {}): Promise<{ bindings: BlockingBindings; stats: BootStats }> {
+export async function bootDuckDB({ parquet = true, json = true, deferLockdown = false }: BootOptions = {}): Promise<{ bindings: BlockingBindings; stats: BootStats; lockdown?: () => Promise<void> }> {
   const t0 = performance.now(), b0 = bootClock();
   prefetchExtensions([...(json ? ['json'] : []), ...(parquet ? ['parquet'] : [])]);
   const compiled = await compileDuckDB();
@@ -56,12 +62,27 @@ export async function bootDuckDB({ parquet = true, json = true }: BootOptions = 
   await bindings.instantiate();
   bootMark('duckdb.instantiate', i0, compiled.bundle);
   const t1 = performance.now();
+  const o0 = bootClock();
   bindings.open({ path: ':memory:', query: { queryPollingInterval: POLL_INTERVAL_MS } });
+  bootMark('duckdb.open', o0);
   const version = bindings.getVersion();
   if (version !== DUCKDB_VERSION) console.warn(`DuckDB ${version}: update DUCKDB_VERSION in src/engine/early.ts (extension prefetch, prebuilt catalogs)`);
   const l0 = bootClock();
+  const extensions = [json && 'json', parquet && 'parquet'].filter(Boolean).join('+');
+  if (deferLockdown) {
+    await lockDown(bindings, { memoryOnly: true });
+    bootMark('duckdb.boot', b0, 'lockdown deferred');
+    const lockdown = async () => {
+      const lock = await lockDown(bindings, { parquet, json });
+      if (lock.error) console.warn(`DuckDB extensions: ${lock.error}`);
+    };
+    return {
+      bindings, lockdown,
+      stats: { bundle: compiled.bundle, version, instantiateMs: t1 - t0, parquetMs: 0, parquet: false, jsonMs: 0, json: false, totalMs: performance.now() - t0 },
+    };
+  }
   const lock = await lockDown(bindings, { parquet, json });
-  bootMark('duckdb.lockdown', l0, [json && 'json', parquet && 'parquet'].filter(Boolean).join('+'));
+  bootMark('duckdb.lockdown', l0, extensions);
   bootMark('duckdb.boot', b0);
   return {
     bindings,
@@ -79,7 +100,8 @@ export function fixtureUrl(): string {
 
 /** Measurement switches, set when starting Vite (e.g. `VITE_TB_RESULT_CACHE=0 pnpm dev`) to
  * compare end to end with batch-2 database features off. Default: everything on.
- * `VITE_TB_PREBUILT=0` ignores prebuilt databases (generate/load + statistics + rollups in the page). */
+ * `VITE_TB_PREBUILT=0` ignores prebuilt databases (generate/load + statistics + rollups in the page);
+ * `VITE_TB_WARMUP=0` skips the post-boot warm-up statements. */
 function envOptions(): DatabaseNodeOptions {
   const env = import.meta.env ?? {};
   const off = (name: string) => env[name] === '0' || env[name] === 'false';
@@ -88,6 +110,7 @@ function envOptions(): DatabaseNodeOptions {
     ...(off('VITE_TB_ROLLUPS') ? { rollups: false } : {}),
     ...(off('VITE_TB_COMPRESSED') ? { compressed: false } : {}),
     ...(off('VITE_TB_PREBUILT') ? { prebuilt: false } : {}),
+    ...(off('VITE_TB_WARMUP') ? { warmUp: false } : {}),
   };
 }
 
@@ -96,9 +119,15 @@ const browserOptions = (): DatabaseNodeOptions => ({
 });
 
 export async function createDatabaseWith(emit: Emit, options: DatabaseNodeOptions = {}, boot: BootOptions = {}) {
-  const { bindings, stats } = await bootDuckDB(boot);
-  const extensions = [stats.json && 'json', stats.parquet && 'parquet'].filter((e): e is string => !!e);
-  return { node: new DuckDatabaseNode(bindings, emit, { ...browserOptions(), extensions, ...options }), stats };
+  const { bindings, stats, lockdown } = await bootDuckDB(boot);
+  // Deferred: the extensions the lockdown will load (a failed load only costs the prebuilt catalog).
+  const extensions = lockdown
+    ? [boot.json !== false && 'json', boot.parquet !== false && 'parquet'].filter((e): e is string => !!e)
+    : [stats.json && 'json', stats.parquet && 'parquet'].filter((e): e is string => !!e);
+  const n0 = bootClock();
+  const node = new DuckDatabaseNode(bindings, emit, { ...browserOptions(), extensions, freshInstance: true, ...(lockdown ? { lockdown } : {}), ...options });
+  bootMark('duckdb.node', n0);
+  return { node, stats };
 }
 
 /** The local DuckDB node with Parquet support on demand (see the file comment). */
@@ -125,6 +154,6 @@ export class ParquetOnDemand implements DatabaseNode {
 }
 
 export const createDatabase: CreateDatabase = async emit => {
-  const { node, stats } = await createDatabaseWith(emit, {}, { parquet: false });
+  const { node, stats } = await createDatabaseWith(emit, {}, { parquet: false, deferLockdown: true });
   return new ParquetOnDemand(node, emit, stats.parquet);
 };
