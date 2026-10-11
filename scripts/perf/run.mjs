@@ -183,8 +183,8 @@ const metrics = {};
 for (const [k, v] of Object.entries(samples)) { const s = lib.summarize(v, unitOf(k)); if (s) metrics[k] = s; }
 const stages = {};
 for (const [k, v] of Object.entries(stageSamples)) stages[k] = lib.stageTable(v);
-// docs/perf/ itself (history, dashboard) does not make a run dirty.
-const dirty = git(['status', '--porcelain', '--', '.', ':(exclude)docs/perf']).length > 0;
+// Modified tracked files make a run dirty; docs/perf/ (history, dashboard) and untracked files do not.
+const dirty = git(['status', '--porcelain', '--untracked-files=no', '--', '.', ':(exclude)docs/perf']).length > 0;
 const host = hostInfo();
 host.loadAfter = loadavg().map(v => +v.toFixed(2));
 if (e2eFailures.length) notes.push(...e2eFailures.map(f => `e2e: ${f}`));
