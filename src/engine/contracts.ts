@@ -154,7 +154,7 @@ export type WebGpuModel = 'qwen-0.5b' | 'qwen-1.5b' | 'qwen3-4b';
 export type EngineToUi =
   | { type: 'frame'; bytes: ArrayBuffer }
   | { type: 'context'; context: DatasetContext }
-  | { type: 'views'; slot: number; available: ViewName[]; chosen: ViewName; columns?: Array<{ name: string; role: ColumnRole | 'none' }> }
+  | { type: 'views'; slot: number; available: ViewName[]; chosen: ViewName; columns?: Array<{ name: string; role: ColumnRole | '' }> }
   | { type: 'table'; slot: number; columns: string[]; rows: string[][]; total: number }
   | { type: 'axes'; slot: number; ticks: AxisTicks }
   | { type: 'export'; slot: number; blob: Blob; filename: string };

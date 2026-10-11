@@ -240,7 +240,7 @@ export class Renderer implements RendererNode {
   private drainEvents(submitted = this.now(), build = 0, replay = 0): void {
     for (const e of this.core.events()) {
       if (e.kind === Ev.VIEWS) {
-        const parsed = JSON.parse(e.text) as { available: ViewName[]; chosen: ViewName; columns?: Array<{ name: string; role: ColumnRole | 'none' }> };
+        const parsed = JSON.parse(e.text) as { available: ViewName[]; chosen: ViewName; columns?: Array<{ name: string; role: ColumnRole | '' }> };
         this.ui({ type: 'views', slot: e.slot, available: parsed.available, chosen: parsed.chosen, columns: parsed.columns });
       } else if (e.kind === Ev.AXES) {
         this.ui({ type: 'axes', slot: e.slot, ticks: JSON.parse(e.text) });

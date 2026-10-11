@@ -126,7 +126,7 @@ export class SlotCardView implements SlotCard, BoardItem {
     // Each new result starts from the renderer's choice; keep a pick only if it is what's shown.
     select.value = current === chosen ? current : '';
     if (columns) {
-      this.q.columns.textContent = columns.map(c => `${c.name}${c.role !== 'none' ? `·${c.role}` : ''}`).join('  ');
+      this.q.columns.textContent = columns.map(c => `${c.name}${c.role ? `·${c.role}` : ''}`).join('  ');
       const subtitle = this.q.subtitle.textContent?.split(' · ')[0] ?? '';
       this.q.subtitle.textContent = `${subtitle} · ${columns.length} columns · ${VIEW_LABELS[chosen] ?? chosen}`;
     }
