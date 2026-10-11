@@ -210,6 +210,13 @@ pub fn infer_roles(columns: &[ColumnInfo]) -> Roles {
             roles.per_column[i] = Role::Lon;
         }
     }
+    // A position needs both. A lone latitude or longitude (`avg(lat) AS avg_lat` per continent,
+    // the easternmost longitude) is an ordinary number: chart it as a value.
+    if roles.lat.is_none() != roles.lon.is_none() {
+        for i in [roles.lat.take(), roles.lon.take()].into_iter().flatten() {
+            roles.per_column[i] = Role::None;
+        }
+    }
     let rest: Vec<usize> = (0..columns.len())
         .filter(|&i| roles.per_column[i] == Role::None && columns[i].ty.code != TypeCode::Unsupported)
         .collect();
@@ -380,8 +387,20 @@ mod tests {
         let r = infer_roles(&[col("start_lat", TypeCode::F64), col("START_LNG", TypeCode::F32), col("n", TypeCode::I64)]);
         assert_eq!((r.lat, r.lon, r.value), (Some(0), Some(1), Some(2)));
         // Text columns never take a position role, and `latency` is not a latitude.
-        let r = infer_roles(&[col("latency", TypeCode::F64), col("home_lat", TypeCode::Utf8), col("x_lon", TypeCode::F64)]);
-        assert_eq!((r.lat, r.lon), (None, Some(2)));
+        let r = infer_roles(&[col("latency", TypeCode::F64), col("home_lat", TypeCode::Utf8), col("x_lon", TypeCode::F64), col("y_lat", TypeCode::F64)]);
+        assert_eq!((r.lat, r.lon), (Some(3), Some(2)));
+    }
+
+    #[test]
+    fn lone_latitude_or_longitude_is_a_value() {
+        // Average latitude per continent (cities dataset): a bar chart, not a position.
+        let r = infer_roles(&[col("continent", TypeCode::Utf8), col("avg_lat", TypeCode::F64)]);
+        assert_eq!((r.lat, r.lon), (None, None));
+        assert_eq!(r.x, Some((0, XKind::Category)));
+        assert_eq!(r.value, Some(1));
+        assert_eq!(r.per_column, [Role::Category, Role::Value]);
+        let r = infer_roles(&[col("vessel", TypeCode::Utf8), col("lon", TypeCode::F64)]);
+        assert_eq!((r.lon, r.value), (None, Some(1)));
     }
 
     #[test]

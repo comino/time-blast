@@ -1,0 +1,52 @@
+/**
+ * public/data/datasets.json follows the dataset manifest contract (docs/plan-batch-3.md), every
+ * listed Parquet file exists, and each public dataset has an eval corpus. Loading the files needs
+ * DuckDB's parquet extension from the network, so that is checked by
+ * `node scripts/eval-sql.mjs --self-test --dataset all`, not here.
+ */
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import type { Corpus, ManifestEntry } from '../evals/sql-eval';
+
+const root = new URL('..', import.meta.url).pathname;
+const manifest = JSON.parse(readFileSync(`${root}public/data/datasets.json`, 'utf8')) as ManifestEntry[];
+
+describe('dataset manifest', () => {
+  it('lists unique names with tables, license and source', () => {
+    expect(new Set(manifest.map(e => e.name)).size).toBe(manifest.length);
+    for (const entry of manifest) {
+      expect(entry.name).toMatch(/^[a-z][a-z0-9_-]*$/);
+      expect(entry.tables.length).toBeGreaterThan(0);
+      expect(entry.license, entry.name).toBeTruthy();
+      expect(entry.source, entry.name).toBeTruthy();
+      for (const table of entry.tables) {
+        expect(table.name).toMatch(/^[a-z_][a-z0-9_]*$/);
+        expect(table.url).toMatch(/^data\/([a-z0-9_-]+\/)?[a-z0-9_]+\.parquet$/);
+        expect(table.rows).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('points at Parquet files of at most 50 MB (the synthetic vessels fixtures belong to the cold-start workstream)', () => {
+    for (const entry of manifest.filter(e => !e.name.startsWith('vessels'))) {
+      for (const table of entry.tables) {
+        const file = `${root}public/${table.url}`;
+        expect(existsSync(file), file).toBe(true);
+        expect(statSync(file).size).toBeLessThan(50e6);
+        const bytes = readFileSync(file);
+        expect(bytes.subarray(0, 4).toString('latin1')).toBe('PAR1');
+        expect(bytes.subarray(bytes.length - 4).toString('latin1')).toBe('PAR1');
+      }
+    }
+  });
+
+  it('has an executed-result corpus per dataset (vessels-small shares none)', () => {
+    for (const entry of manifest.filter(e => e.name !== 'vessels-small')) {
+      const path = entry.name === 'vessels' ? `${root}evals/sql-corpus.json` : `${root}evals/sql-corpus-${entry.name}.json`;
+      const corpus = JSON.parse(readFileSync(path, 'utf8')) as Corpus;
+      expect(corpus.dataset).toBe(entry.name);
+      expect(corpus.cases.length).toBeGreaterThanOrEqual(25);
+      expect(new Set(corpus.cases.map(c => c.id)).size).toBe(corpus.cases.length);
+    }
+  });
+});

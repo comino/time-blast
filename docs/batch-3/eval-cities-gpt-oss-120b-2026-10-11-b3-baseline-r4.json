@@ -1,0 +1,1418 @@
+{
+ "kind": "time-blast.sql-eval",
+ "version": 1,
+ "date": "2026-10-11T11:41:39.739Z",
+ "label": "b3-baseline-r4",
+ "translator": "tb1",
+ "model": "openai/gpt-oss-120b",
+ "dataset": "cities",
+ "endpoint": "ws://127.0.0.1:8793/session",
+ "server": "prompt experiment TB_PROMPT_EXP=, cache off, 127.0.0.1",
+ "corpus": {
+  "path": "evals/sql-corpus-cities.json",
+  "cases": 31,
+  "version": 1
+ },
+ "environment": {
+  "node": "v23.11.1",
+  "platform": "linux",
+  "arch": "arm64",
+  "cpus": 4,
+  "duckdbWasm": "1.32.0",
+  "loadavgAtStart": [
+   16.9,
+   15.6,
+   23.2
+  ],
+  "loadavgAtEnd": [
+   16.6,
+   15.6,
+   23.1
+  ]
+ },
+ "context": {
+  "tables": [
+   {
+    "name": "cities",
+    "rows": 34159,
+    "columns": 8
+   },
+   {
+    "name": "countries",
+    "rows": 252,
+    "columns": 7
+   }
+  ],
+  "promptBytes": 1962
+ },
+ "rollups": [
+  {
+   "table": "*",
+   "ms": 0,
+   "done": true,
+   "skipped": "no table with a TIMESTAMP column and numeric columns"
+  }
+ ],
+ "summary": {
+  "n": 31,
+  "counts": {
+   "exact": 1,
+   "equivalent": 20,
+   "shape-violation": 7,
+   "wrong": 3,
+   "sql-error": 0,
+   "rejected-by-guard": 0
+  },
+  "correct": 0.677,
+  "issues": {
+   "viewHintUnasked": 1,
+   "viewHintInvalid": 0,
+   "viewHintMissed": 0,
+   "rawRows": 0,
+   "foreignDialect": 0,
+   "wallClock": 0
+  },
+  "latency": {
+   "firstDeltaP50": 254.2,
+   "firstDeltaP95": 509.1,
+   "sqlP50": 327.3,
+   "sqlP95": 648.7,
+   "providerFirstTokenP50": 241.2
+  },
+  "tokens": {
+   "prompt": 37730,
+   "completion": 2993,
+   "cached": 33792
+  },
+  "costUsd": 0.004921,
+  "costPerRequestUsd": 0.0001587
+ },
+ "cases": [
+  {
+   "id": "top10_largest_cities",
+   "question": "10 largest cities by population",
+   "tags": [
+    "top-n"
+   ],
+   "category": "shape-violation",
+   "reason": "right values plus 1 extra column(s)",
+   "sql": "SELECT c.name, co.name AS country, c.population FROM cities c JOIN countries co ON c.country_code=co.code ORDER BY c.population DESC LIMIT 10",
+   "referenceRows": 10,
+   "latency": {
+    "firstDeltaMs": 215.48407900000166,
+    "sqlMs": 302.9421640000073,
+    "providerFirstTokenMs": 213.953125,
+    "dbMs": 13.014947000003303
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 89,
+    "costUsd": 0.00013665,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1067,
+    "reasoningTokens": 48
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 10,
+   "columns": [
+    "name",
+    "country",
+    "population"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "cities_per_country_top10",
+   "question": "which 10 countries have the most cities",
+   "tags": [
+    "top-n",
+    "join",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT c.name,cnt FROM (SELECT country_code,COUNT(*) AS cnt FROM cities GROUP BY country_code) AS t JOIN countries c ON c.code=t.country_code ORDER BY cnt DESC LIMIT 10",
+   "referenceRows": 10,
+   "latency": {
+    "firstDeltaMs": 196.86055399999896,
+    "sqlMs": 281.5732319999952,
+    "providerFirstTokenMs": 194.9423828125,
+    "dbMs": 10.714027000009082
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 87,
+    "costUsd": 0.0001359,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1070,
+    "reasoningTokens": 38
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 10,
+   "columns": [
+    "name",
+    "cnt"
+   ],
+   "matchedReference": 1
+  },
+  {
+   "id": "city_population_per_continent",
+   "question": "total city population per continent",
+   "tags": [
+    "aggregate",
+    "join"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT c.continent, SUM(ci.population) AS total_pop FROM cities ci JOIN countries c ON ci.country_code=c.code GROUP BY c.continent ORDER BY c.continent LIMIT 5000",
+   "referenceRows": 7,
+   "latency": {
+    "firstDeltaMs": 193.34597199999553,
+    "sqlMs": 401.5596039999946,
+    "providerFirstTokenMs": 188.10791015625,
+    "dbMs": 43.397037000002456
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 82,
+    "costUsd": 0.00017085,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1323,
+    "reasoningTokens": 35
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 7,
+   "columns": [
+    "continent",
+    "total_pop"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "capitals_map",
+   "question": "map of all capital cities",
+   "tags": [
+    "geo",
+    "view",
+    "filter"
+   ],
+   "category": "equivalent",
+   "reason": "value columns reordered",
+   "sql": "-- view: map\nSELECT c.lat,c.lon,c.name FROM cities c WHERE c.feature_code='PPLC' ORDER BY c.name LIMIT 5000",
+   "referenceRows": 241,
+   "latency": {
+    "firstDeltaMs": 263.14066900000034,
+    "sqlMs": 323.14531599999464,
+    "providerFirstTokenMs": 245.58642578125,
+    "dbMs": 13.46499500000209
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 99,
+    "costUsd": 0.00014265,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1067,
+    "reasoningTokens": 59
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 241,
+   "columns": [
+    "lat",
+    "lon",
+    "name"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "avg_elevation_per_continent",
+   "question": "average city elevation per continent",
+   "tags": [
+    "aggregate",
+    "join",
+    "dirty-data"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT c.continent, AVG(ci.elevation) AS avg_elev FROM cities ci JOIN countries c ON ci.country_code=c.code GROUP BY c.continent ORDER BY c.continent LIMIT 5000",
+   "referenceRows": 7,
+   "latency": {
+    "firstDeltaMs": 230.48622000000614,
+    "sqlMs": 315.93031000001065,
+    "providerFirstTokenMs": 217.510009765625,
+    "dbMs": 17.93127299999469
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 86,
+    "costUsd": 0.00013485,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1067,
+    "reasoningTokens": 37
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 7,
+   "columns": [
+    "continent",
+    "avg_elev"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "highest_cities",
+   "question": "highest cities above sea level",
+   "tags": [
+    "top-n",
+    "ambiguous"
+   ],
+   "category": "wrong",
+   "reason": "rows 5000, expected 10",
+   "sql": "SELECT c.name, co.name AS country, c.elevation AS elev FROM cities c JOIN countries co ON c.country_code=co.code WHERE c.elevation IS NOT NULL ORDER BY c.elevation DESC LIMIT 5000",
+   "referenceRows": 10,
+   "latency": {
+    "firstDeltaMs": 192.80532299999322,
+    "sqlMs": 282.6795710000006,
+    "providerFirstTokenMs": 192.19677734375,
+    "dbMs": 238.40471800000523
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 92,
+    "costUsd": 0.00013845,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1067,
+    "reasoningTokens": 39
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 5000,
+   "columns": [
+    "name",
+    "country",
+    "elev"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "southernmost_city",
+   "question": "southernmost city",
+   "tags": [
+    "top-n",
+    "geo"
+   ],
+   "category": "shape-violation",
+   "reason": "right values plus 1 extra column(s)",
+   "sql": "SELECT c.name, co.name AS country, c.lat FROM cities c JOIN countries co ON c.country_code=co.code ORDER BY c.lat ASC LIMIT 1",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 254.16127399999823,
+    "sqlMs": 336.7655539999978,
+    "providerFirstTokenMs": 246.2255859375,
+    "dbMs": 16.86441399999603
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 98,
+    "costUsd": 0.0001419,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1066,
+    "reasoningTokens": 57
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1,
+   "columns": [
+    "name",
+    "country",
+    "lat"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "count_over_million",
+   "question": "how many cities have more than a million people",
+   "tags": [
+    "filter",
+    "scalar"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT count(*) AS city_count FROM cities WHERE population>1000000",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 395.298174999989,
+    "sqlMs": 412.5212759999995,
+    "providerFirstTokenMs": 390.747802734375,
+    "dbMs": 8.031299999987823
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 61,
+    "costUsd": 0.00012045,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1071,
+    "reasoningTokens": 38
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1,
+   "columns": [
+    "city_count"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "largest_german_cities",
+   "question": "10 largest cities in Germany",
+   "tags": [
+    "top-n",
+    "filter",
+    "entity-name"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT name, population AS pop FROM cities WHERE country_code='DE' ORDER BY population DESC LIMIT 10",
+   "referenceRows": 10,
+   "latency": {
+    "firstDeltaMs": 297.3015860000014,
+    "sqlMs": 348.31935600000725,
+    "providerFirstTokenMs": 294.0458984375,
+    "dbMs": 22.521993000002112
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 105,
+    "costUsd": 0.00014625,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1067,
+    "reasoningTokens": 75
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 10,
+   "columns": [
+    "name",
+    "pop"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "densest_countries",
+   "question": "top 10 most densely populated countries",
+   "tags": [
+    "top-n",
+    "ratio"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT name, (population/area_km2) AS dens FROM countries ORDER BY dens DESC LIMIT 10",
+   "referenceRows": 10,
+   "latency": {
+    "firstDeltaMs": 317.209692000004,
+    "sqlMs": 376.73217100001057,
+    "providerFirstTokenMs": 297.80810546875,
+    "dbMs": 38.73167599999579
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 114,
+    "costUsd": 0.00019035,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1325,
+    "reasoningTokens": 83
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 10,
+   "columns": [
+    "name",
+    "dens"
+   ],
+   "matchedReference": 1
+  },
+  {
+   "id": "europe_timezones",
+   "question": "number of cities per time zone in Europe",
+   "tags": [
+    "aggregate",
+    "filter",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT c.timezone tz,COUNT(*) cnt FROM cities c JOIN countries co ON c.country_code=co.code WHERE co.continent='Europe' GROUP BY c.timezone ORDER BY c.timezone",
+   "referenceRows": 57,
+   "latency": {
+    "firstDeltaMs": 200.29645399999572,
+    "sqlMs": 282.29928399999335,
+    "providerFirstTokenMs": 192.589599609375,
+    "dbMs": 49.114856000000145
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 83,
+    "costUsd": 0.0001335,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1070,
+    "reasoningTokens": 35
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 80,
+   "columns": [
+    "tz",
+    "cnt"
+   ],
+   "matchedReference": 1
+  },
+  {
+   "id": "southern_hemisphere_count",
+   "question": "how many cities are in the southern hemisphere",
+   "tags": [
+    "filter",
+    "scalar",
+    "geo"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT COUNT(*) AS count FROM cities WHERE lat < 0",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 200.43553599998995,
+    "sqlMs": 232.11820899999293,
+    "providerFirstTokenMs": 188.17578125,
+    "dbMs": 2.2795199999964098
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 60,
+    "costUsd": 0.0001197,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1070,
+    "reasoningTokens": 39
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1,
+   "columns": [
+    "count"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "european_capitals_population",
+   "question": "population of each capital in Europe",
+   "tags": [
+    "filter",
+    "join",
+    "ambiguous"
+   ],
+   "category": "shape-violation",
+   "reason": "right values plus 1 extra column(s)",
+   "sql": "SELECT c.name AS city,country.name AS country,c.population AS pop FROM cities c JOIN countries country ON c.country_code=country.code WHERE c.feature_code='PPLC' AND country.continent='Europe' ORDER BY pop LIMIT 5000",
+   "referenceRows": 53,
+   "latency": {
+    "firstDeltaMs": 256.87644100000034,
+    "sqlMs": 369.03311699999904,
+    "providerFirstTokenMs": 240.8369140625,
+    "dbMs": 23.213925000003655
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 125,
+    "costUsd": 0.0001584,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1068,
+    "reasoningTokens": 67
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 53,
+   "columns": [
+    "city",
+    "country",
+    "pop"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "largest_city_per_country",
+   "question": "largest city in each country",
+   "tags": [
+    "top-n",
+    "series",
+    "join",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT c.name AS country, ci.name AS city, ci.population AS pop FROM cities ci JOIN countries c ON ci.country_code=c.code QUALIFY row_number() OVER (PARTITION BY ci.country_code ORDER BY ci.population DESC)=1 ORDER BY c.name",
+   "referenceRows": 244,
+   "latency": {
+    "firstDeltaMs": 209.42073299999174,
+    "sqlMs": 559.2849549999955,
+    "providerFirstTokenMs": 203.258056640625,
+    "dbMs": 163.50253100000555
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 102,
+    "costUsd": 0.00014445,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1067,
+    "reasoningTokens": 42
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 244,
+   "columns": [
+    "country",
+    "city",
+    "pop"
+   ],
+   "matchedReference": 2
+  },
+  {
+   "id": "avg_population_per_feature",
+   "question": "average population by feature code",
+   "tags": [
+    "aggregate"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT feature_code, AVG(population) AS avg_pop FROM cities GROUP BY feature_code ORDER BY feature_code",
+   "referenceRows": 17,
+   "latency": {
+    "firstDeltaMs": 165.7327709999954,
+    "sqlMs": 223.06649100000504,
+    "providerFirstTokenMs": 164.76220703125,
+    "dbMs": 29.919882000001962
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 61,
+    "costUsd": 0.00011985,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1067,
+    "reasoningTokens": 31
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 17,
+   "columns": [
+    "feature_code",
+    "avg_pop"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "countries_per_continent",
+   "question": "number of countries per continent",
+   "tags": [
+    "aggregate"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT continent, count(*) AS cnt FROM countries GROUP BY continent ORDER BY continent",
+   "referenceRows": 7,
+   "latency": {
+    "firstDeltaMs": 190.5497239999968,
+    "sqlMs": 230.8731870000047,
+    "providerFirstTokenMs": 189.96875,
+    "dbMs": 9.74501000001328
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 72,
+    "costUsd": 0.00012645,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1067,
+    "reasoningTokens": 48
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 7,
+   "columns": [
+    "continent",
+    "cnt"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "euro_countries",
+   "question": "countries that use the euro",
+   "tags": [
+    "filter",
+    "list",
+    "domain"
+   ],
+   "category": "shape-violation",
+   "reason": "right values plus 2 extra column(s)",
+   "sql": "SELECT name,currency,population FROM countries WHERE currency='EUR' ORDER BY name LIMIT 5000",
+   "referenceRows": 36,
+   "latency": {
+    "firstDeltaMs": 331.97942999999213,
+    "sqlMs": 380.51079699999536,
+    "providerFirstTokenMs": 331.0556640625,
+    "dbMs": 6.96748099999968
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 55,
+    "costUsd": 0.00011625,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1067,
+    "reasoningTokens": 25
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 36,
+   "columns": [
+    "name",
+    "currency",
+    "population"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "largest_countries_by_area",
+   "question": "biggest countries by area",
+   "tags": [
+    "top-n",
+    "ambiguous"
+   ],
+   "category": "shape-violation",
+   "reason": "right rows in the wrong order",
+   "sql": "SELECT name,area_km2 AS area FROM countries ORDER BY area_km2 DESC LIMIT 5000",
+   "referenceRows": 10,
+   "latency": {
+    "firstDeltaMs": 259.9317740000115,
+    "sqlMs": 312.9053380000114,
+    "providerFirstTokenMs": 250.583740234375,
+    "dbMs": 11.419638999999734
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 88,
+    "costUsd": 0.00013605,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1067,
+    "reasoningTokens": 57
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 252,
+   "columns": [
+    "name",
+    "area"
+   ],
+   "matchedReference": 4
+  },
+  {
+   "id": "denmark_cities_map",
+   "question": "map of the cities in Denmark",
+   "tags": [
+    "geo",
+    "view",
+    "filter",
+    "entity-name"
+   ],
+   "category": "equivalent",
+   "reason": "value columns reordered",
+   "sql": "-- view: map\nSELECT c.lat,c.lon,c.name FROM cities c JOIN countries co ON c.country_code=co.code WHERE co.name='Denmark' ORDER BY c.lat,c.lon LIMIT 5000",
+   "referenceRows": 67,
+   "latency": {
+    "firstDeltaMs": 272.75587700000324,
+    "sqlMs": 358.1785669999954,
+    "providerFirstTokenMs": 264.9892578125,
+    "dbMs": 18.624485000007553
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 117,
+    "costUsd": 0.0001536,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1068,
+    "reasoningTokens": 66
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 67,
+   "columns": [
+    "lat",
+    "lon",
+    "name"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "population_of_berlin",
+   "question": "population of Berlin",
+   "tags": [
+    "filter",
+    "scalar",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT population AS pop FROM cities WHERE name = 'Berlin' LIMIT 1",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 628.0331140000053,
+    "sqlMs": 861.6580680000043,
+    "providerFirstTokenMs": 626.56982421875,
+    "dbMs": 13.03210699999181
+   },
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 2048,
+    "completionTokens": 97,
+    "costUsd": 0.00027375,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 2461,
+    "reasoningTokens": 52
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1,
+   "columns": [
+    "pop"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "partial_per_contin",
+   "question": "number of cities per contin",
+   "tags": [
+    "ambiguous",
+    "partial",
+    "join"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "-- view: bar\nSELECT c.continent,COUNT(*) AS cnt FROM cities ci JOIN countries c ON ci.country_code=c.code GROUP BY c.continent ORDER BY c.continent LIMIT 5000",
+   "referenceRows": 7,
+   "latency": {
+    "firstDeltaMs": 187.6649929999985,
+    "sqlMs": 259.25304199999664,
+    "providerFirstTokenMs": 168.014404296875,
+    "dbMs": 17.79806999998982
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 90,
+    "costUsd": 0.00013725,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1067,
+    "reasoningTokens": 41
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": true,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 7,
+   "columns": [
+    "continent",
+    "cnt"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "single_word_population",
+   "question": "population",
+   "tags": [
+    "ambiguous",
+    "partial"
+   ],
+   "category": "wrong",
+   "reason": "rows 244, expected 7",
+   "sql": "SELECT c.name country,sum(ci.population) pop FROM countries c JOIN cities ci ON ci.country_code=c.code GROUP BY c.name ORDER BY pop DESC LIMIT 5000",
+   "referenceRows": 7,
+   "latency": {
+    "firstDeltaMs": 216.91286300000502,
+    "sqlMs": 295.3187900000048,
+    "providerFirstTokenMs": 207.72021484375,
+    "dbMs": 24.07597999999416
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 87,
+    "costUsd": 0.00021165,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1575,
+    "reasoningTokens": 45
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 244,
+   "columns": [
+    "country",
+    "pop"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "scatter_area_population",
+   "question": "scatter of country area vs population",
+   "tags": [
+    "view"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "-- view: scatter\nSELECT area_km2 AS area,countries.population AS pop FROM countries ORDER BY area_km2 LIMIT 5000",
+   "referenceRows": 252,
+   "latency": {
+    "firstDeltaMs": 274.65847100000246,
+    "sqlMs": 327.334990000003,
+    "providerFirstTokenMs": 261.666748046875,
+    "dbMs": 10.78786900000705
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 108,
+    "costUsd": 0.0001482,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1068,
+    "reasoningTokens": 70
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 252,
+   "columns": [
+    "area",
+    "pop"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "countries_without_cities",
+   "question": "countries with no city over 15,000 inhabitants",
+   "tags": [
+    "anti-join",
+    "list"
+   ],
+   "category": "wrong",
+   "reason": "rows 42, expected 8",
+   "sql": "SELECT c.name AS country FROM countries c LEFT JOIN cities ci ON ci.country_code=c.code GROUP BY c.name HAVING COALESCE(MAX(ci.population),0) <= 15000 ORDER BY c.name LIMIT 5000",
+   "referenceRows": 8,
+   "latency": {
+    "firstDeltaMs": 302.67995900000096,
+    "sqlMs": 377.3167010000034,
+    "providerFirstTokenMs": 295.525634765625,
+    "dbMs": 21.01624699999229
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 145,
+    "costUsd": 0.000171,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1072,
+    "reasoningTokens": 91
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 42,
+   "columns": [
+    "country"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "most_cities_above_1000m",
+   "question": "which country has the most cities above 1000 m",
+   "tags": [
+    "top-n",
+    "filter",
+    "join",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT c.name AS country,COUNT(*) AS cnt FROM cities ci JOIN countries c ON ci.country_code=c.code WHERE ci.elevation>1000 GROUP BY c.name ORDER BY cnt DESC LIMIT 1",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 509.0941599999933,
+    "sqlMs": 562.1616849999991,
+    "providerFirstTokenMs": 508.56103515625,
+    "dbMs": 12.252412999994704
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 77,
+    "costUsd": 0.00013035,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1073,
+    "reasoningTokens": 28
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1,
+   "columns": [
+    "country",
+    "cnt"
+   ],
+   "matchedReference": 1
+  },
+  {
+   "id": "avg_latitude_per_continent",
+   "question": "average latitude of cities per continent",
+   "tags": [
+    "aggregate",
+    "join",
+    "geo"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT c.continent, avg(ci.lat) AS avg_lat FROM cities ci JOIN countries c ON ci.country_code=c.code GROUP BY c.continent ORDER BY c.continent LIMIT 5000",
+   "referenceRows": 7,
+   "latency": {
+    "firstDeltaMs": 215.86276499999803,
+    "sqlMs": 313.85307399999874,
+    "providerFirstTokenMs": 212.213623046875,
+    "dbMs": 19.497260000003735
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 83,
+    "costUsd": 0.0001716,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1324,
+    "reasoningTokens": 36
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 7,
+   "columns": [
+    "continent",
+    "avg_lat"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "unknown_city_atlantis",
+   "question": "population of Atlantis",
+   "tags": [
+    "filter",
+    "no-data"
+   ],
+   "category": "exact",
+   "reason": "",
+   "sql": "SELECT name, population FROM cities WHERE name = 'Atlantis' LIMIT 5000",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 180.42782699999225,
+    "sqlMs": 217.38239199999953,
+    "providerFirstTokenMs": 170.10302734375,
+    "dbMs": 9.224600000001374
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 67,
+    "costUsd": 0.00023835,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1833,
+    "reasoningTokens": 41
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1,
+   "columns": [
+    "name",
+    "population"
+   ],
+   "matchedReference": 1
+  },
+  {
+   "id": "india_vs_china_cities",
+   "question": "compare the number of cities in India and China",
+   "tags": [
+    "comparison",
+    "filter",
+    "entity-name"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT co.name country,cnt FROM (SELECT country_code,count(*) cnt FROM cities WHERE country_code IN ('IN','CN') GROUP BY country_code) c JOIN countries co ON co.code=c.country_code ORDER BY country",
+   "referenceRows": 2,
+   "latency": {
+    "firstDeltaMs": 364.14235100000224,
+    "sqlMs": 460.5594330000022,
+    "providerFirstTokenMs": 359.912353515625,
+    "dbMs": 13.013907000000472
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 126,
+    "costUsd": 0.00015945,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1071,
+    "reasoningTokens": 74
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 2,
+   "columns": [
+    "country",
+    "cnt"
+   ],
+   "matchedReference": 1
+  },
+  {
+   "id": "urban_share_per_country_top10",
+   "question": "share of each country's population living in these cities, top 10",
+   "tags": [
+    "ratio",
+    "join",
+    "top-n",
+    "ambiguous"
+   ],
+   "category": "shape-violation",
+   "reason": "right values plus 1 extra column(s)",
+   "sql": "SELECT ct.name,country_code, sum(c.population)::DOUBLE/ct.population AS share FROM cities c JOIN countries ct ON c.country_code=ct.code GROUP BY ct.name,country_code,ct.population ORDER BY share DESC LIMIT 10",
+   "referenceRows": 10,
+   "latency": {
+    "firstDeltaMs": 316.21687499999825,
+    "sqlMs": 423.54762699999264,
+    "providerFirstTokenMs": 314.024169921875,
+    "dbMs": 23.38276799999585
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 139,
+    "costUsd": 0.00016785,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1075,
+    "reasoningTokens": 83
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 10,
+   "columns": [
+    "name",
+    "country_code",
+    "share"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "cities_per_lat_band",
+   "question": "number of cities per 10 degree latitude band",
+   "tags": [
+    "bucket",
+    "geo"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT floor(lat/10)*10 AS lat_band, count(*) AS cnt FROM cities GROUP BY lat_band ORDER BY lat_band LIMIT 5000",
+   "referenceRows": 14,
+   "latency": {
+    "firstDeltaMs": 243.4943670000066,
+    "sqlMs": 319.95626099999936,
+    "providerFirstTokenMs": 241.15234375,
+    "dbMs": 9.445244999995339
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1024,
+    "completionTokens": 92,
+    "costUsd": 0.00013905,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1071,
+    "reasoningTokens": 54
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 14,
+   "columns": [
+    "lat_band",
+    "cnt"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "partial_capitals_in_afr",
+   "question": "capitals in Afr",
+   "tags": [
+    "ambiguous",
+    "partial",
+    "join",
+    "list"
+   ],
+   "category": "shape-violation",
+   "reason": "right values plus 2 extra column(s)",
+   "sql": "SELECT c.name city, co.name country, c.population pop FROM cities c JOIN countries co ON c.country_code=co.code WHERE c.feature_code='PPLC' AND co.continent='Africa' ORDER BY co.name LIMIT 5000",
+   "referenceRows": 57,
+   "latency": {
+    "firstDeltaMs": 278.87662400001136,
+    "sqlMs": 648.7376750000112,
+    "providerFirstTokenMs": 277.27490234375,
+    "dbMs": 32.43884599999001
+   },
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 2048,
+    "completionTokens": 206,
+    "costUsd": 0.00030585,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 2239,
+    "reasoningTokens": 96
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 57,
+   "columns": [
+    "city",
+    "country",
+    "pop"
+   ],
+   "matchedReference": 0
+  }
+ ]
+}

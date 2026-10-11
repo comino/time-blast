@@ -114,6 +114,59 @@ pub fn check(sql: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// DuckDB date-part keywords: as a bare column alias (`flight_date day,`) they are a syntax error;
+/// `AS day` works. Seen on the public datasets in every prompt version (docs/batch-3/generality.md).
+const PART_KEYWORDS: &[&str] = &[
+    "day", "days", "hour", "hours", "minute", "minutes", "month", "months", "second", "seconds",
+    "week", "weeks", "year", "years",
+];
+/// Words after which a part keyword is not an alias (a column named `day`, `INTERVAL day`, …).
+const NOT_ALIAS_AFTER: &[&str] = &[
+    "all", "and", "as", "by", "case", "distinct", "else", "from", "group", "having", "in",
+    "interval", "is", "join", "not", "on", "or", "order", "select", "then", "when", "where", "with",
+];
+
+/// A DuckDB part keyword used as a bare alias: after an expression (a word or `)`) and followed
+/// by `,`, `FROM` or the end. Returns the repair reason. Quoted identifiers and literals are skipped.
+pub fn keyword_alias(sql: &str) -> Option<String> {
+    let mut lexer = Lexer::new(sql);
+    let mut prev: Option<String> = None;
+    let mut pending: Option<String> = None;
+    while lexer.skip_trivia() {
+        let byte = lexer.bytes[lexer.at];
+        let token = if matches!(byte, b'\'' | b'"' | b'`') {
+            lexer.skip_quoted(byte);
+            None
+        } else {
+            lexer.next_word().map(|w| w.to_ascii_lowercase())
+        };
+        if let Some(word) = pending.take() {
+            if matches!(token.as_deref(), Some(",") | Some("from")) {
+                return Some(alias_reason(&word));
+            }
+        }
+        if let Some(t) = token.as_deref() {
+            let after_expression = match prev.as_deref() {
+                Some(")") => true,
+                Some(p) => {
+                    p.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_')
+                        && !NOT_ALIAS_AFTER.contains(&p)
+                }
+                None => false,
+            };
+            if after_expression && PART_KEYWORDS.contains(&t) {
+                pending = Some(t.to_string());
+            }
+        }
+        prev = token;
+    }
+    pending.map(|word| alias_reason(&word))
+}
+
+fn alias_reason(word: &str) -> String {
+    format!("the bare alias {word} is a DuckDB keyword and does not parse; write AS {word}")
+}
+
 /// Most rows a translation may return (the prompt's row rule; the database enforces its own cap).
 pub const MAX_RESULT_ROWS: f64 = 5000.0;
 
@@ -396,6 +449,17 @@ mod tests {
             let large = [("telemetry".to_string(), 1209600.0)];
             let time = ["ts".to_string()];
             let got = raw_rows(sql, &large, &time);
+            match case["error"].as_str() {
+                None => assert_eq!(got, None, "{sql}"),
+                Some(expected) => assert!(
+                    got.as_deref().is_some_and(|g| g.contains(expected)),
+                    "{sql}: {got:?}"
+                ),
+            }
+        }
+        for case in cases["alias"].as_array().unwrap() {
+            let sql = case["sql"].as_str().unwrap();
+            let got = keyword_alias(sql);
             match case["error"].as_str() {
                 None => assert_eq!(got, None, "{sql}"),
                 Some(expected) => assert!(

@@ -10,7 +10,7 @@
 import type { DatasetContext } from '../engine/contracts';
 import { decode, encode, header, json, Kind, Node, readJson, readText, Stage, text, type Frame, type Header, type Stamp } from '../protocol/frame';
 import { repairMessage, systemPrompt, userMessage } from './prompt';
-import { check, rawRows, rowCheckInputs, SqlStream } from './sql';
+import { check, keywordAlias, rawRows, rowCheckInputs, SqlStream } from './sql';
 
 export interface ChatChunk {
   choices: Array<{ delta?: { content?: string | null }; finish_reason?: string | null }>;
@@ -221,9 +221,11 @@ export function createInferenceNode(deps: InferenceNodeDeps) {
           return;
         }
         const final = sql.finish();
-        // Attempt 1 also gets the raw-row pre-check (twin of infer.rs); attempt 2 is taken as is.
+        // Attempt 1 also gets the keyword-alias and raw-row pre-checks (twin of infer.rs); attempt 2 is taken as is.
         const reason = finish !== 'stop' ? `the reply was cut off (finish reason ${finish ?? 'missing'})`
-          : check(final) ?? (attempt === 1 ? rawRows(final, job.context.rows.large, job.context.rows.time) : undefined);
+          : check(final)
+            ?? (attempt === 1 && job.context.context.dialect === 'duckdb' ? keywordAlias(final) : undefined)
+            ?? (attempt === 1 ? rawRows(final, job.context.rows.large, job.context.rows.time) : undefined);
         if (reason === undefined) {
           if (!has(Stage.SQL_FIRST_DELTA)) ledger.push({ stage: Stage.SQL_FIRST_DELTA, node: Node.INFERENCE, at: deps.now() });
           ledger.push({ stage: Stage.SQL_COMPLETE, node: Node.INFERENCE, at: deps.now() });

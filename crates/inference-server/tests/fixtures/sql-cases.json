@@ -45,5 +45,20 @@
     {"sql": "SELECT vessel, lat, lon FROM telemetry QUALIFY row_number() OVER (PARTITION BY vessel ORDER BY ts DESC) = 1", "error": null},
     {"sql": "SELECT ts, speed FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days'", "error": "raw rows of telemetry (1209600 rows)"},
     {"sql": "SELECT x FROM other_table", "error": null}
+  ],
+  "alias": [
+    {"sql": "SELECT flight_date day,count(*) cnt FROM flights GROUP BY flight_date", "error": "the bare alias day"},
+    {"sql": "SELECT count(*) days FROM t", "error": "the bare alias days"},
+    {"sql": "SELECT avg(x) month, y FROM t", "error": "the bare alias month"},
+    {"sql": "SELECT x::DATE day", "error": "the bare alias day"},
+    {"sql": "SELECT flight_date AS day, count(*) FROM flights GROUP BY day", "error": null},
+    {"sql": "SELECT day, count(*) FROM t GROUP BY day", "error": null},
+    {"sql": "SELECT t.day, count(*) FROM t GROUP BY 1", "error": null},
+    {"sql": "SELECT ts FROM t WHERE ts >= now() - INTERVAL 7 DAY, x", "error": null},
+    {"sql": "SELECT date_trunc('day', ts) AS d, extract(hour FROM ts) AS h FROM t", "error": null},
+    {"sql": "SELECT ts - INTERVAL '1' day, x FROM t", "error": null},
+    {"sql": "SELECT x \"day\", y FROM t", "error": null},
+    {"sql": "SELECT 'a day, b' AS s FROM t", "error": null},
+    {"sql": "-- view: line\nSELECT x day FROM t", "error": "the bare alias day"}
   ]
 }

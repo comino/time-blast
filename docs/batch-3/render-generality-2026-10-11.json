@@ -1,0 +1,7004 @@
+{
+ "backend": "webgpu",
+ "datasets": {
+  "cities": {
+   "n": 57,
+   "questionable": 0,
+   "results": [
+    {
+     "id": "top10_largest_cities",
+     "origin": "reference",
+     "question": "10 largest cities by population",
+     "sql": "SELECT name, population FROM cities ORDER BY population DESC LIMIT 10",
+     "hint": null,
+     "rows": 10,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "name:category",
+      "population:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "cities_per_country_top10",
+     "origin": "reference",
+     "question": "which 10 countries have the most cities",
+     "sql": "SELECT country_code, count(*) AS cities FROM cities GROUP BY country_code ORDER BY cities DESC LIMIT 10",
+     "hint": null,
+     "rows": 10,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "country_code:category",
+      "cities:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "city_population_per_continent",
+     "origin": "reference",
+     "question": "total city population per continent",
+     "sql": "SELECT k.continent, sum(c.population) AS population FROM cities c JOIN countries k ON c.country_code = k.code GROUP BY k.continent ORDER BY k.continent",
+     "hint": null,
+     "rows": 7,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "continent:category",
+      "population:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "capitals_map",
+     "origin": "reference",
+     "question": "map of all capital cities",
+     "sql": "-- view: map\nSELECT name, lat, lon FROM cities WHERE feature_code = 'PPLC' ORDER BY name",
+     "hint": "map",
+     "rows": 241,
+     "chosen": "map",
+     "available": [
+      "map",
+      "density",
+      "table"
+     ],
+     "roles": [
+      "name:category",
+      "lat:lat",
+      "lon:lon"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "map"
+     ],
+     "ok": true
+    },
+    {
+     "id": "avg_elevation_per_continent",
+     "origin": "reference",
+     "question": "average city elevation per continent",
+     "sql": "SELECT k.continent, avg(c.elevation) AS elevation FROM cities c JOIN countries k ON c.country_code = k.code GROUP BY k.continent ORDER BY k.continent",
+     "hint": null,
+     "rows": 7,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "continent:category",
+      "elevation:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "highest_cities",
+     "origin": "reference",
+     "question": "highest cities above sea level",
+     "sql": "SELECT name, elevation FROM cities ORDER BY elevation DESC LIMIT 10",
+     "hint": null,
+     "rows": 10,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "name:category",
+      "elevation:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "southernmost_city",
+     "origin": "reference",
+     "question": "southernmost city",
+     "sql": "SELECT name, lat FROM cities ORDER BY lat LIMIT 1",
+     "hint": null,
+     "rows": 1,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "name:category",
+      "lat:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "count_over_million",
+     "origin": "reference",
+     "question": "how many cities have more than a million people",
+     "sql": "SELECT count(*) AS cities FROM cities WHERE population > 1000000",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "cities:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "largest_german_cities",
+     "origin": "reference",
+     "question": "10 largest cities in Germany",
+     "sql": "SELECT name, population FROM cities WHERE country_code = 'DE' ORDER BY population DESC LIMIT 10",
+     "hint": null,
+     "rows": 10,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "name:category",
+      "population:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "densest_countries",
+     "origin": "reference",
+     "question": "top 10 most densely populated countries",
+     "sql": "SELECT name, population / area_km2 AS density FROM countries WHERE area_km2 > 0 ORDER BY density DESC LIMIT 10",
+     "hint": null,
+     "rows": 10,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "name:category",
+      "density:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "europe_timezones",
+     "origin": "reference",
+     "question": "number of cities per time zone in Europe",
+     "sql": "SELECT timezone, count(*) AS cities FROM cities WHERE timezone LIKE 'Europe/%' GROUP BY timezone ORDER BY timezone",
+     "hint": null,
+     "rows": 57,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "timezone:category",
+      "cities:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "southern_hemisphere_count",
+     "origin": "reference",
+     "question": "how many cities are in the southern hemisphere",
+     "sql": "SELECT count(*) AS cities FROM cities WHERE lat < 0",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "cities:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "european_capitals_population",
+     "origin": "reference",
+     "question": "population of each capital in Europe",
+     "sql": "SELECT c.name, c.population FROM cities c JOIN countries k ON c.country_code = k.code WHERE k.continent = 'Europe' AND c.feature_code = 'PPLC' ORDER BY c.name",
+     "hint": null,
+     "rows": 53,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "name:category",
+      "population:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "largest_city_per_country",
+     "origin": "reference",
+     "question": "largest city in each country",
+     "sql": "SELECT country_code, arg_max(name, population) AS city, max(population) AS population FROM cities GROUP BY country_code ORDER BY country_code",
+     "hint": null,
+     "rows": 244,
+     "chosen": "heatmap",
+     "available": [
+      "heatmap",
+      "bar",
+      "line",
+      "scatter",
+      "surface",
+      "table"
+     ],
+     "roles": [
+      "country_code:category",
+      "city:series",
+      "population:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "heatmap",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "avg_population_per_feature",
+     "origin": "reference",
+     "question": "average population by feature code",
+     "sql": "SELECT feature_code, avg(population) AS population FROM cities GROUP BY feature_code ORDER BY feature_code",
+     "hint": null,
+     "rows": 17,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "feature_code:category",
+      "population:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "countries_per_continent",
+     "origin": "reference",
+     "question": "number of countries per continent",
+     "sql": "SELECT continent, count(*) AS countries FROM countries GROUP BY continent ORDER BY continent",
+     "hint": null,
+     "rows": 7,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "continent:category",
+      "countries:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "euro_countries",
+     "origin": "reference",
+     "question": "countries that use the euro",
+     "sql": "SELECT name FROM countries WHERE currency = 'EUR' ORDER BY name",
+     "hint": null,
+     "rows": 36,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "name:category"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "largest_countries_by_area",
+     "origin": "reference",
+     "question": "biggest countries by area",
+     "sql": "SELECT name, area_km2 FROM countries ORDER BY area_km2 DESC LIMIT 10",
+     "hint": null,
+     "rows": 10,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "name:category",
+      "area_km2:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "denmark_cities_map",
+     "origin": "reference",
+     "question": "map of the cities in Denmark",
+     "sql": "-- view: map\nSELECT name, lat, lon FROM cities WHERE country_code = 'DK' ORDER BY name",
+     "hint": "map",
+     "rows": 67,
+     "chosen": "map",
+     "available": [
+      "map",
+      "density",
+      "table"
+     ],
+     "roles": [
+      "name:category",
+      "lat:lat",
+      "lon:lon"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "map"
+     ],
+     "ok": true
+    },
+    {
+     "id": "population_of_berlin",
+     "origin": "reference",
+     "question": "population of Berlin",
+     "sql": "SELECT population FROM cities WHERE name = 'Berlin'",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "population:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "partial_per_contin",
+     "origin": "reference",
+     "question": "number of cities per contin",
+     "sql": "SELECT k.continent, count(*) AS cities FROM cities c JOIN countries k ON c.country_code = k.code GROUP BY k.continent ORDER BY k.continent",
+     "hint": null,
+     "rows": 7,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "continent:category",
+      "cities:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "single_word_population",
+     "origin": "reference",
+     "question": "population",
+     "sql": "SELECT k.continent, sum(c.population) AS population FROM cities c JOIN countries k ON c.country_code = k.code GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 7,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "continent:category",
+      "population:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "scatter_area_population",
+     "origin": "reference",
+     "question": "scatter of country area vs population",
+     "sql": "-- view: scatter\nSELECT area_km2, population FROM countries ORDER BY 1",
+     "hint": "scatter",
+     "rows": 252,
+     "chosen": "scatter",
+     "available": [
+      "scatter",
+      "line",
+      "bar",
+      "table"
+     ],
+     "roles": [
+      "area_km2:measure",
+      "population:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "scatter"
+     ],
+     "ok": true
+    },
+    {
+     "id": "countries_without_cities",
+     "origin": "reference",
+     "question": "countries with no city over 15,000 inhabitants",
+     "sql": "SELECT name FROM countries k WHERE NOT EXISTS (SELECT 1 FROM cities c WHERE c.country_code = k.code) ORDER BY name",
+     "hint": null,
+     "rows": 8,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "name:category"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "most_cities_above_1000m",
+     "origin": "reference",
+     "question": "which country has the most cities above 1000 m",
+     "sql": "SELECT country_code, count(*) AS cities FROM cities WHERE elevation > 1000 GROUP BY country_code ORDER BY cities DESC LIMIT 1",
+     "hint": null,
+     "rows": 1,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "country_code:category",
+      "cities:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "avg_latitude_per_continent",
+     "origin": "reference",
+     "question": "average latitude of cities per continent",
+     "sql": "SELECT k.continent, avg(c.lat) AS lat FROM cities c JOIN countries k ON c.country_code = k.code GROUP BY k.continent ORDER BY k.continent",
+     "hint": null,
+     "rows": 7,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "continent:category",
+      "lat:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "unknown_city_atlantis",
+     "origin": "reference",
+     "question": "population of Atlantis",
+     "sql": "SELECT population FROM cities WHERE name = 'Atlantis'",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "population:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "india_vs_china_cities",
+     "origin": "reference",
+     "question": "compare the number of cities in India and China",
+     "sql": "SELECT country_code, count(*) AS cities FROM cities WHERE country_code IN ('IN', 'CN') GROUP BY country_code ORDER BY country_code",
+     "hint": null,
+     "rows": 2,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "country_code:category",
+      "cities:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "urban_share_per_country_top10",
+     "origin": "reference",
+     "question": "share of each country's population living in these cities, top 10",
+     "sql": "SELECT k.name, sum(c.population) / k.population AS share FROM cities c JOIN countries k ON c.country_code = k.code WHERE k.population > 0 GROUP BY k.name, k.population ORDER BY share DESC LIMIT 10",
+     "hint": null,
+     "rows": 10,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "name:category",
+      "share:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "cities_per_lat_band",
+     "origin": "reference",
+     "question": "number of cities per 10 degree latitude band",
+     "sql": "SELECT floor(lat / 10) * 10 AS lat_band, count(*) AS cities FROM cities GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 14,
+     "chosen": "scatter",
+     "available": [
+      "scatter",
+      "line",
+      "bar",
+      "table"
+     ],
+     "roles": [
+      "lat_band:measure",
+      "cities:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line",
+      "scatter"
+     ],
+     "ok": true
+    },
+    {
+     "id": "partial_capitals_in_afr",
+     "origin": "reference",
+     "question": "capitals in Afr",
+     "sql": "SELECT c.name FROM cities c JOIN countries k ON c.country_code = k.code WHERE k.continent = 'Africa' AND c.feature_code = 'PPLC' ORDER BY c.name",
+     "hint": null,
+     "rows": 57,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "name:category"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "top10_largest_cities",
+     "origin": "model:b3-v5",
+     "question": "10 largest cities by population",
+     "sql": "SELECT name, population AS pop FROM cities ORDER BY population DESC LIMIT 10",
+     "hint": null,
+     "rows": 10,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "name:category",
+      "pop:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "cities_per_country_top10",
+     "origin": "model:b3-v5",
+     "question": "which 10 countries have the most cities",
+     "sql": "SELECT c.name,cnt FROM (SELECT country_code,COUNT(*) AS cnt FROM cities GROUP BY country_code) AS t JOIN countries c ON c.code=t.country_code ORDER BY cnt DESC LIMIT 10",
+     "hint": null,
+     "rows": 10,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "name:category",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "city_population_per_continent",
+     "origin": "model:b3-v5",
+     "question": "total city population per continent",
+     "sql": "SELECT c.continent AS continent, SUM(ci.population) AS total_pop FROM cities ci JOIN countries c ON ci.country_code=c.code GROUP BY c.continent ORDER BY c.continent",
+     "hint": null,
+     "rows": 7,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "continent:category",
+      "total_pop:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "capitals_map",
+     "origin": "model:b3-v5",
+     "question": "map of all capital cities",
+     "sql": "-- view: map\nSELECT name, lat, lon FROM cities WHERE feature_code='PPLC' ORDER BY name LIMIT 5000",
+     "hint": "map",
+     "rows": 241,
+     "chosen": "map",
+     "available": [
+      "map",
+      "density",
+      "table"
+     ],
+     "roles": [
+      "name:category",
+      "lat:lat",
+      "lon:lon"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "map"
+     ],
+     "ok": true
+    },
+    {
+     "id": "avg_elevation_per_continent",
+     "origin": "model:b3-v5",
+     "question": "average city elevation per continent",
+     "sql": "SELECT c.continent, AVG(ci.elevation) AS avg_elev FROM cities ci JOIN countries c ON ci.country_code=c.code GROUP BY c.continent ORDER BY c.continent",
+     "hint": null,
+     "rows": 7,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "continent:category",
+      "avg_elev:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "southernmost_city",
+     "origin": "model:b3-v5",
+     "question": "southernmost city",
+     "sql": "SELECT name, lat FROM cities ORDER BY lat ASC LIMIT 1",
+     "hint": null,
+     "rows": 1,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "name:category",
+      "lat:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "count_over_million",
+     "origin": "model:b3-v5",
+     "question": "how many cities have more than a million people",
+     "sql": "SELECT COUNT(*) AS cnt FROM cities WHERE population>1000000",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "largest_german_cities",
+     "origin": "model:b3-v5",
+     "question": "10 largest cities in Germany",
+     "sql": "SELECT name,population FROM cities WHERE country_code='DE' ORDER BY population DESC LIMIT 10",
+     "hint": null,
+     "rows": 10,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "name:category",
+      "population:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "europe_timezones",
+     "origin": "model:b3-v5",
+     "question": "number of cities per time zone in Europe",
+     "sql": "SELECT timezone,COUNT(*) cnt FROM cities JOIN countries ON cities.country_code=countries.code WHERE continent='Europe' GROUP BY timezone ORDER BY timezone",
+     "hint": null,
+     "rows": 80,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "timezone:category",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "southern_hemisphere_count",
+     "origin": "model:b3-v5",
+     "question": "how many cities are in the southern hemisphere",
+     "sql": "SELECT COUNT(*) AS count FROM cities WHERE lat < 0",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "count:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "european_capitals_population",
+     "origin": "model:b3-v5",
+     "question": "population of each capital in Europe",
+     "sql": "SELECT c.name,c.population FROM cities c JOIN countries co ON c.country_code=co.code WHERE c.feature_code='PPLC' AND co.continent='Europe' ORDER BY c.name LIMIT 5000",
+     "hint": null,
+     "rows": 53,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "name:category",
+      "population:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "largest_city_per_country",
+     "origin": "model:b3-v5",
+     "question": "largest city in each country",
+     "sql": "SELECT co.name AS country,c.name AS city,c.population AS pop FROM cities c JOIN countries co ON c.country_code=co.code QUALIFY ROW_NUMBER() OVER(PARTITION BY c.country_code ORDER BY c.population DESC)=1 ORDER BY co.name",
+     "hint": null,
+     "rows": 244,
+     "chosen": "heatmap",
+     "available": [
+      "heatmap",
+      "bar",
+      "line",
+      "scatter",
+      "surface",
+      "table"
+     ],
+     "roles": [
+      "country:category",
+      "city:series",
+      "pop:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "heatmap",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "avg_population_per_feature",
+     "origin": "model:b3-v5",
+     "question": "average population by feature code",
+     "sql": "SELECT feature_code, AVG(population) AS avg_pop FROM cities GROUP BY feature_code ORDER BY feature_code",
+     "hint": null,
+     "rows": 17,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "feature_code:category",
+      "avg_pop:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "countries_per_continent",
+     "origin": "model:b3-v5",
+     "question": "number of countries per continent",
+     "sql": "SELECT continent, count(*) cnt FROM countries GROUP BY continent ORDER BY continent",
+     "hint": null,
+     "rows": 7,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "continent:category",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "euro_countries",
+     "origin": "model:b3-v5",
+     "question": "countries that use the euro",
+     "sql": "SELECT name,currency,population FROM countries WHERE currency='EUR' ORDER BY name LIMIT 5000",
+     "hint": null,
+     "rows": 36,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "heatmap",
+      "surface",
+      "table"
+     ],
+     "roles": [
+      "name:category",
+      "currency:series",
+      "population:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "heatmap",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "largest_countries_by_area",
+     "origin": "model:b3-v5",
+     "question": "biggest countries by area",
+     "sql": "SELECT name,area_km2 AS area FROM countries ORDER BY area_km2 DESC LIMIT 5000",
+     "hint": null,
+     "rows": 252,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "name:category",
+      "area:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "denmark_cities_map",
+     "origin": "model:b3-v5",
+     "question": "map of the cities in Denmark",
+     "sql": "-- view: map\nSELECT name, lat, lon FROM cities WHERE country_code='DK' ORDER BY name LIMIT 5000",
+     "hint": "map",
+     "rows": 67,
+     "chosen": "map",
+     "available": [
+      "map",
+      "density",
+      "table"
+     ],
+     "roles": [
+      "name:category",
+      "lat:lat",
+      "lon:lon"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "map"
+     ],
+     "ok": true
+    },
+    {
+     "id": "population_of_berlin",
+     "origin": "model:b3-v5",
+     "question": "population of Berlin",
+     "sql": "SELECT population AS pop FROM cities WHERE name='Berlin' LIMIT 1",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "pop:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "partial_per_contin",
+     "origin": "model:b3-v5",
+     "question": "number of cities per contin",
+     "sql": "SELECT c.continent AS continent,COUNT(*) AS city_count FROM cities ci JOIN countries c ON ci.country_code=c.code GROUP BY c.continent ORDER BY c.continent LIMIT 5000",
+     "hint": null,
+     "rows": 7,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "continent:category",
+      "city_count:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "single_word_population",
+     "origin": "model:b3-v5",
+     "question": "population",
+     "sql": "SELECT c.name country,total_pop pop FROM (SELECT country_code,SUM(population) total_pop FROM cities GROUP BY country_code) cp JOIN countries c ON c.code=cp.country_code ORDER BY total_pop DESC LIMIT 5000",
+     "hint": null,
+     "rows": 244,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "country:category",
+      "pop:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "most_cities_above_1000m",
+     "origin": "model:b3-v5",
+     "question": "which country has the most cities above 1000 m",
+     "sql": "SELECT c.name country,COUNT(*) cnt FROM cities s JOIN countries c ON s.country_code=c.code WHERE s.elevation>1000 GROUP BY c.name ORDER BY cnt DESC LIMIT 1",
+     "hint": null,
+     "rows": 1,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "country:category",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "avg_latitude_per_continent",
+     "origin": "model:b3-v5",
+     "question": "average latitude of cities per continent",
+     "sql": "SELECT c.continent, AVG(ci.lat) AS avg_lat FROM cities ci JOIN countries c ON ci.country_code=c.code GROUP BY c.continent ORDER BY c.continent",
+     "hint": null,
+     "rows": 7,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "continent:category",
+      "avg_lat:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "unknown_city_atlantis",
+     "origin": "model:b3-v5",
+     "question": "population of Atlantis",
+     "sql": "SELECT population AS pop FROM cities WHERE name = 'Atlantis' LIMIT 1",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "pop:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "india_vs_china_cities",
+     "origin": "model:b3-v5",
+     "question": "compare the number of cities in India and China",
+     "sql": "SELECT co.name country,cnt FROM (SELECT country_code,count(*) cnt FROM cities WHERE country_code IN ('IN','CN') GROUP BY country_code) c JOIN countries co ON co.code=c.country_code ORDER BY country",
+     "hint": null,
+     "rows": 2,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "country:category",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "cities_per_lat_band",
+     "origin": "model:b3-v5",
+     "question": "number of cities per 10 degree latitude band",
+     "sql": "SELECT FLOOR(lat/10)*10 AS lat_band,COUNT(*) AS cnt FROM cities GROUP BY lat_band ORDER BY lat_band",
+     "hint": null,
+     "rows": 14,
+     "chosen": "scatter",
+     "available": [
+      "scatter",
+      "line",
+      "bar",
+      "table"
+     ],
+     "roles": [
+      "lat_band:measure",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line",
+      "scatter"
+     ],
+     "ok": true
+    },
+    {
+     "id": "partial_capitals_in_afr",
+     "origin": "model:b3-v5",
+     "question": "capitals in Afr",
+     "sql": "SELECT c.name AS city,country.name AS country FROM cities c JOIN countries country ON c.country_code=country.code WHERE c.feature_code='PPLC' AND country.continent='Africa' ORDER BY country LIMIT 5000",
+     "hint": null,
+     "rows": 57,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "country:series"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "table"
+     ],
+     "ok": true
+    }
+   ]
+  },
+  "flights": {
+   "n": 67,
+   "questionable": 2,
+   "results": [
+    {
+     "id": "flights_per_airline",
+     "origin": "reference",
+     "question": "number of flights per airline",
+     "sql": "SELECT carrier, count(*) AS flights FROM flights GROUP BY carrier ORDER BY carrier",
+     "hint": null,
+     "rows": 15,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "carrier:category",
+      "flights:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "avg_dep_delay_per_carrier",
+     "origin": "reference",
+     "question": "average departure delay by carrier",
+     "sql": "SELECT carrier, avg(dep_delay) AS dep_delay FROM flights GROUP BY carrier ORDER BY carrier",
+     "hint": null,
+     "rows": 15,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "carrier:category",
+      "dep_delay:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "cancellation_rate_per_airline",
+     "origin": "reference",
+     "question": "cancellation rate per airline",
+     "sql": "SELECT carrier, avg(cancelled::INTEGER) AS cancellation_rate FROM flights GROUP BY carrier ORDER BY carrier",
+     "hint": null,
+     "rows": 15,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "carrier:category",
+      "cancellation_rate:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "top10_busiest_airports",
+     "origin": "reference",
+     "question": "top 10 busiest airports by departures",
+     "sql": "SELECT origin, count(*) AS departures FROM flights GROUP BY origin ORDER BY departures DESC LIMIT 10",
+     "hint": null,
+     "rows": 10,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "origin:category",
+      "departures:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "flights_per_day",
+     "origin": "reference",
+     "question": "number of flights per day",
+     "sql": "SELECT flight_date, count(*) AS flights FROM flights GROUP BY flight_date ORDER BY flight_date",
+     "hint": null,
+     "rows": 30,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "flight_date:time",
+      "flights:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "cancellations_per_day",
+     "origin": "reference",
+     "question": "cancelled flights per day",
+     "sql": "SELECT flight_date, count(*) FILTER (WHERE cancelled) AS cancelled_flights FROM flights GROUP BY flight_date ORDER BY flight_date",
+     "hint": null,
+     "rows": 30,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "flight_date:time",
+      "cancelled_flights:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "delay_by_hour_of_day",
+     "origin": "reference",
+     "question": "average departure delay by hour of day",
+     "sql": "SELECT hour(scheduled_departure) AS hour, avg(dep_delay) AS dep_delay FROM flights GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 24,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "hour:category",
+      "dep_delay:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line",
+      "scatter"
+     ],
+     "ok": true
+    },
+    {
+     "id": "arr_delay_per_carrier_7d",
+     "origin": "reference",
+     "question": "average arrival delay per carrier over the last 7 days",
+     "sql": "SELECT carrier, avg(arr_delay) AS arr_delay FROM flights WHERE flight_date >= TIMESTAMP '2024-06-30 00:00:00' - INTERVAL '7 day' GROUP BY carrier ORDER BY carrier",
+     "hint": null,
+     "rows": 15,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "carrier:category",
+      "arr_delay:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "departures_per_state",
+     "origin": "reference",
+     "question": "number of departures per state",
+     "sql": "SELECT a.state, count(*) AS departures FROM flights f JOIN airports a ON f.origin = a.code GROUP BY a.state ORDER BY a.state",
+     "hint": null,
+     "rows": 53,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "state:category",
+      "departures:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "airport_map_departures",
+     "origin": "reference",
+     "question": "map of airports by number of departures",
+     "sql": "-- view: map\nSELECT a.code, a.lat, a.lon, count(*) AS departures FROM flights f JOIN airports a ON f.origin = a.code GROUP BY ALL ORDER BY 1",
+     "hint": "map",
+     "rows": 340,
+     "chosen": "map",
+     "available": [
+      "map",
+      "density",
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "code:category",
+      "lat:lat",
+      "lon:lon",
+      "departures:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "map"
+     ],
+     "ok": true
+    },
+    {
+     "id": "top5_routes",
+     "origin": "reference",
+     "question": "top 5 busiest routes",
+     "sql": "SELECT origin, dest, count(*) AS flights FROM flights GROUP BY origin, dest ORDER BY flights DESC, origin LIMIT 5",
+     "hint": null,
+     "rows": 5,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "heatmap",
+      "surface",
+      "table"
+     ],
+     "roles": [
+      "origin:category",
+      "dest:series",
+      "flights:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "heatmap",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "avg_distance_per_airline",
+     "origin": "reference",
+     "question": "average flight distance per airline",
+     "sql": "SELECT carrier, avg(distance) AS distance FROM flights GROUP BY carrier ORDER BY carrier",
+     "hint": null,
+     "rows": 15,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "carrier:category",
+      "distance:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "longest_route",
+     "origin": "reference",
+     "question": "what is the longest route in miles",
+     "sql": "SELECT max(distance) AS distance FROM flights",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "distance:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "weather_delay_per_day",
+     "origin": "reference",
+     "question": "total weather delay minutes per day",
+     "sql": "SELECT flight_date, sum(weather_delay) AS weather_delay FROM flights GROUP BY flight_date ORDER BY flight_date",
+     "hint": null,
+     "rows": 30,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "flight_date:time",
+      "weather_delay:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "delay_causes",
+     "origin": "reference",
+     "question": "average minutes of each delay cause",
+     "sql": "SELECT avg(carrier_delay) AS carrier_delay, avg(weather_delay) AS weather_delay, avg(nas_delay) AS nas_delay, avg(security_delay) AS security_delay, avg(late_aircraft_delay) AS late_aircraft_delay FROM flights",
+     "hint": null,
+     "rows": 1,
+     "chosen": "scatter",
+     "available": [
+      "scatter",
+      "line",
+      "bar",
+      "table"
+     ],
+     "roles": [
+      "carrier_delay:measure",
+      "weather_delay:measure",
+      "nas_delay:measure",
+      "security_delay:measure",
+      "late_aircraft_delay:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": false
+    },
+    {
+     "id": "diverted_per_airline",
+     "origin": "reference",
+     "question": "how many flights were diverted per airline",
+     "sql": "SELECT carrier, count(*) FILTER (WHERE diverted) AS diverted FROM flights GROUP BY carrier ORDER BY carrier",
+     "hint": null,
+     "rows": 15,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "carrier:category",
+      "diverted:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "jfk_june_15",
+     "origin": "reference",
+     "question": "how many flights departed from JFK on June 15",
+     "sql": "SELECT count(*) AS flights FROM flights WHERE origin = 'JFK' AND flight_date = DATE '2024-06-15'",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "flights:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "taxi_out_busiest10",
+     "origin": "reference",
+     "question": "average taxi-out time at the 10 busiest airports",
+     "sql": "SELECT origin, avg(taxi_out) AS taxi_out FROM flights WHERE origin IN (SELECT origin FROM flights GROUP BY origin ORDER BY count(*) DESC LIMIT 10) GROUP BY origin ORDER BY origin",
+     "hint": null,
+     "rows": 10,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "origin:category",
+      "taxi_out:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "delta_daily_arr_delay",
+     "origin": "reference",
+     "question": "delta average arrival delay per day",
+     "sql": "SELECT flight_date, avg(arr_delay) AS arr_delay FROM flights WHERE carrier = 'DL' GROUP BY flight_date ORDER BY flight_date",
+     "hint": null,
+     "rows": 30,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "flight_date:time",
+      "arr_delay:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "on_time_pct_per_carrier",
+     "origin": "reference",
+     "question": "on-time percentage per carrier",
+     "sql": "SELECT carrier, 100.0 * count(*) FILTER (WHERE arr_delay < 15) / count(arr_delay) AS on_time_pct FROM flights GROUP BY carrier ORDER BY carrier",
+     "hint": null,
+     "rows": 15,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "carrier:category",
+      "on_time_pct:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "wn_dl_daily_flights",
+     "origin": "reference",
+     "question": "flights per day for Southwest and Delta",
+     "sql": "SELECT flight_date, carrier, count(*) AS flights FROM flights WHERE carrier IN ('WN', 'DL') GROUP BY ALL ORDER BY 1, 2",
+     "hint": null,
+     "rows": 60,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "flight_date:time",
+      "carrier:series",
+      "flights:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "worst_airports_dep_delay",
+     "origin": "reference",
+     "question": "10 airports with the highest average departure delay",
+     "sql": "SELECT origin, avg(dep_delay) AS dep_delay FROM flights GROUP BY origin ORDER BY dep_delay DESC LIMIT 10",
+     "hint": null,
+     "rows": 10,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "origin:category",
+      "dep_delay:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "partial_cancelled_per_carr",
+     "origin": "reference",
+     "question": "number of cancelled flights per carr",
+     "sql": "SELECT carrier, count(*) FILTER (WHERE cancelled) AS cancelled_flights FROM flights GROUP BY carrier ORDER BY carrier",
+     "hint": null,
+     "rows": 15,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "carrier:category",
+      "cancelled_flights:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "single_word_delays",
+     "origin": "reference",
+     "question": "delays",
+     "sql": "SELECT flight_date, avg(dep_delay) AS dep_delay FROM flights GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 30,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "flight_date:time",
+      "dep_delay:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "unknown_airline_lufthansa",
+     "origin": "reference",
+     "question": "how many flights did Lufthansa operate",
+     "sql": "SELECT count(*) AS flights FROM flights f JOIN carriers c ON f.carrier = c.code WHERE c.name ILIKE '%Lufthansa%'",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "flights:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "scatter_dep_arr_delay_airport",
+     "origin": "reference",
+     "question": "scatter of average departure delay vs average arrival delay per airport",
+     "sql": "-- view: scatter\nSELECT avg(dep_delay) AS dep_delay, avg(arr_delay) AS arr_delay FROM flights GROUP BY origin ORDER BY 1",
+     "hint": "scatter",
+     "rows": 340,
+     "chosen": "scatter",
+     "available": [
+      "scatter",
+      "line",
+      "bar",
+      "table"
+     ],
+     "roles": [
+      "dep_delay:measure",
+      "arr_delay:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "scatter"
+     ],
+     "ok": true
+    },
+    {
+     "id": "cancellations_by_weekday",
+     "origin": "reference",
+     "question": "cancellations by day of week",
+     "sql": "SELECT dayname(flight_date) AS weekday, count(*) FILTER (WHERE cancelled) AS cancellations FROM flights GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 7,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "weekday:category",
+      "cancellations:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "median_dep_delay_per_carrier",
+     "origin": "reference",
+     "question": "median departure delay per carrier",
+     "sql": "SELECT carrier, median(dep_delay) AS dep_delay FROM flights GROUP BY carrier ORDER BY carrier",
+     "hint": null,
+     "rows": 15,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "carrier:category",
+      "dep_delay:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "ohare_avg_delay",
+     "origin": "reference",
+     "question": "average delay at Chicago O'Hare",
+     "sql": "SELECT avg(dep_delay) AS dep_delay FROM flights WHERE origin = 'ORD'",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "dep_delay:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "weekly_flights_per_carrier",
+     "origin": "reference",
+     "question": "flights per week for each carrier",
+     "sql": "SELECT date_trunc('week', flight_date) AS week, carrier, count(*) AS flights FROM flights GROUP BY ALL ORDER BY 1, 2",
+     "hint": null,
+     "rows": 75,
+     "chosen": "heatmap",
+     "available": [
+      "heatmap",
+      "line",
+      "bar",
+      "scatter",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "week:time",
+      "carrier:series",
+      "flights:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "avg_speed_per_carrier_mph",
+     "origin": "reference",
+     "question": "average speed in the air per airline in mph",
+     "sql": "SELECT carrier, avg(distance / (air_time / 60)) AS mph FROM flights GROUP BY carrier ORDER BY carrier",
+     "hint": null,
+     "rows": 15,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "carrier:category",
+      "mph:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "share_delayed_over_hour_per_day",
+     "origin": "reference",
+     "question": "share of flights delayed more than an hour, per day",
+     "sql": "SELECT flight_date, avg((dep_delay > 60)::INTEGER) AS share FROM flights GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 30,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "flight_date:time",
+      "share:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "cancellation_reasons",
+     "origin": "reference",
+     "question": "breakdown of cancellation reasons",
+     "sql": "SELECT cancellation_reason, count(*) AS flights FROM flights WHERE cancelled GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 3,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "cancellation_reason:category",
+      "flights:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "hourly_departures_atl_last_day",
+     "origin": "reference",
+     "question": "departures per hour from Atlanta on the last day",
+     "sql": "SELECT date_trunc('hour', scheduled_departure) AS hour, count(*) AS departures FROM flights WHERE origin = 'ATL' AND flight_date = DATE '2024-06-30' GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 19,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "departures:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "flights_per_airline",
+     "origin": "model:b3-v5",
+     "question": "number of flights per airline",
+     "sql": "SELECT carriers.name airline,COUNT(*) cnt FROM flights JOIN carriers ON flights.carrier=carriers.code GROUP BY carriers.name ORDER BY carriers.name",
+     "hint": null,
+     "rows": 15,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "airline:category",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "avg_dep_delay_per_carrier",
+     "origin": "model:b3-v5",
+     "question": "average departure delay by carrier",
+     "sql": "SELECT f.carrier AS carrier,AVG(f.dep_delay) AS avg_delay FROM flights AS f GROUP BY f.carrier ORDER BY f.carrier LIMIT 5000",
+     "hint": null,
+     "rows": 15,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "carrier:category",
+      "avg_delay:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "cancellation_rate_per_airline",
+     "origin": "model:b3-v5",
+     "question": "cancellation rate per airline",
+     "sql": "SELECT c.name, SUM(CASE WHEN f.cancelled THEN 1 ELSE 0 END)::DOUBLE/COUNT(*) AS rate FROM flights f JOIN carriers c ON f.carrier=c.code GROUP BY c.name ORDER BY c.name LIMIT 5000",
+     "hint": null,
+     "rows": 15,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "name:category",
+      "rate:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "top10_busiest_airports",
+     "origin": "model:b3-v5",
+     "question": "top 10 busiest airports by departures",
+     "sql": "SELECT f.origin AS x, COUNT(*) AS cnt FROM flights f GROUP BY f.origin ORDER BY cnt DESC LIMIT 10",
+     "hint": null,
+     "rows": 10,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "x:category",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "cancellations_per_day",
+     "origin": "model:b3-v5",
+     "question": "cancelled flights per day",
+     "sql": "SELECT flight_date AS x, COUNT(*) AS cnt FROM flights WHERE cancelled GROUP BY flight_date ORDER BY flight_date LIMIT 5000",
+     "hint": null,
+     "rows": 30,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "x:time",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "delay_by_hour_of_day",
+     "origin": "model:b3-v5",
+     "question": "average departure delay by hour of day",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', scheduled_departure) AS hour, avg(dep_delay) AS avg_delay FROM flights WHERE NOT cancelled GROUP BY hour ORDER BY hour LIMIT 5000",
+     "hint": null,
+     "rows": 720,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "avg_delay:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "arr_delay_per_carrier_7d",
+     "origin": "model:b3-v5",
+     "question": "average arrival delay per carrier over the last 7 days",
+     "sql": "SELECT carrier, AVG(arr_delay) AS avg_delay FROM flights WHERE flight_date >= DATE '2024-06-30' - INTERVAL '7 days' GROUP BY carrier ORDER BY carrier",
+     "hint": null,
+     "rows": 15,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "carrier:category",
+      "avg_delay:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "departures_per_state",
+     "origin": "model:b3-v5",
+     "question": "number of departures per state",
+     "sql": "SELECT a.state st,cnt FROM (SELECT origin,COUNT(*) cnt FROM flights GROUP BY origin) f JOIN airports a ON f.origin=a.code ORDER BY a.state LIMIT 5000",
+     "hint": null,
+     "rows": 340,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "st:category",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "airport_map_departures",
+     "origin": "model:b3-v5",
+     "question": "map of airports by number of departures",
+     "sql": "SELECT a.lat AS lat,a.lon AS lon,COUNT(*) AS dep_cnt FROM flights f JOIN airports a ON f.origin=a.code GROUP BY a.lat,a.lon ORDER BY dep_cnt DESC LIMIT 5000",
+     "hint": null,
+     "rows": 340,
+     "chosen": "map",
+     "available": [
+      "map",
+      "density",
+      "table"
+     ],
+     "roles": [
+      "lat:lat",
+      "lon:lon",
+      "dep_cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "map"
+     ],
+     "ok": true
+    },
+    {
+     "id": "top5_routes",
+     "origin": "model:b3-v5",
+     "question": "top 5 busiest routes",
+     "sql": "SELECT origin,dest,COUNT(*) cnt FROM flights WHERE cancelled=false GROUP BY origin,dest ORDER BY cnt DESC LIMIT 5",
+     "hint": null,
+     "rows": 5,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "heatmap",
+      "surface",
+      "table"
+     ],
+     "roles": [
+      "origin:category",
+      "dest:series",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "heatmap",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "avg_distance_per_airline",
+     "origin": "model:b3-v5",
+     "question": "average flight distance per airline",
+     "sql": "SELECT carriers.name airline,AVG(flights.distance) avg_dist FROM flights JOIN carriers ON flights.carrier=carriers.code GROUP BY carriers.name ORDER BY carriers.name",
+     "hint": null,
+     "rows": 15,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "airline:category",
+      "avg_dist:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "longest_route",
+     "origin": "model:b3-v5",
+     "question": "what is the longest route in miles",
+     "sql": "SELECT origin AS o,dest AS d,distance AS dist FROM flights ORDER BY distance DESC LIMIT 1",
+     "hint": null,
+     "rows": 1,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "heatmap",
+      "surface",
+      "table"
+     ],
+     "roles": [
+      "o:category",
+      "d:series",
+      "dist:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "weather_delay_per_day",
+     "origin": "model:b3-v5",
+     "question": "total weather delay minutes per day",
+     "sql": "SELECT flight_date, SUM(weather_delay) AS total FROM flights GROUP BY flight_date ORDER BY flight_date",
+     "hint": null,
+     "rows": 30,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "flight_date:time",
+      "total:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "delay_causes",
+     "origin": "model:b3-v5",
+     "question": "average minutes of each delay cause",
+     "sql": "SELECT avg(carrier_delay) AS carrier_avg, avg(weather_delay) AS weather_avg, avg(nas_delay) AS nas_avg, avg(security_delay) AS security_avg, avg(late_aircraft_delay) AS late_aircraft_avg FROM flights",
+     "hint": null,
+     "rows": 1,
+     "chosen": "scatter",
+     "available": [
+      "scatter",
+      "line",
+      "bar",
+      "table"
+     ],
+     "roles": [
+      "carrier_avg:measure",
+      "weather_avg:measure",
+      "nas_avg:measure",
+      "security_avg:measure",
+      "late_aircraft_avg:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": false
+    },
+    {
+     "id": "diverted_per_airline",
+     "origin": "model:b3-v5",
+     "question": "how many flights were diverted per airline",
+     "sql": "SELECT c.name airline,COUNT(*) cnt FROM flights f JOIN carriers c ON f.carrier=c.code WHERE f.diverted GROUP BY c.name ORDER BY cnt",
+     "hint": null,
+     "rows": 15,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "airline:category",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "jfk_june_15",
+     "origin": "model:b3-v5",
+     "question": "how many flights departed from JFK on June 15",
+     "sql": "SELECT COUNT(*) AS cnt FROM flights WHERE origin='JFK' AND flight_date=DATE '2024-06-15'",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "taxi_out_busiest10",
+     "origin": "model:b3-v5",
+     "question": "average taxi-out time at the 10 busiest airports",
+     "sql": "WITH busiest AS (SELECT origin FROM flights WHERE NOT cancelled GROUP BY origin ORDER BY COUNT(*) DESC LIMIT 10) SELECT f.origin AS airport, AVG(f.taxi_out) AS avg_taxi FROM flights f JOIN busiest b ON f.origin=b.origin WHERE NOT cancelled GROUP BY f.origin ORDER BY avg_taxi DESC",
+     "hint": null,
+     "rows": 10,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "airport:category",
+      "avg_taxi:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "delta_daily_arr_delay",
+     "origin": "model:b3-v5",
+     "question": "delta average arrival delay per day",
+     "sql": "SELECT flight_date,AVG(arr_delay) AS avg_delay FROM flights WHERE carrier='DL' GROUP BY flight_date ORDER BY flight_date LIMIT 5000",
+     "hint": null,
+     "rows": 30,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "flight_date:time",
+      "avg_delay:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "on_time_pct_per_carrier",
+     "origin": "model:b3-v5",
+     "question": "on-time percentage per carrier",
+     "sql": "SELECT f.carrier AS carrier,100.0*SUM(CASE WHEN f.arr_delay<=0 THEN 1 ELSE 0 END)/COUNT(*) AS pct FROM flights f GROUP BY f.carrier ORDER BY f.carrier",
+     "hint": null,
+     "rows": 15,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "carrier:category",
+      "pct:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "wn_dl_daily_flights",
+     "origin": "model:b3-v5",
+     "question": "flights per day for Southwest and Delta",
+     "sql": "SELECT flight_date, carrier, count(*) cnt FROM flights WHERE carrier IN ('WN','DL') GROUP BY flight_date, carrier ORDER BY flight_date, carrier",
+     "hint": null,
+     "rows": 60,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "flight_date:time",
+      "carrier:series",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "worst_airports_dep_delay",
+     "origin": "model:b3-v5",
+     "question": "10 airports with the highest average departure delay",
+     "sql": "SELECT f.origin AS airport, AVG(f.dep_delay) AS avg_delay FROM flights f GROUP BY f.origin ORDER BY avg_delay DESC LIMIT 10",
+     "hint": null,
+     "rows": 10,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "airport:category",
+      "avg_delay:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "partial_cancelled_per_carr",
+     "origin": "model:b3-v5",
+     "question": "number of cancelled flights per carr",
+     "sql": "SELECT f.carrier,c.name,cnt FROM (SELECT carrier,COUNT(*) AS cnt FROM flights WHERE cancelled GROUP BY carrier) f JOIN carriers c ON f.carrier=c.code ORDER BY f.carrier",
+     "hint": null,
+     "rows": 15,
+     "chosen": "heatmap",
+     "available": [
+      "heatmap",
+      "bar",
+      "line",
+      "scatter",
+      "surface",
+      "table"
+     ],
+     "roles": [
+      "carrier:category",
+      "name:series",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "heatmap",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "single_word_delays",
+     "origin": "model:b3-v5",
+     "question": "delays",
+     "sql": "SELECT carrier, AVG(dep_delay) AS avg_delay FROM flights WHERE NOT cancelled GROUP BY carrier ORDER BY carrier LIMIT 5000",
+     "hint": null,
+     "rows": 15,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "carrier:category",
+      "avg_delay:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "unknown_airline_lufthansa",
+     "origin": "model:b3-v5",
+     "question": "how many flights did Lufthansa operate",
+     "sql": "SELECT COUNT(*) AS cnt FROM flights WHERE carrier='LH'",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "scatter_dep_arr_delay_airport",
+     "origin": "model:b3-v5",
+     "question": "scatter of average departure delay vs average arrival delay per airport",
+     "sql": "SELECT avg(f.dep_delay) AS x, a.code AS airport, avg(f.arr_delay) AS y FROM flights f JOIN airports a ON f.origin = a.code WHERE NOT f.cancelled GROUP BY a.code ORDER BY a.code LIMIT 5000",
+     "hint": null,
+     "rows": 340,
+     "chosen": "scatter",
+     "available": [
+      "scatter",
+      "line",
+      "bar",
+      "heatmap",
+      "surface",
+      "table"
+     ],
+     "roles": [
+      "x:measure",
+      "airport:series",
+      "y:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line",
+      "scatter"
+     ],
+     "ok": true
+    },
+    {
+     "id": "cancellations_by_weekday",
+     "origin": "model:b3-v5",
+     "question": "cancellations by day of week",
+     "sql": "SELECT EXTRACT(DOW FROM flight_date) AS dow, COUNT(*) AS cnt FROM flights WHERE cancelled GROUP BY EXTRACT(DOW FROM flight_date) ORDER BY dow",
+     "hint": null,
+     "rows": 7,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "dow:category",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line",
+      "scatter"
+     ],
+     "ok": true
+    },
+    {
+     "id": "median_dep_delay_per_carrier",
+     "origin": "model:b3-v5",
+     "question": "median departure delay per carrier",
+     "sql": "SELECT f.carrier AS carrier, PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY f.dep_delay) AS med FROM flights f GROUP BY f.carrier ORDER BY f.carrier",
+     "hint": null,
+     "rows": 15,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "carrier:category",
+      "med:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "ohare_avg_delay",
+     "origin": "model:b3-v5",
+     "question": "average delay at Chicago O'Hare",
+     "sql": "SELECT AVG(arr_delay) AS avg_delay FROM flights WHERE (origin='ORD' OR dest='ORD') AND NOT cancelled",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "avg_delay:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "weekly_flights_per_carrier",
+     "origin": "model:b3-v5",
+     "question": "flights per week for each carrier",
+     "sql": "SELECT date_trunc('week', flight_date) AS week, f.carrier AS carrier, COUNT(*) AS cnt FROM flights f GROUP BY date_trunc('week', flight_date), f.carrier ORDER BY week, carrier",
+     "hint": null,
+     "rows": 75,
+     "chosen": "heatmap",
+     "available": [
+      "heatmap",
+      "line",
+      "bar",
+      "scatter",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "week:time",
+      "carrier:series",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "avg_speed_per_carrier_mph",
+     "origin": "model:b3-v5",
+     "question": "average speed in the air per airline in mph",
+     "sql": "SELECT f.carrier AS carrier, AVG(f.distance/(f.air_time/60)) AS avg_speed FROM flights f WHERE f.air_time>0 GROUP BY f.carrier ORDER BY f.carrier LIMIT 5000",
+     "hint": null,
+     "rows": 15,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "carrier:category",
+      "avg_speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "share_delayed_over_hour_per_day",
+     "origin": "model:b3-v5",
+     "question": "share of flights delayed more than an hour, per day",
+     "sql": "SELECT flight_date, SUM(CASE WHEN dep_delay>60 THEN 1 ELSE 0 END)::DOUBLE/COUNT(*) AS share_delayed FROM flights GROUP BY flight_date ORDER BY flight_date",
+     "hint": null,
+     "rows": 30,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "flight_date:time",
+      "share_delayed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "cancellation_reasons",
+     "origin": "model:b3-v5",
+     "question": "breakdown of cancellation reasons",
+     "sql": "SELECT cancellation_reason AS reason, COUNT(*) AS cnt FROM flights WHERE cancelled GROUP BY cancellation_reason ORDER BY cnt DESC LIMIT 5000",
+     "hint": null,
+     "rows": 3,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "reason:category",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "hourly_departures_atl_last_day",
+     "origin": "model:b3-v5",
+     "question": "departures per hour from Atlanta on the last day",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', scheduled_departure) AS hour, COUNT(*) AS cnt FROM flights WHERE origin='ATL' AND flight_date='2024-06-30' GROUP BY hour ORDER BY hour",
+     "hint": null,
+     "rows": 19,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    }
+   ]
+  },
+  "vessels": {
+   "n": 88,
+   "questionable": 0,
+   "results": [
+    {
+     "id": "avg_speed_per_vessel",
+     "origin": "reference",
+     "question": "average speed per vessel",
+     "sql": "SELECT vessel, avg(speed) AS speed FROM telemetry GROUP BY vessel ORDER BY vessel",
+     "hint": null,
+     "rows": 6,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "readings_per_vessel",
+     "origin": "reference",
+     "question": "how many readings per vessel",
+     "sql": "SELECT vessel, count(*) AS readings FROM telemetry GROUP BY vessel ORDER BY vessel",
+     "hint": null,
+     "rows": 6,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "readings:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "overall_max_wave",
+     "origin": "reference",
+     "question": "what was the highest wave height",
+     "sql": "SELECT max(wave_height) AS max_wave_height FROM telemetry",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "max_wave_height:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "fleet_avg_water_temp",
+     "origin": "reference",
+     "question": "average water temperature across the fleet",
+     "sql": "SELECT avg(water_temp) AS water_temp FROM telemetry",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "water_temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "min_max_speed_per_vessel",
+     "origin": "reference",
+     "question": "minimum and maximum speed for each vessel",
+     "sql": "SELECT vessel, min(speed) AS min_speed, max(speed) AS max_speed FROM telemetry GROUP BY vessel ORDER BY vessel",
+     "hint": null,
+     "rows": 6,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "min_speed:measure",
+      "max_speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "hourly_wind_last_2_days",
+     "origin": "reference",
+     "question": "hourly average wind speed over the last 2 days",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour, avg(wind) AS wind FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '2 day' GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 49,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "wind:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "daily_max_wave_per_vessel",
+     "origin": "reference",
+     "question": "max wave height per vessel per day",
+     "sql": "SELECT date_trunc('day', ts) AS day, vessel, max(wave_height) AS wave_height FROM telemetry GROUP BY ALL ORDER BY 1, 2",
+     "hint": null,
+     "rows": 84,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "vessel:series",
+      "wave_height:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "daily_min_max_water_temp",
+     "origin": "reference",
+     "question": "daily minimum and maximum water temperature",
+     "sql": "SELECT date_trunc('day', ts) AS day, min(water_temp) AS min_water_temp, max(water_temp) AS max_water_temp FROM telemetry GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 14,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "min_water_temp:measure",
+      "max_water_temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "aurora_speed_15min_last_day",
+     "origin": "reference",
+     "question": "Aurora's average speed in 15-minute buckets over the last day",
+     "sql": "SELECT time_bucket(INTERVAL '15 minutes', ts) AS t, avg(speed) AS speed FROM telemetry WHERE vessel = 'Aurora' AND ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 day' GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 97,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "t:time",
+      "speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "six_hour_wind_per_vessel",
+     "origin": "reference",
+     "question": "average wind per vessel in six-hour buckets",
+     "sql": "SELECT time_bucket(INTERVAL '6 hours', ts) AS t, vessel, avg(wind) AS wind FROM telemetry GROUP BY ALL ORDER BY 1, 2",
+     "hint": null,
+     "rows": 336,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "t:time",
+      "vessel:series",
+      "wind:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "hour_of_day_speed",
+     "origin": "reference",
+     "question": "average speed by hour of day",
+     "sql": "SELECT hour(ts) AS hour, avg(speed) AS speed FROM telemetry GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 24,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "hour:category",
+      "speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line",
+      "scatter"
+     ],
+     "ok": true
+    },
+    {
+     "id": "weekday_wave",
+     "origin": "reference",
+     "question": "average wave height by day of the week",
+     "sql": "SELECT dayname(ts) AS weekday, avg(wave_height) AS wave_height FROM telemetry GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 7,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "weekday:category",
+      "wave_height:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "atlas_speed_10min_today",
+     "origin": "reference",
+     "question": "speed of Atlas every 10 minutes today",
+     "sql": "SELECT time_bucket(INTERVAL '10 minutes', ts) AS t, avg(speed) AS speed FROM telemetry WHERE vessel = 'Atlas' AND ts >= TIMESTAMP '2026-09-14 00:00:00' GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 144,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "t:time",
+      "speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "aurora_water_temp_last_week",
+     "origin": "reference",
+     "question": "water temperature trend for Aurora in the last week",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS t, avg(water_temp) AS water_temp FROM telemetry WHERE vessel = 'Aurora' AND ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 day' GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 169,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "t:time",
+      "water_temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "fastest_last_24h",
+     "origin": "reference",
+     "question": "which vessel was fastest on average in the last 24 hours",
+     "sql": "SELECT vessel, avg(speed) AS speed FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '24 hour' GROUP BY vessel ORDER BY speed DESC LIMIT 1",
+     "hint": null,
+     "rows": 1,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "wave_by_hour_last_12h",
+     "origin": "reference",
+     "question": "compare wave height of all vessels by hour over the last 12 hours",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour, vessel, avg(wave_height) AS wave_height FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '12 hour' GROUP BY ALL ORDER BY 1, 2",
+     "hint": null,
+     "rows": 78,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "vessel:series",
+      "wave_height:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "speed_last_30_min",
+     "origin": "reference",
+     "question": "mean speed for the last 30 minutes in one-minute buckets",
+     "sql": "SELECT time_bucket(INTERVAL '1 minute', ts) AS minute, avg(speed) AS speed FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '30 minute' GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 31,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "minute:time",
+      "speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "wind_sept_3_to_5",
+     "origin": "reference",
+     "question": "Average wind from September 3 to September 5, 2026, hourly",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour, avg(wind) AS wind FROM telemetry WHERE ts >= TIMESTAMP '2026-09-03' AND ts < TIMESTAMP '2026-09-06' GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 72,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "wind:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "wave_last_hour_minutes",
+     "origin": "reference",
+     "question": "Average wave height for the last hour in one-minute buckets",
+     "sql": "SELECT time_bucket(INTERVAL '1 minute', ts) AS minute, avg(wave_height) AS wave_height FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 hour' GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 61,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "minute:time",
+      "wave_height:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "kestrel_vs_nomad_hourly",
+     "origin": "reference",
+     "question": "compare speed of Kestrel and Nomad by hour",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour, vessel, avg(speed) AS speed FROM telemetry WHERE vessel IN ('Kestrel', 'Nomad') GROUP BY ALL ORDER BY 1, 2",
+     "hint": null,
+     "rows": 672,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "vessel:series",
+      "speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "excluding_aurora_last_day",
+     "origin": "reference",
+     "question": "Compare vessel speed by hour over the last day excluding Aurora",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour, vessel, avg(speed) AS speed FROM telemetry WHERE vessel <> 'Aurora' AND ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 day' GROUP BY ALL ORDER BY 1, 2",
+     "hint": null,
+     "rows": 125,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "vessel:series",
+      "speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "waves_above_4_per_vessel",
+     "origin": "reference",
+     "question": "how many readings had waves above 4 metres, per vessel",
+     "sql": "SELECT vessel, count(*) AS readings FROM telemetry WHERE wave_height > 4 GROUP BY vessel ORDER BY vessel",
+     "hint": null,
+     "rows": 6,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "readings:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "north_of_50_hourly_speed",
+     "origin": "reference",
+     "question": "Hourly average speed for vessels north of latitude 50 in the last day",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour, avg(speed) AS speed FROM telemetry WHERE lat > 50 AND ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 day' GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 25,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "solstice_strong_wind_hours",
+     "origin": "reference",
+     "question": "in how many hours did Solstice see wind above 30 knots",
+     "sql": "SELECT count(DISTINCT date_trunc('hour', ts)) AS hours FROM telemetry WHERE vessel = 'Solstice' AND wind > 30",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "hours:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "top10_hourly_waves",
+     "origin": "reference",
+     "question": "table of the 10 highest hourly average wave heights",
+     "sql": "-- view: table\nSELECT time_bucket(INTERVAL '1 hour', ts) AS hour, vessel, avg(wave_height) AS wave_height FROM telemetry GROUP BY ALL ORDER BY wave_height DESC LIMIT 10",
+     "hint": "table",
+     "rows": 10,
+     "chosen": "table",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "vessel:series",
+      "wave_height:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "top3_fastest_7d",
+     "origin": "reference",
+     "question": "the three fastest vessels by average speed in the past 7 days",
+     "sql": "SELECT vessel, avg(speed) AS speed FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 day' GROUP BY vessel ORDER BY speed DESC LIMIT 3",
+     "hint": null,
+     "rows": 3,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "windiest_day",
+     "origin": "reference",
+     "question": "which day had the strongest average wind",
+     "sql": "SELECT date_trunc('day', ts) AS day, avg(wind) AS wind FROM telemetry GROUP BY 1 ORDER BY wind DESC LIMIT 1",
+     "hint": null,
+     "rows": 1,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "wind:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "coldest_water_vessel",
+     "origin": "reference",
+     "question": "which vessel recorded the coldest water",
+     "sql": "SELECT vessel, min(water_temp) AS water_temp FROM telemetry GROUP BY vessel ORDER BY water_temp LIMIT 1",
+     "hint": null,
+     "rows": 1,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "water_temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "farthest_east",
+     "origin": "reference",
+     "question": "which vessel got farthest east",
+     "sql": "SELECT vessel, max(lon) AS lon FROM telemetry GROUP BY vessel ORDER BY lon DESC LIMIT 1",
+     "hint": null,
+     "rows": 1,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "lon:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "wind_speed_correlation",
+     "origin": "reference",
+     "question": "correlation between wind and speed per vessel",
+     "sql": "SELECT vessel, corr(wind, speed) AS correlation FROM telemetry GROUP BY vessel ORDER BY vessel",
+     "hint": null,
+     "rows": 6,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "correlation:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "water_temp_range_per_vessel",
+     "origin": "reference",
+     "question": "difference between maximum and minimum water temperature per vessel",
+     "sql": "SELECT vessel, max(water_temp) - min(water_temp) AS water_temp_range FROM telemetry GROUP BY vessel ORDER BY vessel",
+     "hint": null,
+     "rows": 6,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "water_temp_range:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "speed_and_wave_hourly_7d",
+     "origin": "reference",
+     "question": "Compare speed and wave height by hour over the last 7 days",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour, avg(speed) AS speed, avg(wave_height) AS wave_height FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 day' GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 169,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "speed:measure",
+      "wave_height:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "wave_wind_ratio_hourly",
+     "origin": "reference",
+     "question": "Average ratio of wave height to wind speed per hour over the last day",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour, avg(wave_height / wind) AS ratio FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 day' GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 25,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "ratio:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "speed_kmh_per_vessel",
+     "origin": "reference",
+     "question": "average speed of each vessel in km/h over the last day",
+     "sql": "SELECT vessel, avg(speed) * 1.852 AS speed_kmh FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 day' GROUP BY vessel ORDER BY vessel",
+     "hint": null,
+     "rows": 6,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "speed_kmh:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "first_vs_second_week_speed",
+     "origin": "reference",
+     "question": "average speed per vessel in the first week versus the second week",
+     "sql": "SELECT vessel, avg(speed) FILTER (WHERE ts < TIMESTAMP '2026-09-08') AS first_week, avg(speed) FILTER (WHERE ts >= TIMESTAMP '2026-09-08') AS second_week FROM telemetry GROUP BY vessel ORDER BY vessel",
+     "hint": null,
+     "rows": 6,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "first_week:measure",
+      "second_week:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "latest_position",
+     "origin": "reference",
+     "question": "latest position of every vessel",
+     "sql": "SELECT vessel, arg_max(lat, ts) AS lat, arg_max(lon, ts) AS lon FROM telemetry GROUP BY vessel ORDER BY vessel",
+     "hint": null,
+     "rows": 6,
+     "chosen": "map",
+     "available": [
+      "map",
+      "density",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "lat:lat",
+      "lon:lon"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "map"
+     ],
+     "ok": true
+    },
+    {
+     "id": "meridian_yesterday",
+     "origin": "reference",
+     "question": "where was Meridian yesterday",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS t, avg(lat) AS lat, avg(lon) AS lon FROM telemetry WHERE vessel = 'Meridian' AND ts >= TIMESTAMP '2026-09-13' AND ts < TIMESTAMP '2026-09-14' GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 24,
+     "chosen": "tracks",
+     "available": [
+      "tracks",
+      "map",
+      "density",
+      "table"
+     ],
+     "roles": [
+      "t:time",
+      "lat:lat",
+      "lon:lon"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "map",
+      "tracks"
+     ],
+     "ok": true
+    },
+    {
+     "id": "tracks_map",
+     "origin": "reference",
+     "question": "show all vessel tracks on a map",
+     "sql": "-- view: tracks\nSELECT time_bucket(INTERVAL '1 hour', ts) AS t, vessel, avg(lat) AS lat, avg(lon) AS lon FROM telemetry GROUP BY ALL ORDER BY 1, 2",
+     "hint": "tracks",
+     "rows": 2016,
+     "chosen": "tracks",
+     "available": [
+      "tracks",
+      "map",
+      "density",
+      "table"
+     ],
+     "roles": [
+      "t:time",
+      "vessel:series",
+      "lat:lat",
+      "lon:lon"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "tracks"
+     ],
+     "ok": true
+    },
+    {
+     "id": "bounding_box_north",
+     "origin": "reference",
+     "question": "how many readings were taken north of 50 degrees latitude, per vessel",
+     "sql": "SELECT vessel, count(*) AS readings FROM telemetry WHERE lat > 50 GROUP BY vessel ORDER BY vessel",
+     "hint": null,
+     "rows": 2,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "readings:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "aurora_daily_position",
+     "origin": "reference",
+     "question": "Aurora's average position per day",
+     "sql": "SELECT date_trunc('day', ts) AS day, avg(lat) AS lat, avg(lon) AS lon FROM telemetry WHERE vessel = 'Aurora' GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 14,
+     "chosen": "tracks",
+     "available": [
+      "tracks",
+      "map",
+      "density",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "lat:lat",
+      "lon:lon"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "map",
+      "tracks"
+     ],
+     "ok": true
+    },
+    {
+     "id": "partial_per_ves",
+     "origin": "reference",
+     "question": "average wave height per ves",
+     "sql": "SELECT vessel, avg(wave_height) AS wave_height FROM telemetry GROUP BY vessel ORDER BY vessel",
+     "hint": null,
+     "rows": 6,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "wave_height:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "single_word_wind",
+     "origin": "reference",
+     "question": "wind",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour, avg(wind) AS wind FROM telemetry GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 336,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "wind:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "speed_last_week_vague",
+     "origin": "reference",
+     "question": "speed last week",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour, avg(speed) AS speed FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 day' GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 169,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "scatter_wind_wave",
+     "origin": "reference",
+     "question": "scatter of wind vs wave height",
+     "sql": "-- view: scatter\nSELECT avg(wind) AS wind, avg(wave_height) AS wave_height FROM telemetry GROUP BY time_bucket(INTERVAL '1 hour', ts) ORDER BY 1",
+     "hint": "scatter",
+     "rows": 336,
+     "chosen": "scatter",
+     "available": [
+      "scatter",
+      "line",
+      "bar",
+      "table"
+     ],
+     "roles": [
+      "wind:measure",
+      "wave_height:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "scatter"
+     ],
+     "ok": true
+    },
+    {
+     "id": "avg_speed_per_vessel",
+     "origin": "model:b3-v5",
+     "question": "average speed per vessel",
+     "sql": "SELECT vessel, avg(speed) avg_speed FROM telemetry GROUP BY vessel ORDER BY vessel",
+     "hint": null,
+     "rows": 6,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "avg_speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "readings_per_vessel",
+     "origin": "model:b3-v5",
+     "question": "how many readings per vessel",
+     "sql": "SELECT vessel AS series, COUNT(*) AS cnt FROM telemetry GROUP BY vessel ORDER BY vessel",
+     "hint": null,
+     "rows": 6,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "series:category",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "overall_max_wave",
+     "origin": "model:b3-v5",
+     "question": "what was the highest wave height",
+     "sql": "SELECT MAX(wave_height) AS max_wave FROM telemetry",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "max_wave:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "fleet_avg_water_temp",
+     "origin": "model:b3-v5",
+     "question": "average water temperature across the fleet",
+     "sql": "SELECT AVG(water_temp) AS avg_temp FROM telemetry",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "avg_temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "min_max_speed_per_vessel",
+     "origin": "model:b3-v5",
+     "question": "minimum and maximum speed for each vessel",
+     "sql": "SELECT vessel, MIN(speed) AS min_spd, MAX(speed) AS max_spd FROM telemetry GROUP BY vessel ORDER BY vessel",
+     "hint": null,
+     "rows": 6,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "min_spd:measure",
+      "max_spd:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "hourly_wind_last_2_days",
+     "origin": "model:b3-v5",
+     "question": "hourly average wind speed over the last 2 days",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS ts, AVG(wind) AS avg_wind FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '2 days' GROUP BY time_bucket(INTERVAL '1 hour', ts) ORDER BY ts",
+     "hint": null,
+     "rows": 49,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "ts:time",
+      "avg_wind:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "daily_max_wave_per_vessel",
+     "origin": "model:b3-v5",
+     "question": "max wave height per vessel per day",
+     "sql": "SELECT time_bucket('1 day', ts) AS day,vessel AS vessel,max(wave_height) AS max_h FROM telemetry GROUP BY day,vessel ORDER BY day,vessel LIMIT 5000",
+     "hint": null,
+     "rows": 84,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "vessel:series",
+      "max_h:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "daily_min_max_water_temp",
+     "origin": "model:b3-v5",
+     "question": "daily minimum and maximum water temperature",
+     "sql": "SELECT time_bucket(INTERVAL '1 day', ts) AS day, MIN(water_temp) AS min_temp, MAX(water_temp) AS max_temp FROM telemetry GROUP BY day ORDER BY day",
+     "hint": null,
+     "rows": 14,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "min_temp:measure",
+      "max_temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "aurora_speed_15min_last_day",
+     "origin": "model:b3-v5",
+     "question": "Aurora's average speed in 15-minute buckets over the last day",
+     "sql": "SELECT time_bucket(INTERVAL '15 minutes', ts) AS bucket, avg(speed) AS avg_spd FROM telemetry WHERE vessel='Aurora' AND ts>=TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 day' GROUP BY bucket ORDER BY bucket",
+     "hint": null,
+     "rows": 97,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "bucket:time",
+      "avg_spd:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "six_hour_wind_per_vessel",
+     "origin": "model:b3-v5",
+     "question": "average wind per vessel in six-hour buckets",
+     "sql": "SELECT time_bucket(INTERVAL '6 hour', ts) AS bucket,vessel AS vessel,AVG(wind) AS avg_wind FROM telemetry GROUP BY bucket,vessel ORDER BY bucket,vessel LIMIT 5000",
+     "hint": null,
+     "rows": 336,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "bucket:time",
+      "vessel:series",
+      "avg_wind:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "hour_of_day_speed",
+     "origin": "model:b3-v5",
+     "question": "average speed by hour of day",
+     "sql": "SELECT EXTRACT(HOUR FROM ts) AS hour,AVG(speed) AS avg_speed FROM telemetry GROUP BY hour ORDER BY hour",
+     "hint": null,
+     "rows": 24,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "hour:category",
+      "avg_speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line",
+      "scatter"
+     ],
+     "ok": true
+    },
+    {
+     "id": "weekday_wave",
+     "origin": "model:b3-v5",
+     "question": "average wave height by day of the week",
+     "sql": "SELECT EXTRACT(DOW FROM ts) AS dow, AVG(wave_height) AS avg_wave FROM telemetry GROUP BY dow ORDER BY dow",
+     "hint": null,
+     "rows": 7,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "dow:category",
+      "avg_wave:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line",
+      "scatter"
+     ],
+     "ok": true
+    },
+    {
+     "id": "atlas_speed_10min_today",
+     "origin": "model:b3-v5",
+     "question": "speed of Atlas every 10 minutes today",
+     "sql": "SELECT time_bucket(INTERVAL '10 minutes', ts) AS bucket, avg(speed) AS spd FROM telemetry WHERE vessel='Atlas' AND ts>=TIMESTAMP '2026-09-14 00:00:00' AND ts<TIMESTAMP '2026-09-15 00:00:00' GROUP BY bucket ORDER BY bucket",
+     "hint": null,
+     "rows": 144,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "bucket:time",
+      "spd:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "aurora_water_temp_last_week",
+     "origin": "model:b3-v5",
+     "question": "water temperature trend for Aurora in the last week",
+     "sql": "SELECT time_bucket(INTERVAL '1 day', ts) AS day, avg(water_temp) AS temp FROM telemetry WHERE vessel='Aurora' AND ts>=TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days' GROUP BY day ORDER BY day",
+     "hint": null,
+     "rows": 8,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "fastest_last_24h",
+     "origin": "model:b3-v5",
+     "question": "which vessel was fastest on average in the last 24 hours",
+     "sql": "SELECT vessel, AVG(speed) AS avg_spd FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 day' GROUP BY vessel ORDER BY avg_spd DESC LIMIT 1",
+     "hint": null,
+     "rows": 1,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "avg_spd:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "wave_by_hour_last_12h",
+     "origin": "model:b3-v5",
+     "question": "compare wave height of all vessels by hour over the last 12 hours",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS bucket, vessel, avg(wave_height) AS avg_wave FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '12 hours' GROUP BY bucket, vessel ORDER BY bucket, vessel",
+     "hint": null,
+     "rows": 78,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "bucket:time",
+      "vessel:series",
+      "avg_wave:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "speed_last_30_min",
+     "origin": "model:b3-v5",
+     "question": "mean speed for the last 30 minutes in one-minute buckets",
+     "sql": "SELECT time_bucket(INTERVAL '1 minute', ts) AS bucket, avg(speed) AS avg_spd FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '30 minutes' GROUP BY bucket ORDER BY bucket LIMIT 5000",
+     "hint": null,
+     "rows": 31,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "bucket:time",
+      "avg_spd:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "wind_sept_3_to_5",
+     "origin": "model:b3-v5",
+     "question": "Average wind from September 3 to September 5, 2026, hourly",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour, avg(wind) AS avg_wind FROM telemetry WHERE ts >= TIMESTAMP '2026-09-03 00:00:00' AND ts < TIMESTAMP '2026-09-06 00:00:00' GROUP BY hour ORDER BY hour LIMIT 5000",
+     "hint": null,
+     "rows": 72,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "avg_wind:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "wave_last_hour_minutes",
+     "origin": "model:b3-v5",
+     "question": "Average wave height for the last hour in one-minute buckets",
+     "sql": "SELECT time_bucket(INTERVAL '1 minute', ts) AS bucket, avg(wave_height) AS avg_wave FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 hour' GROUP BY bucket ORDER BY bucket LIMIT 5000",
+     "hint": null,
+     "rows": 61,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "bucket:time",
+      "avg_wave:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "kestrel_vs_nomad_hourly",
+     "origin": "model:b3-v5",
+     "question": "compare speed of Kestrel and Nomad by hour",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour,vessel AS vessel,AVG(speed) AS avg_speed FROM telemetry WHERE vessel IN ('Kestrel','Nomad') GROUP BY hour,vessel ORDER BY hour,vessel LIMIT 5000",
+     "hint": null,
+     "rows": 672,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "vessel:series",
+      "avg_speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "excluding_aurora_last_day",
+     "origin": "model:b3-v5",
+     "question": "Compare vessel speed by hour over the last day excluding Aurora",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour,vessel AS vessel,AVG(speed) AS avg_speed FROM telemetry WHERE ts>=TIMESTAMP '2026-09-14 23:59:54'-INTERVAL '1 day' AND vessel!='Aurora' GROUP BY hour,vessel ORDER BY hour,vessel",
+     "hint": null,
+     "rows": 125,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "vessel:series",
+      "avg_speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "waves_above_4_per_vessel",
+     "origin": "model:b3-v5",
+     "question": "how many readings had waves above 4 metres, per vessel",
+     "sql": "SELECT vessel cnt FROM telemetry WHERE wave_height>4 GROUP BY vessel ORDER BY vessel",
+     "hint": null,
+     "rows": 6,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "cnt:category"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "north_of_50_hourly_speed",
+     "origin": "model:b3-v5",
+     "question": "Hourly average speed for vessels north of latitude 50 in the last day",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour,vessel AS vessel,AVG(speed) AS avg_speed FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 day' AND lat > 50 GROUP BY hour,vessel ORDER BY hour,vessel",
+     "hint": null,
+     "rows": 50,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "vessel:series",
+      "avg_speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "solstice_strong_wind_hours",
+     "origin": "model:b3-v5",
+     "question": "in how many hours did Solstice see wind above 30 knots",
+     "sql": "SELECT COUNT(*) hrs FROM (SELECT time_bucket(INTERVAL '1 hour', ts) h FROM telemetry WHERE vessel='Solstice' AND wind>30 GROUP BY h)",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "hrs:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "top10_hourly_waves",
+     "origin": "model:b3-v5",
+     "question": "table of the 10 highest hourly average wave heights",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour,AVG(wave_height) AS avg_wave FROM telemetry GROUP BY hour ORDER BY avg_wave DESC LIMIT 10",
+     "hint": null,
+     "rows": 10,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "avg_wave:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "top3_fastest_7d",
+     "origin": "model:b3-v5",
+     "question": "the three fastest vessels by average speed in the past 7 days",
+     "sql": "SELECT vessel, avg(speed) avg_spd FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days' GROUP BY vessel ORDER BY avg_spd DESC LIMIT 3",
+     "hint": null,
+     "rows": 3,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "avg_spd:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "windiest_day",
+     "origin": "model:b3-v5",
+     "question": "which day had the strongest average wind",
+     "sql": "SELECT date(ts) AS day, avg(wind) AS avg_wind FROM telemetry GROUP BY date(ts) ORDER BY avg_wind DESC LIMIT 1",
+     "hint": null,
+     "rows": 1,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "avg_wind:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "coldest_water_vessel",
+     "origin": "model:b3-v5",
+     "question": "which vessel recorded the coldest water",
+     "sql": "SELECT vessel, water_temp AS temp FROM telemetry ORDER BY water_temp ASC LIMIT 1",
+     "hint": null,
+     "rows": 1,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "farthest_east",
+     "origin": "model:b3-v5",
+     "question": "which vessel got farthest east",
+     "sql": "SELECT vessel,lon FROM telemetry ORDER BY lon DESC LIMIT 1",
+     "hint": null,
+     "rows": 1,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "lon:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "wind_speed_correlation",
+     "origin": "model:b3-v5",
+     "question": "correlation between wind and speed per vessel",
+     "sql": "SELECT vessel,corr(wind,speed) AS corr_ws FROM telemetry GROUP BY vessel ORDER BY vessel",
+     "hint": null,
+     "rows": 6,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "corr_ws:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "water_temp_range_per_vessel",
+     "origin": "model:b3-v5",
+     "question": "difference between maximum and minimum water temperature per vessel",
+     "sql": "SELECT vessel, max(water_temp)-min(water_temp) AS temp_range FROM telemetry GROUP BY vessel ORDER BY vessel",
+     "hint": null,
+     "rows": 6,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "temp_range:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "speed_and_wave_hourly_7d",
+     "origin": "model:b3-v5",
+     "question": "Compare speed and wave height by hour over the last 7 days",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour, avg(speed) AS avg_spd, avg(wave_height) AS avg_wv FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days' GROUP BY hour ORDER BY hour",
+     "hint": null,
+     "rows": 169,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "avg_spd:measure",
+      "avg_wv:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "wave_wind_ratio_hourly",
+     "origin": "model:b3-v5",
+     "question": "Average ratio of wave height to wind speed per hour over the last day",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS bucket, avg(wave_height/wind) AS avg_ratio FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 day' GROUP BY bucket ORDER BY bucket LIMIT 5000",
+     "hint": null,
+     "rows": 25,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "bucket:time",
+      "avg_ratio:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "speed_kmh_per_vessel",
+     "origin": "model:b3-v5",
+     "question": "average speed of each vessel in km/h over the last day",
+     "sql": "SELECT vessel, AVG(speed*1.852) avg_speed_kmh FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 day' GROUP BY vessel ORDER BY vessel",
+     "hint": null,
+     "rows": 6,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "avg_speed_kmh:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "first_vs_second_week_speed",
+     "origin": "model:b3-v5",
+     "question": "average speed per vessel in the first week versus the second week",
+     "sql": "SELECT vessel, 'week1' AS wk, AVG(speed) AS avg_spd FROM telemetry WHERE ts < TIMESTAMP '2026-09-08 00:00:00' GROUP BY vessel UNION ALL SELECT vessel, 'week2' AS wk, AVG(speed) AS avg_spd FROM telemetry WHERE ts >= TIMESTAMP '2026-09-08 00:00:00' GROUP BY vessel ORDER BY vessel, wk",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "heatmap",
+      "surface",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "wk:series",
+      "avg_spd:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "heatmap",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "latest_position",
+     "origin": "model:b3-v5",
+     "question": "latest position of every vessel",
+     "sql": "SELECT vessel, ts, lat, lon FROM telemetry QUALIFY row_number() OVER (PARTITION BY vessel ORDER BY ts DESC) = 1 ORDER BY vessel",
+     "hint": null,
+     "rows": 6,
+     "chosen": "map",
+     "available": [
+      "map",
+      "density",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "ts:-",
+      "lat:lat",
+      "lon:lon"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "map"
+     ],
+     "ok": true
+    },
+    {
+     "id": "meridian_yesterday",
+     "origin": "model:b3-v5",
+     "question": "where was Meridian yesterday",
+     "sql": "SELECT lat,lon FROM telemetry WHERE vessel='Meridian' AND ts::date=DATE '2026-09-13' ORDER BY ts DESC LIMIT 1",
+     "hint": null,
+     "rows": 1,
+     "chosen": "map",
+     "available": [
+      "map",
+      "density",
+      "table"
+     ],
+     "roles": [
+      "lat:lat",
+      "lon:lon"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "map"
+     ],
+     "ok": true
+    },
+    {
+     "id": "tracks_map",
+     "origin": "model:b3-v5",
+     "question": "show all vessel tracks on a map",
+     "sql": "-- view: map\nSELECT ts,vessel,lat,lon FROM telemetry ORDER BY ts LIMIT 5000",
+     "hint": "map",
+     "rows": 5000,
+     "chosen": "map",
+     "available": [
+      "tracks",
+      "map",
+      "density",
+      "table"
+     ],
+     "roles": [
+      "ts:time",
+      "vessel:series",
+      "lat:lat",
+      "lon:lon"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "map"
+     ],
+     "ok": true
+    },
+    {
+     "id": "bounding_box_north",
+     "origin": "model:b3-v5",
+     "question": "how many readings were taken north of 50 degrees latitude, per vessel",
+     "sql": "SELECT vessel,cnt FROM (SELECT vessel,COUNT(*) cnt FROM telemetry WHERE lat>50 GROUP BY vessel) ORDER BY vessel",
+     "hint": null,
+     "rows": 2,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "aurora_daily_position",
+     "origin": "model:b3-v5",
+     "question": "Aurora's average position per day",
+     "sql": "SELECT time_bucket(INTERVAL '1 day', ts) AS day, AVG(lat) AS lat, AVG(lon) AS lon FROM telemetry WHERE vessel='Aurora' GROUP BY day ORDER BY day LIMIT 5000",
+     "hint": null,
+     "rows": 14,
+     "chosen": "tracks",
+     "available": [
+      "tracks",
+      "map",
+      "density",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "lat:lat",
+      "lon:lon"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "map",
+      "tracks"
+     ],
+     "ok": true
+    },
+    {
+     "id": "partial_per_ves",
+     "origin": "model:b3-v5",
+     "question": "average wave height per ves",
+     "sql": "SELECT vessel, AVG(wave_height) AS avg_wave FROM telemetry GROUP BY vessel ORDER BY vessel",
+     "hint": null,
+     "rows": 6,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "vessel:category",
+      "avg_wave:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "single_word_wind",
+     "origin": "model:b3-v5",
+     "question": "wind",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS t,AVG(wind) AS avg_wind FROM telemetry GROUP BY t ORDER BY t LIMIT 5000",
+     "hint": null,
+     "rows": 336,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "t:time",
+      "avg_wind:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "speed_last_week_vague",
+     "origin": "model:b3-v5",
+     "question": "speed last week",
+     "sql": "SELECT vessel AS series, AVG(speed) AS avg_speed FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days' GROUP BY vessel ORDER BY vessel",
+     "hint": null,
+     "rows": 6,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "series:category",
+      "avg_speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "scatter_wind_wave",
+     "origin": "model:b3-v5",
+     "question": "scatter of wind vs wave height",
+     "sql": "SELECT wind AS x, wave_height AS y FROM telemetry LIMIT 5000",
+     "hint": null,
+     "rows": 5000,
+     "chosen": "scatter",
+     "available": [
+      "scatter",
+      "line",
+      "bar",
+      "table"
+     ],
+     "roles": [
+      "x:measure",
+      "y:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line",
+      "scatter"
+     ],
+     "ok": true
+    }
+   ]
+  },
+  "weather": {
+   "n": 68,
+   "questionable": 0,
+   "results": [
+    {
+     "id": "avg_temp_per_city",
+     "origin": "reference",
+     "question": "average temperature per city",
+     "sql": "SELECT city, avg(temperature) AS temperature FROM weather GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "temperature:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "max_temp_overall",
+     "origin": "reference",
+     "question": "what was the highest temperature",
+     "sql": "SELECT max(temperature) AS max_temperature FROM weather",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "max_temperature:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "precip_per_city_2024",
+     "origin": "reference",
+     "question": "total precipitation per city in 2024",
+     "sql": "SELECT city, sum(precipitation) AS precipitation FROM weather WHERE time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "precipitation:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "monthly_temp_berlin",
+     "origin": "reference",
+     "question": "monthly average temperature in Berlin",
+     "sql": "SELECT date_trunc('month', time) AS month, avg(temperature) AS temperature FROM weather WHERE city = 'Berlin' GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 24,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "month:time",
+      "temperature:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "daily_max_madrid_30d",
+     "origin": "reference",
+     "question": "daily maximum temperature in Madrid over the last 30 days",
+     "sql": "SELECT date_trunc('day', time) AS day, max(temperature) AS temperature FROM weather WHERE city = 'Madrid' AND time >= TIMESTAMP '2024-12-31 23:00:00' - INTERVAL '30 day' GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 31,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "temperature:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "hourly_wind_copenhagen_2d",
+     "origin": "reference",
+     "question": "hourly wind speed in Copenhagen over the last 2 days",
+     "sql": "SELECT time, wind_speed FROM weather WHERE city = 'Copenhagen' AND time >= TIMESTAMP '2024-12-31 23:00:00' - INTERVAL '2 day' ORDER BY time",
+     "hint": null,
+     "rows": 49,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "time:time",
+      "wind_speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "coldest_city",
+     "origin": "reference",
+     "question": "which city is the coldest on average",
+     "sql": "SELECT city, avg(temperature) AS temperature FROM weather GROUP BY city ORDER BY temperature LIMIT 1",
+     "hint": null,
+     "rows": 1,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "temperature:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "top5_windiest_hours_oslo",
+     "origin": "reference",
+     "question": "top 5 windiest hours in Oslo",
+     "sql": "SELECT time, wind_speed FROM weather WHERE city = 'Oslo' ORDER BY wind_speed DESC, time LIMIT 5",
+     "hint": null,
+     "rows": 5,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "time:time",
+      "wind_speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "rainy_hours_per_city",
+     "origin": "reference",
+     "question": "number of hours with rain per city",
+     "sql": "SELECT city, count(*) FILTER (WHERE precipitation > 0) AS rainy_hours FROM weather GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "rainy_hours:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "humidity_by_country",
+     "origin": "reference",
+     "question": "average humidity by country",
+     "sql": "SELECT country, avg(humidity) AS humidity FROM weather GROUP BY country ORDER BY country",
+     "hint": null,
+     "rows": 10,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "country:category",
+      "humidity:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "temp_by_hour_of_day",
+     "origin": "reference",
+     "question": "average temperature by hour of day",
+     "sql": "SELECT hour(time) AS hour, avg(temperature) AS temperature FROM weather GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 24,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "hour:category",
+      "temperature:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line",
+      "scatter"
+     ],
+     "ok": true
+    },
+    {
+     "id": "monthly_temp_all",
+     "origin": "reference",
+     "question": "average temperature per month across all cities",
+     "sql": "SELECT date_trunc('month', time) AS month, avg(temperature) AS temperature FROM weather GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 24,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "month:time",
+      "temperature:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "berlin_vs_london_daily_2024",
+     "origin": "reference",
+     "question": "daily average temperature in Berlin vs London in 2024",
+     "sql": "SELECT date_trunc('day', time) AS day, city, avg(temperature) AS temperature FROM weather WHERE city IN ('Berlin', 'London') AND time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' GROUP BY ALL ORDER BY 1, 2",
+     "hint": null,
+     "rows": 732,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "city:series",
+      "temperature:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "min_pressure_per_city",
+     "origin": "reference",
+     "question": "lowest pressure recorded in each city",
+     "sql": "SELECT city, min(pressure) AS pressure FROM weather GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "pressure:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "temp_range_per_city",
+     "origin": "reference",
+     "question": "difference between the highest and lowest temperature per city",
+     "sql": "SELECT city, max(temperature) - min(temperature) AS temperature_range FROM weather GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "temperature_range:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "hottest_day_rome",
+     "origin": "reference",
+     "question": "hottest day in Rome",
+     "sql": "SELECT date_trunc('day', time) AS day, max(temperature) AS temperature FROM weather WHERE city = 'Rome' GROUP BY 1 ORDER BY temperature DESC LIMIT 1",
+     "hint": null,
+     "rows": 1,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "temperature:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "cloud_cover_monthly_london",
+     "origin": "reference",
+     "question": "average cloud cover per month in London",
+     "sql": "SELECT date_trunc('month', time) AS month, avg(cloud_cover) AS cloud_cover FROM weather WHERE city = 'London' GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 24,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "month:time",
+      "cloud_cover:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "weekly_precip_per_city",
+     "origin": "reference",
+     "question": "weekly total precipitation per city",
+     "sql": "SELECT date_trunc('week', time) AS week, city, sum(precipitation) AS precipitation FROM weather GROUP BY ALL ORDER BY 1, 2",
+     "hint": null,
+     "rows": 1272,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "week:time",
+      "city:series",
+      "precipitation:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "freezing_hours_2023",
+     "origin": "reference",
+     "question": "how many hours below freezing in each city in 2023",
+     "sql": "SELECT city, count(*) FILTER (WHERE temperature < 0) AS freezing_hours FROM weather WHERE time >= TIMESTAMP '2023-01-01' AND time < TIMESTAMP '2024-01-01' GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "freezing_hours:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "scatter_pressure_wind_oslo",
+     "origin": "reference",
+     "question": "scatter of pressure vs wind speed in Oslo",
+     "sql": "-- view: scatter\nSELECT avg(pressure) AS pressure, avg(wind_speed) AS wind_speed FROM weather WHERE city = 'Oslo' GROUP BY date_trunc('day', time) ORDER BY 1",
+     "hint": "scatter",
+     "rows": 731,
+     "chosen": "scatter",
+     "available": [
+      "scatter",
+      "line",
+      "bar",
+      "table"
+     ],
+     "roles": [
+      "pressure:measure",
+      "wind_speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "scatter"
+     ],
+     "ok": true
+    },
+    {
+     "id": "partial_per_ci",
+     "origin": "reference",
+     "question": "average temperature per ci",
+     "sql": "SELECT city, avg(temperature) AS temperature FROM weather GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "temperature:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "single_word_precipitation",
+     "origin": "reference",
+     "question": "precipitation",
+     "sql": "SELECT date_trunc('day', time) AS day, sum(precipitation) AS precipitation FROM weather GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 731,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "precipitation:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "temperature_last_week_vague",
+     "origin": "reference",
+     "question": "temperature last week",
+     "sql": "SELECT date_trunc('hour', time) AS hour, avg(temperature) AS temperature FROM weather WHERE time >= TIMESTAMP '2024-12-31 23:00:00' - INTERVAL '7 day' GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 169,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "hour:time",
+      "temperature:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "line_monthly_temp_per_city",
+     "origin": "reference",
+     "question": "line chart of monthly average temperature per city",
+     "sql": "-- view: line\nSELECT date_trunc('month', time) AS month, city, avg(temperature) AS temperature FROM weather GROUP BY ALL ORDER BY 1, 2",
+     "hint": "line",
+     "rows": 288,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "month:time",
+      "city:series",
+      "temperature:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "unknown_city_lisbon",
+     "origin": "reference",
+     "question": "average temperature in Lisbon",
+     "sql": "SELECT avg(temperature) AS temperature FROM weather WHERE city = 'Lisbon'",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "temperature:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "warmest_month_per_city_2024",
+     "origin": "reference",
+     "question": "which month of 2024 was the warmest in each city",
+     "sql": "SELECT city, arg_max(month, temperature) AS warmest_month FROM (SELECT city, date_trunc('month', time) AS month, avg(temperature) AS temperature FROM weather WHERE time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' GROUP BY ALL) GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "warmest_month:-"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "madrid_days_over_30_2024",
+     "origin": "reference",
+     "question": "on how many days in 2024 did Madrid reach 30 degrees",
+     "sql": "SELECT count(DISTINCT time::DATE) AS days FROM weather WHERE city = 'Madrid' AND temperature >= 30 AND time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01'",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "days:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "winter_wind_per_city",
+     "origin": "reference",
+     "question": "average wind speed per city in winter",
+     "sql": "SELECT city, avg(wind_speed) AS wind_speed FROM weather WHERE month(time) IN (12, 1, 2) GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "wind_speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "temp_humidity_corr",
+     "origin": "reference",
+     "question": "correlation between temperature and humidity per city",
+     "sql": "SELECT city, corr(temperature, humidity) AS correlation FROM weather GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "correlation:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "vienna_daily_range_july_2024",
+     "origin": "reference",
+     "question": "daily temperature range in Vienna in July 2024",
+     "sql": "SELECT date_trunc('day', time) AS day, max(temperature) - min(temperature) AS temperature_range FROM weather WHERE city = 'Vienna' AND time >= TIMESTAMP '2024-07-01' AND time < TIMESTAMP '2024-08-01' GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 31,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "temperature_range:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "partial_daily_temp_ber",
+     "origin": "reference",
+     "question": "daily average temperature in Ber",
+     "sql": "SELECT date_trunc('day', time) AS day, avg(temperature) AS temperature FROM weather WHERE city = 'Berlin' GROUP BY 1 ORDER BY 1",
+     "hint": null,
+     "rows": 731,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "temperature:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "sunniest_city_2024",
+     "origin": "reference",
+     "question": "which city had the least cloud cover in 2024",
+     "sql": "SELECT city, avg(cloud_cover) AS cloud_cover FROM weather WHERE time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' GROUP BY city ORDER BY cloud_cover LIMIT 1",
+     "hint": null,
+     "rows": 1,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "cloud_cover:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "yearly_precip_compare",
+     "origin": "reference",
+     "question": "total precipitation in 2023 compared to 2024 for each city",
+     "sql": "SELECT city, sum(precipitation) FILTER (WHERE time < TIMESTAMP '2024-01-01') AS precipitation_2023, sum(precipitation) FILTER (WHERE time >= TIMESTAMP '2024-01-01') AS precipitation_2024 FROM weather GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "precipitation_2023:measure",
+      "precipitation_2024:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "stormy_hours_count",
+     "origin": "reference",
+     "question": "how many hours had wind above 50 km/h, per city",
+     "sql": "SELECT city, count(*) AS hours FROM weather WHERE wind_speed > 50 GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 3,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "hours:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "avg_temp_per_city",
+     "origin": "model:b3-v5",
+     "question": "average temperature per city",
+     "sql": "SELECT city, AVG(temperature) AS avg_temp FROM weather GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "avg_temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "max_temp_overall",
+     "origin": "model:b3-v5",
+     "question": "what was the highest temperature",
+     "sql": "SELECT time,city,temp FROM (SELECT time,city,temperature AS temp FROM weather ORDER BY temperature DESC LIMIT 1)",
+     "hint": null,
+     "rows": 1,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "time:time",
+      "city:series",
+      "temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "precip_per_city_2024",
+     "origin": "model:b3-v5",
+     "question": "total precipitation per city in 2024",
+     "sql": "SELECT city, SUM(precipitation) AS total_precip FROM weather WHERE time >= TIMESTAMP '2024-01-01 00:00:00' AND time < TIMESTAMP '2025-01-01 00:00:00' GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "total_precip:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "monthly_temp_berlin",
+     "origin": "model:b3-v5",
+     "question": "monthly average temperature in Berlin",
+     "sql": "SELECT time_bucket(INTERVAL '1 month', time) AS month, AVG(temperature) AS avg_temp FROM weather WHERE city='Berlin' GROUP BY month ORDER BY month LIMIT 5000",
+     "hint": null,
+     "rows": 24,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "month:time",
+      "avg_temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "daily_max_madrid_30d",
+     "origin": "model:b3-v5",
+     "question": "daily maximum temperature in Madrid over the last 30 days",
+     "sql": "SELECT time_bucket(INTERVAL '1 day', time) AS day, max(temperature) AS max_temp FROM weather WHERE city='Madrid' AND time >= TIMESTAMP '2024-12-31 23:00:00' - INTERVAL '30 days' GROUP BY day ORDER BY day",
+     "hint": null,
+     "rows": 31,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "max_temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "hourly_wind_copenhagen_2d",
+     "origin": "model:b3-v5",
+     "question": "hourly wind speed in Copenhagen over the last 2 days",
+     "sql": "SELECT time,wind_speed FROM weather WHERE city='Copenhagen' AND time>=TIMESTAMP '2024-12-31 23:00:00' - INTERVAL '2 days' ORDER BY time LIMIT 5000",
+     "hint": null,
+     "rows": 49,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "time:time",
+      "wind_speed:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "coldest_city",
+     "origin": "model:b3-v5",
+     "question": "which city is the coldest on average",
+     "sql": "SELECT city, avg(temperature) AS avg_temp FROM weather GROUP BY city ORDER BY avg_temp LIMIT 5000",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "avg_temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "top5_windiest_hours_oslo",
+     "origin": "model:b3-v5",
+     "question": "top 5 windiest hours in Oslo",
+     "sql": "SELECT time,w as wind FROM (SELECT time,wind_speed AS w FROM weather WHERE city='Oslo' ORDER BY wind_speed DESC LIMIT 5) ORDER BY w DESC",
+     "hint": null,
+     "rows": 5,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "time:time",
+      "wind:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "rainy_hours_per_city",
+     "origin": "model:b3-v5",
+     "question": "number of hours with rain per city",
+     "sql": "SELECT city, COUNT(*) AS hours FROM weather WHERE precipitation>0 GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "hours:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "humidity_by_country",
+     "origin": "model:b3-v5",
+     "question": "average humidity by country",
+     "sql": "SELECT country,country_humidity_avg FROM (SELECT country,AVG(humidity) AS country_humidity_avg FROM weather GROUP BY country) ORDER BY country",
+     "hint": null,
+     "rows": 10,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "country:category",
+      "country_humidity_avg:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "temp_by_hour_of_day",
+     "origin": "model:b3-v5",
+     "question": "average temperature by hour of day",
+     "sql": "SELECT EXTRACT(HOUR FROM time) AS hour, AVG(temperature) AS avg_temp FROM weather GROUP BY hour ORDER BY hour",
+     "hint": null,
+     "rows": 24,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "hour:category",
+      "avg_temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line",
+      "scatter"
+     ],
+     "ok": true
+    },
+    {
+     "id": "monthly_temp_all",
+     "origin": "model:b3-v5",
+     "question": "average temperature per month across all cities",
+     "sql": "SELECT time_bucket(INTERVAL '1 month', time) AS month, AVG(temperature) AS avg_temp FROM weather GROUP BY month ORDER BY month LIMIT 5000",
+     "hint": null,
+     "rows": 24,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "month:time",
+      "avg_temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "berlin_vs_london_daily_2024",
+     "origin": "model:b3-v5",
+     "question": "daily average temperature in Berlin vs London in 2024",
+     "sql": "SELECT time_bucket(INTERVAL '1 day', time) AS day, city, AVG(temperature) AS avg_temp FROM weather WHERE city IN ('Berlin','London') AND time >= TIMESTAMP '2024-01-01 00:00:00' AND time < TIMESTAMP '2025-01-01 00:00:00' GROUP BY day, city ORDER BY day, city",
+     "hint": null,
+     "rows": 732,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "city:series",
+      "avg_temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "min_pressure_per_city",
+     "origin": "model:b3-v5",
+     "question": "lowest pressure recorded in each city",
+     "sql": "SELECT city, MIN(pressure) AS min_pressure FROM weather GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "min_pressure:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "temp_range_per_city",
+     "origin": "model:b3-v5",
+     "question": "difference between the highest and lowest temperature per city",
+     "sql": "SELECT city, max(temperature)-min(temperature) AS temp_range FROM weather GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "temp_range:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "hottest_day_rome",
+     "origin": "model:b3-v5",
+     "question": "hottest day in Rome",
+     "sql": "SELECT time_bucket(INTERVAL '1 day', time) AS day, MAX(temperature) AS max_temp FROM weather WHERE city='Rome' GROUP BY day ORDER BY day LIMIT 5000",
+     "hint": null,
+     "rows": 731,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "max_temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "cloud_cover_monthly_london",
+     "origin": "model:b3-v5",
+     "question": "average cloud cover per month in London",
+     "sql": "SELECT time_bucket(INTERVAL '1 month', time) AS month, AVG(cloud_cover) AS avg_cc FROM weather WHERE city='London' GROUP BY month ORDER BY month",
+     "hint": null,
+     "rows": 24,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "month:time",
+      "avg_cc:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "weekly_precip_per_city",
+     "origin": "model:b3-v5",
+     "question": "weekly total precipitation per city",
+     "sql": "SELECT time_bucket(INTERVAL '1 week', time) AS week, city AS city, SUM(precipitation) AS total_precip FROM weather GROUP BY week, city ORDER BY week, city LIMIT 5000",
+     "hint": null,
+     "rows": 1272,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "week:time",
+      "city:series",
+      "total_precip:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "freezing_hours_2023",
+     "origin": "model:b3-v5",
+     "question": "how many hours below freezing in each city in 2023",
+     "sql": "SELECT city,cnt FROM (SELECT city,COUNT(*) AS cnt FROM weather WHERE time>=TIMESTAMP '2023-01-01 00:00:00' AND time<TIMESTAMP '2024-01-01 00:00:00' AND temperature<0 GROUP BY city) ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "scatter_pressure_wind_oslo",
+     "origin": "model:b3-v5",
+     "question": "scatter of pressure vs wind speed in Oslo",
+     "sql": "-- view: scatter\nSELECT wind_speed AS x, pressure AS y FROM weather WHERE city='Oslo' ORDER BY wind_speed LIMIT 5000",
+     "hint": "scatter",
+     "rows": 5000,
+     "chosen": "scatter",
+     "available": [
+      "scatter",
+      "line",
+      "bar",
+      "table"
+     ],
+     "roles": [
+      "x:measure",
+      "y:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "scatter"
+     ],
+     "ok": true
+    },
+    {
+     "id": "partial_per_ci",
+     "origin": "model:b3-v5",
+     "question": "average temperature per ci",
+     "sql": "SELECT city, AVG(temperature) AS avg_temp FROM weather GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "avg_temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "single_word_precipitation",
+     "origin": "model:b3-v5",
+     "question": "precipitation",
+     "sql": "SELECT time_bucket(INTERVAL '1 day', time) AS day, city, SUM(precipitation) AS total_precip FROM weather GROUP BY day, city ORDER BY day, city LIMIT 5000",
+     "hint": null,
+     "rows": 5000,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "city:series",
+      "total_precip:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "temperature_last_week_vague",
+     "origin": "model:b3-v5",
+     "question": "temperature last week",
+     "sql": "SELECT time_bucket(INTERVAL '1 day', time) AS day,city,AVG(temperature) AS avg_temp FROM weather WHERE time >= TIMESTAMP '2024-12-31 23:00:00' - INTERVAL '7 days' GROUP BY day,city ORDER BY day,city",
+     "hint": null,
+     "rows": 96,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "city:series",
+      "avg_temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "heatmap",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "line_monthly_temp_per_city",
+     "origin": "model:b3-v5",
+     "question": "line chart of monthly average temperature per city",
+     "sql": "-- view: line\nSELECT time_bucket(INTERVAL '1 month', time) AS month, city, AVG(temperature) AS avg_temp FROM weather GROUP BY month, city ORDER BY month, city",
+     "hint": "line",
+     "rows": 288,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "heatmap",
+      "surface",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "month:time",
+      "city:series",
+      "avg_temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "unknown_city_lisbon",
+     "origin": "model:b3-v5",
+     "question": "average temperature in Lisbon",
+     "sql": "SELECT AVG(temperature) AS avg_temp FROM weather WHERE city = 'Lisbon'",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "avg_temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "warmest_month_per_city_2024",
+     "origin": "model:b3-v5",
+     "question": "which month of 2024 was the warmest in each city",
+     "sql": "SELECT city, date_trunc('month',time) AS month,AVG(temperature) AS avg_temp FROM weather WHERE time>=TIMESTAMP'2024-01-01 00:00:00' AND time<TIMESTAMP'2025-01-01 00:00:00' GROUP BY city,month QUALIFY AVG(temperature)=MAX(AVG(temperature)) OVER(PARTITION BY city) ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "month:-",
+      "avg_temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "madrid_days_over_30_2024",
+     "origin": "model:b3-v5",
+     "question": "on how many days in 2024 did Madrid reach 30 degrees",
+     "sql": "SELECT COUNT(DISTINCT date_trunc('day', time)) AS days FROM weather WHERE city='Madrid' AND EXTRACT(year FROM time)=2024 AND temperature>=30",
+     "hint": null,
+     "rows": 1,
+     "chosen": "table",
+     "available": [
+      "table"
+     ],
+     "roles": [
+      "days:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "winter_wind_per_city",
+     "origin": "model:b3-v5",
+     "question": "average wind speed per city in winter",
+     "sql": "SELECT city, avg(wind_speed) avg_ws FROM weather WHERE EXTRACT(MONTH FROM time) IN (12,1,2) GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "avg_ws:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "temp_humidity_corr",
+     "origin": "model:b3-v5",
+     "question": "correlation between temperature and humidity per city",
+     "sql": "SELECT city,corr(temperature,humidity) as corr_val FROM weather GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 12,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "corr_val:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    },
+    {
+     "id": "vienna_daily_range_july_2024",
+     "origin": "model:b3-v5",
+     "question": "daily temperature range in Vienna in July 2024",
+     "sql": "SELECT time_bucket(INTERVAL '1 day', time) AS day, (MAX(temperature)-MIN(temperature)) AS range FROM weather WHERE city='Vienna' AND time >= TIMESTAMP '2024-07-01 00:00:00' AND time < TIMESTAMP '2024-08-01 00:00:00' GROUP BY day ORDER BY day",
+     "hint": null,
+     "rows": 31,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "range:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "partial_daily_temp_ber",
+     "origin": "model:b3-v5",
+     "question": "daily average temperature in Ber",
+     "sql": "SELECT time_bucket(INTERVAL '1 day', time) AS day, AVG(temperature) AS avg_temp FROM weather WHERE city='Berlin' GROUP BY day ORDER BY day LIMIT 5000",
+     "hint": null,
+     "rows": 731,
+     "chosen": "line",
+     "available": [
+      "line",
+      "bar",
+      "scatter",
+      "seasons",
+      "table"
+     ],
+     "roles": [
+      "day:time",
+      "avg_temp:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line"
+     ],
+     "ok": true
+    },
+    {
+     "id": "sunniest_city_2024",
+     "origin": "model:b3-v5",
+     "question": "which city had the least cloud cover in 2024",
+     "sql": "SELECT city, AVG(cloud_cover) AS avg_cc FROM weather WHERE time >= TIMESTAMP '2024-01-01 00:00:00' AND time < TIMESTAMP '2025-01-01 00:00:00' GROUP BY city ORDER BY avg_cc ASC LIMIT 1",
+     "hint": null,
+     "rows": 1,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "avg_cc:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "table"
+     ],
+     "ok": true
+    },
+    {
+     "id": "yearly_precip_compare",
+     "origin": "model:b3-v5",
+     "question": "total precipitation in 2023 compared to 2024 for each city",
+     "sql": "SELECT EXTRACT(year FROM time) AS yr,city AS c,SUM(precipitation) AS tot FROM weather WHERE time>=TIMESTAMP '2024-12-31 23:00:00'-INTERVAL '2 years' GROUP BY yr,city ORDER BY yr,c",
+     "hint": null,
+     "rows": 24,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "heatmap",
+      "surface",
+      "table"
+     ],
+     "roles": [
+      "yr:category",
+      "c:series",
+      "tot:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar",
+      "line",
+      "scatter"
+     ],
+     "ok": true
+    },
+    {
+     "id": "stormy_hours_count",
+     "origin": "model:b3-v5",
+     "question": "how many hours had wind above 50 km/h, per city",
+     "sql": "SELECT city, COUNT(*) AS cnt FROM weather WHERE wind_speed > 50 GROUP BY city ORDER BY city",
+     "hint": null,
+     "rows": 3,
+     "chosen": "bar",
+     "available": [
+      "bar",
+      "line",
+      "scatter",
+      "table"
+     ],
+     "roles": [
+      "city:category",
+      "cnt:value"
+     ],
+     "drawn": true,
+     "acceptable": [
+      "bar"
+     ],
+     "ok": true
+    }
+   ]
+  }
+ }
+}

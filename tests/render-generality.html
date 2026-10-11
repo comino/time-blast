@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>tb-render generality</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { margin: 0; padding: 16px; background: #08111b; color: #d6e9e8; font: 12px ui-monospace, monospace; }
+    #grid { display: grid; grid-template-columns: repeat(auto-fill, 340px); gap: 8px; }
+    figure { margin: 0; background: #10212d; padding: 6px; }
+    canvas { width: 320px; height: 180px; display: block; }
+  </style>
+</head>
+<body>
+  <p>Real query results of the public datasets through the renderer's automatic view choice (tests/render_generality.py).</p>
+  <div id="grid"></div>
+  <script type="module" src="./render-generality-page.ts"></script>
+</body>
+</html>
