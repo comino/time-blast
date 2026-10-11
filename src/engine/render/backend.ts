@@ -1,6 +1,7 @@
 /** GPU shims: replay the Rust command stream (crates/tb-render/src/gpu.rs `op`) on WebGPU or
  * WebGL2. They hold no chart logic — only GPU objects keyed by the ids Rust assigns.
  * Uploads read straight from Wasm memory (`writeBuffer(buffer, offset, memory, src, len)`). */
+import { bootClock, bootMark } from '../boot-trace';
 import type { PipelineJson } from './core';
 
 // Minimal module-local WebGPU typings (the repo has no @webgpu/types and adds no npm deps).
@@ -96,9 +97,14 @@ export class WebGpuBackend implements GpuBackend {
   static async create(pipelines: PipelineJson[]): Promise<WebGpuBackend | null> {
     const gpu = (globalThis.navigator as any)?.gpu;
     if (!gpu) return null;
+    const a0 = bootClock();
     const adapter = await gpu.requestAdapter({ powerPreference: 'high-performance' });
+    bootMark('gpu.adapter', a0, adapter ? undefined : 'none');
     if (!adapter) return null;
+    const d0 = bootClock();
     const device: GPUDevice = await adapter.requestDevice();
+    bootMark('gpu.device', d0);
+    const p0 = bootClock();
     (device as any).addEventListener?.('uncapturederror', (e: any) => console.error(`tb-render WebGPU: ${e.error?.message ?? e}`));
     const format: GPUTextureFormat = gpu.getPreferredCanvasFormat();
     const layout = device.createBindGroupLayout({ entries: [{ binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
@@ -117,6 +123,7 @@ export class WebGpuBackend implements GpuBackend {
         primitive: { topology: p.strip ? 'triangle-strip' : 'triangle-list' },
       });
     }));
+    bootMark('gpu.pipelines', p0, String(built.length));
     const info = (adapter as any).info as GPUAdapterInfo | undefined;
     const label = info ? [info.vendor, info.architecture, info.description].filter(Boolean).join(' ') || 'webgpu' : 'webgpu';
     return new WebGpuBackend(label, device, format, layout, built);

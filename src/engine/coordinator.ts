@@ -2,6 +2,7 @@
  * src/abi.rs). Glue only: frames are copied into Wasm memory, the outbox is copied out. */
 import type { CoordinatorCore, CreateCoordinator, LinkId } from './contracts';
 import { decode, encodedLength, HEADER_LEN, STAMP_LEN, VERSION, type Frame } from '../protocol/frame';
+import { bootClock, bootMark } from './boot-trace';
 
 interface Exports {
   memory: WebAssembly.Memory;
@@ -46,8 +47,12 @@ async function compile(source?: CoordinatorSource): Promise<WebAssembly.Module> 
 }
 
 export async function loadCoordinator(source?: CoordinatorSource): Promise<WasmCoordinator> {
+  const c0 = bootClock();
   const module = source === undefined ? await (shared ??= compile()) : await compile(source);
+  bootMark('coordinator.compile', c0);
+  const i0 = bootClock();
   const instance = await WebAssembly.instantiate(module, {});
+  bootMark('coordinator.instantiate', i0);
   const wasm = instance.exports as unknown as Exports;
   const handle = wasm.tb_coord_new();
   let bytes = new Uint8Array(wasm.memory.buffer);

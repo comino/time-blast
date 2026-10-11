@@ -1,0 +1,43 @@
+/**
+ * The engine worker's main part: coordinator, database and renderer in one thread, plus the
+ * inference link. Loaded by the worker entry (src/engine/engine.worker.ts) after it has started
+ * the cold-start work (src/engine/early.ts), and driven by UiToEngine messages
+ * (src/engine/contracts.ts). The UI may post at any time; messages arriving before the nodes are
+ * ready are queued. Typical start:
+ *   attach (one per slot) … → boot {inference, dataset} → frame {CONFIG} → frame {DRAFT} …
+ * Routing and queuing live in src/engine/host.ts.
+ */
+import type { InferencePlacement, Link, PostToUi, UiToEngine } from './contracts';
+import { createCoordinator } from './coordinator';
+import { createDatabase } from './database';
+import { createRenderer } from './render/index';
+import { EngineHost } from './host';
+import { createPortLink, createWebSocketLink } from './links';
+// Remote database placement (docs/batch-1/remote-database.md): a `{kind: 'remote', endpoint}`
+// dataset source opens the ClickHouse node over a tb1 WebSocket; other sources use DuckDB-Wasm,
+// which now boots on the first local open instead of at worker start.
+import { createPlacedDatabase } from './remote-database';
+import { header, json, Kind } from '../protocol/frame';
+import { bootMark } from './boot-trace';
+
+export interface WorkerScope {
+  postMessage(message: unknown, transfer: Transferable[]): void;
+  addEventListener(type: 'message', listener: (event: MessageEvent<UiToEngine>) => void): void;
+}
+
+const hello = (body: Record<string, unknown>) => ({ ...header(Kind.HELLO, {}), stamps: [], payload: json({ node: 'coordinator', name: 'time-blast-engine', version: 1, ...body }) });
+
+export function connectInference(placement: InferencePlacement): Link {
+  if (placement.kind === 'remote') return createWebSocketLink('inference', placement.endpoint, { hello: hello({}) });
+  const worker = new Worker(new URL('../inference-node/webllm.worker.ts', import.meta.url), { type: 'module', name: 'inference' });
+  return createPortLink('inference', worker as unknown as Parameters<typeof createPortLink>[1], { hello: hello({ model: placement.model }) });
+}
+
+/** Start the host and replay the messages the entry received while this module loaded. */
+export function start(scope: WorkerScope, early: UiToEngine[]): (message: UiToEngine) => void {
+  const postToUi: PostToUi = (message, transfer) => scope.postMessage(message, transfer ?? []);
+  bootMark('worker.main');
+  const host = new EngineHost({ createCoordinator, createRenderer, createDatabase: createPlacedDatabase(createDatabase), postToUi, connectInference });
+  for (const message of early) host.onMessage(message);
+  return message => host.onMessage(message);
+}

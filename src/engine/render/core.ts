@@ -1,6 +1,7 @@
 /** Thin wrapper over the raw C-ABI exports of crates/tb-render (no wasm-bindgen).
  * Every export may grow Wasm memory and detach old views, so typed-array views are
  * re-derived lazily whenever `memory.buffer` changed. */
+import { bootClock, bootMark } from '../boot-trace';
 import type { ViewName } from '../contracts';
 
 export interface RenderExports {
@@ -59,14 +60,19 @@ export class RenderCore {
   }
 
   static async load(source: BufferSource | URL | string): Promise<RenderCore> {
+    const c0 = bootClock();
     let module: WebAssembly.Module;
     if (source instanceof URL || typeof source === 'string') {
       const response = await fetch(source);
       if (!response.ok) throw new Error(`tb-render.wasm: HTTP ${response.status}`);
       module = await WebAssembly.compileStreaming?.(response) ?? await WebAssembly.compile(await response.arrayBuffer());
     } else module = await WebAssembly.compile(source);
+    bootMark('renderer.compile', c0);
+    const i0 = bootClock();
     const instance = await WebAssembly.instantiate(module, {});
-    return new RenderCore(instance.exports as unknown as RenderExports);
+    const core = new RenderCore(instance.exports as unknown as RenderExports);
+    bootMark('renderer.instantiate', i0);
+    return core;
   }
 
   /** The current backing buffer of Wasm memory (changes when memory grows). */

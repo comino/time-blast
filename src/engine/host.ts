@@ -23,6 +23,7 @@ import { decode, encode, Flag, header, json, Kind, Node, readJson, SENDER_REQUES
 import { CachedTools, manipulate, type SqlTools } from './manipulate';
 import { PrimedTranslations } from './prime';
 import { yieldToEventLoop } from './yield';
+import { bootClock, bootMark } from './boot-trace';
 
 export interface Timers {
   set(callback: () => void, ms: number): unknown;
@@ -111,12 +112,14 @@ export class EngineHost {
 
     const coordinator = deps.createCoordinator().then(core => {
       this.coordinator = core;
+      bootMark('coordinator.ready');
       this.statusToUi('coordinator', 'ready', 'Coordinator ready');
       this.feedCoordinator();
     });
     const renderer = deps.createRenderer(frame => this.fromRenderer(frame), (message, transfer) => deps.postToUi(message, transfer))
       .then(node => {
         this.renderer = node;
+        bootMark('renderer.ready');
         for (const control of this.controlBacklog.take()) this.control(control);
         for (const frame of this.rendererBacklog.take()) node.handle(frame);
         this.feedCoordinator();
@@ -152,6 +155,7 @@ export class EngineHost {
         return;
       }
       case 'boot':
+        bootMark('boot.message');
         this.setInference(message.inference);
         void this.openDataset(message.dataset);
         return;
@@ -230,6 +234,7 @@ export class EngineHost {
   openDataset(source: DatasetSource): Promise<DatasetContext | undefined> {
     const id = ++this.contextSeq;
     const run = async () => {
+      const o0 = bootClock();
       let database: DatabaseNode;
       try { database = await this.databaseReady; } catch { return undefined; }
       if (id !== this.contextSeq || this.disposed) return undefined;
@@ -249,6 +254,7 @@ export class EngineHost {
       this.columns = new Set(context.tables.flatMap(t => t.columns.map(c => c.name.toLowerCase())));
       this.toCoordinator('database', { ...header(Kind.CONTEXT, { context: context.id }), stamps: [], payload: json(context) });
       this.deps.postToUi({ type: 'context', context });
+      bootMark('dataset.open', o0, source.name);
       return context;
     };
     const result = this.opening.then(run, run);
@@ -284,6 +290,7 @@ export class EngineHost {
       if (this.inference !== link) return;
       if (frame.kind === Kind.READY) {
         this.reconnectAttempt = 0;
+        bootMark('inference.ready');
         let model = '';
         try { model = (readJson<{ model?: string }>(frame.payload as Uint8Array).model) ?? ''; } catch { /* READY payload is optional detail */ }
         this.statusToUi('inference', 'ready', model ? `Inference ready · ${model}` : 'Inference ready');
