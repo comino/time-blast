@@ -1,6 +1,6 @@
 # Batch 3: cold start, generality, measurement discipline
 
-Status: in progress (started 2026-10-11). Direction: [vision.md](vision.md). Owner's priorities:
+Status: **done and merged** (2026-10-11); results in [status.md](status.md#batch-3-merged) and [batch-3/](batch-3/). Direction: [vision.md](vision.md). Owner's priorities:
 performance and maturity. No time on operational chores such as logins. **No work on hosted
 inference latency**: the owner expects inference to run locally soon.
 

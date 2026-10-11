@@ -1,6 +1,6 @@
 # Batch 3 · generality: real datasets, per-dataset eval scores
 
-Status: implemented and measured 2026-10-11 on branch `worktree-agent-a5e184e3fc38e7a4a`; not deployed.
+Status: implemented and measured 2026-10-11; merged into `main`.
 Workstream 3 of [plan-batch-3.md](../plan-batch-3.md).
 
 **Result:** the engine works on three real public datasets of different shapes without code that
@@ -115,9 +115,8 @@ monthly precipitation per city 55 → 9 ms (loaded host, indicative).
 
 ## Contract changes needed
 
-- None to `contracts.ts`. Suggestion for the database owner: `describe()` should list a manifest
-  entry's tables in manifest order (the fact table first), not alphabetically; the scores here were
-  measured that way.
+- None to `contracts.ts`. `describe()` now lists a manifest entry's tables in manifest order (the
+  fact table first), as these scores were measured (fixed on `main` after the merge).
 
 ## Next
 
@@ -127,5 +126,4 @@ monthly precipitation per city 55 → 9 ms (loaded host, indicative).
 - Data-aware view choice for one-row wide results and label-like text columns (renderer owner).
 - `approx_count_distinct` overstates small tables (airports.code: 393 distinct of 340 rows); use an
   exact count below ~100k rows (database owner).
-- Re-measure flights with the merged loader's table order (or restore manifest order first).
 - More runs per prompt: at n ≈ 30 and run-to-run spread of ±2 questions, single runs cannot rank prompts.

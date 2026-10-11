@@ -1,6 +1,6 @@
 # Current status and handoff
 
-Updated **2026-10-11** (batches 1–2 merged and deployed; batch 3 in progress). Direction: [vision.md](vision.md). The source repository is
+Updated **2026-10-11** (batches 1–3 merged; see Deployed for what runs live). Direction: [vision.md](vision.md). The source repository is
 private; the [live synthetic-data demo](https://time-blast.46-224-133-201.sslip.io) is public and,
 since 2026-10-11, **runs batch 1 + batch 2** ([deploy/README.md](../deploy/README.md)): public
 check, real inference, last keystroke → first draw 547 ms.
@@ -92,22 +92,42 @@ plan: [plan-batch-2.md](plan-batch-2.md).
   commits. It is not measured with a real microphone (headless Chromium has no speech service).
 
 
-## Batch 3 (in progress)
+## Batch 3 (merged)
 
 Plan: [plan-batch-3.md](plan-batch-3.md). **Direction (owner, 2026-10-11): bring the project to a
 finished, polished state soon. Hosted API inference is fine; no work on local inference or on
 hosted-inference latency.**
 
-- **Perf regression harness (done):** `pnpm perf` runs e2e, gesture, chip, boot, database and
-  micro benches, appends p50/p95 per stage to [perf/history.jsonl](perf/history.jsonl) keyed by
-  commit, checks [budgets](perf/budgets.json) (`--check` fails loudly) and feeds a dashboard
+- **Cold start** ([batch-3/cold-start.md](batch-3/cold-start.md)). Medians on the loaded dev host,
+  8 alternating boots each:
+
+  | ms, median / p95 | before | after |
+  |---|---|---|
+  | First visit → first question answerable | 11 906 / 16 593 | 7 517 / 9 734 |
+  | Repeat visit → answerable | 12 577 / 18 527 | 4 464 / 6 822 |
+  | First question after boot, keystroke → first draw | 497 / 748 | 91 / 211 |
+  | Rollups ready (first visit) | ~28 000 | ready with the dataset |
+
+  How: a prebuilt `vessels.duckdb` (tables, statistics, rollups) attached read-only and read on
+  demand, cached across visits with the Cache API; the worker and DuckDB compile start before the
+  UI is built; Parquet loads only when needed; warm-up queries after the deferred lockdown.
+  Correctness: 308/308 identical results prebuilt and from Parquet. **The floor is DuckDB-Wasm
+  itself:** compiling and instantiating its 34 MB engine costs 3–4 s here on every visit, because
+  Chrome's code cache doesn't keep it. Not an order of magnitude yet; real hardware still unmeasured.
+- **Generality** ([batch-3/generality.md](batch-3/generality.md)): three real public datasets with
+  no dataset-specific code: `weather` (Open-Meteo, hourly, 12 cities), `flights` (US DOT, June 2024,
+  3 tables, JOINs), `cities` (GeoNames, no time column). Executed-result scores, default model,
+  mean of 4 runs: **vessels 89–91 %, weather 88 %, flights 85 %, cities 77 %** (prompt v6: the
+  dataset's own time column, qualified shared columns). Eval spend $0.37.
+- **Perf regression harness:** `pnpm perf` runs e2e, gesture, chip, boot, database and micro
+  benches, appends p50/p95 per stage to [perf/history.jsonl](perf/history.jsonl) keyed by commit,
+  checks [budgets](perf/budgets.json) (`--check` fails loudly) and feeds a dashboard
   ([perf/index.html](perf/index.html)). Notes: [batch-3/measurement.md](batch-3/measurement.md).
-- **Real-hardware page (done, not yet run on hardware):** `/measure.html` runs the real pipeline
-  with an in-page fake inference node and reports keystroke → GPU-presented frame, boot stages,
-  GPU adapter and network RTT. Its JSON goes into the history with `pnpm perf --ingest`.
-- **Cold start** and **generality** (3–4 real datasets with their own eval corpora): wrapping up.
-- **Cleanup:** the legacy Canvas2D chart and its benchmark baseline are deleted; render-bench now
-  measures only the Rust/Wasm renderer.
+- **Real-hardware page:** `/measure.html` runs the real pipeline with an in-page fake inference
+  node and reports keystroke → GPU-presented frame, boot stages, GPU adapter and network RTT. Its
+  JSON goes into the history with `pnpm perf --ingest`. **Not yet run on real hardware.**
+- **Cleanup and fixes:** the legacy Canvas2D chart is deleted; a disposed database node could
+  cancel another connection's query through a reused connection id (flaky test, fixed).
 
 ## Next
 

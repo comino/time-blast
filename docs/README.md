@@ -10,13 +10,12 @@ background, and where it conflicts with the vision, the vision wins.
 |---|---|
 | [vision.md](vision.md) | Purpose, metric, architecture principles, what to unlearn. **Canonical.** |
 | [status.md](status.md) | What is deployed and running right now, and the next steps |
-| [plan-batch-3.md](plan-batch-3.md) | The current batch: cold start, generality, perf harness, real-hardware page |
-| [batch-3/cold-start.md](batch-3/cold-start.md) | Cold start: boot trace, prebuilt databases, before/after |
+| [plan-batch-3.md](plan-batch-3.md) | Batch 3 (done): cold start, generality, perf harness, real-hardware page |
+| [batch-3/](batch-3/) | Batch 3 per area: [cold-start.md](batch-3/cold-start.md), [generality.md](batch-3/generality.md) (real datasets, per-dataset evals), [measurement.md](batch-3/measurement.md) |
 | [perf/README.md](perf/README.md) | `pnpm perf`: regression harness, history, budgets, dashboard (`perf/index.html`); `/measure.html` for real hardware |
 | [plan-batch-2.md](plan-batch-2.md) | Batch 2 (done): database and inference latency, shipping, interactions |
 | [plan-batch-1.md](plan-batch-1.md) | Batch 1 (done): protocol, Rust/Wasm coordinator and renderer, SQL, ClickHouse node |
 | [protocol-v1.md](protocol-v1.md) | tb1: the one frame format and message vocabulary for every component and placement |
-| [batch-3/generality.md](batch-3/generality.md) | Batch 3: public datasets (weather, flights, cities), per-dataset NL→SQL scores, prompt and renderer changes |
 | [batch-2/](batch-2/) | Batch 2 per area: [database.md](batch-2/database.md), [inference.md](batch-2/inference.md), [manipulation.md](batch-2/manipulation.md) (chart-as-query, steady charts), [voice-anticipation.md](batch-2/voice-anticipation.md) (voice input, next-question chips) |
 | [batch-1/](batch-1/) | What batch 1 built and measured, per area: coordinator, engine, inference, ui, render; [evals.md](batch-1/evals.md) scores NL→SQL by executed results |
 | [../deploy/README.md](../deploy/README.md) | Operating and updating the live demo (runs `main`) |
