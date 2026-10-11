@@ -433,6 +433,18 @@ impl Family for Calendar {
         }
     }
 
+    fn relabel(&mut self, store: &Store) -> bool {
+        if store.series.is_some() || self.labels.is_empty() {
+            return false;
+        }
+        let name = store.roles.value.map(|v| store.columns[v].name.clone()).unwrap_or_default();
+        if self.labels[0] == name {
+            return false;
+        }
+        self.labels[0] = name;
+        true
+    }
+
     fn points(&self) -> u32 {
         self.points
     }

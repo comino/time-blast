@@ -299,6 +299,20 @@ impl Family for Xy {
         self.points
     }
 
+    fn relabel(&mut self, store: &Store) -> bool {
+        let name = |c: Option<usize>| c.map(|v| store.columns[v].name.clone()).unwrap_or_default();
+        let fresh: Vec<String> = match self.source {
+            Source::Wide => store.roles.measures.iter().map(|&m| store.columns[m].name.clone()).chain([name(store.roles.value)]).collect(),
+            _ if store.series.is_none() => vec![name(store.roles.value)],
+            _ => return false,
+        };
+        if self.labels.is_empty() || self.labels == fresh {
+            return false;
+        }
+        self.labels = fresh;
+        true
+    }
+
     fn upload(&mut self, view: View, gpu: &mut Gpu) {
         for s in &mut self.series {
             if view == View::Line && !s.sorted {

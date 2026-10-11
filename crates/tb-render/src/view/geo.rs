@@ -424,6 +424,18 @@ impl Family for Geo {
         self.markers_dirty = true;
     }
 
+    fn relabel(&mut self, store: &Store) -> bool {
+        let name = store.roles.value.map(|v| store.columns[v].name.clone()).unwrap_or_default();
+        if self.value_name.is_empty() || self.value_name == name {
+            return false;
+        }
+        if !self.has_series && !self.labels.is_empty() {
+            self.labels[0] = name.clone();
+        }
+        self.value_name = name;
+        true
+    }
+
     fn points(&self) -> u32 {
         self.points
     }
@@ -586,6 +598,28 @@ impl Family for Geo {
         self.markers_gpu.release(gpu);
         self.coast.release(gpu);
         self.grid.gpu.release(gpu);
+    }
+
+    fn nearest(&self, _view: View, store: &Store, plot: crate::axes::Rect, x: f32, y: f32) -> Option<usize> {
+        let (lat, lon) = (store.lat.as_deref()?, store.lon.as_deref()?);
+        // The same window `draw` fits (only the plot's aspect ratio matters).
+        let dom = fit(&self.ext, plot.width, plot.height);
+        let wrap = self.ext.wrap();
+        let (sx, sy) = (plot.width as f64 / (dom[1] - dom[0]), plot.height as f64 / (dom[3] - dom[2]));
+        let mut best: Option<(usize, f64)> = None;
+        for i in 0..store.rows {
+            let (la, lo) = (lat[i], lon[i]);
+            if !(la.abs() <= 90.0) || !lo.is_finite() {
+                continue;
+            }
+            let px = plot.left as f64 + (lon_w(norm_lon(lo), wrap) - dom[0]) * sx;
+            let py = plot.top as f64 + (dom[3] - proj::merc_y(la)) * sy;
+            let d = (px - x as f64).hypot(py - y as f64);
+            if d <= crate::hit::PICK_RADIUS as f64 && best.map_or(true, |(_, b)| d < b) {
+                best = Some((i, d));
+            }
+        }
+        best.map(|(i, _)| i)
     }
 
     fn wants_frame(&self) -> bool {

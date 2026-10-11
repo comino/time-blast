@@ -9,6 +9,7 @@
 //!   offs_off, offs_len, dict_offs_off, dict_offs_len, dict_data_off, dict_data_len]`;
 //!   `NONE` (0xFFFF_FFFF) marks an absent validity bitmap or an unchanged dictionary.
 
+use crate::hit::Query;
 use crate::renderer::{Binding, Renderer};
 use crate::schema::{ColumnInfo, ColumnType, TypeCode, View};
 use crate::store::RawColumn;
@@ -186,9 +187,40 @@ pub extern "C" fn tb_batch(request: u32, epoch: u32, rows: u32, ncols: u32) -> u
     flags
 }
 
+/// Returns flags: 1 accepted, 2 first draw ready (urgent), 4 steady (an `ev::STEADY` event is
+/// queued: the image on screen already shows this result).
 #[no_mangle]
 pub extern "C" fn tb_done(request: u32, epoch: u32) -> u32 {
-    r().done(request, epoch)
+    let r = r();
+    r.clear_events();
+    r.done(request, epoch)
+}
+
+/// Steady charts on (1) or off (0). Default on.
+#[no_mangle]
+pub extern "C" fn tb_set_steady(on: u32) {
+    r().steady = on != 0;
+}
+
+/// Hit-test `slot`'s result on screen, which must be `request`. `kind` 0: point (`a`, `b`) CSS
+/// px; 1: brush from x `a` to x `b`; 2: legend entry `a`. Returns the JSON length at
+/// `tb_out_ptr` (0 = nothing there).
+#[no_mangle]
+pub extern "C" fn tb_hit(slot: u32, request: u32, kind: u32, a: f32, b: f32) -> u32 {
+    let r = r();
+    let query = match kind {
+        0 => Query::Point { x: a, y: b },
+        1 => Query::Range { x0: a, x1: b },
+        2 if a >= 0.0 => Query::Legend { index: a as usize },
+        _ => return 0,
+    };
+    match r.hit(slot, request, query) {
+        Some(json) => {
+            r.out = json.into_bytes();
+            r.out.len() as u32
+        }
+        None => 0,
+    }
 }
 
 /// Bitmask of available views for the slot's bound result.

@@ -67,6 +67,17 @@ pub trait Family {
     fn wants_frame(&self) -> bool {
         false
     }
+    /// Steady charts: `store` holds the same data as the one this family ingested, under new
+    /// column names (an alias variant). Refresh labels taken from column names (legend text);
+    /// geometry stays. Return true when text changed.
+    fn relabel(&mut self, _store: &Store) -> bool {
+        false
+    }
+    /// Hit-testing for views without x/y axis scales (maps): the store row drawn nearest to
+    /// (`x`, `y`) CSS px inside `plot` (CSS px), within `hit::PICK_RADIUS`.
+    fn nearest(&self, _view: View, _store: &Store, _plot: crate::axes::Rect, _x: f32, _y: f32) -> Option<usize> {
+        None
+    }
 }
 
 pub struct FamilyDef {
