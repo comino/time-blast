@@ -34,6 +34,7 @@ const shuffled = xs => { const a = [...xs]; for (let i = a.length - 1; i > 0; i-
 
 const times = new Map(list.map(s => [s.sql, []]));
 const failed = new Set();
+const hits = [];
 for (const { sql } of list) { opt.node.cache?.clear(); const o = await opt.run(sql); if (!o.ok) failed.add(sql); }
 for (let k = 0; k < repeats; k++) {
   for (const { sql } of shuffled(list)) {
@@ -41,11 +42,10 @@ for (let k = 0; k < repeats; k++) {
     opt.node.cache?.clear();
     const o = await opt.run(sql);
     if (o.stats?.firstBatchMs !== undefined) times.get(sql).push(o.stats.firstBatchMs);
+    // The statement was just executed: running it again is a result-cache hit.
+    if (k === 0) { const h = await opt.run(sql); if (h.stats?.source === 'cache') hits.push(h.stats.firstBatchMs); }
   }
 }
-// Result-cache hits: each statement was just executed.
-const hits = [];
-for (const { sql } of list) { if (failed.has(sql)) continue; const o = await opt.run(sql); if (o.stats?.source === 'cache') hits.push(o.stats.firstBatchMs); }
 
 const median = xs => { const s = [...xs].sort((a, b) => a - b); const n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
 const perStatement = [...times.values()].filter(xs => xs.length).map(median);

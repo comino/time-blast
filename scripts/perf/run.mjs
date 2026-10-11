@@ -225,6 +225,9 @@ function report(record, history) {
   const rows = lib.check(record, history, budgets);
   const bad = rows.filter(r => r.verdict === 'regressed' || r.verdict === 'missing');
   console.log(`\nbudget check of ${record.commit} (${record.date}) against up to ${budgets.baselineRuns} earlier ${record.suite} runs on ${record.host.name} · GPU ${record.gpu.backend}`);
+  const base = history.filter(r => r !== record && lib.comparable(r, record) && history.indexOf(r) < history.indexOf(record)).slice(-budgets.baselineRuns);
+  const load = r => r.host.loadBefore ? r.host.loadBefore[0] : '?';
+  console.log(`1-min load: this run ${load(record)}; baseline runs ${base.map(load).join(', ') || '—'} (compare loads before blaming the code)`);
   for (const r of rows) console.log(`${r.verdict === 'regressed' ? '!! REGRESSED' : r.verdict === 'missing' ? '!! MISSING ' : r.verdict.padEnd(12)}  ${r.metric}: ${r.reason}`);
   if (bad.length) console.log(`\n!!!!!!!! ${bad.length} metric(s) regressed beyond budget: ${bad.map(r => r.metric).join(', ')} !!!!!!!!`);
   else console.log('\nno regressions beyond budget');

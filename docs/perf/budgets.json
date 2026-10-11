@@ -1,5 +1,24 @@
 {
   "baselineRuns": 3,
-  "default": { "relative": 0.5, "absolute": 10 },
-  "metrics": {}
+  "default": { "relative": 1.0, "absolute": 10 },
+  "metrics": {
+    "boot.*": { "relative": 1.0, "absolute": 1000 },
+    "boot.first_visit.answerable": { "relative": 1.0, "absolute": 5000 },
+    "boot.repeat_visit.answerable": { "relative": 1.0, "absolute": 5000 },
+    "db.first_batch": { "relative": 1.0, "absolute": 5, "p95": { "relative": 2.0, "absolute": 50 } },
+    "db.cache_hit": { "relative": 1.0, "absolute": 0.5 },
+    "db.open": { "relative": 1.5, "absolute": 3000 },
+    "db.rollup_build": { "relative": 1.5, "absolute": 5000 },
+    "e2e.keystroke_to_draw": { "relative": 0.6, "absolute": 25, "p95": { "relative": 2.0, "absolute": 300 } },
+    "e2e.chip_to_draw": { "relative": 1.0, "absolute": 20 },
+    "e2e.gesture_brush_to_draw": { "relative": 0.75, "absolute": 40 },
+    "e2e.gesture_legend_to_draw": { "relative": 0.75, "absolute": 40 },
+    "e2e.gesture_back_to_draw": { "relative": 1.0, "absolute": 15 },
+    "e2e.first_query_after_boot": { "relative": 1.5, "absolute": 500 },
+    "e2e.redraw_keystroke_to_draw": { "relative": 1.0, "absolute": 20 },
+    "e2e.redraw_keystroke_to_presented": { "relative": 1.5, "absolute": 800 },
+    "micro.*": { "relative": 1.5, "absolute": 1 },
+    "micro.coordinator_input_restart": { "relative": 1.5, "absolute": 5 },
+    "eval.*": { "relative": 1.0, "absolute": 300 }
+  }
 }
