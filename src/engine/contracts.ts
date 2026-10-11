@@ -113,7 +113,33 @@ export interface RendererNode {
   export(slot: number, format: 'csv'): void;
   /** Views available for a slot's current result, for the UI's view picker. */
   views(slot: number): ViewName[];
+  /** Chart-as-query: the data under a gesture on `slot`, whose result on screen must be
+   * `request` (null when it is not, or nothing is there). Uses the last frame's scales. */
+  hit(slot: number, request: number, gesture: PointerGesture): Hit | null;
 }
+
+// ───────────────────────── chart-as-query (docs/batch-2/manipulation.md) ─────────────────────────
+
+/** A pointer gesture on a card, in CSS px relative to the canvas. */
+export type PointerGesture =
+  | { kind: 'point'; x: number; y: number }
+  | { kind: 'brush'; x0: number; x1: number }
+  | { kind: 'legend'; index: number };
+/** `sql`: run an earlier SQL of the card as is (back). */
+export type Gesture = PointerGesture | { kind: 'sql'; sql: string };
+
+/** One value under the pointer: exact data (time/date in µs since the epoch). */
+export interface HitValue {
+  column: number; name: string;
+  type: 'timestamp' | 'date' | 'integer' | 'number' | 'text' | 'boolean' | 'other';
+  value?: number | null; label?: string; null?: boolean;
+}
+/** Rows whose x lies inside a brush: min/max x (numbers) or the categories (text). */
+export interface HitRange {
+  column: number; name: string; type: HitValue['type'];
+  lo?: number; hi?: number; labels?: string[]; count: number;
+}
+export interface Hit { request: number; view: ViewName; x?: HitValue; range?: HitRange; series?: HitValue }
 export interface SlotSize { width: number; height: number; devicePixelRatio: number }
 
 // ───────────────────────── factories (stable entry points; owners replace the stubs) ─────────────────────────
@@ -142,7 +168,11 @@ export type UiToEngine =
   | { type: 'detach'; slot: number }
   | { type: 'view'; slot: number; view: ViewName | null }
   | { type: 'param'; slot: number; name: string; value: number }
-  | { type: 'export'; slot: number; format: 'csv' };
+  | { type: 'export'; slot: number; format: 'csv' }
+  /** Chart-as-query: the engine hit-tests, rewrites `sql` (the card's SQL for `request`) and
+   * sends a QUERY frame to the coordinator. `keyAt`/`sentAt`: Unix ms of the pointer event and
+   * of posting (stamped KEY_INPUT and DRAFT_SENT). */
+  | { type: 'manipulate'; slot: number; request: number; revision: number; epoch: number; context: number; sql: string; gesture: Gesture; keyAt: number; sentAt: number };
 
 export type InferencePlacement =
   | { kind: 'remote'; endpoint: string }
@@ -157,7 +187,9 @@ export type EngineToUi =
   | { type: 'views'; slot: number; available: ViewName[]; chosen: ViewName; columns?: Array<{ name: string; role: ColumnRole | '' }> }
   | { type: 'table'; slot: number; columns: string[]; rows: string[][]; total: number }
   | { type: 'axes'; slot: number; ticks: AxisTicks }
-  | { type: 'export'; slot: number; blob: Blob; filename: string };
+  | { type: 'export'; slot: number; blob: Blob; filename: string }
+  /** Outcome of a `manipulate`: the SQL sent as QUERY (null: nothing to do, see `reason`). */
+  | { type: 'manipulated'; slot: number; from: string; sql: string | null; method: 'rewrite' | 'wrap' | 'as-is' | 'none'; reason: string; ms: number };
 
 /** Text is the boring part: the renderer computes tick positions, the UI draws labels in DOM. */
 export interface AxisTicks {

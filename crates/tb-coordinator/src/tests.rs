@@ -1196,3 +1196,112 @@ fn bind_carries_the_requested_view_or_automatic() {
         }
     }
 }
+
+// ───────────────────────── QUERY (chart-as-query) ─────────────────────────
+
+fn query_frame(slot: u32, revision: u32, sql: &str, now: f64) -> Frame {
+    let mut payload = slot.to_le_bytes().to_vec();
+    payload.extend_from_slice(sql.as_bytes());
+    let mut f = Frame::new(Header::new(Kind::Query), payload);
+    f.header.revision = revision;
+    f.header.context = CTX;
+    f.stamp(stage::KEY_INPUT, node::UI, now - 3.0).stamp(stage::DRAFT_SENT, node::UI, now - 2.5)
+}
+
+#[test]
+fn query_on_live_slot_rebinds_executes_and_enter_keeps_it() {
+    let mut h = H::new();
+    let first = h.full(1, "speed by hour", "SELECT 1");
+    h.at(2_000.0);
+    let out = h.send(Ui, query_frame(1, 1, "SELECT 2", 2_000.0));
+    let bind = one(&out, Renderer, Kind::Bind);
+    assert_eq!(bind.payload.len(), 4, "4-byte BIND keeps the slot's view");
+    assert_eq!(slot_of(bind), 1);
+    let id = bind.header.request;
+    assert!(id > first);
+    assert_eq!(bind.header.revision, 1, "answers the live question's revision");
+    assert_eq!(slot_of(one(&out, Ui, Kind::Bind)), 1);
+    let exec = one(&out, Database, Kind::Exec);
+    assert_eq!((exec.header.request, exec.header.flags, &exec.payload[..]), (id, 0, &b"SELECT 2"[..]));
+    none(&out, Inference, Kind::Infer);
+    assert_eq!(h.c.stats().queries, 1);
+    // The previous result is fenced: its late frames are dropped.
+    let dropped = h.c.stats().dropped_request;
+    h.drawn(first, 1);
+    assert_eq!(h.c.stats().dropped_request, dropped + 1);
+    // TIMING runs from the pointer (KEY_INPUT) to the first draw.
+    h.schema(id);
+    h.batch(id);
+    let out = h.drawn(id, 1);
+    let timing = one(&out, Ui, Kind::Timing);
+    let stages: Vec<u16> = timing.stamps.iter().map(|s| s.stage).collect();
+    for s in [stage::KEY_INPUT, stage::COORD_RECEIVED, stage::EXEC_SENT, stage::DB_FIRST_BATCH, stage::FIRST_DRAW_SUBMITTED] {
+        assert!(stages.contains(&s), "stage {s} in {stages:?}");
+    }
+    assert!(!stages.contains(&stage::INFER_SENT));
+    // Enter on the same text keeps the manipulated result without new work.
+    let out = h.commit(1, "speed by hour");
+    assert_eq!(one(&out, Ui, Kind::Keep).header.request, id);
+    none(&out, Database, Kind::Exec);
+    none(&out, Inference, Kind::Infer);
+}
+
+#[test]
+fn query_is_replaced_by_the_next_keystroke() {
+    let mut h = H::new();
+    h.full(1, "speed by hour", "SELECT 1");
+    let now = h.now;
+    let out = h.send(Ui, query_frame(1, 1, "SELECT 2", now));
+    let id = one(&out, Database, Kind::Exec).header.request;
+    let out = h.draft(2, "speed by hour!");
+    let infer = one(&out, Inference, Kind::Infer).header.request;
+    let out = h.sql(infer, "SELECT 3");
+    assert_eq!(one(&out, Renderer, Kind::Bind).header.request, infer);
+    assert_eq!(one(&out, Database, Kind::Cancel).header.request, id, "the running manipulation is cancelled");
+}
+
+#[test]
+fn query_on_kept_slot_is_committed_and_does_not_touch_the_live_slot() {
+    let mut h = H::new();
+    h.full(1, "speed by hour", "SELECT 1");
+    let out = h.commit(1, "speed by hour");
+    let kept = slot_of(one(&out, Ui, Kind::Keep));
+    h.config(r#"{"freeSlots":[3]}"#);
+    let live = h.c.live_slot().unwrap();
+    assert_ne!(live, kept);
+    let now = h.now;
+    let out = h.send(Ui, query_frame(kept, 1, "SELECT 2", now));
+    let bind = one(&out, Renderer, Kind::Bind);
+    assert_eq!((slot_of(bind), bind.header.revision), (kept, 1));
+    none(&out, Ui, Kind::Keep);
+    let id = bind.header.request;
+    // A second manipulation of the same card supersedes the first one's execution.
+    let out = h.send(Ui, query_frame(kept, 1, "SELECT 3", now));
+    assert_eq!(one(&out, Database, Kind::Cancel).header.request, id);
+    assert_eq!(h.c.live_slot(), Some(live));
+    // Typing still uses the live slot.
+    let out = h.draft(2, "wind");
+    let infer = one(&out, Inference, Kind::Infer).header.request;
+    let out = h.sql(infer, "SELECT 9");
+    assert_eq!(slot_of(one(&out, Renderer, Kind::Bind)), live);
+}
+
+#[test]
+fn query_rejects_free_slots_stale_context_and_bad_payloads() {
+    let mut h = H::new();
+    h.full(1, "speed by hour", "SELECT 1");
+    let before = h.c.stats().dropped_request;
+    let now = h.now;
+    let out = h.send(Ui, query_frame(2, 1, "SELECT 2", now));
+    assert!(out.is_empty(), "slot 2 is free, not live: nothing shown there");
+    let mut stale = query_frame(1, 1, "SELECT 2", now);
+    stale.header.context = CTX + 1;
+    assert!(h.send(Ui, stale).is_empty());
+    assert_eq!(h.c.stats().dropped_request, before + 2);
+    assert_eq!(h.try_send(Ui, Frame::new(Header::new(Kind::Query), vec![1, 0, 0])).unwrap_err(), InputError::InvalidPayload);
+    let mut bad = query_frame(1, 1, "", now);
+    bad.payload.extend_from_slice(&[0xff, 0xfe]);
+    assert_eq!(h.try_send(Ui, bad).unwrap_err(), InputError::InvalidUtf8);
+    assert_eq!(h.try_send(Ui, query_frame(1, 1, "  ", now)).unwrap_err(), InputError::InvalidPayload);
+    assert_eq!(h.c.stats().queries, 0);
+}

@@ -96,6 +96,8 @@ pub struct Stats {
     pub exec_sent: u32,
     pub cache_hits: u32,
     pub sql_dedups: u32,
+    /// QUERY frames executed (chart-as-query).
+    pub queries: u32,
     pub text_adoptions: u32,
     pub inference_cancels: u32,
     pub database_cancels: u32,
@@ -345,6 +347,7 @@ impl Coordinator {
             (Ui, Kind::Draft) => self.on_draft(frame, now, false),
             (Ui, Kind::Commit) => self.on_draft(frame, now, true),
             (Ui, Kind::Config) => self.on_config(frame.payload, now),
+            (Ui, Kind::Query) => self.on_query(frame, now),
             (Ui, Kind::Cancel) => {
                 self.on_cancel(frame.header.epoch);
                 Ok(())
@@ -490,6 +493,72 @@ impl Coordinator {
             return Ok(());
         }
         self.pump(now);
+        Ok(())
+    }
+
+    /// QUERY: execute explicit SQL for a slot (a chart manipulation; no translation). The live
+    /// slot's request is replaced by one that answers the same question text and revision, so
+    /// Enter keeps what is shown and the next keystroke replaces it as usual; a kept slot gets a
+    /// committed request. The BIND is the 4-byte form: the slot keeps its chosen view.
+    fn on_query(&mut self, frame: FrameRef<'_>, now: f64) -> Result<(), InputError> {
+        let header = frame.header;
+        if frame.payload.len() < 5 {
+            return Err(InputError::InvalidPayload);
+        }
+        let slot = u32::from_le_bytes(frame.payload[..4].try_into().unwrap());
+        let sql = std::str::from_utf8(&frame.payload[4..]).map_err(|_| InputError::InvalidUtf8)?;
+        if sql.trim().is_empty() {
+            return Err(InputError::InvalidPayload);
+        }
+        let live = self.pool.front() == Some(&slot);
+        // A free slot that is not live shows nothing; a stale context answers old data.
+        if header.epoch < self.epoch || header.context == 0 || header.context != self.context || (!live && self.pool.contains(&slot)) {
+            self.stats.dropped_request += 1;
+            return Ok(());
+        }
+        let bound = if live { self.live_bound.and_then(|id| self.find(id)) } else { None };
+        let (text, revision) = match bound {
+            Some(b) => (self.requests[b].text.clone(), self.requests[b].revision),
+            None => (Box::<str>::from(""), header.revision),
+        };
+        let old = bound.map(|b| self.requests[b].id);
+        if let Some(p) = self.requests.iter().position(|r| r.slot == Some(slot)) {
+            self.supersede(p);
+        }
+        let id = self.next_request;
+        self.next_request = self.next_request.checked_add(1).expect("request ids exhausted");
+        let mut ledger: Vec<Stamp> = frame.stamps().take(LEDGER_CAPACITY - 4).collect();
+        ledger.push(coord(stage::COORD_RECEIVED, now));
+        ledger.push(coord(stage::EXEC_SENT, now));
+        self.requests.push(Request {
+            id,
+            context: self.context,
+            revision,
+            text,
+            committed: !live,
+            phase: Phase::Translated,
+            release_at: 0.0,
+            sql: sql.as_bytes().to_vec(),
+            cached: false,
+            exec: Exec::Running,
+            slot: Some(slot),
+            result_sent: false,
+            drawn: false,
+            ledger,
+        });
+        if live {
+            self.live_bound = Some(id);
+            if self.head.is_none() || self.head == old {
+                self.head = Some(id);
+            }
+        }
+        self.stats.queries += 1;
+        self.stats.exec_sent += 1;
+        self.emit_slot(LinkId::Renderer, Kind::Bind, id, revision, slot);
+        self.emit_slot(LinkId::Ui, Kind::Bind, id, revision, slot);
+        // EXEC last: an in-process database may run the query synchronously.
+        let header = self.header(Kind::Exec, id, revision, self.context);
+        self.emit(LinkId::Database, header, vec![coord(stage::EXEC_SENT, now)], sql.as_bytes().to_vec());
         Ok(())
     }
 

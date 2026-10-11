@@ -17,6 +17,8 @@ valid = [
     dict(name='draft-composing-unicode', kind=0x10, flags=0x01, revision=43, context=7, payload='Wellenhöhe 🌊'.encode()),
     dict(name='commit', kind=0x11, revision=44, context=7, payload=b'max wind by vessel'),
     dict(name='cancel-all', kind=0x12, epoch=3),
+    dict(name='query', kind=0x13, epoch=2, revision=44, context=7, stamps=[(1, 1, 1760000000200.5), (2, 1, 1760000000200.75)],
+         payload=struct.pack('<I', 3) + b"SELECT date_trunc('minute', ts) AS t, avg(speed) AS speed FROM telemetry WHERE ts >= TIMESTAMP '2026-09-03 04:00:00' GROUP BY 1 ORDER BY 1"),
     dict(name='infer', kind=0x18, epoch=3, request=9, revision=44, context=7, payload=b'max wind by vessel'),
     dict(name='sql-cached', kind=0x1A, flags=0x01, epoch=3, request=9, stamps=[(9, 3, 1760000000600.0)],
          payload=b'SELECT vessel, max(wind) FROM telemetry GROUP BY 1'),

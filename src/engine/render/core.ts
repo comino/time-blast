@@ -20,6 +20,8 @@ export interface RenderExports {
   tb_schema(request: number, epoch: number, columns: number): number;
   tb_batch(request: number, epoch: number, rows: number, columns: number): number;
   tb_done(request: number, epoch: number): number;
+  tb_set_steady(on: number): void;
+  tb_hit(slot: number, request: number, kind: number, a: number, b: number): number;
   tb_views(slot: number): number;
   tb_needs_frame(): number;
   tb_frame(urgentOnly: number): number;
@@ -34,8 +36,8 @@ export interface RenderExports {
 export const VIEW_NAMES: ViewName[] = ['line', 'bar', 'scatter', 'table', 'heatmap', 'surface', 'map', 'density', 'tracks', 'seasons'];
 export const AUTO_VIEW = 255;
 
-export const Ev = { VIEWS: 1, AXES: 2, FIRST_DRAW: 3 } as const;
-export const Flags = { ACCEPTED: 1, URGENT: 2 } as const;
+export const Ev = { VIEWS: 1, AXES: 2, FIRST_DRAW: 3, STEADY: 4 } as const;
+export const Flags = { ACCEPTED: 1, URGENT: 2, STEADY: 4 } as const;
 export interface CoreEvent { kind: number; slot: number; request: number; a: number; text: string }
 
 export interface PipelineJson {

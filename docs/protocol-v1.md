@@ -98,6 +98,7 @@ unknown kinds, truncated frames, and nonzero reserved stamp fields.
 | 0x10 | `DRAFT` | UI → coordinator | revision, context | UTF-8 text. Flag `0x01 COMPOSING` |
 | 0x11 | `COMMIT` | UI → coordinator | revision, context | UTF-8 text (always the full text; Enter) |
 | 0x12 | `CANCEL` | any → any | request = 0: cancel everything, epoch = **new** epoch. request ≠ 0: cancel that request only, epoch unchanged | empty |
+| 0x13 | `QUERY` | UI → coordinator | revision, context | `u32 slot` + UTF-8 SQL: execute this SQL for this slot, no translation (chart-as-query, back). Stamps `KEY_INPUT` (the pointer/key event), `DRAFT_SENT`, `SQL_COMPLETE` (end of the SQL rewrite, node 2) |
 | 0x18 | `INFER` | coordinator → inference | request, revision, context | UTF-8 question text |
 | 0x19 | `SQL_DELTA` | inference → coordinator | request | UTF-8 fragment of the SQL being generated. Flag `0x02 RESET`: discard earlier deltas (a repair restarted the SQL) |
 | 0x1A | `SQL` | inference → coordinator | request | UTF-8 complete SQL. Flag `0x01 CACHED` (inference-side cache) |
@@ -151,7 +152,7 @@ anything visible ([batch-2/voice-anticipation.md](batch-2/voice-anticipation.md)
 |---|---|---|---|---|
 | 0x30 | `BIND` | coordinator → renderer, UI | request, revision | `u32 slot, u32 view`. `view` is an index into `line bar scatter table heatmap surface map density tracks seasons`, or 255 for the automatic choice. It is set only when the SQL's `-- view:` hint names a presentation **the question asked for** (models add hints unasked). A BIND with a view field resets the slot's view for its result; a 4-byte legacy BIND leaves it unchanged |
 | 0x31 | `UNBIND` | coordinator → renderer, UI | request | `u32 slot` |
-| 0x32 | `DRAWN` | renderer → coordinator | request | `u32 slot, u32 points` + stamp `FIRST_DRAW_SUBMITTED`. May repeat; a later DRAWN can carry `FIRST_PRESENTED` |
+| 0x32 | `DRAWN` | renderer → coordinator | request | `u32 slot, u32 points` + stamp `FIRST_DRAW_SUBMITTED`. May repeat; a later DRAWN can carry `FIRST_PRESENTED`. A result identical to the one on screen is adopted without drawing (steady charts): one DRAWN with `FIRST_DRAW_SUBMITTED` = `FIRST_PRESENTED` = the instant equality was proven |
 | 0x33 | `RESULT` | coordinator → UI | request, revision, context | JSON `{slot, sql, columns: [{name, type, role}], view, cached}` once per bound request |
 | 0x34 | `TIMING` | coordinator → UI | request, revision | empty; the stamps carry the request's full stage ledger |
 | 0x35 | `KEEP` | coordinator → UI | request, revision | `u32 slot`: the committed result keeps this slot; the UI pins its card and registers a new live slot |
@@ -189,6 +190,12 @@ anything visible ([batch-2/voice-anticipation.md](batch-2/voice-anticipation.md)
   immediately. Otherwise translate and execute at committed priority and `KEEP` when it is bound.
 - **Stale results.** A result is shown only if its request is still bound to a slot. An early
   wrong chart is a failure.
+- **`QUERY` (chart-as-query).** A new request with the given SQL, bound to the slot with a 4-byte
+  `BIND` (the slot keeps its view) and executed at once; the slot's previous request is
+  superseded. On the live slot it answers the live question's text and revision, so `COMMIT` of
+  that text keeps it and the next keystroke replaces it. On a kept slot it is committed. A free
+  slot that is not live, another context or an older epoch is dropped. Details:
+  [batch-2/manipulation.md](batch-2/manipulation.md).
 - **Short drafts.** A draft shorter than `minChars` (after trimming) cancels speculative work
   and `UNBIND`s the live slot.
 - **Forwarding.** `CONTEXT` from the database is stored and forwarded to inference (again after
@@ -256,7 +263,7 @@ Roles: `time`, `category`, `series`, `value`, `measure`, `lat`, `lon`.
 
 | Stage | Name | Stamped by |
 |---:|---|---|
-| 1 | `KEY_INPUT` | UI: the input event's `timeStamp`, converted to Unix ms |
+| 1 | `KEY_INPUT` | UI: the input event's `timeStamp`, converted to Unix ms (for `QUERY`: the pointer or key event of the gesture) |
 | 2 | `DRAFT_SENT` | UI |
 | 3 | `COORD_RECEIVED` | coordinator |
 | 4 | `INFER_SENT` | coordinator |

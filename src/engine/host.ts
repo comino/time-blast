@@ -19,7 +19,8 @@ import type {
   CoordinatorCore, CreateCoordinator, StatusComponent, CreateDatabase, CreateRenderer, DatabaseNode, DatasetContext, DatasetSource,
   InferencePlacement, Link, LinkId, LocalFrame, PostToUi, RendererNode, UiToEngine,
 } from './contracts';
-import { decode, encode, Flag, header, json, Kind, readJson, SENDER_REQUEST_BIT, now as clockNow, type Frame } from '../protocol/frame';
+import { decode, encode, Flag, header, json, Kind, Node, readJson, SENDER_REQUEST_BIT, Stage, now as clockNow, type Frame } from '../protocol/frame';
+import { CachedTools, manipulate, type SqlTools } from './manipulate';
 import { PrimedTranslations } from './prime';
 import { yieldToEventLoop } from './yield';
 
@@ -90,6 +91,11 @@ export class EngineHost {
   private timerGeneration = 0;
   private contextSeq = 0;
   private opening: Promise<unknown> = Promise.resolve();
+  /** The open dataset (dialect and column names for chart-as-query rewrites). */
+  private context?: DatasetContext;
+  private columns?: Set<string>;
+  /** DuckDB's parser behind a memo (undefined: not looked up yet; null: unavailable). */
+  private tools?: CachedTools | null;
   private disposed = false;
 
   constructor(private readonly deps: HostDeps) {
@@ -151,6 +157,7 @@ export class EngineHost {
         return;
       case 'dataset': void this.openDataset(message.source); return;
       case 'inference': this.setInference(message.placement); return;
+      case 'manipulate': this.manipulate(message); return;
       default: this.control(message);
     }
   }
@@ -164,6 +171,43 @@ export class EngineHost {
     if (!(frame.flags & Flag.WARM) || !(frame.request & SENDER_REQUEST_BIT)) return;
     if (this.database) this.database.handle(frame);
     else this.databaseBacklog.push(frame);
+  }
+
+  /** Chart-as-query (docs/batch-2/manipulation.md): hit-test → deterministic SQL change → QUERY
+   * frame into the coordinator on the UI link, as if the UI had sent it. No model call. The
+   * stamps are the pointer event (KEY_INPUT), the post (DRAFT_SENT), both from the UI, and the end
+   * of the rewrite (SQL_COMPLETE, engine worker). */
+  private manipulate(m: Extract<UiToEngine, { type: 'manipulate' }>): void {
+    const t0 = performance.now();
+    let out: { sql: string | null; method: 'rewrite' | 'wrap' | 'as-is' | 'none'; reason: string };
+    if (m.gesture.kind === 'sql') out = { sql: m.gesture.sql, method: 'as-is', reason: 'back' };
+    else {
+      const hit = this.renderer?.hit(m.slot, m.request, m.gesture) ?? null;
+      if (!hit) out = { sql: null, method: 'none', reason: 'nothing under the pointer (or the result changed)' };
+      else {
+        if (this.tools === undefined) {
+          const raw = (this.database as { sqlTools?: () => SqlTools | undefined } | undefined)?.sqlTools?.();
+          this.tools = raw ? new CachedTools(raw) : null;
+        }
+        out = manipulate(m.sql, hit, m.gesture, { tools: this.tools ?? undefined, dialect: this.context?.dialect ?? 'duckdb', columns: this.columns });
+      }
+    }
+    const ms = performance.now() - t0;
+    this.deps.postToUi({ type: 'manipulated', slot: m.slot, from: m.sql, sql: out.sql, method: out.method, reason: out.reason, ms });
+    if (!out.sql) return;
+    const sql = new TextEncoder().encode(out.sql);
+    const payload = new Uint8Array(4 + sql.byteLength);
+    new DataView(payload.buffer).setUint32(0, m.slot, true);
+    payload.set(sql, 4);
+    this.toCoordinator('ui', {
+      ...header(Kind.QUERY, { epoch: m.epoch, revision: m.revision, context: m.context }),
+      stamps: [
+        { stage: Stage.KEY_INPUT, node: Node.UI, at: m.keyAt },
+        { stage: Stage.DRAFT_SENT, node: Node.UI, at: m.sentAt },
+        { stage: Stage.SQL_COMPLETE, node: Node.COORDINATOR, at: this.now() },
+      ],
+      payload,
+    });
   }
 
   private control(message: RenderControl): void {
@@ -200,6 +244,9 @@ export class EngineHost {
         return undefined;
       }
       if (id !== this.contextSeq || this.disposed) return undefined;
+      this.context = context;
+      this.tools = undefined;
+      this.columns = new Set(context.tables.flatMap(t => t.columns.map(c => c.name.toLowerCase())));
       this.toCoordinator('database', { ...header(Kind.CONTEXT, { context: context.id }), stamps: [], payload: json(context) });
       this.deps.postToUi({ type: 'context', context });
       return context;

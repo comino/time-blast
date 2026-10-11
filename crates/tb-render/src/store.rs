@@ -59,6 +59,18 @@ impl Interner {
     pub fn len(&self) -> usize {
         self.labels.len()
     }
+    /// Is `id` the null id?
+    pub fn is_null(&self, id: u32) -> bool {
+        self.null == Some(id)
+    }
+    /// The id of a label as drawn (legend text): a real value wins over the null id when a
+    /// value is literally spelled `NULL`. Returns (id, is_null).
+    pub fn find(&self, label: &str) -> Option<(u32, bool)> {
+        if let Some(&id) = self.ids.get(label.as_bytes()) {
+            return Some((id, false));
+        }
+        self.null.filter(|&id| self.labels[id as usize] == label).map(|id| (id, true))
+    }
 }
 
 /// One Arrow column of one batch, as copied into staging by the shim.
@@ -373,6 +385,57 @@ impl Store {
             numbers(out, find(self.roles.lon));
         }
         self.rows += rows;
+    }
+
+    /// Steady charts: are rows `from..to` of `self` identical to the same rows of `other`?
+    /// Identical means the same canonical values in every role column (bit-equal floats, so
+    /// nulls match nulls) and the same labels for every text id used so far. Ids are interned in
+    /// first-seen order, so equal id sequences plus an equal label prefix mean equal text.
+    /// Callers check schema (types, roles) separately. Cost: one pass over the new rows.
+    pub fn same_rows(&self, other: &Store, from: usize, to: usize) -> bool {
+        if to > other.rows || to > self.rows || from > to {
+            return false;
+        }
+        fn floats(a: &Option<Vec<f64>>, b: &Option<Vec<f64>>, r: std::ops::Range<usize>) -> bool {
+            match (a, b) {
+                (Some(a), Some(b)) => a[r.clone()].iter().zip(&b[r]).all(|(x, y)| x.to_bits() == y.to_bits()),
+                (None, None) => true,
+                _ => false,
+            }
+        }
+        let r = from..to;
+        let x = match (&self.x, &other.x) {
+            (Some(XValues::Time(a)), Some(XValues::Time(b))) => a[r.clone()] == b[r.clone()],
+            (Some(XValues::Num(a)), Some(XValues::Num(b))) => a[r.clone()].iter().zip(&b[r.clone()]).all(|(x, y)| x.to_bits() == y.to_bits()),
+            (Some(XValues::Cat(a)), Some(XValues::Cat(b))) => a[r.clone()] == b[r.clone()],
+            (None, None) => true,
+            _ => false,
+        };
+        let series = match (&self.series, &other.series) {
+            (Some(a), Some(b)) => a[r.clone()] == b[r.clone()],
+            (None, None) => true,
+            _ => false,
+        };
+        let labels = |a: &Interner, b: &Interner| a.labels.len() <= b.labels.len() && a.labels[..] == b.labels[..a.labels.len()] && a.null == b.null.filter(|&n| (n as usize) < a.labels.len());
+        x && series
+            && floats(&self.value, &other.value, r.clone())
+            && floats(&self.lat, &other.lat, r.clone())
+            && floats(&self.lon, &other.lon, r.clone())
+            && self.measures.len() == other.measures.len()
+            && self.measures.iter().zip(&other.measures).all(|(a, b)| a[r.clone()].iter().zip(&b[r.clone()]).all(|(x, y)| x.to_bits() == y.to_bits()))
+            && labels(&self.x_labels, &other.x_labels)
+            && labels(&self.series_labels, &other.series_labels)
+    }
+
+    /// The x value of row `i` as a number on the axis (time: µs; category: id).
+    pub fn x_number(&self, i: usize) -> f64 {
+        match &self.x {
+            Some(XValues::Time(v)) if v[i] == NULL_TIME => f64::NAN,
+            Some(XValues::Time(v)) => v[i] as f64,
+            Some(XValues::Num(v)) => v[i],
+            Some(XValues::Cat(v)) => v[i] as f64,
+            None => f64::NAN,
+        }
     }
 
     /// Exact x label for row `i` (tables, tooltips).

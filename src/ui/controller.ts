@@ -2,7 +2,7 @@
  * turns engine messages into calls on card/rail views. The DOM lives in app.ts,
  * slot-card.ts and rail.ts; tests drive this class with a fake engine. */
 import { decode, Kind, readJson, readText, type Frame } from '../protocol/frame';
-import type { AxisTicks, ColumnRole, DatasetContext, DatasetSource, EngineToUi, InferencePlacement, SlotSize, UiToEngine, ViewName } from '../engine/contracts';
+import type { AxisTicks, ColumnRole, DatasetContext, DatasetSource, EngineToUi, InferencePlacement, PointerGesture, SlotSize, UiToEngine, ViewName } from '../engine/contracts';
 import { DraftEncoder, type Clock } from './draft-encoder';
 import { breakdown, RollingStats, type InferStats, type RollingSummary, type TimingBreakdown } from './timing';
 
@@ -26,6 +26,12 @@ export interface CardHandlers {
   param(slot: number, name: string, value: number): void;
   exportCsv(slot: number): void;
   close(slot: number): void;
+  /** Chart-as-query: a gesture on the chart (CSS px relative to the canvas). `timeStamp` is the
+   * pointer event's. Returns whether a request went to the engine. */
+  gesture(slot: number, gesture: PointerGesture, timeStamp: number): boolean;
+  /** Back to the card's previous SQL. `afterClick`: a double-click, whose first click may have
+   * drilled already; that drill is undone too. */
+  back(slot: number, timeStamp: number, afterClick?: boolean): void;
 }
 /** One card's chrome. Pool cards start hidden. */
 export interface SlotCard {
@@ -40,6 +46,8 @@ export interface SlotCard {
   timing(t: TimingBreakdown): void;
   inferStats(s: InferStats): void;
   error(e: ErrorInfo): void;
+  /** Chart-as-query: how many earlier SQLs Back can return to, and the last outcome. */
+  drill(depth: number, note: string): void;
   destroy(): void;
 }
 export interface SlotHost {
@@ -59,7 +67,17 @@ export interface RailView {
   kept(slot: number, title: string): void;
 }
 
-interface SlotEntry { card: SlotCard; kept: boolean; request: number; revision: number }
+/** One step back: the SQL shown before a manipulation, and the gesture that left it. */
+interface Step { sql: string; kind: PointerGesture['kind']; at: number }
+interface SlotEntry {
+  card: SlotCard; kept: boolean; request: number; revision: number;
+  /** SQL and request of the last RESULT (what a gesture transforms). */
+  sql: string; resultRequest: number;
+  /** Chart-as-query history of this card's question (cleared when the question changes). */
+  history: Step[]; historyRevision: number;
+  /** Gesture in flight: pushed to `history` when the engine confirms it. */
+  pending?: Step;
+}
 
 const MAX_TRACKED = 256;
 const bounded = <K, V>(map: Map<K, V>, key: K, value: V): void => {
@@ -91,10 +109,14 @@ export class UiController {
     param: (slot, name, value) => this.post({ type: 'param', slot, name, value }),
     exportCsv: slot => this.post({ type: 'export', slot, format: 'csv' }),
     close: slot => this.close(slot),
+    gesture: (slot, gesture, timeStamp) => this.gesture(slot, gesture, timeStamp),
+    back: (slot, timeStamp, afterClick) => this.back(slot, timeStamp, afterClick),
   };
+  private readonly clock: Clock;
 
   constructor(private readonly port: EnginePort, private readonly host: SlotHost, private readonly rail: RailView, options: ControllerOptions = {}) {
     this.minFree = options.minFree ?? 2;
+    this.clock = options.clock ?? { get origin() { return performance.timeOrigin; }, now: () => performance.timeOrigin + performance.now() };
     this.history = new RollingStats(options.historySize ?? 50);
     this.drafts = new DraftEncoder(bytes => port.postMessage({ type: 'frame', bytes }, [bytes]), options.clock);
   }
@@ -128,6 +150,47 @@ export class UiController {
   resize(slot: number, size: SlotSize): void {
     if (!this.slots.has(slot) || size.width <= 0 || size.height <= 0) return;
     this.post({ type: 'resize', slot, size });
+  }
+
+  /** Chart-as-query: send a gesture on `slot`'s chart to the engine, which hit-tests it,
+   * rewrites the card's SQL and runs it through the coordinator (docs/batch-2/manipulation.md). */
+  gesture(slot: number, gesture: PointerGesture, timeStamp: number): boolean {
+    const entry = this.slots.get(slot);
+    if (!entry || !entry.sql || !entry.resultRequest || entry.request !== entry.resultRequest) return false;
+    entry.pending = { sql: entry.sql, kind: gesture.kind, at: timeStamp };
+    this.manipulate(slot, entry, { gesture, keyAt: this.clock.origin + timeStamp });
+    return true;
+  }
+
+  /** Back to the previous SQL of the card (Escape, double-click, the Back button). */
+  back(slot: number, timeStamp: number, afterClick = false): void {
+    const entry = this.slots.get(slot);
+    if (!entry) return;
+    entry.pending = undefined;
+    let step = entry.history.pop();
+    // A double-click's first click drilled already: undo it as well.
+    if (afterClick && step && step.kind === 'point' && timeStamp - step.at < 700) step = entry.history.pop() ?? step;
+    if (!step) return;
+    entry.card.drill(entry.history.length, 'back');
+    this.manipulate(slot, entry, { gesture: { kind: 'sql', sql: step.sql }, keyAt: this.clock.origin + timeStamp });
+  }
+
+  private manipulate(slot: number, entry: SlotEntry, m: { gesture: Extract<UiToEngine, { type: 'manipulate' }>['gesture']; keyAt: number }): void {
+    this.post({ type: 'manipulate', slot, request: entry.resultRequest, revision: entry.revision, epoch: this.drafts.epoch,
+      context: this.drafts.context, sql: entry.sql, gesture: m.gesture, keyAt: m.keyAt, sentAt: this.clock.now() });
+  }
+
+  private manipulated(m: Extract<EngineToUi, { type: 'manipulated' }>): void {
+    const entry = this.slots.get(m.slot);
+    if (!entry) return;
+    const pending = entry.pending;
+    entry.pending = undefined;
+    if (m.sql && m.method !== 'as-is' && pending && pending.sql === m.from) {
+      entry.history.push(pending);
+      if (entry.history.length > 64) entry.history.shift();
+    }
+    const note = m.sql ? `${m.method === 'as-is' ? 'back' : m.method} · ${m.ms.toFixed(1)} ms` : m.reason;
+    entry.card.drill(entry.history.length, note);
   }
 
   /** Live slot currently shown, for tests and the app shell. */
@@ -175,6 +238,7 @@ export class UiController {
       case 'table': this.slots.get(message.slot)?.card.table(message.columns, message.rows, message.total); return;
       case 'axes': this.slots.get(message.slot)?.card.axes(message.ticks); return;
       case 'export': this.host.download(message.blob, message.filename); return;
+      case 'manipulated': this.manipulated(message); return;
     }
   }
 
@@ -187,7 +251,11 @@ export class UiController {
       case Kind.RESULT: {
         const info = this.json<ResultInfo>(frame); if (!info) return;
         const slot = this.slots.has(info.slot) ? info.slot : this.requests.get(frame.request);
-        if (slot !== undefined) this.slots.get(slot)?.card.result(info, frame.request);
+        const entry = slot === undefined ? undefined : this.slots.get(slot);
+        if (entry) {
+          entry.card.result(info, frame.request);
+          if (entry.request === frame.request) { entry.sql = info.sql; entry.resultRequest = frame.request; }
+        }
         return;
       }
       case Kind.TIMING: {
@@ -229,6 +297,11 @@ export class UiController {
     const entry = this.slots.get(slot);
     if (!entry) return;
     entry.request = request; entry.revision = revision;
+    if (revision !== entry.historyRevision) {
+      // A new question in this card: its drill history no longer applies.
+      entry.historyRevision = revision; entry.pending = undefined;
+      if (entry.history.length) { entry.history.length = 0; entry.card.drill(0, ''); }
+    }
     bounded(this.requests, request, slot);
     const text = this.drafts.textOf(revision);
     if (text !== undefined) entry.card.title(text, revision);
@@ -272,7 +345,7 @@ export class UiController {
     while (this.pool.size < this.minFree) {
       const slot = this.nextSlot++;
       const { card, canvas, size } = this.host.create(slot, this.handlers);
-      this.slots.set(slot, { card, kept: false, request: 0, revision: 0 });
+      this.slots.set(slot, { card, kept: false, request: 0, revision: 0, sql: '', resultRequest: 0, history: [], historyRevision: 0 });
       this.pool.add(slot);
       this.post({ type: 'attach', slot, canvas, size }, [canvas]);
       fresh.push(slot);

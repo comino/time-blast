@@ -8,6 +8,7 @@
 
 use crate::axes::{layout, AxesOut};
 use crate::gpu::{as_bytes, json_str, op, Gpu, GpuVec, PassRecorder, PipelineTable, Pool, Uniform, KIND_UNIFORM, KIND_VERTEX};
+use crate::hit::{Query, Scales};
 use crate::schema::{infer_roles, ColumnInfo, View};
 use crate::store::{RawColumn, Store};
 use crate::view::{available_views, choose_view, family_for, pipeline_table, DrawFrame, Family, REFINE};
@@ -20,6 +21,9 @@ pub mod ev {
     pub const AXES: u32 = 2;
     /// [slot, request, points, -] First draw of `request` is in this frame's commands.
     pub const FIRST_DRAW: u32 = 3;
+    /// [slot, request, points, -] Steady chart: `request` proved identical to the result on
+    /// screen, which now stands for it. Nothing was redrawn; the image is already presented.
+    pub const STEADY: u32 = 4;
 }
 pub const EVENT_WORDS: usize = 6;
 
@@ -29,6 +33,9 @@ pub const ACCEPTED: u32 = 1;
 pub const PREWARM_VERTEX_BUFFERS: usize = 8;
 pub const PREWARM_VERTEX_BYTES: u32 = 64 << 10;
 pub const URGENT: u32 = 2;
+/// `batch`/`done` result flag: the request was adopted by the image on screen (an `ev::STEADY`
+/// event is queued; no frame is needed).
+pub const STEADY: u32 = 4;
 /// AXES payload for a slot that shows no chart.
 pub const NO_AXES: &str = "{\"x\":[],\"y\":[],\"plot\":{\"left\":0,\"top\":0,\"width\":0,\"height\":0},\"legend\":[]}";
 
@@ -48,6 +55,10 @@ pub struct ResultState {
     /// Rows already ingested by `family`.
     pub consumed: usize,
     pub done: bool,
+    /// Steady charts: this pending result has so far been identical to the shown one, so it is
+    /// neither ingested into its family nor drawn; it either proves identical at DONE (and is
+    /// adopted without a redraw) or diverges (and catches up and draws as usual).
+    pub hold: bool,
 }
 
 impl ResultState {
@@ -123,6 +134,12 @@ impl ResultState {
     }
 }
 
+/// Steady charts: same column count, types and roles (names may differ: alias variants draw
+/// the same pixels; names only reach DOM text).
+fn same_schema(a: &Store, b: &Store) -> bool {
+    a.columns.len() == b.columns.len() && a.columns.iter().zip(&b.columns).all(|(x, y)| x.ty == y.ty) && a.roles == b.roles
+}
+
 pub struct Slot {
     pub id: u32,
     pub css: [f32; 2],
@@ -141,6 +158,8 @@ pub struct Slot {
     axes_json: String,
     pub params: Vec<(String, f64)>,
     pool: Pool,
+    /// Scales of the last drawn frame, for hit-testing.
+    pub scales: Option<Scales>,
     /// The bound result's views/choice changed outside a call that drains events (a data-aware
     /// choice during BATCH): post VIEWS with the next frame.
     views_dirty: bool,
@@ -166,6 +185,7 @@ impl Slot {
             axes_json: String::new(),
             params: Vec::new(),
             pool: Pool::default(),
+            scales: None,
             views_dirty: false,
         }
     }
@@ -195,6 +215,10 @@ pub struct Renderer {
     pub strings: Vec<u8>,
     pub staging: Vec<u64>,
     pub out: Vec<u8>,
+    /// Keep the image when a new result for a slot is identical to the one shown.
+    pub steady: bool,
+    /// Results adopted by an identical image (diagnostics).
+    pub steady_count: u32,
 }
 
 impl Default for Renderer {
@@ -214,6 +238,8 @@ impl Renderer {
             strings: Vec::new(),
             staging: Vec::new(),
             out: Vec::new(),
+            steady: true,
+            steady_count: 0,
         }
     }
 
@@ -291,6 +317,12 @@ impl Renderer {
         s.hint = hint;
         let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id, pool: &mut s.pool };
         let mut changed = false;
+        if let Some(p) = s.pending.as_mut().filter(|p| p.hold) {
+            // A view change redraws anyway: stop holding and draw the new result.
+            p.hold = false;
+            p.catch_up();
+            changed = true;
+        }
         for r in [s.pending.as_mut(), s.shown.as_mut()].into_iter().flatten() {
             changed |= r.select(hint, &self.pipes, &mut gpu, &s.params);
         }
@@ -391,10 +423,12 @@ impl Renderer {
             family: None,
             consumed: 0,
             done: false,
+            hold: false,
         };
         let s = &mut self.slots[i];
         let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id, pool: &mut s.pool };
         result.select(s.hint, &self.pipes, &mut gpu, &s.params);
+        result.hold = self.steady && s.shown.as_ref().map_or(false, |sh| sh.request != request && sh.done && same_schema(&sh.store, &result.store));
         let json = result.views_json();
         let view = result.view as u32;
         if s.shown.as_ref().map_or(false, |r| r.request == request) {
@@ -418,8 +452,9 @@ impl Renderer {
         let is_pending = s.pending.as_ref().map_or(false, |r| r.request == request);
         let hint = s.hint;
         let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id, pool: &mut s.pool };
-        let Some(r) = (if is_pending { s.pending.as_mut() } else { s.shown.as_mut().filter(|r| r.request == request) }) else { return 0 };
-        let was_ready = r.ready();
+        let (r, shown) = if is_pending { (s.pending.as_mut(), s.shown.as_ref()) } else { (s.shown.as_mut().filter(|r| r.request == request), None) };
+        let Some(r) = r else { return 0 };
+        let was_ready = r.ready() && !r.hold;
         r.store.append(rows, columns);
         // Data-aware choice (e.g. many series → heatmap) before the first draw, never after.
         if is_pending && !was_ready && hint.is_none() {
@@ -432,6 +467,21 @@ impl Renderer {
                 r.select(None, &self.pipes, &mut gpu, &s.params);
                 s.views_dirty = true;
             }
+        }
+        if r.hold {
+            let from = r.store.rows - rows;
+            let same = shown.map_or(false, |sh| sh.view == r.view && r.store.same_rows(&sh.store, from, r.store.rows));
+            if same {
+                // Identical so far: the image on screen already shows these rows. Once it has
+                // as many rows as the shown result, the image shows exactly what this result has
+                // delivered (as a first draw at this batch would): adopt it now. Later rows, if
+                // any, append to the adopted result and draw as usual.
+                if shown.map_or(false, |sh| sh.store.rows == r.store.rows) {
+                    return self.adopt(i);
+                }
+                return ACCEPTED;
+            }
+            r.hold = false;
         }
         r.catch_up();
         let mut flags = ACCEPTED;
@@ -449,10 +499,28 @@ impl Renderer {
         let Some(i) = self.slot_index(slot) else { return 0 };
         let s = &mut self.slots[i];
         let is_pending = s.pending.as_ref().map_or(false, |r| r.request == request);
+        let held = is_pending && s.pending.as_ref().map_or(false, |p| p.hold);
+        if held {
+            let same = match (s.pending.as_ref(), s.shown.as_ref()) {
+                (Some(p), Some(sh)) => p.view == sh.view && p.store.rows == sh.store.rows,
+                _ => false,
+            };
+            if same {
+                return self.adopt(i);
+            }
+            let p = s.pending.as_mut().unwrap();
+            p.hold = false;
+            p.catch_up();
+        }
         let Some(r) = s.result_mut(request) else { return 0 };
-        let was_ready = r.ready();
+        // A held result was never drawn: it counts as not ready even after catching up.
+        let was_ready = r.ready() && !held;
         r.done = true;
-        s.dirty = true;
+        // The shown result's image already has every row (each batch redrew it): DONE alone
+        // changes nothing on screen.
+        if is_pending {
+            s.dirty = true;
+        }
         if is_pending && !was_ready {
             s.urgent = true;
             return ACCEPTED | URGENT;
@@ -465,6 +533,60 @@ impl Renderer {
         self.slot_index(slot)
             .and_then(|i| self.slots[i].current())
             .map_or(0, |r| r.available.iter().fold(0, |m, v| m | v.bit()))
+    }
+
+    /// Steady chart: the pending result of slot `i` is identical to the one on screen. The shown
+    /// result takes over its identity (request, column names) and keeps its geometry and GPU
+    /// buffers; nothing is drawn. Legend text that comes from column names is refreshed and
+    /// posted as AXES without a frame.
+    fn adopt(&mut self, i: usize) -> u32 {
+        let s = &mut self.slots[i];
+        let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id, pool: &mut s.pool };
+        let mut p = s.pending.take().unwrap();
+        p.release(&mut gpu);
+        let sh = s.shown.as_mut().unwrap();
+        sh.request = p.request;
+        sh.available = p.available;
+        sh.store = p.store;
+        sh.done = p.done;
+        let relabeled = sh.family.as_mut().map_or(false, |f| f.relabel(&sh.store));
+        let (request, points) = (sh.request, sh.points());
+        if let Some(sc) = s.scales.as_mut() {
+            sc.request = request;
+        }
+        let mut axes_event = None;
+        if relabeled && sh.view != View::Table && s.css[0] >= 1.0 && s.css[1] >= 1.0 {
+            if let Some(f) = sh.family.as_ref() {
+                let model = f.axes(sh.view, &sh.store);
+                let mut axes = layout(&model, s.css[0], s.css[1]);
+                f.place_axes(sh.view, &mut axes);
+                f.decorate(sh.view, &sh.store, &mut axes);
+                let json = axes.to_json();
+                if json != s.axes_json {
+                    if let Some(sc) = s.scales.as_mut() {
+                        sc.model = model;
+                    }
+                    s.axes_json = json.clone();
+                    axes_event = Some(json);
+                }
+            }
+        }
+        let slot = s.id;
+        self.steady_count += 1;
+        if let Some(json) = axes_event {
+            self.event(ev::AXES, slot, request, 0, &json);
+        }
+        self.event(ev::STEADY, slot, request, points, "");
+        ACCEPTED | STEADY
+    }
+
+    /// Hit-test the result on screen in `slot`, which must be `request` (the result whose SQL
+    /// the caller will transform). Returns the hit JSON (see `hit.rs`), or None.
+    pub fn hit(&self, slot: u32, request: u32, query: Query) -> Option<String> {
+        let s = &self.slots[self.slot_index(slot)?];
+        let shown = s.shown.as_ref().filter(|r| r.request == request && r.done)?;
+        let scales = s.scales.as_ref().filter(|sc| sc.request == request && sc.view == shown.view)?;
+        crate::hit::hit(&shown.store, shown.family.as_deref(), scales, query)
     }
 
     pub fn needs_frame(&self) -> bool {
@@ -486,7 +608,7 @@ impl Renderer {
             }
             let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id, pool: &mut s.pool };
             let mut first_draw = false;
-            if s.pending.as_ref().map_or(false, |r| r.ready()) {
+            if s.pending.as_ref().map_or(false, |r| r.ready() && !r.hold) {
                 if let Some(mut old) = s.shown.take() {
                     old.release(&mut gpu);
                 }
@@ -520,6 +642,9 @@ impl Renderer {
                 let grid = f.place_axes(r.view, &mut axes);
                 f.decorate(r.view, &r.store, &mut axes);
                 let json = axes.to_json();
+                if s.scales.as_ref().map_or(true, |sc| sc.request != r.request || sc.view != r.view) || json != s.axes_json {
+                    s.scales = Some(Scales { request: r.request, view: r.view, model: model.clone(), plot: axes.plot });
+                }
                 if json != s.axes_json || (s.grid.id == 0 && grid) {
                     axes.grid(s.dpr, &mut s.grid_data);
                     if !grid {
@@ -576,6 +701,7 @@ impl Renderer {
 mod tests {
     use super::*;
     use crate::schema::{ColumnType, TypeCode};
+    use crate::store::RawColumn;
 
     fn cols() -> Vec<ColumnInfo> {
         vec![
@@ -780,5 +906,158 @@ mod tests {
             assert_eq!(count(&words, op::BUF_CREATE), 0, "request {request}");
             assert_eq!(count(&words, op::BUF_DESTROY), 0, "request {request}");
         }
+    }
+
+    fn named(value: &str) -> Vec<ColumnInfo> {
+        vec![
+            ColumnInfo { name: "ts".into(), ty: ColumnType { code: TypeCode::Timestamp, param: 1 } },
+            ColumnInfo { name: value.into(), ty: ColumnType { code: TypeCode::F64, param: 0 } },
+        ]
+    }
+    fn show(r: &mut Renderer, request: u32, columns: Vec<ColumnInfo>, points: &[(i64, f64)]) -> u32 {
+        bind(r, 1, request);
+        r.schema(request, 0, columns);
+        let b = batch(points);
+        let flags = r.batch(request, 0, b.rows, &raw(&b));
+        let done = r.done(request, 0);
+        flags | done
+    }
+    fn string_of(r: &Renderer, e: &[u32; 6]) -> String {
+        String::from_utf8(r.strings[e[4] as usize..(e[4] + e[5]) as usize].to_vec()).unwrap()
+    }
+
+    #[test]
+    fn steady_identical_result_keeps_the_image() {
+        let mut r = Renderer::new();
+        r.attach(1, 300.0, 200.0, 1.0);
+        let pts = [(0, 1.0), (1000, 2.0), (2000, f64::NAN)];
+        show(&mut r, 1, cols(), &pts);
+        r.frame(false);
+        r.frame_done();
+        r.clear_events();
+        bind(&mut r, 1, 2);
+        r.schema(2, 0, cols());
+        let b = batch(&pts);
+        assert_eq!(r.batch(2, 0, b.rows, &raw(&b)), ACCEPTED | STEADY, "identical batch: adopted, nothing to draw");
+        let e = events(&r);
+        assert!(e.iter().any(|e| e[0] == ev::STEADY && e[1] == 1 && e[2] == 2 && e[3] == 2), "{e:?}");
+        assert!(!e.iter().any(|e| e[0] == ev::AXES), "same names: no text change");
+        assert_eq!(r.slots[0].shown.as_ref().unwrap().request, 2);
+        assert!(r.slots[0].pending.is_none());
+        assert!(r.frame(true).is_empty());
+        assert_eq!(r.done(2, 0), ACCEPTED);
+        assert!(r.frame(false).is_empty(), "no redraw");
+        assert_eq!(r.steady_count, 1);
+        // The adopted result is hit-testable as request 2.
+        assert!(r.hit(1, 2, Query::Range { x0: 0.0, x1: 300.0 }).is_some());
+        assert!(r.hit(1, 1, Query::Range { x0: 0.0, x1: 300.0 }).is_none(), "old request is gone");
+    }
+
+    #[test]
+    fn steady_alias_variant_refreshes_legend_text_only() {
+        let mut r = Renderer::new();
+        r.attach(1, 300.0, 200.0, 1.0);
+        let pts = [(0, 1.0), (1000, 2.0)];
+        show(&mut r, 1, named("speed"), &pts);
+        r.frame(false);
+        r.frame_done();
+        r.clear_events();
+        bind(&mut r, 1, 2);
+        r.schema(2, 0, named("avg_speed"));
+        r.clear_events();
+        let b = batch(&pts);
+        assert_eq!(r.batch(2, 0, b.rows, &raw(&b)), ACCEPTED | STEADY);
+        let e = events(&r);
+        r.done(2, 0);
+        let axes = e.iter().find(|e| e[0] == ev::AXES).expect("legend text refreshed");
+        assert!(string_of(&r, axes).contains("avg_speed"));
+        assert!(r.frame(false).is_empty(), "text only, no redraw");
+    }
+
+    #[test]
+    fn steady_breaks_on_different_or_shorter_data() {
+        let mut r = Renderer::new();
+        r.attach(1, 300.0, 200.0, 1.0);
+        show(&mut r, 1, cols(), &[(0, 1.0), (1000, 2.0)]);
+        r.frame(false);
+        r.frame_done();
+        // Different value: draws as usual.
+        bind(&mut r, 1, 2);
+        r.schema(2, 0, cols());
+        let b = batch(&[(0, 1.0), (1000, 2.5)]);
+        assert_eq!(r.batch(2, 0, b.rows, &raw(&b)), ACCEPTED | URGENT);
+        r.frame(true);
+        r.frame_done();
+        assert!(events(&r).iter().any(|e| e[0] == ev::FIRST_DRAW && e[2] == 2));
+        assert_eq!(r.done(2, 0), ACCEPTED);
+        r.frame(false);
+        r.frame_done();
+        // A prefix of the shown rows: held until DONE, then drawn.
+        bind(&mut r, 1, 3);
+        r.schema(3, 0, cols());
+        let b = batch(&[(0, 1.0)]);
+        assert_eq!(r.batch(3, 0, b.rows, &raw(&b)), ACCEPTED);
+        assert_eq!(r.done(3, 0), ACCEPTED | URGENT);
+        r.frame(true);
+        r.frame_done();
+        assert!(events(&r).iter().any(|e| e[0] == ev::FIRST_DRAW && e[2] == 3 && e[3] == 1));
+        // Steady off: identical data draws.
+        r.steady = false;
+        bind(&mut r, 1, 4);
+        r.schema(4, 0, cols());
+        let b = batch(&[(0, 1.0)]);
+        assert_eq!(r.batch(4, 0, b.rows, &raw(&b)), ACCEPTED | URGENT);
+    }
+
+    #[test]
+    fn hit_maps_pointer_to_rows_series_and_legend() {
+        let mut r = Renderer::new();
+        r.attach(1, 400.0, 220.0, 1.0);
+        let columns = vec![
+            ColumnInfo { name: "hour".into(), ty: ColumnType { code: TypeCode::Timestamp, param: 2 } },
+            ColumnInfo { name: "vessel".into(), ty: ColumnType { code: TypeCode::Utf8, param: 0 } },
+            ColumnInfo { name: "speed".into(), ty: ColumnType { code: TypeCode::F64, param: 0 } },
+        ];
+        bind(&mut r, 1, 5);
+        r.schema(5, 0, columns);
+        let h = 3_600_000_000i64;
+        let ts: Vec<u8> = [0, 0, h, h, 2 * h, 2 * h].iter().flat_map(|v: &i64| v.to_le_bytes()).collect();
+        let v: Vec<u8> = [1.0f64, 10.0, 2.0, 11.0, 3.0, 12.0].iter().flat_map(|v| v.to_le_bytes()).collect();
+        let offsets: Vec<u8> = [0i32, 1, 2, 3, 4, 5, 6].iter().flat_map(|v| v.to_le_bytes()).collect();
+        let raw = vec![
+            RawColumn { index: 0, code: TypeCode::Timestamp, param: 2, rows: 6, data: &ts, validity: None, bit_offset: 0, offsets: &[], dict: None },
+            RawColumn { index: 1, code: TypeCode::Utf8, param: 0, rows: 6, data: b"ABABAB", validity: None, bit_offset: 0, offsets: &offsets, dict: None },
+            RawColumn { index: 2, code: TypeCode::F64, param: 0, rows: 6, data: &v, validity: None, bit_offset: 0, offsets: &[], dict: None },
+        ];
+        r.batch(5, 0, 6, &raw);
+        assert!(r.hit(1, 5, Query::Point { x: 100.0, y: 100.0 }).is_none(), "not done yet");
+        r.done(5, 0);
+        r.frame(false);
+        r.frame_done();
+        let sc = r.slots[0].scales.clone().unwrap();
+        // Click exactly on B's middle point.
+        let (px, py) = (crate::hit::x_to_px(&sc, h as f64).unwrap() as f32, crate::hit::y_to_px(&sc, 11.0).unwrap() as f32);
+        let j = r.hit(1, 5, Query::Point { x: px + 3.0, y: py - 2.0 }).unwrap();
+        assert!(j.contains(&format!("\"x\":{{\"column\":0,\"name\":\"hour\",\"type\":\"timestamp\",\"value\":{h}}}")), "{j}");
+        assert!(j.contains("\"series\":{\"column\":1,\"name\":\"vessel\",\"type\":\"text\",\"label\":\"B\",\"null\":false}"), "{j}");
+        // Far from any point: nothing.
+        let empty_y = crate::hit::y_to_px(&sc, 6.5).unwrap() as f32;
+        assert!(r.hit(1, 5, Query::Point { x: px, y: empty_y }).is_none());
+        // Brush over the first two hours.
+        let (a, b) = (crate::hit::x_to_px(&sc, -1000.0).unwrap() as f32, crate::hit::x_to_px(&sc, h as f64 + 1000.0).unwrap() as f32);
+        let j = r.hit(1, 5, Query::Range { x0: b, x1: a }).unwrap();
+        assert!(j.contains(&format!("\"lo\":0,\"hi\":{h},\"count\":4")), "{j}");
+        // Legend entry 1 is series B.
+        let j = r.hit(1, 5, Query::Legend { index: 1 }).unwrap();
+        assert!(j.contains("\"label\":\"B\""), "{j}");
+        assert!(r.hit(1, 5, Query::Legend { index: 7 }).is_none());
+        // Bars: a click anywhere in a bar's column picks its x.
+        r.set_view(1, Some(View::Bar));
+        r.frame(false);
+        r.frame_done();
+        let sc = r.slots[0].scales.clone().unwrap();
+        let px = crate::hit::x_to_px(&sc, 2.0 * h as f64).unwrap() as f32 - 4.0;
+        let j = r.hit(1, 5, Query::Point { x: px, y: 150.0 }).unwrap();
+        assert!(j.contains(&format!("\"value\":{}", 2 * h)), "{j}");
     }
 }

@@ -46,6 +46,7 @@ class RecordingRenderer implements RendererNode {
   setParam(): void {}
   export(): void {}
   views(): never[] { return []; }
+  hit(): null { return null; }
   handle(frame: LocalFrame): void {
     const at = performance.now();
     const c = this.get(frame.request);

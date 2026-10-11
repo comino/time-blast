@@ -43,6 +43,28 @@ def sql_for(question):
     return CANNED[-1][1]
 
 
+KEYWORDS = r"\b(SELECT|FROM|GROUP BY|ORDER BY|AS|ALL|INTERVAL|MINUTE)\b"
+
+
+def variant(sql, k):
+    """An alias/case/layout variant of `sql` with the same result data (what a model does between
+    near-identical prefixes, docs/batch-2/inference.md "prefix replay"): different bytes, so the
+    coordinator cannot dedup, but identical values for the renderer."""
+    import re
+    k %= 5
+    if k == 1:
+        return re.sub(KEYWORDS, lambda m: m.group(0).lower(), sql)
+    if k == 2:  # rename the last alias (the value column)
+        head, sep, tail = sql.rpartition(" AS ")
+        name, _, rest = tail.partition(" ")
+        return f"{head}{sep}{name}_v {rest}" if sep else sql
+    if k == 3:
+        return sql.replace(", ", ",\n       ").replace(" FROM ", "\nFROM ").replace(" GROUP BY ", "\nGROUP BY ")
+    if k == 4:
+        return re.sub(r"GROUP BY \d+(, \d+)*", "GROUP BY ALL", sql)
+    return sql
+
+
 def now_ms():
     return time.time() * 1000.0
 
@@ -156,6 +178,9 @@ class FakeInference:
         # True: append the question as a trailing SQL comment, so every keystroke yields new
         # SQL (no coordinator dedup) and runs the whole pipeline.
         self.echo = False
+        # True: answer each INFER with the next alias/case/layout variant of the canned SQL
+        # (identical result data, different SQL bytes): steady-chart measurements.
+        self.variants = False
         self._stop = False
 
     @property
@@ -217,6 +242,8 @@ class FakeInference:
     def infer(self, conn, f, received):
         question = f["payload"].decode("utf-8", "replace")
         sql = sql_for(question)
+        if self.variants:
+            sql = variant(sql, len(self.infers))
         if self.echo:
             sql += "\n-- " + " ".join(question.split())
         self.infers.append((f["request"], f["revision"], f["epoch"], question, sql))

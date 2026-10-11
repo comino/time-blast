@@ -445,6 +445,34 @@ export class DuckDatabaseNode implements DatabaseNode {
     return result;
   }
 
+  private parserConn?: number | null;
+
+  /** DuckDB's own parser and printer (json extension) for chart-as-query (src/engine/manipulate.ts),
+   * on a dedicated connection so a streaming query or a rollup build is never disturbed.
+   * Undefined when the json extension is not loaded. Synchronous; ~1–3 ms per call. */
+  sqlTools(): { parse(sql: string): unknown; print(trees: unknown[]): string[] } | undefined {
+    if (this.parserConn === undefined) {
+      try {
+        const connection = this.db.connect();
+        this.connections.push(connection);
+        const conn = connection.useUnsafe((_, id) => id);
+        this.rowsSync(conn, `SELECT json_serialize_sql('SELECT 1')`);
+        this.parserConn = conn;
+      } catch {
+        this.parserConn = null;
+      }
+    }
+    const conn = this.parserConn;
+    if (conn === null || this.disposed) return undefined;
+    return {
+      parse: sql => {
+        const [text] = this.rowsSync(conn, `SELECT json_serialize_sql(${quoteLiteral(sql)})`)[0] as [string];
+        return parseAst(text);
+      },
+      print: trees => this.rowsSync(conn, `SELECT ${trees.map(t => `json_deserialize_sql(${quoteLiteral(JSON.stringify(t))}::JSON)`).join(', ')}`)[0] as string[],
+    };
+  }
+
   private template(sql: string): unknown {
     let t = this.templates.get(sql);
     if (!t) {

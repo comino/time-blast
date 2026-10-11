@@ -10,6 +10,7 @@ pub mod axes;
 pub mod bench;
 pub mod ffi;
 pub mod gpu;
+pub mod hit;
 pub mod renderer;
 pub mod scale;
 pub mod schema;
