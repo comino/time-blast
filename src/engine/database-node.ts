@@ -656,9 +656,13 @@ export class DuckDatabaseNode implements DatabaseNode {
   }
 
   /** Run SQL on the load connection, giving way to queries before every poll. */
+  /** A background statement is pending on the load connection (dispose cancels it). */
+  private loadPending = false;
+
   private async background(token: number, sql: string): Promise<unknown[][]> {
     await this.idle(token);
     let header = this.db.startPendingQuery(this.loadConn, sql, false);
+    this.loadPending = header === null;
     try {
       while (header === null) {
         await yieldToEventLoop();
@@ -666,8 +670,12 @@ export class DuckDatabaseNode implements DatabaseNode {
         header = this.db.pollPendingQuery(this.loadConn);
       }
     } catch (error) {
-      if (error instanceof Aborted) { try { this.db.cancelPendingQuery(this.loadConn); } catch { /* idle */ } }
+      // After dispose the connection is closed and its id may already belong to another
+      // connection (DuckDB reuses ids): cancelling it then would kill someone else's query.
+      if (error instanceof Aborted && !this.disposed) { try { this.db.cancelPendingQuery(this.loadConn); } catch { /* idle */ } }
       throw error;
+    } finally {
+      this.loadPending = false;
     }
     return this.drain(this.loadConn, header);
   }
@@ -1014,6 +1022,7 @@ export class DuckDatabaseNode implements DatabaseNode {
     this.disposed = true;
     this.buildToken++;
     this.cancelAll();
+    if (this.loadPending) { try { this.db.cancelPendingQuery(this.loadConn); } catch { /* idle */ } }
     for (const connection of this.connections) { try { connection.close(); } catch { /* ignore */ } }
   }
 }
