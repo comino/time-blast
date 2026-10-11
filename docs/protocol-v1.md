@@ -99,13 +99,13 @@ unknown kinds, truncated frames, and nonzero reserved stamp fields.
 | 0x11 | `COMMIT` | UI → coordinator | revision, context | UTF-8 text (always the full text; Enter) |
 | 0x12 | `CANCEL` | any → any | request = 0: cancel everything, epoch = **new** epoch. request ≠ 0: cancel that request only, epoch unchanged | empty |
 | 0x18 | `INFER` | coordinator → inference | request, revision, context | UTF-8 question text |
-| 0x19 | `SQL_DELTA` | inference → coordinator | request | UTF-8 fragment of the SQL being generated |
+| 0x19 | `SQL_DELTA` | inference → coordinator | request | UTF-8 fragment of the SQL being generated. Flag `0x02 RESET`: discard earlier deltas (a repair restarted the SQL) |
 | 0x1A | `SQL` | inference → coordinator | request | UTF-8 complete SQL. Flag `0x01 CACHED` (inference-side cache) |
-| 0x1B | `INFER_STATS` | inference → coordinator → UI | request | JSON `{model, promptTokens, completionTokens, cachedTokens?, reasoningTokens?, costUsd?, attempts, cancelled?}`; also sent for cancelled requests that reached the provider |
+| 0x1B | `INFER_STATS` | inference → coordinator → UI | request | JSON `{model, provider?, promptTokens, completionTokens, cachedTokens?, reasoningTokens?, costUsd?, attempts, cancelled?}`; also sent for cancelled requests that reached the provider |
 | 0x20 | `EXEC` | coordinator → database | request, context | UTF-8 SQL. Flag `0x01 SPECULATIVE` |
 | 0x21 | `RESULT_SCHEMA` | database → renderer (+ header-only → coordinator) | request | Arrow IPC encapsulated **schema** message |
 | 0x22 | `BATCH` | database → renderer (+ header-only → coordinator) | request | Arrow IPC encapsulated **record batch** message |
-| 0x23 | `DONE` | database → coordinator, renderer | request | `u64 rows, u64 bytes` (16 bytes) |
+| 0x23 | `DONE` | database → coordinator, renderer | request | `u64 rows, u64 bytes` (16 bytes). Flags: `0x01 ROLLUP` (served from a pre-aggregated rollup), `0x02 RESULT_CACHE` (replayed from the result cache) |
 
 A cancelled request gets neither `DONE` nor `ERROR` from the database. Database `ERROR` codes:
 `sql_rejected` (guard: not exactly one read-only query), `sql_error`, `timeout`, `result_limit`,

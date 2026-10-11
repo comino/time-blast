@@ -15,7 +15,7 @@
  */
 import type { RecordBatch, Schema } from 'apache-arrow';
 import type { DatabaseNode, DatasetContext, DatasetSource, Emit } from './contracts';
-import { Kind, Node, Stage, json, now, readText, type Frame, type Stamp } from '../protocol/frame';
+import { Flag, Kind, Node, Stage, json, now, readText, type Frame, type Stamp } from '../protocol/frame';
 import { IpcMessageDecoder } from './arrow-ipc';
 import { guardSql, unwrapError, wrapStatement, type Tokenizer } from './sql-guard';
 import { cacheKey, DEFAULT_RESULT_CACHE, NON_DETERMINISTIC, ResultCache, type CachedResult, type ResultCacheOptions } from './result-cache';
@@ -220,9 +220,9 @@ export class DuckDatabaseNode implements DatabaseNode {
 
   private stamp(stage: number, at = now()): Stamp { return { stage, node: Node.DATABASE, at }; }
 
-  private send(job: Job, kind: number, payload: Uint8Array | Schema | RecordBatch, stamps: Stamp[]): void {
+  private send(job: Job, kind: number, payload: Uint8Array | Schema | RecordBatch, stamps: Stamp[], flags = 0): void {
     this.emit({
-      kind: kind as Frame['kind'], flags: 0, epoch: job.epoch, request: job.request, revision: job.revision,
+      kind: kind as Frame['kind'], flags, epoch: job.epoch, request: job.request, revision: job.revision,
       context: job.context, stamps, payload,
     } as Frame<Uint8Array>);
   }
@@ -354,7 +354,8 @@ export class DuckDatabaseNode implements DatabaseNode {
     view.setBigUint64(8, BigInt(stats.bytes), true);
     stats.doneMs = performance.now() - job.t0;
     stats.outcome = 'done';
-    this.send(job, Kind.DONE, done, [this.stamp(Stage.DB_DONE)]);
+    const source = stats.source === 'rollup' ? Flag.ROLLUP : stats.source === 'cache' ? Flag.RESULT_CACHE : 0;
+    this.send(job, Kind.DONE, done, [this.stamp(Stage.DB_DONE)], source);
   }
 
   /** Replay a cached result: same frames, stamps, time slicing and cancellation as a live one. */

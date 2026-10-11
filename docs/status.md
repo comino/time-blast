@@ -1,6 +1,6 @@
 # Current status and handoff
 
-Updated **2026-10-11** (batch 1 merged). Direction: [vision.md](vision.md). The source repository is
+Updated **2026-10-11** (batch 1 merged; batch-2 database and inference work merged). Direction: [vision.md](vision.md). The source repository is
 private; the [live synthetic-data demo](https://time-blast.46-224-133-201.sslip.io) is public and
 still runs the **old prototype** (see the end of this page).
 
@@ -39,8 +39,8 @@ and measure draw *submission*, not photons.
 | UI per keystroke | ~8 µs our code; ~115 µs median including `postMessage` | [ui.md](batch-1/ui.md) |
 | Renderer, first batch → draw submitted | 1–6 ms per view; whole chart 4–9× faster than the old Canvas2D path | [render.md](batch-1/render.md) |
 
-**Where the time goes:** inference (~450 ms) and the database (~100–400 ms). Everything we wrote
-in between costs ~10 ms. With inference ~10× faster, the database is the bottleneck.
+**Where the time went after batch 1:** inference (~450 ms) and the database (~100–400 ms);
+everything else ~10 ms. Batch 2 cut the database to a few ms for most queries (below).
 
 ### Known gaps
 
@@ -60,9 +60,35 @@ in between costs ~10 ms. With inference ~10× faster, the database is the bottle
 - `render-bench` still compares against the legacy Canvas2D chart. `src/ui/chart.ts` and its
   imports remain only for that.
 
-## Next: batch 2
+## Batch 2 so far (merged on `main`)
 
-See [plan-batch-2.md](plan-batch-2.md).
+Details: [batch-2/database.md](batch-2/database.md), [batch-2/inference.md](batch-2/inference.md),
+plan: [plan-batch-2.md](plan-batch-2.md).
+
+- **Database first batch: 24.5 → 4.7 ms median (p95 158.9 → 24.1 ms)** over 281 statements, Node,
+  same DuckDB-Wasm build. The wins: compressed in-memory storage; background minute/hour/day rollups
+  with an exact rewrite via DuckDB's own parser (narrow, provably exact shapes; anything else runs
+  raw); a bounded result cache. Exactness: 308 statements give identical results on both paths.
+  Threads lost: the blocking API has no threaded build.
+- **Last keystroke → first draw, full app, fake inference: 106.7 → 39.2 ms median
+  (p95 163.6 → 64.5 ms)** on a quiet host, same run. Not comparable with the loaded-host batch-1 runs.
+- **Inference: new server default `openai/gpt-oss-120b` on Groq, reasoning low: 91 % correct**
+  (4 runs; Gemini 2.5 Flash Lite 71 %), first SQL delta 256–374 ms p50, ~$0.00016/request; Groq
+  caches ~600–750 prompt tokens. The provider matters as much as the model (same model 76–91 %).
+  A raw-row pre-check in the server lifts Gemini 2.5 Flash Lite to 78 %.
+- **Prefix replay:** at 90 % of a question typed, 28/45 translations already give the final result,
+  but only 8 are byte-identical SQL. The coordinator dedups on exact SQL; a result-level "keep the
+  chart steady" check in the renderer would turn more of these into zero-latency answers.
+- DONE now says whether a result came from a rollup or the result cache (flags in protocol-v1).
+
+The deployed demo is untouched. Its `/etc/time-blast/inference.env` pins
+`TIME_BLAST_MODEL=google/gemini-2.5-flash-lite`; remove that line when deploying to get the new
+default (`scripts/deploy-inference.py` no longer writes it for new installs).
+
+## Next
+
+See [plan-batch-2.md](plan-batch-2.md): shipping (needs the owner), real-GPU measurements (needs the
+owner), result-level stability while typing, and the interaction experiments.
 
 ## Deployed: the old prototype
 

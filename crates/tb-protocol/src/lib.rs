@@ -77,6 +77,12 @@ pub mod flags {
     pub const CACHED: u8 = 0x01;
     /// EXEC: speculative (lower priority than committed work).
     pub const SPECULATIVE: u8 = 0x01;
+    /// SQL_DELTA: discard earlier deltas of this request (a repair restarted the SQL).
+    pub const RESET: u8 = 0x02;
+    /// DONE: the result was served from a pre-aggregated rollup.
+    pub const ROLLUP: u8 = 0x01;
+    /// DONE: the result was replayed from the database node's result cache.
+    pub const RESULT_CACHE: u8 = 0x02;
     /// Payload deliberately omitted (e.g. BATCH copy sent to the coordinator).
     pub const HEADER_ONLY: u8 = 0x80;
 }

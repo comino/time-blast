@@ -1,6 +1,6 @@
 # Batch 2: attack the two big costs, ship, then explore
 
-Status: proposed 2026-10-11 by the coordinating agent after batch 1 merged. Direction:
+Status: workstreams 1 and 2 **done and merged** (2026-10-11); 3 and 4 wait for the owner; 5 open. Direction:
 [vision.md](vision.md). Evidence: [status.md](status.md) and [batch-1/](batch-1/).
 
 ## Where the time goes now

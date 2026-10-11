@@ -37,7 +37,7 @@ def main():
         values = {"OPENROUTER_API_KEY": key,
                   "TIME_BLAST_BIND": "127.0.0.1:8787",
                   "TIME_BLAST_PROVIDER_URL": "https://openrouter.ai/api/v1/chat/completions",
-                  "TIME_BLAST_MODEL": "google/gemini-2.5-flash-lite",
+                  # No TIME_BLAST_MODEL: the server's default profile applies (docs/batch-2/inference.md).
                   "TIME_BLAST_OPENROUTER": "true",
                   "TIME_BLAST_ALLOWED_ORIGINS": "https://time-blast.46-224-133-201.sslip.io,http://127.0.0.1:5173,http://localhost:5173",
                   # Per-keystroke translation: request ceilings sized for typing, spend capped.

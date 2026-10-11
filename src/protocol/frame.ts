@@ -16,7 +16,13 @@ export const Kind = {
 export type Kind = typeof Kind[keyof typeof Kind];
 const KINDS = new Set<number>(Object.values(Kind));
 
-export const Flag = { COMPOSING: 0x01, CACHED: 0x01, SPECULATIVE: 0x01, HEADER_ONLY: 0x80 } as const;
+export const Flag = {
+  COMPOSING: 0x01, CACHED: 0x01, SPECULATIVE: 0x01, HEADER_ONLY: 0x80,
+  /** SQL_DELTA: discard earlier deltas of this request (a repair restarted the SQL). */
+  RESET: 0x02,
+  /** DONE: served from a pre-aggregated rollup / replayed from the result cache. */
+  ROLLUP: 0x01, RESULT_CACHE: 0x02,
+} as const;
 export const Node = { UI: 1, COORDINATOR: 2, INFERENCE: 3, DATABASE: 4, RENDERER: 5, PROVIDER: 6 } as const;
 export const Stage = {
   KEY_INPUT: 1, DRAFT_SENT: 2, COORD_RECEIVED: 3, INFER_SENT: 4, INFER_RECEIVED: 5,
