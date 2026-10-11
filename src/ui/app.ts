@@ -1,6 +1,7 @@
 /** Page entry (batch 1): thin glue between the DOM and the engine worker.
  * Hot path = the textarea `input` listener → UiController.input → one transferred tb1 frame.
  * Everything visible beyond that is deferred to animation frames or driven by engine messages. */
+import { engineWorker } from './boot';
 import './styles.css';
 import './app.css';
 import type { CoordinatorConfig, SlotCard, SlotHost } from './controller';
@@ -14,6 +15,8 @@ import { SettingsPanel } from './settings-panel';
 import { SlotCardView } from './slot-card';
 import { mountInteractions } from './suggest-voice';
 import type { SlotSize } from '../engine/contracts';
+import { bootMark } from '../engine/boot-trace';
+import { installBootTrace } from './boot-trace';
 
 const root = document.querySelector<HTMLElement>('#app')!;
 root.innerHTML = appShell;
@@ -40,7 +43,8 @@ const rail = new Rail(root, {
 });
 
 // ───────────── engine worker and slots ─────────────
-const worker = new Worker(new URL('../engine/engine.worker.ts', import.meta.url), { type: 'module' });
+const worker = engineWorker;
+installBootTrace(worker);
 const sizes = new Map<number, SlotSize>();
 let controller!: UiController;
 const resizes = new ResizeBatcher((slot, size) => { sizes.set(slot, size); controller.resize(slot, size); });
@@ -157,6 +161,7 @@ const interactions = mountInteractions(root, input, controller, scheduleChrome);
 
 // ───────────── boot ─────────────
 controller.boot(inference, DEFAULT_DATASET, initialConfig);
+bootMark('page.boot');
 input.focus();
 
 /** Diagnostics for smoke tests and manual measurement (cheap; read on demand). */

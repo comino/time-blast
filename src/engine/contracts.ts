@@ -5,6 +5,7 @@
  */
 import type { RecordBatch, Schema } from 'apache-arrow';
 import type { Frame } from '../protocol/frame';
+import type { BootMark } from './boot-trace';
 
 // ───────────────────────── links ─────────────────────────
 
@@ -190,7 +191,9 @@ export type EngineToUi =
   | { type: 'axes'; slot: number; ticks: AxisTicks }
   | { type: 'export'; slot: number; blob: Blob; filename: string }
   /** Outcome of a `manipulate`: the SQL sent as QUERY (null: nothing to do, see `reason`). */
-  | { type: 'manipulated'; slot: number; from: string; sql: string | null; method: 'rewrite' | 'wrap' | 'as-is' | 'none'; reason: string; ms: number };
+  | { type: 'manipulated'; slot: number; from: string; sql: string | null; method: 'rewrite' | 'wrap' | 'as-is' | 'none'; reason: string; ms: number }
+  /** Boot-trace marks from the engine worker (src/engine/boot-trace.ts, docs/batch-3/cold-start.md). */
+  | { type: 'trace'; marks: BootMark[] };
 
 /** Text is the boring part: the renderer computes tick positions, the UI draws labels in DOM. */
 export interface AxisTicks {

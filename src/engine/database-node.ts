@@ -21,12 +21,14 @@ import { guardSql, unwrapError, wrapStatement, type Tokenizer } from './sql-guar
 import { cacheKey, DEFAULT_RESULT_CACHE, NON_DETERMINISTIC, ResultCache, type CachedResult, type ResultCacheOptions } from './result-cache';
 import {
   AGG_TEMPLATE_SQL, buildSql, finishSql, GRAINS, mayRewrite, nullCheckSql, planRewrite, printJobs, ROLLUP_SCHEMA, rollupSpecs,
-  rollupTableName, type Catalog, type Grain, type RollupTable,
+  rollupTableName, type Catalog, type Grain, type RollupSpec, type RollupTable,
 } from './rollup';
 import { DEFAULT_LIMITS, SLICE_MS, type QueryLimits } from './limits';
 import { yieldToEventLoop } from './yield';
+import { bootClock, bootMark } from './boot-trace';
+import { META_TABLE, PREBUILT_FORMAT, type ManifestEntry, type ManifestTable, type PrebuiltMeta } from './datasets';
 import {
-  applyStatistics, loadFileSql, quoteIdent, quoteLiteral, sampleSql, sniffFormat, statisticsSql, tableNameFor, UPLOAD_DIR,
+  applyStatistics, classify, loadFileSql, quoteIdent, quoteLiteral, sampleSql, sniffFormat, statisticsSql, tableNameFor, UPLOAD_DIR,
   VESSELS_DESCRIPTION, VESSELS_SMALL_DESCRIPTION, VESSELS_SQL, type ColumnInfo,
 } from './dataset';
 
@@ -38,6 +40,8 @@ export interface DuckBindings extends Tokenizer {
   cancelPendingQuery(conn: number): boolean;
   fetchQueryResults(conn: number): Uint8Array | null;
   registerFileBuffer(name: string, buffer: Uint8Array): void;
+  /** Browser bundles: register a File/Blob DuckDB reads on demand (protocol 2 = FileReaderSync). */
+  registerFileHandle?(name: string, handle: Blob, protocol: number, directIO: boolean): void;
   dropFile(name: string): void;
 }
 
@@ -91,6 +95,24 @@ export interface DatabaseNodeOptions {
   onRollupStats?: (stats: RollupStats) => void;
   /** Bounded queries estimated to touch fewer raw rows run on the raw table (rollup.ts SHORT_RANGE_ROWS). */
   rollupShortRangeRows?: number;
+  /** Dataset manifest (public/data/datasets.json). Fixtures it lists open from it; others use the built-ins. */
+  manifest?: () => Promise<ManifestEntry[]>;
+  /** Resolve a manifest path (e.g. `data/vessels/vessels.duckdb`) to a URL. */
+  dataUrl?: (path: string) => string;
+  /** Fetch a prebuilt database file (browser: persisted in the Cache API). Default: fetchBytes. */
+  fetchPrebuilt?: (url: string) => Promise<Uint8Array | Blob>;
+  /** Use prebuilt databases (default true; false loads the manifest's tables and builds rollups here). */
+  prebuilt?: boolean;
+  /** Extensions loaded at boot (lockDown), to check a prebuilt function catalog applies. */
+  extensions?: string[];
+  /** Deferred boot lockdown (src/engine/database.ts): runs right after the first open, so the
+   * dataset context is out before the json extension loads. No EXEC runs before it completes. */
+  lockdown?: () => Promise<void>;
+  /** Warm-up statements after the deferred lockdown (default on). */
+  warmUp?: boolean;
+  /** The bindings were created for this node alone (nothing loaded yet): the first open can skip
+   * dropping tables. Leave unset when nodes share bindings (tests). */
+  freshInstance?: boolean;
 }
 
 export interface RollupStats {
@@ -105,9 +127,54 @@ export interface RollupStats {
 
 /** The compressed in-memory catalog every connection of the node uses. */
 export const DATA_CATALOG = 'tb_data';
+/** An attached prebuilt database (read-only) while a prebuilt fixture is open. */
+export const FIXTURE_CATALOG = 'tb_fixture';
+/** Prebuilt metadata: one row, column `meta` (JSON text, src/engine/datasets.ts PrebuiltMeta). */
+export const META_SQL_NAME = `${quoteIdent(ROLLUP_SCHEMA)}.${quoteIdent(META_TABLE)}`;
+export const CATALOG_SQL = 'SELECT DISTINCT lower(function_name), function_type, stability FROM duckdb_functions()';
+
+/** Function catalog for the rollup rewrite and the result cache, from CATALOG_SQL rows. */
+export function catalogFrom(functions: Array<[string, string, string | null]>): { aggregates: string[]; forbidden: string[]; volatile: string[] } {
+  const aggregates = new Set<string>(), forbidden = new Set<string>(), volatile = new Set<string>();
+  for (const [name, type, stability] of functions) {
+    if (type === 'aggregate') aggregates.add(name);
+    else if (type === 'macro' || type === 'table_macro' || stability === 'VOLATILE') forbidden.add(name);
+    if (stability === 'VOLATILE' || stability === 'CONSISTENT_WITHIN_QUERY') volatile.add(name);
+  }
+  return { aggregates: [...aggregates].sort(), forbidden: [...forbidden].sort(), volatile: [...volatile].sort() };
+}
+
+/** The parts of a rollup spec that decide its tables' layout (compared against a prebuilt file). */
+export function specShape(spec: RollupSpec): unknown {
+  return { table: spec.table, time: spec.time, dims: spec.dims, measures: spec.measures.map(m => [m.name, m.type, m.nulls]) };
+}
+
+/** DuckDB-Wasm's DuckDBDataProtocol.BROWSER_FILEREADER: a File/Blob read with FileReaderSync. */
+const FILE_READER_PROTOCOL = 2;
+
+/** DuckDB database files carry the magic `DUCK` at byte 8. */
+function isDuckDbFile(bytes: Uint8Array, size: number): boolean {
+  return size > 4096 && bytes[8] === 0x44 && bytes[9] === 0x55 && bytes[10] === 0x43 && bytes[11] === 0x4b;
+}
+
+function looksLikeHtml(bytes: Uint8Array): boolean {
+  const head = new TextDecoder().decode(bytes.subarray(0, 64)).trimStart().toLowerCase();
+  return head.startsWith('<!doctype html') || head.startsWith('<html');
+}
+
+function sameExtensions(a: string[] | undefined, b: string[] | undefined): boolean {
+  const norm = (x: string[] | undefined) => [...new Set(x ?? [])].filter(e => e !== 'parquet').sort().join(',');
+  return norm(a) === norm(b);
+}
 const REWRITE_MEMO = 256;
 
 class Aborted extends Error {}
+
+/** Opening this source needs the parquet extension, which this DuckDB instance did not load at
+ * boot (src/engine/database.ts ParquetOnDemand re-instantiates DuckDB with it). */
+export class NeedsParquet extends Error {
+  constructor() { super('Parquet support is not loaded in this DuckDB instance (the parquet extension could not be loaded)'); }
+}
 
 /** A result being collected for the result cache. */
 interface Keep { schema?: Schema; batches: RecordBatch[]; rows: number; bytes: number; overflow?: boolean }
@@ -155,9 +222,18 @@ export class DuckDatabaseNode implements DatabaseNode {
   private catalog?: Catalog;
   private readonly templates = new Map<string, unknown>();
   private readonly rewrites = new Map<string, { sql?: string; reason: string; grain?: string }>();
+  /** Registered prebuilt file (dropped on detach). */
+  private attached?: string;
+  private fixtureCatalog = false;
+  /** Tables may be in the in-memory catalog (open() must drop them first). */
+  private homeUsed: boolean;
+  /** The catalog connections return to when no prebuilt database is attached. */
+  private home = 'memory';
 
   constructor(private readonly db: DuckBindings, private readonly emit: Emit, private readonly options: DatabaseNodeOptions = {}) {
     this.limits = { ...DEFAULT_LIMITS, ...options.limits };
+    this.homeUsed = !options.freshInstance;
+    if (options.lockdown) { this.lockOpen = false; this.lockGate = new Promise(resolve => { this.releaseLock = resolve; }); }
     this.sliceMs = options.sliceMs ?? SLICE_MS;
     const query = db.connect(), load = db.connect();
     this.connections = [query, load];
@@ -173,6 +249,7 @@ export class DuckDatabaseNode implements DatabaseNode {
       try {
         this.rowsSync(this.loadConn, `ATTACH IF NOT EXISTS ':memory:' AS ${DATA_CATALOG} (COMPRESS)`);
         for (const conn of [this.loadConn, this.queryConn]) this.rowsSync(conn, `USE ${DATA_CATALOG}`);
+        this.home = DATA_CATALOG;
       } catch { /* uncompressed default catalog */ }
     }
   }
@@ -230,11 +307,62 @@ export class DuckDatabaseNode implements DatabaseNode {
     if (this.running) { this.running.canceled = true; this.running.preempted = undefined; }
   }
 
-  /** Starts executing synchronously: a small query may finish inside handle(). */
+  /** The open dataset (warm-up statements are derived from it). */
+  private current?: DatasetContext;
+
+  /** After the deferred lockdown: run two statements shaped like typical questions (a scan
+   * aggregate; a time bucket, rewritten onto a rollup) so DuckDB's lazily compiled code paths and
+   * the parser/printer are warm before the first real query. Background priority (yields to any
+   * EXEC before every poll); derived from the context, no schema assumed. */
+  private async warmUp(): Promise<void> {
+    const context = this.current, token = this.buildToken;
+    if (!context || this.disposed || this.options.warmUp === false) return;
+    const w0 = bootClock();
+    try {
+      await this.building;
+      const table = context.tables[0];
+      const measure = table?.columns.find(c => classify(c.type) === 'numeric');
+      if (!table || !measure) return;
+      const time = table.columns.find(c => c.type.toUpperCase() === 'TIMESTAMP');
+      const t = quoteIdent(table.name), m = quoteIdent(measure.name);
+      const statements = [`SELECT count(*), min(${m}), max(${m}) FROM ${t}`];
+      if (time) statements.push(`SELECT date_trunc('hour', ${quoteIdent(time.name)}) AS t, avg(${m}) AS v FROM ${t} GROUP BY 1 ORDER BY 1`);
+      for (const sql of statements) {
+        await this.idle(token);
+        const rewritten = this.rollups.length ? this.rewrite(sql).sql ?? sql : sql;
+        await this.background(token, rewritten);
+      }
+      bootMark('duckdb.warmup', w0);
+    } catch { /* superseded or failed: only a warm-up */ }
+  }
+
+  private lockGate?: Promise<void>;
+  private lockOpen = true;
+  private lockStarted = false;
+  private releaseLock?: () => void;
+
+  /** Run the deferred lockdown once (after the first open, successful or not). */
+  private startLockdown(): void {
+    if (this.lockStarted || !this.options.lockdown) return;
+    this.lockStarted = true;
+    setTimeout(() => {
+      const l0 = bootClock();
+      void (this.disposed ? Promise.resolve() : this.options.lockdown!()).catch(() => { /* reported by the boot code */ }).finally(() => {
+        this.lockOpen = true;
+        this.releaseLock?.();
+        bootMark('duckdb.lockdown-deferred', l0);
+        void this.warmUp();
+      });
+    }, 0);
+  }
+
+  /** Starts executing synchronously (once the deferred lockdown, if any, is done): a small query
+   * may finish inside handle(). */
   private pump(): void {
     if (this.pumping) return;
     this.pumping = (async () => {
       try {
+        if (!this.lockOpen) await this.lockGate;
         while ((this.queue.length || this.warmQueue.length) && !this.disposed) {
           // Warm-ups newest first: the latest result's suggestions are the ones on screen.
           const job = this.queue.shift() ?? this.warmQueue.pop()!;
@@ -451,6 +579,7 @@ export class DuckDatabaseNode implements DatabaseNode {
    * on a dedicated connection so a streaming query or a rollup build is never disturbed.
    * Undefined when the json extension is not loaded. Synchronous; ~1–3 ms per call. */
   sqlTools(): { parse(sql: string): unknown; print(trees: unknown[]): string[] } | undefined {
+    if (!this.lockOpen) return undefined; // json loads with the deferred lockdown
     if (this.parserConn === undefined) {
       try {
         const connection = this.db.connect();
@@ -490,16 +619,7 @@ export class DuckDatabaseNode implements DatabaseNode {
   private async buildRollups(token: number, context: DatasetContext): Promise<void> {
     const specs = rollupSpecs(context);
     if (!specs.length) { this.options.onRollupStats?.({ table: '*', ms: 0, done: true, skipped: 'no table with a TIMESTAMP column and numeric columns' }); return; }
-    if (!this.catalog) {
-      const functions = await this.background(token, 'SELECT DISTINCT lower(function_name), function_type, stability FROM duckdb_functions()');
-      const aggregates = new Set<string>(), forbidden = new Set<string>();
-      for (const [name, type, stability] of functions as Array<[string, string, string | null]>) {
-        if (type === 'aggregate') aggregates.add(name);
-        else if (type === 'macro' || type === 'table_macro' || stability === 'VOLATILE') forbidden.add(name);
-        if (stability === 'VOLATILE' || stability === 'CONSISTENT_WITHIN_QUERY') this.cache?.volatile.add(name);
-      }
-      this.catalog = { aggregates, forbidden };
-    }
+    await this.loadCatalog(token);
     await this.background(token, `CREATE SCHEMA IF NOT EXISTS ${quoteIdent(ROLLUP_SCHEMA)}`);
     for (const spec of specs) {
       const grains = GRAINS.filter(g => spec.estimate(g) * 4 <= spec.rows);
@@ -517,10 +637,12 @@ export class DuckDatabaseNode implements DatabaseNode {
         table.grains.push({ grain, table: rollupTableName(spec, grain), rows: Number(rows), ms });
         this.rewrites.clear();
         this.options.onRollupStats?.({ table: spec.table, grain: grain.name, rows: Number(rows), ms });
+        bootMark(`rollup.${grain.name}`, performance.timeOrigin + t0, spec.table);
         previous = grain;
       }
     }
     this.options.onRollupStats?.({ table: '*', ms: 0, done: true });
+    bootMark('rollups.ready');
   }
 
   /** Resolves when no EXEC is running or queued; throws Aborted when the build is superseded. */
@@ -583,6 +705,14 @@ export class DuckDatabaseNode implements DatabaseNode {
   // ───────────────────────── datasets ─────────────────────────
 
   async open(source: DatasetSource, contextId: number): Promise<DatasetContext> {
+    try {
+      return await this.openDataset(source, contextId);
+    } finally {
+      this.startLockdown();
+    }
+  }
+
+  private async openDataset(source: DatasetSource, contextId: number): Promise<DatasetContext> {
     if (this.disposed) throw new Error('database node is disposed');
     // Work for the previous context is meaningless now: stop it and refuse new EXECs.
     this.contextId = 0;
@@ -593,15 +723,26 @@ export class DuckDatabaseNode implements DatabaseNode {
     this.status('loading', `Loading ${source.name}`, 0.1);
     const t0 = performance.now();
     try {
-      await this.dropAll();
+      await this.detachFixture();
+      // Only an earlier in-memory load leaves tables behind (a prebuilt file is just detached).
+      if (this.homeUsed) { await this.dropAll(); bootMark('dataset.drop', performance.timeOrigin + t0); }
+      // Manifest fixtures (src/engine/datasets.ts): a prebuilt database first; nothing to compute.
+      const entry = source.kind === 'fixture' ? await this.manifestEntry(source.name) : undefined;
+      const prebuilt = entry?.prebuilt && this.options.prebuilt !== false ? await this.attachPrebuilt(entry) : undefined;
+      if (prebuilt) return this.openPrebuilt(source.name, entry!, prebuilt, contextId, t0);
       let description: string;
-      if (source.kind === 'fixture' && source.name === 'vessels') {
+      this.homeUsed = true;
+      const tablesLoaded = entry ? await this.loadManifestTables(entry) : false;
+      if (tablesLoaded) {
+        description = entry!.description ?? entry!.title ?? source.name;
+      } else if (source.kind === 'fixture' && source.name === 'vessels') {
         await this.run(this.loadConn, VESSELS_SQL);
-        description = VESSELS_DESCRIPTION;
+        description = entry?.description ?? VESSELS_DESCRIPTION;
       } else {
         const fetchBytes = this.options.fetchBytes ?? defaultFetchBytes;
         let fileName: string, bytes: Uint8Array;
         if (source.kind === 'fixture') {
+          if (source.name !== 'vessels-small') throw new Error(`Unknown dataset ${source.name}`);
           const url = this.options.fixtureUrl?.(source.name) ?? new URL('data/telemetry.parquet', globalThis.location?.href).href;
           fileName = 'telemetry.parquet'; bytes = await fetchBytes(url);
         } else if (source.kind === 'file') {
@@ -613,6 +754,7 @@ export class DuckDatabaseNode implements DatabaseNode {
           bytes = await fetchBytes(source.url);
         }
         const format = sniffFormat(fileName, bytes);
+        if (format === 'parquet') this.requireParquet();
         const table = tableNameFor(fileName);
         const path = `${UPLOAD_DIR}${table}.${format}`;
         this.db.registerFileBuffer(path, bytes); // copies into Wasm memory; `bytes` can be collected
@@ -624,11 +766,14 @@ export class DuckDatabaseNode implements DatabaseNode {
         description = source.kind === 'fixture' ? VESSELS_SMALL_DESCRIPTION : `${format === 'parquet' ? 'Parquet' : 'CSV'} file ${fileName}`;
       }
       const t1 = performance.now();
+      bootMark('dataset.load', performance.timeOrigin + t0, source.name);
       this.status('loading', 'Computing statistics', 0.8);
       const { context, statisticsMs } = await this.describe(contextId, source.name, description);
       const t2 = performance.now();
+      bootMark('dataset.context', performance.timeOrigin + t1, `statistics ${statisticsMs.toFixed(1)} ms`);
       this.options.onOpenStats?.({ loadMs: t1 - t0, contextMs: t2 - t1, statisticsMs });
       this.contextId = contextId;
+      this.current = context;
       if (this.options.rollups !== false) {
         const token = this.buildToken;
         this.building = this.buildRollups(token, context).catch(error => {
@@ -638,9 +783,165 @@ export class DuckDatabaseNode implements DatabaseNode {
       this.status('ready', `${source.name} · ${context.tables.map(t => `${t.rows.toLocaleString('en-US')} rows`).join(', ')}`, 1);
       return context;
     } catch (error) {
-      this.status('error', `Could not load ${source.name}`, undefined, messageOf(error));
+      if (!(error instanceof NeedsParquet)) this.status('error', `Could not load ${source.name}`, undefined, messageOf(error));
       throw error;
     }
+  }
+
+  /** Throws NeedsParquet when this instance is known to lack the parquet extension. */
+  private requireParquet(): void {
+    if (this.options.extensions && !this.options.extensions.includes('parquet')) throw new NeedsParquet();
+  }
+
+  // ───────────────────────── manifest fixtures and prebuilt databases ─────────────────────────
+
+  private async manifestEntry(name: string): Promise<ManifestEntry | undefined> {
+    if (!this.options.manifest) return undefined;
+    try {
+      return (await this.options.manifest()).find(entry => entry.name === name);
+    } catch {
+      return undefined; // no manifest: built-in fixtures
+    }
+  }
+
+  private dataUrl(path: string): string {
+    return this.options.dataUrl?.(path) ?? new URL(path, globalThis.location?.href).href;
+  }
+
+  /** Fetch and attach `entry.prebuilt` read-only; undefined (and nothing attached) if it is
+   * missing, not a DuckDB file of our layout, or fails to attach: the caller falls back. */
+  private async attachPrebuilt(entry: ManifestEntry): Promise<PrebuiltMeta | undefined> {
+    const f0 = bootClock();
+    let data: Uint8Array | Blob;
+    try {
+      data = await (this.options.fetchPrebuilt ?? this.options.fetchBytes ?? defaultFetchBytes)(this.dataUrl(entry.prebuilt!));
+    } catch {
+      return undefined;
+    }
+    const blob = typeof Blob !== 'undefined' && data instanceof Blob ? data : undefined;
+    const size = blob ? blob.size : (data as Uint8Array).byteLength;
+    bootMark('dataset.fetch', f0, `${(size / 1048576).toFixed(1)} MiB${blob ? ' blob' : ''}`);
+    const head = blob ? new Uint8Array(await blob.slice(0, 4096 + 1).arrayBuffer()) : data as Uint8Array;
+    if (!isDuckDbFile(head, size)) return undefined;
+    const a0 = bootClock();
+    const path = `${UPLOAD_DIR}${entry.name.replace(/[^A-Za-z0-9_-]+/g, '_')}.duckdb`;
+    if (blob && this.db.registerFileHandle) {
+      // Read lazily (FileReaderSync on the Blob, block by block): nothing is copied up front.
+      this.db.registerFileHandle(path, blob, FILE_READER_PROTOCOL, true);
+    } else {
+      this.db.registerFileBuffer(path, blob ? new Uint8Array(await blob.arrayBuffer()) : data as Uint8Array); // copied into Wasm memory
+    }
+    this.attached = path;
+    try {
+      await this.run(this.loadConn, `ATTACH ${quoteLiteral(path)} AS ${FIXTURE_CATALOG} (READ_ONLY)`);
+      this.fixtureCatalog = true;
+      for (const conn of [this.loadConn, this.queryConn]) this.rowsSync(conn, `USE ${FIXTURE_CATALOG}`);
+      const [[text]] = await this.rows(this.loadConn, `SELECT meta FROM ${META_SQL_NAME}`) as [[string]];
+      const meta = JSON.parse(text) as PrebuiltMeta;
+      if (meta.format !== PREBUILT_FORMAT) throw new Error(`prebuilt format ${meta.format}`);
+      bootMark('dataset.attach', a0);
+      return meta;
+    } catch (error) {
+      this.status('loading', `Prebuilt ${entry.name} unusable; loading tables`, 0.2, messageOf(error));
+      await this.detachFixture();
+      return undefined;
+    }
+  }
+
+  /** Context and rollups straight from a prebuilt database's metadata. */
+  private async openPrebuilt(name: string, entry: ManifestEntry, meta: PrebuiltMeta, contextId: number, t0: number): Promise<DatasetContext> {
+    const t1 = performance.now();
+    bootMark('dataset.load', performance.timeOrigin + t0, `${name} (prebuilt)`);
+    const context: DatasetContext = { ...meta.context, id: contextId, name, ...(entry.description ? { description: entry.description } : {}) };
+    if (this.options.rollups !== false) {
+      const specs = rollupSpecs(context);
+      for (const stored of meta.rollups) {
+        const spec = specs.find(s => s.table === stored.table);
+        if (!spec) continue;
+        for (const m of spec.measures) m.nulls = stored.nulls[m.name] ?? true;
+        // The file's rollups were built from this same context; refuse them if the derived
+        // shape differs (then queries run raw, still exact).
+        if (stored.spec && JSON.stringify(specShape(spec)) !== JSON.stringify(stored.spec)) continue;
+        const table: RollupTable = { spec, grains: [] };
+        for (const g of stored.grains) {
+          const grain = GRAINS.find(x => x.name === g.name);
+          if (grain) table.grains.push({ grain, table: rollupTableName(spec, grain), rows: g.rows, ms: 0 });
+        }
+        if (table.grains.length) this.rollups.push(table);
+      }
+      if (meta.catalog && meta.duckdb === this.version() && sameExtensions(meta.catalog.extensions, this.options.extensions)) {
+        this.catalog = { aggregates: new Set(meta.catalog.aggregates), forbidden: new Set(meta.catalog.forbidden) };
+        for (const name of meta.catalog.volatile) this.cache?.volatile.add(name);
+      } else if (this.rollups.length) {
+        // Different engine build: derive the function catalog here (rewrites wait for it).
+        const token = this.buildToken;
+        this.building = this.loadCatalog(token).catch(() => { this.rollups = []; });
+      }
+    }
+    const t2 = performance.now();
+    this.options.onOpenStats?.({ loadMs: t1 - t0, contextMs: t2 - t1, statisticsMs: 0 });
+    this.contextId = contextId;
+    this.current = context;
+    if (this.options.rollups !== false) {
+      for (const r of this.rollups) for (const g of r.grains) this.options.onRollupStats?.({ table: r.spec.table, grain: g.grain.name, rows: g.rows, ms: 0 });
+      this.options.onRollupStats?.({ table: '*', ms: 0, done: true, ...(this.rollups.length ? {} : { skipped: 'no prebuilt rollups' }) });
+      bootMark('rollups.ready', undefined, 'prebuilt');
+    }
+    this.status('ready', `${name} · ${context.tables.map(t => `${t.rows.toLocaleString('en-US')} rows`).join(', ')}`, 1);
+    return context;
+  }
+
+  /** Load a manifest entry's table files; false if any is missing (then the caller falls back). */
+  private async loadManifestTables(entry: ManifestEntry): Promise<boolean> {
+    if (!entry.tables.length) return false;
+    const fetchBytes = this.options.fetchBytes ?? defaultFetchBytes;
+    const files: Array<{ table: ManifestTable; bytes: Uint8Array }> = [];
+    try {
+      for (const table of entry.tables) files.push({ table, bytes: await fetchBytes(this.dataUrl(table.url)) });
+    } catch {
+      return false;
+    }
+    // A dev server answers unknown paths with index.html: that is a missing file, not CSV.
+    if (files.some(f => looksLikeHtml(f.bytes))) return false;
+    if (files.some(f => sniffFormat(f.table.url, f.bytes) === 'parquet')) this.requireParquet();
+    for (const { table, bytes } of files) {
+      const format = sniffFormat(table.url, bytes);
+      const path = `${UPLOAD_DIR}${tableNameFor(table.url)}.${format}`;
+      this.db.registerFileBuffer(path, bytes);
+      try {
+        await this.run(this.loadConn, loadFileSql(table.name, path, format));
+      } finally {
+        this.db.dropFile(path);
+      }
+    }
+    return true;
+  }
+
+  /** Back to the in-memory catalog; forget an attached prebuilt database. */
+  private async detachFixture(): Promise<void> {
+    if (this.fixtureCatalog) {
+      for (const conn of [this.loadConn, this.queryConn]) this.rowsSync(conn, `USE ${this.home}`);
+      await this.run(this.loadConn, `DETACH ${FIXTURE_CATALOG}`);
+      this.fixtureCatalog = false;
+    }
+    if (this.attached) { this.db.dropFile(this.attached); this.attached = undefined; }
+  }
+
+  /** The function catalog the rewrite needs (aggregates, macros/volatile functions). */
+  private async loadCatalog(token: number): Promise<void> {
+    if (this.catalog) return;
+    const functions = await this.background(token, CATALOG_SQL);
+    const catalog = catalogFrom(functions as Array<[string, string, string | null]>);
+    for (const name of catalog.volatile) this.cache?.volatile.add(name);
+    this.catalog = { aggregates: new Set(catalog.aggregates), forbidden: new Set(catalog.forbidden) };
+  }
+
+  private versionText?: string;
+  private version(): string {
+    if (this.versionText === undefined) {
+      try { this.versionText = String(this.rowsSync(this.loadConn, 'SELECT version()')[0][0]); } catch { this.versionText = ''; }
+    }
+    return this.versionText;
   }
 
   private status(state: 'loading' | 'ready' | 'error', label: string, progress?: number, detail?: string): void {
@@ -747,7 +1048,7 @@ function parseAst(text: string): any { // eslint-disable-line @typescript-eslint
  * so it must be loaded before external access is disabled. The json extension (same source)
  * provides `json_serialize_sql`/`json_deserialize_sql`, DuckDB's own parser and printer, which
  * the rollup rewrite needs; without it queries simply run on the raw tables. */
-export async function lockDown(db: DuckBindings, { parquet = true, json = true, memoryLimit = '512MB' } = {}): Promise<{ parquet: boolean; parquetMs: number; json: boolean; jsonMs: number; error?: string }> {
+export async function lockDown(db: DuckBindings, { parquet = true, json = true, memoryLimit = '512MB', memoryOnly = false } = {}): Promise<{ parquet: boolean; parquetMs: number; json: boolean; jsonMs: number; error?: string }> {
   const connection = db.connect();
   const conn = connection.useUnsafe((_, id) => id);
   const exec = (sql: string) => {
@@ -757,16 +1058,19 @@ export async function lockDown(db: DuckBindings, { parquet = true, json = true, 
   };
   try {
     exec(`SET memory_limit = '${memoryLimit}'`);
+    if (memoryOnly) return { parquet: false, parquetMs: 0, json: false, jsonMs: 0 };
     let loaded = false, error: string | undefined;
     const t0 = performance.now();
     if (parquet) {
       try { exec('LOAD parquet'); loaded = true; } catch (e) { error = messageOf(e); }
+      bootMark('ext.parquet', performance.timeOrigin + t0);
     }
     const parquetMs = performance.now() - t0;
     let jsonLoaded = false;
     const j0 = performance.now();
     if (json) {
       try { exec('LOAD json'); jsonLoaded = true; } catch (e) { error = [error, messageOf(e)].filter(Boolean).join('; '); }
+      bootMark('ext.json', performance.timeOrigin + j0);
     }
     const jsonMs = performance.now() - j0;
     exec('SET autoinstall_known_extensions = false');

@@ -11,6 +11,9 @@
  * statement has ORDER BY. Timing is paired and interleaved: EXEC → first BATCH from ExecStats.
  */
 import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { parseManifest } from '../src/engine/datasets';
 import type { RecordBatch, Schema } from 'apache-arrow';
 import { DuckDatabaseNode, lockDown, type DuckBindings, type ExecStats, type RollupStats } from '../src/engine/database-node';
 import type { DatasetSource, LocalFrame } from '../src/engine/contracts';
@@ -39,7 +42,7 @@ export interface BenchNode {
   memory(): Promise<string>;
 }
 
-async function bindings(): Promise<DuckBindings> {
+async function bindings(parquet = false): Promise<DuckBindings> {
   const require = createRequire(import.meta.url);
   const bundle = require.resolve('@duckdb/duckdb-wasm/dist/duckdb-node-blocking.cjs');
   const dist = bundle.replace(/[^/]+$/, '');
@@ -50,7 +53,7 @@ async function bindings(): Promise<DuckBindings> {
   }, new duck.VoidLogger(), duck.NODE_RUNTIME);
   await db.instantiate();
   db.open({ query: { queryPollingInterval: 4 } });
-  await lockDown(db as DuckBindings, { parquet: false });
+  await lockDown(db as DuckBindings, { parquet });
   return db as DuckBindings;
 }
 
@@ -66,8 +69,25 @@ function plain(value: unknown): Value {
   return String(value);
 }
 
-export async function openNode(options: ConstructorParameters<typeof DuckDatabaseNode>[2] = {}, source: DatasetSource = { kind: 'fixture', name: 'vessels' }): Promise<BenchNode> {
-  const db = await bindings();
+/** How the optimized node gets `vessels` (docs/batch-3/cold-start.md): generated in the engine
+ * (the default), its Parquet file, or the prebuilt database (public/data, scripts/build-datasets.mjs). */
+export type LoadMode = 'generated' | 'parquet' | 'prebuilt';
+
+/** Node options that open fixtures from public/data/datasets.json the way the browser does. */
+export function manifestOptions(root: string, mode: LoadMode): ConstructorParameters<typeof DuckDatabaseNode>[2] {
+  if (mode === 'generated') return {};
+  const file = (path: string) => resolve(root, 'public', path);
+  return {
+    manifest: async () => parseManifest(JSON.parse(readFileSync(file('data/datasets.json'), 'utf8'))),
+    dataUrl: file,
+    fetchBytes: async path => new Uint8Array(readFileSync(path)),
+    prebuilt: mode === 'prebuilt',
+    extensions: mode === 'prebuilt' ? ['json'] : ['json', 'parquet'],
+  };
+}
+
+export async function openNode(options: ConstructorParameters<typeof DuckDatabaseNode>[2] = {}, source: DatasetSource = { kind: 'fixture', name: 'vessels' }, parquet = false): Promise<BenchNode> {
+  const db = await bindings(parquet);
   let pending: { request: number; resolve: (o: Outcome) => void; out: Outcome } | undefined;
   const rollups: RollupStats[] = [];
   let rollupsResolve!: () => void;

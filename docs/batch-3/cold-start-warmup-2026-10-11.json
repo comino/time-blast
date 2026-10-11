@@ -1,0 +1,683 @@
+{
+ "kind": "time-blast.cold-start-warmup",
+ "date": "2026-10-11",
+ "method": "scripts/bench-boot.py --only first --query-delay 2000, alternating builds with and without the post-lockdown warm-up (VITE_TB_WARMUP=0), headless Chromium 145 SwiftShader, vite preview with Caddy-like headers, load 11-22 on 4 cores",
+ "runs": {
+  "warm": [
+   {
+    "headline": 142.614990234375,
+    "db": null,
+    "cacheHit": false,
+    "rollupsBefore": true,
+    "rows": [
+     [
+      "key",
+      0
+     ],
+     [
+      "draft sent",
+      0.36
+     ],
+     [
+      "coordinator",
+      2.74
+     ],
+     [
+      "inference sent",
+      2.74
+     ],
+     [
+      "inference received",
+      7.3
+     ],
+     [
+      "first SQL delta",
+      7.32
+     ],
+     [
+      "SQL complete",
+      7.4
+     ],
+     [
+      "SQL received",
+      13.61
+     ],
+     [
+      "exec sent",
+      13.61
+     ],
+     [
+      "exec received",
+      16.04
+     ],
+     [
+      "render first batch",
+      119.38
+     ],
+     [
+      "first draw submitted",
+      142.61
+     ]
+    ]
+   },
+   {
+    "headline": 121.820068359375,
+    "db": null,
+    "cacheHit": false,
+    "rollupsBefore": true,
+    "rows": [
+     [
+      "key",
+      0
+     ],
+     [
+      "draft sent",
+      0.42
+     ],
+     [
+      "coordinator",
+      1.24
+     ],
+     [
+      "inference sent",
+      1.24
+     ],
+     [
+      "inference received",
+      5.6
+     ],
+     [
+      "first SQL delta",
+      5.62
+     ],
+     [
+      "SQL complete",
+      5.73
+     ],
+     [
+      "SQL received",
+      10.4
+     ],
+     [
+      "exec sent",
+      10.4
+     ],
+     [
+      "exec received",
+      14.2
+     ],
+     [
+      "render first batch",
+      97.59
+     ],
+     [
+      "first draw submitted",
+      121.82
+     ]
+    ]
+   },
+   {
+    "headline": 338.909912109375,
+    "db": null,
+    "cacheHit": false,
+    "rollupsBefore": true,
+    "rows": [
+     [
+      "key",
+      0
+     ],
+     [
+      "draft sent",
+      4.29
+     ],
+     [
+      "coordinator",
+      16.14
+     ],
+     [
+      "inference sent",
+      16.14
+     ],
+     [
+      "inference received",
+      21.42
+     ],
+     [
+      "first SQL delta",
+      21.44
+     ],
+     [
+      "SQL complete",
+      21.54
+     ],
+     [
+      "SQL received",
+      24.59
+     ],
+     [
+      "exec sent",
+      24.59
+     ],
+     [
+      "exec received",
+      25.9
+     ],
+     [
+      "render first batch",
+      271.88
+     ],
+     [
+      "first draw submitted",
+      338.91
+     ]
+    ]
+   },
+   {
+    "headline": 294.925048828125,
+    "db": null,
+    "cacheHit": false,
+    "rollupsBefore": true,
+    "rows": [
+     [
+      "key",
+      0
+     ],
+     [
+      "draft sent",
+      0.29
+     ],
+     [
+      "coordinator",
+      0.64
+     ],
+     [
+      "inference sent",
+      0.64
+     ],
+     [
+      "inference received",
+      2.37
+     ],
+     [
+      "first SQL delta",
+      2.39
+     ],
+     [
+      "SQL complete",
+      2.49
+     ],
+     [
+      "SQL received",
+      6.84
+     ],
+     [
+      "exec sent",
+      6.84
+     ],
+     [
+      "exec received",
+      8.2
+     ],
+     [
+      "render first batch",
+      219.57
+     ],
+     [
+      "first draw submitted",
+      294.93
+     ]
+    ]
+   },
+   {
+    "headline": 213.150146484375,
+    "db": null,
+    "cacheHit": false,
+    "rollupsBefore": true,
+    "rows": [
+     [
+      "key",
+      0
+     ],
+     [
+      "draft sent",
+      0.41
+     ],
+     [
+      "coordinator",
+      3.74
+     ],
+     [
+      "inference sent",
+      3.74
+     ],
+     [
+      "inference received",
+      18.08
+     ],
+     [
+      "first SQL delta",
+      18.11
+     ],
+     [
+      "SQL complete",
+      18.24
+     ],
+     [
+      "SQL received",
+      26.5
+     ],
+     [
+      "exec sent",
+      26.5
+     ],
+     [
+      "exec received",
+      46.92
+     ],
+     [
+      "render first batch",
+      165.83
+     ],
+     [
+      "first draw submitted",
+      213.15
+     ]
+    ]
+   },
+   {
+    "headline": 184.519775390625,
+    "db": null,
+    "cacheHit": false,
+    "rollupsBefore": true,
+    "rows": [
+     [
+      "key",
+      0
+     ],
+     [
+      "draft sent",
+      0.4
+     ],
+     [
+      "coordinator",
+      1.06
+     ],
+     [
+      "inference sent",
+      1.06
+     ],
+     [
+      "inference received",
+      2.72
+     ],
+     [
+      "first SQL delta",
+      2.74
+     ],
+     [
+      "SQL complete",
+      2.83
+     ],
+     [
+      "SQL received",
+      14.98
+     ],
+     [
+      "exec sent",
+      14.98
+     ],
+     [
+      "exec received",
+      16.31
+     ],
+     [
+      "render first batch",
+      144.52
+     ],
+     [
+      "first draw submitted",
+      184.52
+     ]
+    ]
+   }
+  ],
+  "nowarm": [
+   {
+    "headline": 722.110107421875,
+    "db": null,
+    "cacheHit": false,
+    "rollupsBefore": true,
+    "rows": [
+     [
+      "key",
+      0
+     ],
+     [
+      "draft sent",
+      0.31
+     ],
+     [
+      "coordinator",
+      0.56
+     ],
+     [
+      "inference sent",
+      0.56
+     ],
+     [
+      "inference received",
+      6.66
+     ],
+     [
+      "first SQL delta",
+      6.68
+     ],
+     [
+      "SQL complete",
+      6.76
+     ],
+     [
+      "SQL received",
+      11.31
+     ],
+     [
+      "exec sent",
+      11.31
+     ],
+     [
+      "exec received",
+      17.45
+     ],
+     [
+      "render first batch",
+      678.35
+     ],
+     [
+      "first draw submitted",
+      722.11
+     ]
+    ]
+   },
+   {
+    "headline": 740.539794921875,
+    "db": null,
+    "cacheHit": false,
+    "rollupsBefore": true,
+    "rows": [
+     [
+      "key",
+      0
+     ],
+     [
+      "draft sent",
+      5.41
+     ],
+     [
+      "coordinator",
+      6.69
+     ],
+     [
+      "inference sent",
+      6.69
+     ],
+     [
+      "inference received",
+      15.15
+     ],
+     [
+      "first SQL delta",
+      15.17
+     ],
+     [
+      "SQL complete",
+      15.27
+     ],
+     [
+      "SQL received",
+      16.48
+     ],
+     [
+      "exec sent",
+      16.48
+     ],
+     [
+      "exec received",
+      17.73
+     ],
+     [
+      "render first batch",
+      684.11
+     ],
+     [
+      "first draw submitted",
+      740.54
+     ]
+    ]
+   },
+   {
+    "headline": 522.820068359375,
+    "db": null,
+    "cacheHit": false,
+    "rollupsBefore": true,
+    "rows": [
+     [
+      "key",
+      0
+     ],
+     [
+      "draft sent",
+      0.3
+     ],
+     [
+      "coordinator",
+      4.66
+     ],
+     [
+      "inference sent",
+      4.66
+     ],
+     [
+      "inference received",
+      8.01
+     ],
+     [
+      "first SQL delta",
+      8.03
+     ],
+     [
+      "SQL complete",
+      12.34
+     ],
+     [
+      "SQL received",
+      16.26
+     ],
+     [
+      "exec sent",
+      16.26
+     ],
+     [
+      "exec received",
+      17.55
+     ],
+     [
+      "render first batch",
+      456.69
+     ],
+     [
+      "first draw submitted",
+      522.82
+     ]
+    ]
+   },
+   {
+    "headline": 806.14013671875,
+    "db": null,
+    "cacheHit": false,
+    "rollupsBefore": true,
+    "rows": [
+     [
+      "key",
+      0
+     ],
+     [
+      "draft sent",
+      3.1
+     ],
+     [
+      "coordinator",
+      3.57
+     ],
+     [
+      "inference sent",
+      3.57
+     ],
+     [
+      "inference received",
+      6.01
+     ],
+     [
+      "first SQL delta",
+      6.04
+     ],
+     [
+      "SQL complete",
+      6.16
+     ],
+     [
+      "SQL received",
+      11.41
+     ],
+     [
+      "exec sent",
+      11.41
+     ],
+     [
+      "exec received",
+      12.6
+     ],
+     [
+      "render first batch",
+      704.47
+     ],
+     [
+      "first draw submitted",
+      806.14
+     ]
+    ]
+   },
+   {
+    "headline": 955.77978515625,
+    "db": null,
+    "cacheHit": false,
+    "rollupsBefore": true,
+    "rows": [
+     [
+      "key",
+      0
+     ],
+     [
+      "draft sent",
+      0.35
+     ],
+     [
+      "coordinator",
+      0.63
+     ],
+     [
+      "inference sent",
+      0.63
+     ],
+     [
+      "inference received",
+      7.92
+     ],
+     [
+      "first SQL delta",
+      7.95
+     ],
+     [
+      "SQL complete",
+      13.41
+     ],
+     [
+      "SQL received",
+      15.36
+     ],
+     [
+      "exec sent",
+      15.36
+     ],
+     [
+      "exec received",
+      19.79
+     ],
+     [
+      "render first batch",
+      930.63
+     ],
+     [
+      "first draw submitted",
+      955.78
+     ]
+    ]
+   },
+   {
+    "headline": 1006.1298828125,
+    "db": null,
+    "cacheHit": false,
+    "rollupsBefore": true,
+    "rows": [
+     [
+      "key",
+      0
+     ],
+     [
+      "draft sent",
+      4.91
+     ],
+     [
+      "coordinator",
+      5.14
+     ],
+     [
+      "inference sent",
+      5.14
+     ],
+     [
+      "inference received",
+      7.84
+     ],
+     [
+      "first SQL delta",
+      7.86
+     ],
+     [
+      "SQL complete",
+      7.97
+     ],
+     [
+      "SQL received",
+      10.86
+     ],
+     [
+      "exec sent",
+      10.86
+     ],
+     [
+      "exec received",
+      21.15
+     ],
+     [
+      "render first batch",
+      885.13
+     ],
+     [
+      "first draw submitted",
+      1006.13
+     ]
+    ]
+   }
+  ]
+ }
+}

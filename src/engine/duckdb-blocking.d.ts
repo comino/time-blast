@@ -20,6 +20,7 @@ declare module 'duckdb-browser-blocking' {
     cancelPendingQuery(conn: number): boolean;
     fetchQueryResults(conn: number): Uint8Array | null;
     registerFileBuffer(name: string, buffer: Uint8Array): void;
+    registerFileHandle(name: string, handle: Blob, protocol: number, directIO: boolean): void;
     dropFile(name: string): void;
   }
   export const BROWSER_RUNTIME: unknown;

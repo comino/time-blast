@@ -11,6 +11,7 @@ background, and where it conflicts with the vision, the vision wins.
 | [vision.md](vision.md) | Purpose, metric, architecture principles, what to unlearn. **Canonical.** |
 | [status.md](status.md) | What is deployed and running right now, and the next steps |
 | [plan-batch-3.md](plan-batch-3.md) | The current batch: cold start, generality, perf harness, real-hardware page |
+| [batch-3/cold-start.md](batch-3/cold-start.md) | Cold start: boot trace, prebuilt databases, before/after |
 | [perf/README.md](perf/README.md) | `pnpm perf`: regression harness, history, budgets, dashboard (`perf/index.html`); `/measure.html` for real hardware |
 | [plan-batch-2.md](plan-batch-2.md) | Batch 2 (done): database and inference latency, shipping, interactions |
 | [plan-batch-1.md](plan-batch-1.md) | Batch 1 (done): protocol, Rust/Wasm coordinator and renderer, SQL, ClickHouse node |

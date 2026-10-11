@@ -40,11 +40,35 @@ Build and atomically deploy:
 
 ```sh
 pnpm install --frozen-lockfile
+node scripts/build-datasets.mjs --fetch-duckdb   # prebuilt databases into public/data/ (~1 min here)
 VITE_INFERENCE_ENDPOINT=wss://time-blast.46-224-133-201.sslip.io/api/inference/session pnpm build
 sudo python3 scripts/deploy-static.py dist
 ```
 
 Omitting `VITE_INFERENCE_ENDPOINT` produces a browser-WebGPU default instead.
+
+### Datasets: built at deploy time, not committed
+
+`public/data/datasets.json` (committed) lists the fixtures (contract in
+[plan-batch-3.md](../docs/plan-batch-3.md)). For every entry with a `prebuilt` path,
+`scripts/build-datasets.mjs` writes that DuckDB file (tables, dataset context, minute/hour/day
+rollups, function catalog) and, for generated tables, their Parquet `url`
+([cold-start.md](../docs/batch-3/cold-start.md)). The outputs are gitignored
+(`public/data/vessels/`: `vessels.duckdb` 25 MiB, 11.5 MiB gzip; `telemetry.parquet` 12 MiB) and
+must exist before `pnpm build`, which copies `public/` into `dist/`. Without them the page still
+works: it generates `vessels` in the browser (seconds slower; the boot trace shows it).
+
+The build needs the DuckDB **CLI of the engine's version (v1.4.3)**: DuckDB-Wasm's file system
+cannot write a database file (checkpoints land at the wrong offset). `--fetch-duckdb` downloads
+the official release zip once into `.cache/` and checks its pinned SHA-256; `--duckdb path` or
+`$DUCKDB_CLI` use an installed one. It also needs extensions.duckdb.org (json/parquet) at build
+time. When `@duckdb/duckdb-wasm` is upgraded, update `CLI_VERSION` and the hashes in
+`scripts/build-datasets-lib.ts` and `DUCKDB_VERSION` in `src/engine/early.ts`, and rebuild the
+datasets: a prebuilt file's function catalog is only used when versions match.
+
+`deploy-static.py` precompresses `.duckdb` files (gzip -9) next to them; Caddy's
+`precompressed gzip` serves the 11.5 MiB variant. Data files revalidate (`no-cache`, ETag); the
+page keeps prebuilt files in the Cache API and sends one conditional request per visit.
 `deploy-static.py` installs the build and switches the release symlink; it does
 not edit Caddy, deploy the backend, or restart services.
 
