@@ -23,6 +23,10 @@ export interface BootStats {
   /** `LOAD parquet` (network fetch from extensions.duckdb.org on a cold cache). */
   parquetMs: number;
   parquet: boolean;
+  /** `LOAD json` (same source): DuckDB's parser/printer for the rollup rewrite. */
+  jsonMs: number;
+  json: boolean;
+  /** Extension load errors (parquet and/or json). */
   parquetError?: string;
   totalMs: number;
 }
@@ -52,6 +56,7 @@ export async function bootDuckDB(): Promise<{ bindings: BlockingBindings; stats:
     bindings,
     stats: {
       bundle, version: bindings.getVersion(), instantiateMs: t1 - t0, parquetMs: lock.parquetMs, parquet: lock.parquet,
+      jsonMs: lock.jsonMs, json: lock.json,
       ...(lock.error ? { parquetError: lock.error } : {}), totalMs: performance.now() - t0,
     },
   };

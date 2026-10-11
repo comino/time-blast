@@ -37,7 +37,7 @@ beforeAll(async () => {
 type Collected = { frames: LocalFrame[]; stats: ExecStats[] };
 function makeNode(options: ConstructorParameters<typeof DuckDatabaseNode>[2] = {}): { node: DuckDatabaseNode } & Collected {
   const frames: LocalFrame[] = [], stats: ExecStats[] = [];
-  const node = new DuckDatabaseNode(db, frame => frames.push(frame), { ...options, onExecStats: s => stats.push(s) });
+  const node = new DuckDatabaseNode(db, frame => frames.push(frame), { resultCache: false, ...options, onExecStats: s => stats.push(s) });
   return { node, frames, stats };
 }
 const exec = (sql: string, fields: Partial<Frame> = {}): Frame => ({ ...header(Kind.EXEC, { request: 1, epoch: 1, context: 7, revision: 3, ...fields }), stamps: [], payload: text(sql) });
@@ -50,8 +50,8 @@ const errorOf = (frames: LocalFrame[]) => readJson<{ code: string; message: stri
 
 describe('SQL guard (DuckDB tokenizer + subquery wrapper)', () => {
   it('accepts one statement, trailing semicolons and comments, and wraps it', () => {
-    expect(guardSql('SELECT 1', db)).toEqual({ ok: true, sql: 'SELECT * FROM (SELECT 1\n)' });
-    expect(guardSql("-- view: line\nselect ';' as x; -- done\n ;", db)).toEqual({ ok: true, sql: "SELECT * FROM (-- view: line\nselect ';' as x\n)" });
+    expect(guardSql('SELECT 1', db)).toEqual({ ok: true, sql: 'SELECT * FROM (SELECT 1\n)', inner: 'SELECT 1' });
+    expect(guardSql("-- view: line\nselect ';' as x; -- done\n ;", db)).toEqual({ ok: true, sql: "SELECT * FROM (-- view: line\nselect ';' as x\n)", inner: "-- view: line\nselect ';' as x" });
     expect(guardSql('select $$a;b$$, "c;d" from t /* ; */', db).ok).toBe(true);
   });
   it('rejects multiple statements and empty input', () => {
