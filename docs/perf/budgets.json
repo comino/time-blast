@@ -1,0 +1,5 @@
+{
+  "baselineRuns": 3,
+  "default": { "relative": 0.5, "absolute": 10 },
+  "metrics": {}
+}

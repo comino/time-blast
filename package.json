@@ -10,7 +10,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
-    "build:wasm": "node scripts/build-wasm.mjs"
+    "build:wasm": "node scripts/build-wasm.mjs",
+    "perf": "node scripts/perf/run.mjs"
   },
   "dependencies": {
     "@duckdb/duckdb-wasm": "1.32.0",
