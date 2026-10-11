@@ -37,6 +37,9 @@ export interface CoordinatorCore {
   tick(now: number): void;
   /** Frames the coordinator wants sent, in order. Draining clears the outbox. */
   drain(): Array<[LinkId, Frame<Uint8Array>]>;
+  /** Same as `drain`, still encoded: each entry owns a fresh transferable buffer. Lets the
+   * host forward UI frames without a decode + re-encode. */
+  drainEncoded(): Array<[LinkId, Uint8Array]>;
   /** Earliest Unix ms at which `tick` must be called, or null. */
   nextDeadline(): number | null;
   dispose(): void;

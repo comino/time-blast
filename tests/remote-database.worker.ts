@@ -29,6 +29,7 @@ class ScriptedCoordinator implements CoordinatorCore {
   inputEncoded(): void { /* the poke frame from the "UI" */ }
   tick(): void {}
   drain(): Array<[LinkId, Frame<Uint8Array>]> { const out = this.outbox; this.outbox = []; return out; }
+  drainEncoded(): Array<[LinkId, Uint8Array]> { return this.drain().map(([link, f]) => [link, encode(f)] as [LinkId, Uint8Array]); }
   nextDeadline(): number | null { return null; }
   dispose(): void {}
 }

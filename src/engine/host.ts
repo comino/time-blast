@@ -19,7 +19,7 @@ import type {
   CoordinatorCore, CreateCoordinator, StatusComponent, CreateDatabase, CreateRenderer, DatabaseNode, DatasetContext, DatasetSource,
   InferencePlacement, Link, LinkId, LocalFrame, PostToUi, RendererNode, UiToEngine,
 } from './contracts';
-import { encode, Flag, header, json, Kind, readJson, now as clockNow, type Frame } from '../protocol/frame';
+import { decode, encode, Flag, header, json, Kind, readJson, now as clockNow, type Frame } from '../protocol/frame';
 import { yieldToEventLoop } from './yield';
 
 export interface Timers {
@@ -282,7 +282,7 @@ export class EngineHost {
         const [link, frame] = inbox.items.shift()!;
         if (frame instanceof Uint8Array) coordinator.inputEncoded(link, frame, this.now());
         else coordinator.input(link, frame, this.now());
-        this.route(coordinator.drain());
+        this.route(coordinator.drainEncoded());
       }
     } finally {
       this.feeding = false;
@@ -290,14 +290,15 @@ export class EngineHost {
     this.schedule();
   }
 
-  private route(outputs: Array<[LinkId, Frame<Uint8Array>]>): void {
-    for (const [link, frame] of outputs) {
+  private route(outputs: Array<[LinkId, Uint8Array]>): void {
+    for (const [link, encoded] of outputs) {
+      if (link === 'ui') {
+        // Already encoded in its own buffer: transfer it as is.
+        this.deps.postToUi({ type: 'frame', bytes: encoded.buffer as ArrayBuffer }, [encoded.buffer as ArrayBuffer]);
+        continue;
+      }
+      const frame = decode(encoded); // payload is a view, not a copy
       switch (link) {
-        case 'ui': {
-          const bytes = encode(frame);
-          this.deps.postToUi({ type: 'frame', bytes: bytes.buffer as ArrayBuffer }, [bytes.buffer as ArrayBuffer]);
-          break;
-        }
         case 'renderer': this.toRenderer(frame); break;
         case 'database':
           if (this.database) this.database.handle(frame);
@@ -348,7 +349,7 @@ export class EngineHost {
     this.feeding = true;
     try {
       coordinator.tick(this.now());
-      this.route(coordinator.drain());
+      this.route(coordinator.drainEncoded());
     } finally {
       this.feeding = false;
     }

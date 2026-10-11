@@ -35,6 +35,7 @@ class FakeCoordinator implements CoordinatorCore {
   inputEncoded(link: LinkId, bytes: Uint8Array, now: number) { this.encoded++; this.input(link, decode(bytes), now); }
   tick(now: number) { this.ticks.push(now); }
   drain() { const out = this.outbox; this.outbox = []; return out; }
+  drainEncoded() { return this.drain().map(([link, f]) => [link, encode(f)] as [LinkId, Uint8Array]); }
   nextDeadline() { return this.deadline; }
   dispose() {}
 }
