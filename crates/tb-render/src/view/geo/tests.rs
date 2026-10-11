@@ -309,3 +309,35 @@ fn view_switches_keep_the_instance() {
     let st = store(&[(0, "", 1.0, 1.0, 0.0)], false, false, false);
     assert!(!geo_for(&st).handles(View::Tracks));
 }
+
+/// Native cost of the CPU density path (aarch64, not Wasm, not the browser):
+/// `cargo test --release -p tb-render -- --ignored --nocapture density_cost`.
+#[test]
+#[ignore]
+fn density_cost() {
+    let mut x = 12345u64;
+    let mut rnd = || {
+        x ^= x << 13;
+        x ^= x >> 7;
+        x ^= x << 17;
+        (x >> 11) as f64 / (1u64 << 53) as f64
+    };
+    let rows: Vec<Row> = (0..100_000).map(|_| (0, "", 52.0 + 8.0 * rnd(), 2.0 + 16.0 * rnd(), 0.0)).collect();
+    let st = store(&rows, false, false, false);
+    let mut h = Harness::new();
+    let mut g = geo_for(&st);
+    g.plot = [600.0, 300.0];
+    let mut best = [f64::MAX; 2];
+    for _ in 0..30 {
+        let t = std::time::Instant::now();
+        let mut fresh = Geo::new(&st.roles, &pipeline_table());
+        fresh.ingest(&st, 0, st.rows);
+        best[0] = best[0].min(t.elapsed().as_secs_f64() * 1e3);
+        g.grid.dom = [0.0; 4];
+        let t = std::time::Instant::now();
+        g.upload(View::Density, &mut h.gpu());
+        best[1] = best[1].min(t.elapsed().as_secs_f64() * 1e3);
+        h.words.clear();
+    }
+    println!("100k (min of 30): ingest {:.3} ms, full rebin + cells {:.3} ms, {} cells", best[0], best[1], g.grid.cells.len());
+}

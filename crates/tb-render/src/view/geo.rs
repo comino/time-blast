@@ -107,6 +107,10 @@ struct Grid {
     wrap: bool,
     /// Latitudes of the row edges (rows + 1, ascending): binning needs no per-point projection.
     lat_edges: Vec<f64>,
+    /// Row at the start of each of `4 × rows` equal latitude buckets: O(1) row lookup, then at
+    /// most a step or two along `lat_edges`. Full rebin of 100k points: 1.92 → 0.75 ms native
+    /// (binary search → LUT; `density_cost`).
+    lat_lut: Vec<u32>,
     counts: Vec<u32>,
     max: u32,
     /// Positions (`flat`) already binned.
@@ -126,6 +130,13 @@ impl Grid {
         let dy = (dom[3] - dom[2]) / self.rows as f64;
         self.lat_edges.clear();
         self.lat_edges.extend((0..=self.rows).map(|k| inv_merc_y(dom[2] + k as f64 * dy)));
+        let (lo, hi) = (self.lat_edges[0], self.lat_edges[self.rows]);
+        let n = self.rows * 4;
+        self.lat_lut.clear();
+        self.lat_lut.extend((0..n).map(|k| {
+            let lat = lo + (hi - lo) * k as f64 / n as f64;
+            (self.lat_edges.partition_point(|&e| e <= lat).saturating_sub(1).min(self.rows - 1)) as u32
+        }));
         self.counts.clear();
         self.counts.resize(self.cols * self.rows, 0);
         self.max = 0;
@@ -139,6 +150,8 @@ impl Grid {
         }
         let (x0, sx) = (self.dom[0], self.cols as f64 / (self.dom[1] - self.dom[0]));
         let (lat_lo, lat_hi) = (self.lat_edges[0], self.lat_edges[self.rows]);
+        let lut_scale = self.lat_lut.len() as f64 / (lat_hi - lat_lo);
+        let last = self.lat_lut.len() - 1;
         for p in &flat[self.binned..] {
             let lat = p[1] as f64;
             if !(lat >= lat_lo && lat < lat_hi) {
@@ -148,8 +161,12 @@ impl Grid {
             if !(c >= 0.0 && c < self.cols as f64) {
                 continue;
             }
-            // Row edges are ascending latitudes: the row is the last edge ≤ lat.
-            let r = self.lat_edges.partition_point(|&e| e <= lat).saturating_sub(1).min(self.rows - 1);
+            // Row edges are ascending latitudes: the row is the last edge ≤ lat. The bucket's
+            // row is never past it; walk up the (at most few) edges inside the bucket.
+            let mut r = self.lat_lut[(((lat - lat_lo) * lut_scale) as usize).min(last)] as usize;
+            while r + 1 < self.rows && lat >= self.lat_edges[r + 1] {
+                r += 1;
+            }
             let k = r * self.cols + c as usize;
             self.counts[k] += 1;
             self.max = self.max.max(self.counts[k]);
