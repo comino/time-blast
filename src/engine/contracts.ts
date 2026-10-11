@@ -63,7 +63,8 @@ export type StatusComponent = 'database' | 'inference' | 'renderer' | 'coordinat
 // ───────────────────────── database node (owner: engine/database agent) ─────────────────────────
 
 export type DatasetSource =
-  | { kind: 'fixture'; name: 'vessels' | 'vessels-small' }
+  /** Any entry of public/data/datasets.json (docs/plan-batch-3.md), e.g. 'vessels'. */
+  | { kind: 'fixture'; name: string }
   | { kind: 'file'; name: string; file: File }
   | { kind: 'url'; name: string; url: string }
   /** Remote database node over a tb1 WebSocket (e.g. crates/database-server → ClickHouse). */
