@@ -1,6 +1,6 @@
 # Batch 1: the new loop
 
-Status: in progress (started 2026-10-10). Lands on `main`. Direction: [vision.md](vision.md).
+Status: **complete in source** (2026-10-11): all waves merged on `main`; see [status.md](status.md). Lands on `main`. Direction: [vision.md](vision.md).
 Wire contract: [protocol-v1.md](protocol-v1.md). Code contracts: `src/engine/contracts.ts`.
 
 ## Goal
