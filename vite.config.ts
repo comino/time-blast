@@ -65,5 +65,6 @@ export default defineConfig({
   preview: { port: 4173, strictPort: true, headers: isolation },
   worker: { format: 'es' },
   optimizeDeps: { exclude: ['@duckdb/duckdb-wasm', '@mlc-ai/web-llm'] },
-  build: { target: 'es2022', chunkSizeWarningLimit: 1600 },
+  // measure.html: the real-hardware measurement page (docs/batch-3/measurement.md), deployed with the app.
+  build: { target: 'es2022', chunkSizeWarningLimit: 1600, rollupOptions: { input: { main: 'index.html', measure: 'measure.html' } } },
 });
