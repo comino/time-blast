@@ -10,7 +10,7 @@
 import type { DatasetContext } from '../engine/contracts';
 import { decode, encode, header, json, Kind, Node, readJson, readText, Stage, text, type Frame, type Header, type Stamp } from '../protocol/frame';
 import { repairMessage, systemPrompt, userMessage } from './prompt';
-import { check, SqlStream } from './sql';
+import { check, rawRows, rowCheckInputs, SqlStream } from './sql';
 
 export interface ChatChunk {
   choices: Array<{ delta?: { content?: string | null }; finish_reason?: string | null }>;
@@ -42,7 +42,7 @@ interface Job {
   receivedAt: number;
   cancelled: boolean;
 }
-interface Prepared { context: DatasetContext; system: string }
+interface Prepared { context: DatasetContext; system: string; rows: ReturnType<typeof rowCheckInputs> }
 
 const MAX_CONTEXTS = 4;
 const MAX_QUESTION_CHARS = 4096;
@@ -122,7 +122,7 @@ export function createInferenceNode(deps: InferenceNodeDeps) {
       if (!Array.isArray(context.tables) || context.tables.length === 0) throw new Error('context lists no tables');
       if (frame.context !== 0 && frame.context !== context.id) throw new Error('CONTEXT header id differs from the payload id.');
       contexts.delete(context.id);
-      contexts.set(context.id, { context, system: systemPrompt(context) });
+      contexts.set(context.id, { context, system: systemPrompt(context), rows: rowCheckInputs(context) });
       while (contexts.size > MAX_CONTEXTS) contexts.delete(contexts.keys().next().value!);
     } catch (cause) {
       error(frame, 'bad_context', `Invalid DatasetContext: ${cause instanceof Error ? cause.message : String(cause)}`);
@@ -221,7 +221,9 @@ export function createInferenceNode(deps: InferenceNodeDeps) {
           return;
         }
         const final = sql.finish();
-        const reason = finish !== 'stop' ? `the reply was cut off (finish reason ${finish ?? 'missing'})` : check(final);
+        // Attempt 1 also gets the raw-row pre-check (twin of infer.rs); attempt 2 is taken as is.
+        const reason = finish !== 'stop' ? `the reply was cut off (finish reason ${finish ?? 'missing'})`
+          : check(final) ?? (attempt === 1 ? rawRows(final, job.context.rows.large, job.context.rows.time) : undefined);
         if (reason === undefined) {
           if (!has(Stage.SQL_FIRST_DELTA)) ledger.push({ stage: Stage.SQL_FIRST_DELTA, node: Node.INFERENCE, at: deps.now() });
           ledger.push({ stage: Stage.SQL_COMPLETE, node: Node.INFERENCE, at: deps.now() });

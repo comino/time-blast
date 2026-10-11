@@ -511,6 +511,8 @@ export interface CaseReport {
   latency: { firstDeltaMs?: number; sqlMs?: number; providerFirstTokenMs?: number; dbMs?: number };
   stats?: InferStats;
   cached?: boolean;
+  /** --db-repair: the simulated second translation after a database error, and its score. */
+  dbRepair?: { sql?: string; category: Category; reason: string; sqlMs?: number; stats?: InferStats };
 }
 
 export interface Report {
@@ -536,9 +538,16 @@ export interface Summary {
   tokens: { prompt: number; completion: number; cached: number };
   costUsd: number;
   costPerRequestUsd?: number;
+  dbRepair?: { attempted: number; repaired: number };
 }
 
-export async function evaluate(corpus: Corpus, database: Database, translator: Translator, opts: { only?: Set<string>; log?: (line: string) => void } = {}): Promise<CaseReport[]> {
+/** Simulated repair on a database error (no protocol for it yet): the failed SQL and the error go
+ * back as part of the question; the answer is scored like a first answer. */
+export function dbRepairQuestion(question: string, sql: string, code: string, message: string): string {
+  return `${question}\n\nThis SQL failed in the database with ${code}: ${message.replace(/\s+/g, ' ').slice(0, 300)}\n${sql}\nWrite a corrected query.`;
+}
+
+export async function evaluate(corpus: Corpus, database: Database, translator: Translator, opts: { only?: Set<string>; log?: (line: string) => void; dbRepair?: boolean } = {}): Promise<CaseReport[]> {
   const cache = new Map<string, QueryResult>();
   const run = async (sql: string) => {
     let r = cache.get(sql);
@@ -573,6 +582,19 @@ export async function evaluate(corpus: Corpus, database: Database, translator: T
         report.error = { code: result.code, message: result.message.slice(0, 400), stage: 'database' };
         report.category = classifyError(t.sql, result);
         report.reason = result.code;
+        if (opts.dbRepair && report.category === 'sql-error') {
+          const r = await translator.translate(dbRepairQuestion(c.question, t.sql, result.code, result.message));
+          let category: Category = 'sql-error', reason = r.error?.code ?? 'no SQL';
+          if (r.sql !== undefined) {
+            const second = await run(r.sql);
+            if (!second.ok) { category = classifyError(r.sql, second); reason = second.code; } else {
+              let best: Verdict | undefined;
+              for (const ref of refResults) { const v = compareResults(ref, second, c.ordered); if (!best || RANK[v.category] < RANK[best.category]) best = v; }
+              category = best!.category; reason = best!.reason;
+            }
+          }
+          report.dbRepair = { sql: r.sql, category, reason, sqlMs: r.sqlMs, stats: r.stats };
+        }
       } else {
         report.rows = result.rows.length;
         report.columns = result.columns.map(col => col.name);
@@ -608,7 +630,8 @@ export function summarize(cases: CaseReport[]): Summary {
   const live = cases.filter(c => !c.cached);
   const nums = (pick: (c: CaseReport) => number | undefined) => live.map(pick).filter((v): v is number => v !== undefined);
   const first = nums(c => c.latency.firstDeltaMs), sql = nums(c => c.latency.sqlMs), provider = nums(c => c.latency.providerFirstTokenMs);
-  const costUsd = cases.reduce((s, c) => s + (c.stats?.costUsd ?? 0), 0);
+  const costUsd = cases.reduce((s, c) => s + (c.stats?.costUsd ?? 0) + (c.dbRepair?.stats?.costUsd ?? 0), 0);
+  const repaired = cases.filter(c => c.dbRepair && (c.dbRepair.category === 'exact' || c.dbRepair.category === 'equivalent')).length;
   const withStats = cases.filter(c => c.stats);
   return {
     n: cases.length,
@@ -627,6 +650,7 @@ export function summarize(cases: CaseReport[]): Summary {
     },
     costUsd: Number(costUsd.toFixed(6)),
     costPerRequestUsd: withStats.length ? Number((costUsd / withStats.length).toFixed(7)) : undefined,
+    ...(cases.some(c => c.dbRepair) ? { dbRepair: { attempted: cases.filter(c => c.dbRepair).length, repaired } } : {}),
   };
 }
 
@@ -646,3 +670,111 @@ export const SELF_TEST_SCRIPT: Record<string, { sql: string; expect: Category }>
   meridian_yesterday: { sql: "SELECT ts, lat, lon FROM telemetry WHERE vessel = 'Meridian' AND ts >= TIMESTAMP '2026-09-13' AND ts < TIMESTAMP '2026-09-14'", expect: 'wrong' },
   hourly_wind_last_2_days: { sql: "-- view: line\nSELECT time_bucket(INTERVAL '1 hour', ts) AS hour, avg(wind) AS wind FROM telemetry WHERE ts > DATETIME('now', '-2 days') GROUP BY 1 ORDER BY 1", expect: 'sql-error' },
 };
+
+// ───────────────────────── prefix replay (speculative translation) ─────────────────────────
+
+/** The question cut at a fraction of its characters, as if typed so far (mid-word allowed). */
+export function prefixOf(question: string, fraction: number): string {
+  const chars = Array.from(question);
+  return chars.slice(0, Math.max(1, Math.round(chars.length * fraction))).join('');
+}
+
+export interface PrefixReport {
+  fraction: number;
+  text: string;
+  sql?: string;
+  error?: string;
+  /** SQL text equals the full question's SQL (whitespace-normalized): the coordinator's dedup case. */
+  sameSql: boolean;
+  /** Executes to the same result as the full question's SQL (exact or equivalent). */
+  sameResult: boolean;
+  /** Category against the case's references, as in the main eval. */
+  category: Category;
+  latency: { firstDeltaMs?: number; sqlMs?: number };
+  stats?: InferStats;
+}
+
+export interface PrefixCaseReport {
+  id: string;
+  question: string;
+  final: { sql?: string; category: Category; latency: { firstDeltaMs?: number; sqlMs?: number }; stats?: InferStats };
+  prefixes: PrefixReport[];
+}
+
+const normalizeSql = (sql: string) => sql.replace(/\s+/g, ' ').trim();
+
+/** Translate each question and its prefixes; compare every prefix's SQL and result with the full question's. */
+export async function evaluatePrefixes(corpus: Corpus, database: Database, translator: Translator, fractions: number[], opts: { only?: Set<string>; log?: (line: string) => void } = {}): Promise<PrefixCaseReport[]> {
+  const cache = new Map<string, QueryResult>();
+  const run = async (sql: string) => {
+    let r = cache.get(sql);
+    if (!r) { r = await database.run(sql); cache.set(sql, r); }
+    return r;
+  };
+  const score = async (c: Case, sql: string | undefined): Promise<{ category: Category; result?: QueryResult }> => {
+    if (sql === undefined) return { category: 'sql-error' };
+    const result = await run(sql);
+    if (!result.ok) return { category: classifyError(sql, result), result };
+    let best: Category = 'wrong';
+    for (const ref of references(c, corpus.now)) {
+      const r = await run(ref);
+      if (!r.ok) continue;
+      const v = compareResults(r, result, c.ordered).category;
+      if (RANK[v] < RANK[best]) best = v;
+    }
+    return { category: best, result };
+  };
+  const out: PrefixCaseReport[] = [];
+  for (const c of corpus.cases) {
+    if (opts.only && !opts.only.has(c.id)) continue;
+    const t = await translator.translate(c.question);
+    const final = await score(c, t.sql);
+    const report: PrefixCaseReport = {
+      id: c.id, question: c.question,
+      final: { sql: t.sql, category: final.category, latency: { firstDeltaMs: t.firstDeltaMs, sqlMs: t.sqlMs }, stats: t.stats },
+      prefixes: [],
+    };
+    for (const fraction of fractions) {
+      const text = prefixOf(c.question, fraction);
+      const p = await translator.translate(text);
+      const scored = await score(c, p.sql);
+      const sameSql = p.sql !== undefined && t.sql !== undefined && normalizeSql(p.sql) === normalizeSql(t.sql);
+      let sameResult = sameSql;
+      if (!sameResult && scored.result?.ok && final.result?.ok) {
+        const v = compareResults(final.result, scored.result, c.ordered).category;
+        sameResult = v === 'exact' || v === 'equivalent';
+      }
+      report.prefixes.push({
+        fraction, text, sql: p.sql, error: p.error?.code, sameSql, sameResult, category: scored.category,
+        latency: { firstDeltaMs: p.firstDeltaMs, sqlMs: p.sqlMs }, stats: p.stats,
+      });
+      opts.log?.(`${c.id.padEnd(30)} ${String(fraction).padEnd(5)} ${sameSql ? 'same-sql' : sameResult ? 'same-res' : 'differs '} ${scored.category.padEnd(17)} ${JSON.stringify(text)}`);
+    }
+    out.push(report);
+  }
+  return out;
+}
+
+export function summarizePrefixes(cases: PrefixCaseReport[], fractions: number[]) {
+  const ok = (c: Category) => c === 'exact' || c === 'equivalent';
+  const byFraction = fractions.map(fraction => {
+    const ps = cases.map(c => ({ c, p: c.prefixes.find(p => p.fraction === fraction)! }));
+    return {
+      fraction,
+      sameSql: ps.filter(x => x.p.sameSql).length,
+      sameResult: ps.filter(x => x.p.sameResult).length,
+      /** The prefix's own result is correct for the full question. */
+      correct: ps.filter(x => ok(x.p.category)).length,
+      /** The final answer is correct and this prefix already produced the same result. */
+      earlyCorrect: ps.filter(x => x.p.sameResult && ok(x.c.final.category)).length,
+    };
+  });
+  const all = cases.flatMap(c => [c.final.stats, ...c.prefixes.map(p => p.stats)]);
+  return {
+    n: cases.length,
+    finalCorrect: cases.filter(c => ok(c.final.category)).length,
+    byFraction,
+    requests: all.length,
+    costUsd: Number(all.reduce((s, st) => s + (st?.costUsd ?? 0), 0).toFixed(6)),
+  };
+}

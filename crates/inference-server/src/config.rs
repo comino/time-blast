@@ -2,6 +2,15 @@ use std::{env, net::SocketAddr, time::Duration};
 
 use crate::provider::{ProviderConfig, ReasoningEffort};
 
+/// Default model: gpt-oss-120b on Groq with low reasoning was the most correct and the fastest
+/// usable route of the batch-2 sweep (91 % on the 45-question eval, first SQL delta ~260 ms p50,
+/// ~$0.00016 per translation). Groq first, other providers only as fallback: the same model
+/// scored 76–82 % on Cerebras and SambaNova.
+pub const DEFAULT_MODEL: &str = "openai/gpt-oss-120b";
+pub const DEFAULT_REASONING: ReasoningEffort = ReasoningEffort::Low;
+pub const DEFAULT_REQUEST_EXTRA: &str =
+    r#"{"provider":{"order":["groq"],"require_parameters":true}}"#;
+
 pub struct Config {
     pub bind: SocketAddr,
     pub provider: ProviderConfig,
@@ -14,6 +23,8 @@ pub struct Config {
     pub session_concurrency: usize,
     /// Entries in the process-wide (prompt prefix, question) → SQL cache; 0 disables it.
     pub cache_entries: usize,
+    /// One repair turn for SQL that would return raw rows of a large table.
+    pub row_check: bool,
 }
 
 impl Config {
@@ -46,18 +57,21 @@ impl Config {
                     .flatten()
             })
             .filter(|s| !s.is_empty());
-        let reasoning_effort = parse_reasoning_effort(
-            env::var("TIME_BLAST_REASONING_EFFORT").ok().as_deref(),
-            openrouter,
-        )?;
+        let model_env = env::var("TIME_BLAST_MODEL").ok();
+        // The default profile (batch-2 sweep, docs/batch-2/inference.md) applies only to the
+        // default model on OpenRouter; any explicit TIME_BLAST_MODEL starts from plain settings.
+        let profile = openrouter && model_env.is_none();
+        let reasoning_effort = match env::var("TIME_BLAST_REASONING_EFFORT").ok() {
+            None if profile => Some(DEFAULT_REASONING),
+            value => parse_reasoning_effort(value.as_deref(), openrouter)?,
+        };
         let temperature = parse_temperature(env::var("TIME_BLAST_TEMPERATURE").ok().as_deref())?;
         if openrouter && api_key.is_none() {
             return Err(
                 "Set OPENROUTER_API_KEY or TIME_BLAST_API_KEY in the server environment".into(),
             );
         }
-        let model =
-            env::var("TIME_BLAST_MODEL").unwrap_or_else(|_| "google/gemini-2.5-flash-lite".into());
+        let model = model_env.unwrap_or_else(|| DEFAULT_MODEL.into());
         if model.trim().is_empty() || model.len() > 200 {
             return Err("Invalid TIME_BLAST_MODEL".into());
         }
@@ -88,6 +102,10 @@ impl Config {
                 ),
                 max_concurrent: number("TIME_BLAST_MAX_CONCURRENT", 16, 1, 256)? as usize,
                 max_tokens: number("TIME_BLAST_MAX_TOKENS", 512, 16, 4096)?,
+                extra: match env::var("TIME_BLAST_REQUEST_EXTRA").ok() {
+                    None if profile => parse_extra(Some(DEFAULT_REQUEST_EXTRA))?,
+                    value => parse_extra(value.as_deref())?,
+                },
             },
             allowed_origins,
             // Per-keystroke translation: ~5 keystrokes/s of typing is ~300 requests/min.
@@ -98,6 +116,11 @@ impl Config {
             )?,
             session_concurrency: number("TIME_BLAST_SESSION_CONCURRENCY", 2, 1, 16)? as usize,
             cache_entries: number("TIME_BLAST_CACHE_ENTRIES", 4096, 0, 1000000)? as usize,
+            row_check: match env::var("TIME_BLAST_ROW_CHECK").as_deref() {
+                Err(_) | Ok("true") => true,
+                Ok("false") => false,
+                Ok(_) => return Err("TIME_BLAST_ROW_CHECK must be true or false".into()),
+            },
         })
     }
 }
@@ -108,6 +131,29 @@ fn parse_budget(value: Option<&str>) -> Result<f64, String> {
         Ok(v) if v.is_finite() && v >= 0.0 => Ok(v),
         _ => Err("TIME_BLAST_DAILY_BUDGET_USD must be a finite number >= 0".into()),
     }
+}
+
+/// `TIME_BLAST_REQUEST_EXTRA`: a JSON object merged into every provider request body. Fields
+/// the server owns (model, messages, stream, stream_options) cannot be overridden.
+fn parse_extra(value: Option<&str>) -> Result<serde_json::Map<String, serde_json::Value>, String> {
+    let Some(value) = value.filter(|v| !v.trim().is_empty()) else {
+        return Ok(Default::default());
+    };
+    let err = || {
+        "TIME_BLAST_REQUEST_EXTRA must be a JSON object without model, messages, stream or stream_options"
+            .to_string()
+    };
+    let map = match serde_json::from_str::<serde_json::Value>(value) {
+        Ok(serde_json::Value::Object(map)) => map,
+        _ => return Err(err()),
+    };
+    if ["model", "messages", "stream", "stream_options"]
+        .iter()
+        .any(|k| map.contains_key(*k))
+    {
+        return Err(err());
+    }
+    Ok(map)
 }
 
 fn parse_temperature(value: Option<&str>) -> Result<Option<f64>, String> {
@@ -179,6 +225,25 @@ mod tests {
         for invalid in ["", "NaN", "inf", "-inf", "-0.1", "2.1", "Provider", "null"] {
             assert!(parse_temperature(Some(invalid)).is_err());
         }
+    }
+
+    #[test]
+    fn request_extra_is_an_object_that_cannot_override_owned_fields() {
+        assert!(parse_extra(None).unwrap().is_empty());
+        assert!(parse_extra(Some(" ")).unwrap().is_empty());
+        let map =
+            parse_extra(Some(r#"{"provider":{"sort":"throughput"},"service_tier":"priority"}"#))
+                .unwrap();
+        assert_eq!(map.len(), 2);
+        for bad in ["[]", "1", "{", r#"{"model":"x"}"#, r#"{"stream":false}"#, r#"{"messages":[]}"#] {
+            assert!(parse_extra(Some(bad)).is_err(), "{bad}");
+        }
+    }
+
+    #[test]
+    fn default_profile_extra_is_valid() {
+        let extra = parse_extra(Some(DEFAULT_REQUEST_EXTRA)).unwrap();
+        assert_eq!(extra["provider"]["order"][0], "groq");
     }
 
     #[test]

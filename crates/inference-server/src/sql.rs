@@ -6,6 +6,8 @@
 //! prefix of [`SqlStream::finish`]. Real validation happens in the database node; [`check`]
 //! only rejects what is obviously not one SELECT, to trigger the single repair attempt.
 
+use crate::prompt::js_number;
+
 const FENCE: &str = "```";
 const THINK_OPEN: &str = "<think>";
 const THINK_CLOSE: &str = "</think>";
@@ -110,6 +112,129 @@ pub fn check(sql: &str) -> Result<(), String> {
         return Err("the reply ended inside a string, identifier or comment".into());
     }
     Ok(())
+}
+
+/// Most rows a translation may return (the prompt's row rule; the database enforces its own cap).
+pub const MAX_RESULT_ROWS: f64 = 5000.0;
+
+/// Aggregate functions (DuckDB and ClickHouse; ClickHouse `-If` variants are matched too).
+const AGGREGATES: &[&str] = &[
+    "any", "any_value", "anylast", "approx_count_distinct", "approx_quantile", "arg_max",
+    "arg_min", "argmax", "argmin", "array_agg", "avg", "bool_and", "bool_or", "corr", "count",
+    "covar_pop", "covar_samp", "entropy", "favg", "first", "fsum", "group_concat", "grouparray",
+    "histogram", "kurtosis", "last", "list", "max", "max_by", "mean", "median", "min", "min_by",
+    "mode", "percentile_cont", "percentile_disc", "product", "quantile", "quantile_cont",
+    "quantile_disc", "regr_intercept", "regr_r2", "regr_slope", "skewness", "stddev",
+    "stddev_pop", "stddev_samp", "string_agg", "sum", "topk", "uniq", "uniqexact", "var_pop",
+    "var_samp", "variance",
+];
+
+/// Cheap pre-check before the SQL leaves the inference node: a query that reads a table with
+/// more than [`MAX_RESULT_ROWS`] rows but has no GROUP BY, aggregate, DISTINCT, QUALIFY, sample,
+/// LIMIT ≤ 5000 or equality filter on a time column returns raw rows, which the database
+/// refuses (`result_limit`) or which bury the chart. Returns the repair reason.
+///
+/// `large_tables` and `time_columns` are lower-case names from the `DatasetContext`.
+/// Deliberately conservative: anything that might aggregate passes.
+pub fn raw_rows(sql: &str, large_tables: &[(String, f64)], time_columns: &[String]) -> Option<String> {
+    let tokens = tokens(sql);
+    let table = tokens
+        .iter()
+        .find_map(|t| large_tables.iter().find(|(name, _)| name == t))?;
+    for (i, token) in tokens.iter().enumerate() {
+        let next = tokens.get(i + 1).map(String::as_str);
+        match token.as_str() {
+            "group" if next == Some("by") => return None,
+            "qualify" | "distinct" | "sample" | "tablesample" => return None,
+            "limit" => {
+                return match next.and_then(|n| n.parse::<f64>().ok()) {
+                    Some(n) if n > MAX_RESULT_ROWS => Some(format!(
+                        "its LIMIT {} exceeds {} rows",
+                        js_number(n),
+                        js_number(MAX_RESULT_ROWS)
+                    )),
+                    _ => None,
+                };
+            }
+            "=" if i > 0 && time_columns.contains(&tokens[i - 1]) => return None,
+            word if next == Some("(") && is_aggregate(word) && !windowed(&tokens, i + 1) => {
+                return None;
+            }
+            _ => {}
+        }
+    }
+    Some(format!(
+        "it returns raw rows of {} ({} rows) without GROUP BY, an aggregate or LIMIT; aggregate it, for example GROUP BY a time bucket, or add LIMIT",
+        table.0,
+        js_number(table.1)
+    ))
+}
+
+fn is_aggregate(word: &str) -> bool {
+    AGGREGATES.contains(&word)
+        || word
+            .strip_suffix("if")
+            .is_some_and(|base| AGGREGATES.contains(&base))
+}
+
+/// Whether the call whose `(` is at `open` is followed by OVER (a window, not an aggregate).
+fn windowed(tokens: &[String], open: usize) -> bool {
+    let mut depth = 0usize;
+    for (j, token) in tokens.iter().enumerate().skip(open) {
+        match token.as_str() {
+            "(" => depth += 1,
+            ")" => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    return tokens.get(j + 1).is_some_and(|t| t == "over");
+                }
+            }
+            _ => {}
+        }
+    }
+    false
+}
+
+/// Lower-case tokens outside comments: words, numbers, `(`, `)`, runs of `<>=!`, other single
+/// characters; a string literal becomes `'`, a quoted identifier its lower-cased name.
+fn tokens(sql: &str) -> Vec<String> {
+    let mut lexer = Lexer::new(sql);
+    let mut out = Vec::new();
+    while lexer.skip_trivia() {
+        let start = lexer.at;
+        let byte = lexer.bytes[start];
+        match byte {
+            b'\'' => {
+                lexer.skip_quoted(b'\'');
+                out.push("'".into());
+            }
+            b'"' | b'`' => {
+                lexer.skip_quoted(byte);
+                let end = lexer.at.saturating_sub(1).max(start + 1);
+                out.push(sql[start + 1..end].replace("\"\"", "\"").to_lowercase());
+            }
+            b'<' | b'>' | b'=' | b'!' => {
+                while lexer.at < lexer.bytes.len() && b"<>=!".contains(&lexer.bytes[lexer.at]) {
+                    lexer.at += 1;
+                }
+                out.push(sql[start..lexer.at].into());
+            }
+            b'0'..=b'9' => {
+                while lexer.at < lexer.bytes.len()
+                    && (lexer.bytes[lexer.at].is_ascii_digit() || lexer.bytes[lexer.at] == b'.')
+                {
+                    lexer.at += 1;
+                }
+                out.push(sql[start..lexer.at].into());
+            }
+            _ => {
+                if let Some(word) = lexer.next_word() {
+                    out.push(word.to_lowercase());
+                }
+            }
+        }
+    }
+    out
 }
 
 /// Just enough lexing to skip comments, string literals and quoted identifiers.
@@ -265,6 +390,19 @@ mod tests {
             let (deltas, sql) = stream(&chunks);
             assert_eq!(deltas, case["deltas"].as_str().unwrap(), "{chunks:?}");
             assert_eq!(sql, case["sql"].as_str().unwrap(), "{chunks:?}");
+        }
+        for case in cases["rows"].as_array().unwrap() {
+            let sql = case["sql"].as_str().unwrap();
+            let large = [("telemetry".to_string(), 1209600.0)];
+            let time = ["ts".to_string()];
+            let got = raw_rows(sql, &large, &time);
+            match case["error"].as_str() {
+                None => assert_eq!(got, None, "{sql}"),
+                Some(expected) => assert!(
+                    got.as_deref().is_some_and(|g| g.contains(expected)),
+                    "{sql}: {got:?}"
+                ),
+            }
         }
         for case in cases["check"].as_array().unwrap() {
             let sql = case["sql"].as_str().unwrap();

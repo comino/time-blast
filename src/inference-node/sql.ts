@@ -75,6 +75,98 @@ export function check(sql: string): string | undefined {
   return undefined;
 }
 
+/** Most rows a translation may return (the prompt's row rule). */
+export const MAX_RESULT_ROWS = 5000;
+
+const AGGREGATES = new Set([
+  'any', 'any_value', 'anylast', 'approx_count_distinct', 'approx_quantile', 'arg_max',
+  'arg_min', 'argmax', 'argmin', 'array_agg', 'avg', 'bool_and', 'bool_or', 'corr', 'count',
+  'covar_pop', 'covar_samp', 'entropy', 'favg', 'first', 'fsum', 'group_concat', 'grouparray',
+  'histogram', 'kurtosis', 'last', 'list', 'max', 'max_by', 'mean', 'median', 'min', 'min_by',
+  'mode', 'percentile_cont', 'percentile_disc', 'product', 'quantile', 'quantile_cont',
+  'quantile_disc', 'regr_intercept', 'regr_r2', 'regr_slope', 'skewness', 'stddev',
+  'stddev_pop', 'stddev_samp', 'string_agg', 'sum', 'topk', 'uniq', 'uniqexact', 'var_pop',
+  'var_samp', 'variance',
+]);
+
+const isAggregate = (word: string): boolean =>
+  AGGREGATES.has(word) || (word.endsWith('if') && AGGREGATES.has(word.slice(0, -2)));
+
+/** Large tables (lower-case name, rows) and time columns of a context, for rawRows(). */
+export function rowCheckInputs(context: { tables: Array<{ name: string; rows: unknown; columns: Array<{ name: string; type: string }> }> }): { large: Array<[string, number]>; time: string[] } {
+  const large: Array<[string, number]> = [];
+  const time: string[] = [];
+  for (const table of context.tables) {
+    if (typeof table.rows === 'number' && table.rows > MAX_RESULT_ROWS) large.push([table.name.toLowerCase(), table.rows]);
+    for (const column of table.columns) {
+      const ty = column.type.toUpperCase();
+      if (ty.startsWith('TIMESTAMP') || ty.startsWith('DATE')) time.push(column.name.toLowerCase());
+    }
+  }
+  return { large, time };
+}
+
+/**
+ * Pre-check twin of `raw_rows` in sql.rs: SQL reading a table above MAX_RESULT_ROWS without
+ * GROUP BY, an aggregate, DISTINCT, QUALIFY, a sample, LIMIT ≤ 5000 or an equality filter on a
+ * time column returns raw rows. Returns the repair reason, or undefined.
+ */
+export function rawRows(sql: string, large: Array<[string, number]>, time: string[]): string | undefined {
+  const tokens = tokenize(sql);
+  let table: [string, number] | undefined;
+  for (const t of tokens) { table = large.find(([name]) => name === t); if (table) break; }
+  if (!table) return undefined;
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i], next = tokens[i + 1];
+    if (token === 'group' && next === 'by') return undefined;
+    if (token === 'qualify' || token === 'distinct' || token === 'sample' || token === 'tablesample') return undefined;
+    if (token === 'limit') {
+      const n = next !== undefined && /^[0-9.]+$/.test(next) ? Number(next) : NaN;
+      return n > MAX_RESULT_ROWS ? `its LIMIT ${n} exceeds ${MAX_RESULT_ROWS} rows` : undefined;
+    }
+    if (token === '=' && i > 0 && time.includes(tokens[i - 1])) return undefined;
+    if (next === '(' && isAggregate(token) && !windowed(tokens, i + 1)) return undefined;
+  }
+  return `it returns raw rows of ${table[0]} (${table[1]} rows) without GROUP BY, an aggregate or LIMIT; aggregate it, for example GROUP BY a time bucket, or add LIMIT`;
+}
+
+function windowed(tokens: string[], open: number): boolean {
+  let depth = 0;
+  for (let j = open; j < tokens.length; j++) {
+    if (tokens[j] === '(') depth++;
+    else if (tokens[j] === ')') {
+      depth = Math.max(0, depth - 1);
+      if (depth === 0) return tokens[j + 1] === 'over';
+    }
+  }
+  return false;
+}
+
+function tokenize(sql: string): string[] {
+  const lexer = new Lexer(sql);
+  const out: string[] = [];
+  while (lexer.skipTrivia()) {
+    const start = lexer.at;
+    const c = sql[start];
+    if (c === "'") { lexer.skipQuoted("'"); out.push("'"); }
+    else if (c === '"' || c === '`') {
+      lexer.skipQuoted(c);
+      const end = Math.max(lexer.at - 1, start + 1);
+      out.push(sql.slice(start + 1, end).replaceAll('""', '"').toLowerCase());
+    } else if ('<>=!'.includes(c)) {
+      while (lexer.at < sql.length && '<>=!'.includes(sql[lexer.at])) lexer.at++;
+      out.push(sql.slice(start, lexer.at));
+    } else if (c >= '0' && c <= '9') {
+      while (lexer.at < sql.length && /[0-9.]/.test(sql[lexer.at])) lexer.at++;
+      out.push(sql.slice(start, lexer.at));
+    } else {
+      const word = lexer.nextWord();
+      if (word !== undefined) out.push(word.toLowerCase());
+    }
+  }
+  return out;
+}
+
 const isSpace = (c: string): boolean => c === ' ' || c === '\t' || c === '\n' || c === '\r' || c === '\f';
 const isWord = (c: string): boolean => /[A-Za-z0-9_]/.test(c);
 
@@ -117,7 +209,7 @@ class Lexer {
     return false;
   }
 
-  private skipQuoted(quote: string): void {
+  skipQuoted(quote: string): void {
     this.at++;
     while (this.at < this.src.length) {
       if (this.src[this.at] === quote) {

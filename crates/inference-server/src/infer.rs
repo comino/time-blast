@@ -31,6 +31,10 @@ pub struct Prepared {
     pub context: DatasetContext,
     pub system: String,
     pub prefix_hash: u64,
+    /// Lower-case names of tables above the row rule, with their row counts (raw-row pre-check).
+    pub large_tables: Vec<(String, f64)>,
+    /// Lower-case names of TIMESTAMP/DATE columns (an equality filter on one is selective).
+    pub time_columns: Vec<String>,
 }
 
 impl Prepared {
@@ -38,10 +42,28 @@ impl Prepared {
         let system = prompt::system_prompt(&context);
         let mut hasher = DefaultHasher::new();
         system.hash(&mut hasher);
+        let large_tables = context
+            .tables
+            .iter()
+            .filter_map(|t| Some((t.name.to_lowercase(), t.rows.as_f64()?)))
+            .filter(|(_, rows)| *rows > sql::MAX_RESULT_ROWS)
+            .collect();
+        let time_columns = context
+            .tables
+            .iter()
+            .flat_map(|t| &t.columns)
+            .filter(|c| {
+                let ty = c.ty.to_ascii_uppercase();
+                ty.starts_with("TIMESTAMP") || ty.starts_with("DATE")
+            })
+            .map(|c| c.name.to_lowercase())
+            .collect();
         Prepared {
             context,
             prefix_hash: hasher.finish(),
             system,
+            large_tables,
+            time_columns,
         }
     }
 }
@@ -196,17 +218,21 @@ pub fn cached_frames(job: &Job, sql: &str, model: &str) -> [Frame; 2] {
 
 /// Run one translation to completion, sending frames to `out`. Returns what was spent and
 /// the final SQL (for caching).
+///
+/// With `row_check`, a first reply that would return raw rows of a large table
+/// ([`sql::raw_rows`]) gets the one repair turn too.
 pub async fn run(
     provider: &Provider,
     cache: &SqlCache,
     job: &Job,
     out: &Outbox,
+    row_check: bool,
 ) -> (Spent, Result<String, ProviderError>) {
     let mut spent = Spent::default();
     let request = job.header.request;
     let result = tokio::time::timeout(
         provider.config().timeout,
-        translate(provider, cache, job, out, &mut spent),
+        translate(provider, cache, job, out, &mut spent, row_check),
     )
     .await
     .unwrap_or_else(|_| Err(error("timeout", "Inference exceeded its deadline.")));
@@ -238,6 +264,7 @@ async fn translate(
     job: &Job,
     out: &Outbox,
     spent: &mut Spent,
+    row_check: bool,
 ) -> Result<String, ProviderError> {
     let _slot = provider.slot()?;
     let request = job.header.request;
@@ -295,7 +322,15 @@ async fn translate(
                 completion.finish_reason.as_deref().unwrap_or("missing")
             ))
         } else {
-            sql::check(&sql)
+            sql::check(&sql).and_then(|()| match row_check && attempt == 1 {
+                true => sql::raw_rows(
+                    &sql,
+                    &job.prepared.large_tables,
+                    &job.prepared.time_columns,
+                )
+                .map_or(Ok(()), Err),
+                false => Ok(()),
+            })
         };
         match verdict {
             Ok(()) => {

@@ -444,7 +444,7 @@ pub async fn run(app: Arc<App>, upgrade: upgrade::UpgradeFut) {
                             let out = jobs_out.clone();
                             app.totals.lock().unwrap().requests += 1;
                             let handle = jobs.spawn(async move {
-                                let (spent, result) = infer::run(&app.provider, &app.cache, &job, &out).await;
+                                let (spent, result) = infer::run(&app.provider, &app.cache, &job, &out, app.row_check).await;
                                 app.budget.lock().unwrap().spend(spent.cost_usd.unwrap_or(0.0));
                                 app.totals.lock().unwrap().record(&spent, result.is_ok());
                             });

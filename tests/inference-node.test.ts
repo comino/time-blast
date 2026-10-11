@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { decode, encode, header, json, Kind, Node, readJson, readText, Stage, text, type Frame } from '../src/protocol/frame';
 import { createInferenceNode, type ChatChunk, type EngineLike } from '../src/inference-node/node';
 import { repairMessage, systemPrompt, userMessage } from '../src/inference-node/prompt';
-import { check, SqlStream } from '../src/inference-node/sql';
+import { check, rawRows, rowCheckInputs, SqlStream } from '../src/inference-node/sql';
 import { generationOptions, resolveModelId } from '../src/inference-node/models';
 import type { DatasetContext } from '../src/engine/contracts';
 
@@ -27,6 +27,7 @@ describe('SQL extraction twin of crates/inference-server/src/sql.rs', () => {
   const cases = JSON.parse(fixture('sql-cases.json')) as {
     stream: Array<{ chunks: string[]; deltas: string; sql: string }>;
     check: Array<{ sql: string; error: string | null }>;
+    rows: Array<{ sql: string; error: string | null }>;
   };
   it.each(cases.stream)('streams $chunks', ({ chunks, deltas, sql }) => {
     const stream = new SqlStream();
@@ -37,6 +38,14 @@ describe('SQL extraction twin of crates/inference-server/src/sql.rs', () => {
     }
     expect(seen).toBe(deltas);
     expect(stream.finish()).toBe(sql);
+  });
+  it.each(cases.rows)('row pre-check $sql', ({ sql, error }) => {
+    const { large, time } = rowCheckInputs(vessels);
+    expect(large).toEqual([['telemetry', 1209600]]);
+    expect(time).toEqual(['ts']);
+    const reason = rawRows(sql, large, time);
+    if (error === null) expect(reason).toBeUndefined();
+    else expect(reason).toContain(error);
   });
   it.each(cases.check)('checks $sql', ({ sql, error }) => {
     const reason = check(sql);
@@ -165,6 +174,20 @@ describe('WebLLM inference node over tb1', () => {
     const messages = (h.requests[2] as { messages: Array<{ role: string; content: string }> }).messages;
     expect(messages.map((m) => m.role)).toEqual(['system', 'user', 'assistant', 'user']);
     expect(messages[3].content).toMatch(/^That reply was rejected: the reply must start with SELECT/);
+  });
+
+  it('repairs raw rows of a large table once; the SQL frame carries the repair', async () => {
+    const fixed = "SELECT time_bucket(INTERVAL '1 hour', ts) AS t, avg(wind) AS w FROM telemetry GROUP BY t ORDER BY t";
+    const h = harness([['SELECT ts, wind FROM telemetry'], [fixed]]);
+    h.hello(); h.context();
+    h.infer(1, 'wind');
+    await h.waitFor(has(h, 1, Kind.INFER_STATS));
+    const frames = h.frames(1);
+    expect(kinds(frames)).toEqual([Kind.SQL_DELTA, Kind.SQL, Kind.INFER_STATS]);
+    expect(readText(frames[0].payload)).toBe('SELECT ts, wind FROM telemetry');
+    expect(readText(frames[1].payload)).toBe(fixed);
+    const messages = (h.requests[2] as { messages: Array<{ role: string; content: string }> }).messages;
+    expect(messages[3].content).toMatch(/^That reply was rejected: it returns raw rows of telemetry \(1209600 rows\)/);
   });
 
   it('reports invalid_sql after the second failure, with stats', async () => {
