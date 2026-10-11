@@ -27,6 +27,9 @@ const flag = name => args.includes(name);
 const option = (name, fallback) => { const i = args.indexOf(name); return i >= 0 && i + 1 < args.length ? args[i + 1] : fallback; };
 if (flag('--help')) { console.log(readFileSync(fileURLToPath(import.meta.url), 'utf8').split('\n').slice(1, 17).map(l => l.replace(/^\/\/ ?/, '')).join('\n')); process.exit(0); }
 
+// Vite's module runner sets NODE_ENV=development in this process; children (vite build above all,
+// whose import.meta.env.PROD must be true) get the environment as it was before.
+const childEnv = { ...process.env };
 const { module: lib } = await runnerImport(resolve(root, 'scripts/perf/lib.ts'), { root, configFile: false, logLevel: 'error' });
 const historyPath = resolve(root, option('--history', 'docs/perf/history.jsonl'));
 const budgets = JSON.parse(readFileSync(resolve(root, 'docs/perf/budgets.json'), 'utf8'));
@@ -81,7 +84,7 @@ function git(argv) {
 /** Run a child to completion; stdout is returned, stderr streams through. */
 function run(cmd, argv, { env } = {}) {
   return new Promise((resolveRun, reject) => {
-    const child = spawn(cmd, argv, { cwd: root, env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'inherit'] });
+    const child = spawn(cmd, argv, { cwd: root, env: { ...childEnv, ...env }, stdio: ['ignore', 'pipe', 'inherit'] });
     children.add(child);
     let out = '';
     child.stdout.on('data', d => { out += d; });
@@ -99,7 +102,7 @@ const freePort = () => new Promise((res, rej) => {
 async function startPreview() {
   const port = await freePort();
   const child = spawn(resolve(root, 'node_modules/.bin/vite'), ['preview', '--host', '127.0.0.1', '--port', String(port), '--strictPort'],
-    { cwd: root, stdio: ['ignore', 'ignore', 'inherit'] });
+    { cwd: root, env: childEnv, stdio: ['ignore', 'ignore', 'inherit'] });
   children.add(child);
   const url = `http://127.0.0.1:${port}`;
   for (let i = 0; i < 100; i++) {
