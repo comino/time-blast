@@ -30,7 +30,11 @@ def main():
         page.on("console", lambda m: m.type == "error" and print("console:", m.text, file=sys.stderr))
         started = time.time()
         page.goto(f"{args.url}/render-bench.html?mode=bench&points={args.points}&reps={args.reps}")
-        page.wait_for_function("() => window.__bench || window.__error", timeout=args.timeout * 1000)
+        try:
+            page.wait_for_function("() => window.__bench || window.__error", timeout=args.timeout * 1000)
+        except Exception:
+            print("timed out; partial results:", page.locator("#out").text_content()[-3000:], file=sys.stderr)
+            raise
         error = page.evaluate("() => window.__error")
         if error:
             print(error, file=sys.stderr)
