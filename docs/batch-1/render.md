@@ -146,7 +146,8 @@ tests/render_engine.py --software` (starts its own server).
 ¹ RENDER_FIRST_BATCH → FIRST_DRAW_SUBMITTED stamps. The first draw is the whole first batch
 (2048 rows, all series, grid), not one dot. Legacy Canvas2D draws a single marker
 synchronously and finishes the chart over many animation frames; it is faster to its first
-pixel on this CPU-only box but 10–60× slower to the complete chart. GPU completion
+pixel on this CPU-only box but 4–9× slower to the complete chart (the renderer's "all batches"
+row even forces one frame per batch; in the app rAF coalesces them). GPU completion
 (`onSubmittedWorkDone`) under SwiftShader takes 1 s (8,640) to >10 s (60,480, capped): CPU
 rasterisation, meaningless for hardware. A pre-pool run on a quieter host measured 0.75 ms
 first draw for 60,480 on WebGPU (replay 0.48).
