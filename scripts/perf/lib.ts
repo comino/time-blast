@@ -149,6 +149,10 @@ export function summarize(values: readonly number[], unit = 'ms', digits = 3): S
 export function stageTable(samples: ReadonlyArray<ReadonlyArray<readonly [string, number]>>): StageRow[] {
   const order: string[] = [];
   const values = new Map<string, number[]>();
+  // Pipeline order: the longest sample's order first (its TIMING carried the most stages), then
+  // labels only other samples have.
+  const longest = [...samples].sort((a, b) => b.length - a.length)[0] ?? [];
+  for (const [label] of longest) if (!values.has(label)) { values.set(label, []); order.push(label); }
   for (const rows of samples) for (const [label, delta] of rows) {
     if (!values.has(label)) { values.set(label, []); order.push(label); }
     values.get(label)!.push(delta);
