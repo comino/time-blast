@@ -1,0 +1,42 @@
+{
+ "kind": "steady-charts e2e",
+ "date": "2026-10-11",
+ "host": "shared 4-core ARM64 host, load 7-13 (other agents running)",
+ "gpu": "SwiftShader (software)",
+ "browser": "145.0.7632.0",
+ "measured": "pointer/keystroke event \u2192 FIRST_DRAW_SUBMITTED (draw submission, not photons)",
+ "fake": "tests/fake_inference.py variants mode: alias/case/layout variant of the canned SQL per INFER",
+ "command": "python3 tests/e2e_manipulate.py --url http://localhost:5231 --software --samples 12 --skip-a",
+ "steadyOn": {
+  "variantsPerKeystroke": true,
+  "drawnRequests": 293,
+  "adoptedSteady": 277,
+  "redrawn": 16,
+  "finalKeystrokeHeadlineMs": {
+   "n": 9,
+   "median": 6.27,
+   "p95": 24.56,
+   "min": 3.08,
+   "max": 24.56
+  },
+  "finalKeystrokeSteady": 9,
+  "samples": 12,
+  "infers": 83
+ },
+ "steadyOff (VITE_TB_STEADY=0)": {
+  "variantsPerKeystroke": true,
+  "drawnRequests": 300,
+  "adoptedSteady": 0,
+  "redrawn": 300,
+  "finalKeystrokeHeadlineMs": {
+   "n": 9,
+   "median": 6.8,
+   "p95": 9.16,
+   "min": 2.97,
+   "max": 9.16
+  },
+  "finalKeystrokeSteady": 0,
+  "samples": 12,
+  "infers": 83
+ }
+}

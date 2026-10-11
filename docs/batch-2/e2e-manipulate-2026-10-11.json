@@ -1,0 +1,291 @@
+{
+ "fake": "ws://127.0.0.1:35095",
+ "measured": "pointer/keystroke event \u2192 FIRST_DRAW_SUBMITTED (draw submission, not photons)",
+ "browser": "145.0.7632.0",
+ "gpu": "SwiftShader (software)",
+ "chartAsQuery": {
+  "brush": {
+   "n": 12,
+   "median": 38.05,
+   "p95": 45.74,
+   "min": 23.77,
+   "max": 60.77
+  },
+  "legend": {
+   "n": 12,
+   "median": 27.69,
+   "p95": 42.15,
+   "min": 21.67,
+   "max": 51.23
+  },
+  "back": {
+   "n": 24,
+   "median": 2.29,
+   "p95": 5.51,
+   "min": 1.6,
+   "max": 7.18
+  },
+  "engineHitAndRewriteMs": {
+   "n": 24,
+   "median": 4.99,
+   "p95": 10.49,
+   "min": 2.71,
+   "max": 23.54
+  }
+ },
+ "chartAsQueryStageDeltaMs": {
+  "brush": {
+   "key": {
+    "n": 12,
+    "median": 0.0,
+    "p95": 0,
+    "min": 0,
+    "max": 0
+   },
+   "draft sent": {
+    "n": 12,
+    "median": 0.44,
+    "p95": 0.76,
+    "min": 0.31,
+    "max": 1.21
+   },
+   "coordinator": {
+    "n": 12,
+    "median": 6.37,
+    "p95": 9.93,
+    "min": 3.38,
+    "max": 23.77
+   },
+   "SQL complete": {
+    "n": 12,
+    "median": -0.01,
+    "p95": -0.0,
+    "min": -0.04,
+    "max": 0
+   },
+   "exec sent": {
+    "n": 12,
+    "median": 0.01,
+    "p95": 0.01,
+    "min": 0,
+    "max": 0.04
+   },
+   "exec received": {
+    "n": 12,
+    "median": 0.08,
+    "p95": 0.09,
+    "min": 0.07,
+    "max": 0.12
+   },
+   "DB first batch": {
+    "n": 12,
+    "median": 27.04,
+    "p95": 36.25,
+    "min": 12.66,
+    "max": 47.15
+   },
+   "DB done": {
+    "n": 12,
+    "median": 2.52,
+    "p95": 9.96,
+    "min": 0.94,
+    "max": 12.17
+   },
+   "render first batch": {
+    "n": 12,
+    "median": -2.51,
+    "p95": -1.07,
+    "min": -12.14,
+    "max": -0.93
+   },
+   "first draw submitted": {
+    "n": 12,
+    "median": 1.12,
+    "p95": 4.23,
+    "min": 0.55,
+    "max": 5.31
+   },
+   "presented": {
+    "n": 7,
+    "median": 32.51,
+    "p95": 41.52,
+    "min": 19.17,
+    "max": 41.52
+   }
+  },
+  "legend": {
+   "key": {
+    "n": 12,
+    "median": 0.0,
+    "p95": 0,
+    "min": 0,
+    "max": 0
+   },
+   "draft sent": {
+    "n": 12,
+    "median": 2.44,
+    "p95": 4.23,
+    "min": 0.85,
+    "max": 4.89
+   },
+   "coordinator": {
+    "n": 12,
+    "median": 5.05,
+    "p95": 10.71,
+    "min": 2.87,
+    "max": 10.76
+   },
+   "SQL complete": {
+    "n": 12,
+    "median": -0.01,
+    "p95": -0.0,
+    "min": -0.25,
+    "max": -0.0
+   },
+   "exec sent": {
+    "n": 12,
+    "median": 0.01,
+    "p95": 0.02,
+    "min": 0.0,
+    "max": 0.25
+   },
+   "exec received": {
+    "n": 12,
+    "median": 0.09,
+    "p95": 0.31,
+    "min": 0.07,
+    "max": 0.37
+   },
+   "DB first batch": {
+    "n": 12,
+    "median": 18.97,
+    "p95": 33.93,
+    "min": 10.03,
+    "max": 39.24
+   },
+   "DB done": {
+    "n": 12,
+    "median": 1.62,
+    "p95": 3.03,
+    "min": 0.91,
+    "max": 3.49
+   },
+   "render first batch": {
+    "n": 12,
+    "median": -1.61,
+    "p95": -0.91,
+    "min": -3.48,
+    "max": -0.91
+   },
+   "first draw submitted": {
+    "n": 12,
+    "median": 1.0,
+    "p95": 2.2,
+    "min": 0.53,
+    "max": 2.49
+   },
+   "presented": {
+    "n": 11,
+    "median": 8.81,
+    "p95": 45.69,
+    "min": 5.84,
+    "max": 45.69
+   }
+  },
+  "back": {
+   "key": {
+    "n": 24,
+    "median": 0.0,
+    "p95": 0,
+    "min": 0,
+    "max": 0
+   },
+   "draft sent": {
+    "n": 24,
+    "median": 0.54,
+    "p95": 0.85,
+    "min": 0.28,
+    "max": 0.87
+   },
+   "coordinator": {
+    "n": 24,
+    "median": 0.25,
+    "p95": 0.72,
+    "min": 0.17,
+    "max": 2.09
+   },
+   "SQL complete": {
+    "n": 24,
+    "median": -0.01,
+    "p95": -0.0,
+    "min": -0.02,
+    "max": 0
+   },
+   "exec sent": {
+    "n": 24,
+    "median": 0.01,
+    "p95": 0.02,
+    "min": 0,
+    "max": 0.02
+   },
+   "exec received": {
+    "n": 24,
+    "median": 0.09,
+    "p95": 0.18,
+    "min": 0.08,
+    "max": 0.18
+   },
+   "DB first batch": {
+    "n": 24,
+    "median": 0.35,
+    "p95": 0.52,
+    "min": 0.27,
+    "max": 0.53
+   },
+   "DB done": {
+    "n": 24,
+    "median": 1.19,
+    "p95": 4.36,
+    "min": 0.77,
+    "max": 6.03
+   },
+   "render first batch": {
+    "n": 24,
+    "median": -1.19,
+    "p95": -0.83,
+    "min": -6.02,
+    "max": -0.76
+   },
+   "first draw submitted": {
+    "n": 24,
+    "median": 0.88,
+    "p95": 3.9,
+    "min": 0.61,
+    "max": 5.62
+   },
+   "presented": {
+    "n": 7,
+    "median": 26.82,
+    "p95": 91.41,
+    "min": 17.73,
+    "max": 91.41
+   }
+  }
+ },
+ "steady": {
+  "variantsPerKeystroke": true,
+  "drawnRequests": 106,
+  "adoptedSteady": 90,
+  "redrawn": 16,
+  "finalKeystrokeHeadlineMs": {
+   "n": 10,
+   "median": 11.06,
+   "p95": 28.62,
+   "min": 6.06,
+   "max": 28.62
+  },
+  "finalKeystrokeSteady": 10,
+  "samples": 12,
+  "infers": 83
+ }
+}
