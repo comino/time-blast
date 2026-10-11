@@ -37,6 +37,9 @@ export interface CoordinatorCore {
   tick(now: number): void;
   /** Frames the coordinator wants sent, in order. Draining clears the outbox. */
   drain(): Array<[LinkId, Frame<Uint8Array>]>;
+  /** Same as `drain`, still encoded: each entry owns a fresh transferable buffer. Lets the
+   * host forward UI frames without a decode + re-encode. */
+  drainEncoded(): Array<[LinkId, Uint8Array]>;
   /** Earliest Unix ms at which `tick` must be called, or null. */
   nextDeadline(): number | null;
   dispose(): void;
@@ -62,7 +65,9 @@ export type StatusComponent = 'database' | 'inference' | 'renderer' | 'coordinat
 export type DatasetSource =
   | { kind: 'fixture'; name: 'vessels' | 'vessels-small' }
   | { kind: 'file'; name: string; file: File }
-  | { kind: 'url'; name: string; url: string };
+  | { kind: 'url'; name: string; url: string }
+  /** Remote database node over a tb1 WebSocket (e.g. crates/database-server → ClickHouse). */
+  | { kind: 'remote'; name: string; endpoint: string };
 
 export interface DatabaseNode {
   /** Load data and compute the DatasetContext (protocol-v1 "DatasetContext"). */

@@ -1,0 +1,242 @@
+{
+ "ok": true,
+ "result": {
+  "crossOriginIsolated": true,
+  "backend": "webgpu",
+  "label": "google swiftshader",
+  "scheduler": "requestAnimationFrame",
+  "minute-avg-60k": {
+   "chosen": "line",
+   "available": [
+    "line",
+    "bar",
+    "scatter",
+    "table"
+   ],
+   "expected": "line",
+   "points": 2048,
+   "tableTotal": 60480,
+   "tableFirstRow": [
+    "2026-09-01",
+    "Atlas",
+    "14.01"
+   ],
+   "warmMs": {
+    "dbFirstBatch": {
+     "n": 10,
+     "p50": 519.16,
+     "p95": 879.835,
+     "max": 879.835
+    },
+    "dbToRender": {
+     "n": 10,
+     "p50": 0.01,
+     "p95": 0.02,
+     "max": 0.02
+    },
+    "renderToSubmitted": {
+     "n": 10,
+     "p50": 2.22,
+     "p95": 14.195,
+     "max": 14.195
+    },
+    "execToSubmitted": {
+     "n": 10,
+     "p50": 533.365,
+     "p95": 880.725,
+     "max": 880.725
+    },
+    "execToPresented": {
+     "n": 1,
+     "p50": 2507.335,
+     "p95": 2507.335,
+     "max": 2507.335
+    },
+    "dbDone": {
+     "n": 10,
+     "p50": 685.335,
+     "p95": 1202.035,
+     "max": 1202.035
+    }
+   }
+  },
+  "count-by-vessel": {
+   "chosen": "bar",
+   "available": [
+    "bar",
+    "line",
+    "scatter",
+    "table"
+   ],
+   "expected": "bar",
+   "points": 6,
+   "tableTotal": 6,
+   "tableFirstRow": [
+    "Atlas",
+    "201600"
+   ],
+   "warmMs": {
+    "dbFirstBatch": {
+     "n": 10,
+     "p50": 184.87,
+     "p95": 303.33,
+     "max": 303.33
+    },
+    "dbToRender": {
+     "n": 10,
+     "p50": 0.01,
+     "p95": 0.03,
+     "max": 0.03
+    },
+    "renderToSubmitted": {
+     "n": 10,
+     "p50": 1.305,
+     "p95": 10.145,
+     "max": 10.145
+    },
+    "execToSubmitted": {
+     "n": 10,
+     "p50": 186.18,
+     "p95": 303.72,
+     "max": 303.72
+    },
+    "execToPresented": {
+     "n": 8,
+     "p50": 202.11,
+     "p95": 599.085,
+     "max": 599.085
+    },
+    "dbDone": {
+     "n": 10,
+     "p50": 186.49,
+     "p95": 303.99,
+     "max": 303.99
+    }
+   }
+  },
+  "hourly-two-measures": {
+   "chosen": "line",
+   "available": [
+    "line",
+    "bar",
+    "scatter",
+    "table"
+   ],
+   "expected": "line",
+   "points": 672,
+   "tableTotal": 336,
+   "tableFirstRow": [
+    "2026-09-01",
+    "13.0282555555555",
+    "14.6055722222222"
+   ],
+   "warmMs": {
+    "dbFirstBatch": {
+     "n": 10,
+     "p50": 245.18,
+     "p95": 511.715,
+     "max": 511.715
+    },
+    "dbToRender": {
+     "n": 10,
+     "p50": 0.005,
+     "p95": 0.015,
+     "max": 0.015
+    },
+    "renderToSubmitted": {
+     "n": 10,
+     "p50": 1.505,
+     "p95": 5.21,
+     "max": 5.21
+    },
+    "execToSubmitted": {
+     "n": 10,
+     "p50": 245.66,
+     "p95": 515.21,
+     "max": 515.21
+    },
+    "execToPresented": {
+     "n": 10,
+     "p50": 354.435,
+     "p95": 767.94,
+     "max": 767.94
+    },
+    "dbDone": {
+     "n": 10,
+     "p50": 245.955,
+     "p95": 517.205,
+     "max": 517.205
+    }
+   }
+  },
+  "raw-table": {
+   "chosen": "table",
+   "available": [
+    "table"
+   ],
+   "expected": "table",
+   "points": 100,
+   "tableTotal": 100,
+   "tableFirstRow": [
+    "Aurora",
+    "2026-09-01 00:00:00"
+   ],
+   "warmMs": {
+    "dbFirstBatch": {
+     "n": 10,
+     "p50": 34.225,
+     "p95": 38.995,
+     "max": 38.995
+    },
+    "dbToRender": {
+     "n": 10,
+     "p50": 0.01,
+     "p95": 0.01,
+     "max": 0.01
+    },
+    "renderToSubmitted": {
+     "n": 10,
+     "p50": 0.395,
+     "p95": 9.51,
+     "max": 9.51
+    },
+    "execToSubmitted": {
+     "n": 10,
+     "p50": 36.67,
+     "p95": 42.75,
+     "max": 42.75
+    },
+    "execToPresented": {
+     "n": 10,
+     "p50": 44.41,
+     "p95": 52.85,
+     "max": 52.85
+    },
+    "dbDone": {
+     "n": 10,
+     "p50": 37.305,
+     "p95": 43.225,
+     "max": 43.225
+    }
+   }
+  },
+  "exportCsv": [
+   "vessel,n",
+   "Atlas,201600",
+   "Aurora,201600"
+  ]
+ },
+ "browser": "145.0.7632.0",
+ "software": true,
+ "pixels": {
+  "1": 11784,
+  "2": 20141,
+  "3": 5585,
+  "4": 0
+ },
+ "consoleErrors": [],
+ "host": {
+  "machine": "4-core aarch64, no GPU; SwiftShader WebGPU",
+  "loadAverage1m": 21.0
+ }
+}
