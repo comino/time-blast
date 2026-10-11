@@ -27,7 +27,8 @@ const OPERATOR = 3;
 const SEMICOLON = 0x3b;
 
 export type GuardResult =
-  | { ok: true; sql: string }
+  /** `sql` is the wrapped statement to execute, `inner` the single statement it wraps. */
+  | { ok: true; sql: string; inner: string }
   | { ok: false; code: 'empty' | 'multiple_statements'; message: string };
 
 export function guardSql(sql: string, tokenizer: Tokenizer): GuardResult {
@@ -41,7 +42,13 @@ export function guardSql(sql: string, tokenizer: Tokenizer): GuardResult {
   if (offsets.length === 0 || (end >= 0 && offsets[0] === end)) {
     return { ok: false, code: 'empty', message: 'The SQL text contains no statement' };
   }
-  return { ok: true, sql: `SELECT * FROM (${end >= 0 ? sql.slice(0, end) : sql}\n)` };
+  const inner = end >= 0 ? sql.slice(0, end) : sql;
+  return { ok: true, sql: wrapStatement(inner), inner };
+}
+
+/** The guard's subquery wrapper (also applied to statements the database node rewrites). */
+export function wrapStatement(inner: string): string {
+  return `SELECT * FROM (${inner}\n)`;
 }
 
 /** Error text from DuckDB refers to the wrapped statement; strip our wrapper prefix from

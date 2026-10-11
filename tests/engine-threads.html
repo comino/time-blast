@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>engine threads</title></head>
+<body>
+<p>DuckDB threads experiment: results in <code>window.__engineThreads</code> (see tests/engine_threads.py).</p>
+<script type="module">
+  const params = new URLSearchParams(location.search);
+  const worker = new Worker(new URL('./engine-threads.worker.ts', import.meta.url), { type: 'module' });
+  worker.onmessage = event => { window.__engineThreads = event.data; worker.terminate(); };
+  worker.onerror = event => { window.__engineThreads = { ok: false, error: event.message }; };
+  worker.postMessage({ repeats: Number(params.get('repeats') ?? 9), threads: (params.get('threads') ?? '1,2,4').split(',').map(Number) });
+</script>
+</body>
+</html>

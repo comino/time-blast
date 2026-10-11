@@ -1,0 +1,222 @@
+{
+ "ok": true,
+ "result": {
+  "crossOriginIsolated": true,
+  "hardwareConcurrency": 4,
+  "blockingEh": {
+   "boot": {
+    "bundle": "eh",
+    "version": "v1.4.3",
+    "instantiateMs": 1687.75,
+    "parquetMs": 783.3150000572205,
+    "parquet": true,
+    "totalMs": 2850.704999923706
+   },
+   "generateMs": 1669.619999885559,
+   "minute_vessel_week": {
+    "n": 9,
+    "p50": 151.99,
+    "p95": 286.81,
+    "min": 111.37,
+    "max": 286.81
+   },
+   "hourly_vessel": {
+    "n": 9,
+    "p50": 132.59,
+    "p95": 168.53,
+    "min": 120.36,
+    "max": 168.53
+   },
+   "per_vessel": {
+    "n": 9,
+    "p50": 86.79,
+    "p95": 141.31,
+    "min": 70.61,
+    "max": 141.31
+   },
+   "hourly_7d": {
+    "n": 9,
+    "p50": 49.95,
+    "p95": 58.66,
+    "min": 38.22,
+    "max": 58.66
+   },
+   "scalar_max": {
+    "n": 9,
+    "p50": 5.76,
+    "p95": 6.87,
+    "min": 5.49,
+    "max": 6.87
+   }
+  },
+  "asyncEh": {
+   "instantiateMs": 1853.340000152588,
+   "generateMs": 1256.2050004005432,
+   "version": "v1.4.3",
+   "threads1": {
+    "actual": 1,
+    "minute_vessel_week": {
+     "n": 9,
+     "p50": 104.64,
+     "p95": 168.16,
+     "min": 91.99,
+     "max": 168.16
+    },
+    "hourly_vessel": {
+     "n": 9,
+     "p50": 148.01,
+     "p95": 210.74,
+     "min": 127.19,
+     "max": 210.74
+    },
+    "per_vessel": {
+     "n": 9,
+     "p50": 77.16,
+     "p95": 173.58,
+     "min": 70.97,
+     "max": 173.58
+    },
+    "hourly_7d": {
+     "n": 9,
+     "p50": 41.33,
+     "p95": 44,
+     "min": 38.96,
+     "max": 44
+    },
+    "scalar_max": {
+     "n": 9,
+     "p50": 8.57,
+     "p95": 15.34,
+     "min": 7.05,
+     "max": 15.34
+    }
+   }
+  },
+  "asyncCoi": {
+   "instantiateMs": 7640.849999904633,
+   "generateMs": 2293.2350001335144,
+   "version": "v1.4.3",
+   "threads1": {
+    "actual": 1,
+    "minute_vessel_week": {
+     "n": 9,
+     "p50": 156.46,
+     "p95": 292.87,
+     "min": 113.39,
+     "max": 292.87
+    },
+    "hourly_vessel": {
+     "n": 9,
+     "p50": 175.86,
+     "p95": 216.57,
+     "min": 146.97,
+     "max": 216.57
+    },
+    "per_vessel": {
+     "n": 9,
+     "p50": 98.01,
+     "p95": 145.75,
+     "min": 90.71,
+     "max": 145.75
+    },
+    "hourly_7d": {
+     "n": 9,
+     "p50": 52.23,
+     "p95": 86,
+     "min": 43.7,
+     "max": 86
+    },
+    "scalar_max": {
+     "n": 9,
+     "p50": 14.21,
+     "p95": 21.92,
+     "min": 7.36,
+     "max": 21.92
+    }
+   },
+   "threads2": {
+    "actual": 2,
+    "minute_vessel_week": {
+     "n": 9,
+     "p50": 188.09,
+     "p95": 214.14,
+     "min": 113.27,
+     "max": 214.14
+    },
+    "hourly_vessel": {
+     "n": 9,
+     "p50": 142.7,
+     "p95": 227.86,
+     "min": 120.51,
+     "max": 227.86
+    },
+    "per_vessel": {
+     "n": 9,
+     "p50": 102.57,
+     "p95": 219.31,
+     "min": 66.59,
+     "max": 219.31
+    },
+    "hourly_7d": {
+     "n": 9,
+     "p50": 66.87,
+     "p95": 115.14,
+     "min": 46.45,
+     "max": 115.14
+    },
+    "scalar_max": {
+     "n": 9,
+     "p50": 10.49,
+     "p95": 22.14,
+     "min": 9.91,
+     "max": 22.14
+    }
+   },
+   "threads4": {
+    "actual": 4,
+    "minute_vessel_week": {
+     "n": 9,
+     "p50": 149.74,
+     "p95": 255.26,
+     "min": 120.49,
+     "max": 255.26
+    },
+    "hourly_vessel": {
+     "n": 9,
+     "p50": 129.36,
+     "p95": 183.53,
+     "min": 116.14,
+     "max": 183.53
+    },
+    "per_vessel": {
+     "n": 9,
+     "p50": 122.71,
+     "p95": 146.79,
+     "min": 97.31,
+     "max": 146.79
+    },
+    "hourly_7d": {
+     "n": 9,
+     "p50": 50.32,
+     "p95": 83.46,
+     "min": 39.76,
+     "max": 83.46
+    },
+    "scalar_max": {
+     "n": 9,
+     "p50": 17.04,
+     "p95": 24.26,
+     "min": 7.7,
+     "max": 24.26
+    }
+   }
+  }
+ },
+ "browser": "145.0.7632.0",
+ "log": [
+  "[vite] connecting...",
+  "[vite] connected.",
+  "[vite] connecting...",
+  "[vite] connected."
+ ]
+}
