@@ -29,7 +29,7 @@ and measure draw *submission*, not photons.
 
 | What | Result | Source |
 |---|---|---|
-| **Last keystroke → first draw**, full app, fake inference | **372 ms median, 467 ms p95**; DuckDB's first batch is 332 ms of it, everything else ~10–40 ms | [e2e-main-2026-10-11.json](batch-1/e2e-main-2026-10-11.json) |
+| **Last keystroke → first draw**, full app, fake inference | **331 ms median, 490 ms p95** on final `main` (all 15 e2e checks pass); DuckDB's first batch is 321 ms of it, everything else ~10 ms. Earlier merge run: 372 / 467 ms | [e2e-main-final-2026-10-11.json](batch-1/e2e-main-final-2026-10-11.json), [e2e-main-2026-10-11.json](batch-1/e2e-main-2026-10-11.json) |
 | Same, earlier run | 392 / 741 ms. With realistic SQL, 12/12 final keystrokes were dedups: the chart was already on screen before the last key | [render-calendar.md](batch-1/render-calendar.md) |
 | Inference, Gemini 2.5 Flash Lite via Rust server | first SQL delta 348–411 ms p50, SQL 451 ms p50; ~$0.0001 per translation | [inference.md](batch-1/inference.md), [evals.md](batch-1/evals.md) |
 | NL→SQL correctness, executed results, 45 questions | 2.5 Flash Lite **71 %** (prompt v3; was 49 %); 3.1 Flash Lite 87–89 % at 2.7× the cost and ~130 ms slower | [evals.md](batch-1/evals.md) |

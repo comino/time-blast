@@ -1,0 +1,132 @@
+{
+ "fake": "ws://127.0.0.1:35549",
+ "browser": "145.0.7632.0",
+ "bootToContextS": 17.53,
+ "realistic": {
+  "samples": 12,
+  "finalKeystrokeDedup": 12,
+  "drawnHeadlineMs": []
+ },
+ "headlineMs": {
+  "n": 12,
+  "median": 330.55,
+  "p95": 489.83,
+  "min": 235.17,
+  "max": 515.22
+ },
+ "presentedMs": {
+  "n": 1,
+  "median": 283.14,
+  "p95": 283.14,
+  "min": 283.14,
+  "max": 283.14
+ },
+ "stageDeltaMs": {
+  "key": {
+   "n": 12,
+   "median": 0.0,
+   "p95": 0,
+   "min": 0,
+   "max": 0
+  },
+  "draft sent": {
+   "n": 12,
+   "median": 0.45,
+   "p95": 3.91,
+   "min": 0.25,
+   "max": 7.36
+  },
+  "coordinator": {
+   "n": 12,
+   "median": 3.07,
+   "p95": 7,
+   "min": 0.11,
+   "max": 9.56
+  },
+  "inference sent": {
+   "n": 12,
+   "median": 0.0,
+   "p95": 0,
+   "min": 0,
+   "max": 0
+  },
+  "inference received": {
+   "n": 12,
+   "median": 2.76,
+   "p95": 9.81,
+   "min": 0.43,
+   "max": 30.75
+  },
+  "first SQL delta": {
+   "n": 12,
+   "median": 0.02,
+   "p95": 0.84,
+   "min": 0.02,
+   "max": 1.41
+  },
+  "SQL complete": {
+   "n": 12,
+   "median": 0.1,
+   "p95": 3.79,
+   "min": 0.07,
+   "max": 6.4
+  },
+  "SQL received": {
+   "n": 12,
+   "median": 3.36,
+   "p95": 11.98,
+   "min": 0.63,
+   "max": 19.48
+  },
+  "exec sent": {
+   "n": 12,
+   "median": 0.0,
+   "p95": 0,
+   "min": 0,
+   "max": 0
+  },
+  "exec received": {
+   "n": 12,
+   "median": 0.1,
+   "p95": 0.14,
+   "min": 0.08,
+   "max": 1.06
+  },
+  "DB first batch": {
+   "n": 12,
+   "median": 320.82,
+   "p95": 460.98,
+   "min": 174.4,
+   "max": 483.29
+  },
+  "DB done": {
+   "n": 12,
+   "median": 6.12,
+   "p95": 12.66,
+   "min": 0.85,
+   "max": 13.72
+  },
+  "render first batch": {
+   "n": 12,
+   "median": -6.11,
+   "p95": -0.88,
+   "min": -13.71,
+   "max": -0.84
+  },
+  "first draw submitted": {
+   "n": 12,
+   "median": 1.48,
+   "p95": 9.2,
+   "min": 0.31,
+   "max": 12.01
+  },
+  "presented": {
+   "n": 1,
+   "median": 8.71,
+   "p95": 8.71,
+   "min": 8.71,
+   "max": 8.71
+  }
+ },
+ "infers": 95
+}
