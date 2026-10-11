@@ -14,6 +14,9 @@
 //   node scripts/eval-sql.mjs --rollup-check [--dataset name|all] [--reports a.json,b.json]
 //       exactness of the rollup rewrite: every reference (and saved model SQL) on a node with the
 //       engine's defaults vs. one with rollups, compression and the result cache off; exits 1 on a mismatch
+//   --no-description: send the CONTEXT without the dataset description (as for a dropped file)
+//   node scripts/eval-sql.mjs --export-arrow <dir> [--dataset name|all] [--reports a.json,b.json]
+//       executed results (references, model SQL) as Arrow IPC for tests/render_generality.py
 //   node scripts/eval-sql.mjs --print-prompt --dataset name
 //       the DatasetContext the database node returns and the system prompt built from it
 //   node scripts/eval-sql.mjs --endpoint ws://… --prefixes 0.5,0.75,0.9 [--dataset name] [--label x]
@@ -25,10 +28,11 @@
 // asking, so the guard, statistics, context and rollups are the real ones.
 // The TypeScript modules are loaded with Vite's module runner (no build step, no new deps).
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { arch, cpus, platform } from 'node:os';
+import { arch, cpus, loadavg, platform } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runnerImport } from 'vite';
+import { Table, tableToIPC } from 'apache-arrow';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -61,12 +65,19 @@ async function open(name, node) {
   return database;
 }
 
+/** The CONTEXT sent to inference. --no-description drops the dataset description, as for a
+ * dropped file (measures how much e.g. the join hints in a manifest description matter). */
+const contextPayload = database => flag('--no-description')
+  ? new TextEncoder().encode(JSON.stringify({ ...database.context, description: undefined }))
+  : database.contextPayload;
+
 let failed = false;
 const rows = [];
 for (const dataset of datasets) {
   const corpusPath = option('--corpus') ?? previous?.corpus?.path ?? corpusPathFor(dataset);
   const corpus = flag('--print-prompt') ? { dataset } : JSON.parse(readFileSync(resolve(root, corpusPath), 'utf8'));
   if (corpus.dataset !== dataset) throw new Error(`${corpusPath} is for ${corpus.dataset}, not ${dataset}`);
+  const loadAtStart = loadavg().map(v => +v.toFixed(1));
   const database = await open(dataset);
   const rollupInfo = database.rollups;
 
@@ -75,6 +86,25 @@ for (const dataset of datasets) {
     const { module: prompt } = await runnerImport(resolve(root, 'src/inference-node/prompt.ts'), { root, configFile: false, logLevel: 'error' });
     console.log(JSON.stringify(database.context, null, 1));
     console.log(prompt.systemPrompt(database.context));
+  } else if (option('--export-arrow')) {
+    // Executed results as Arrow IPC for the renderer check (tests/render_generality.py): the first
+    // reference of every case and, with --reports, every model SQL that returned rows.
+    const dir = resolve(root, option('--export-arrow'));
+    mkdirSync(dir, { recursive: true });
+    const reportPaths = (option('--reports') ?? '').split(',').filter(Boolean);
+    const saved = reportPaths.map(p => JSON.parse(readFileSync(resolve(root, p), 'utf8'))).filter(r => (r.dataset ?? 'vessels') === dataset);
+    const items = [];
+    const add = async (id, origin, question, sql) => {
+      const r = await database.run(sql);
+      if (!r.ok || !r.rows.length) return;
+      const batches = database.lastBatches();
+      items.push({ id, origin, question, sql, hint: lib.viewHint(sql) ?? null, rows: r.rows.length,
+        columns: r.columns, ipc: Buffer.from(tableToIPC(new Table(batches), 'stream')).toString('base64') });
+    };
+    for (const c of corpus.cases) await add(c.id, 'reference', c.question, lib.corpusReferences(corpus, c)[0]);
+    for (const rep of saved) for (const c of rep.cases) if (c.sql) await add(c.id, `model:${rep.label ?? ''}`, c.question, c.sql);
+    writeFileSync(resolve(dir, `${dataset}.json`), JSON.stringify({ dataset, items }));
+    console.log(JSON.stringify({ dataset, exported: items.length, dir }));
   } else if (flag('--self-test')) {
     const script = dataset === 'vessels' ? lib.SELF_TEST_SCRIPT : {};
     const translator = lib.fakeTranslator(corpus, Object.fromEntries(Object.entries(script).map(([id, s]) => [id, s.sql])));
@@ -103,7 +133,7 @@ for (const dataset of datasets) {
     console.log(JSON.stringify({ dataset, rollupCheck: mismatches ? 'failed' : 'ok', statements: statements.size, mismatches, rollups: rollupInfo }));
   } else if (option('--prefixes')) {
     const fractions = option('--prefixes').split(',').map(Number);
-    const translator = await lib.tb1Translator(option('--endpoint'), database.contextPayload);
+    const translator = await lib.tb1Translator(option('--endpoint'), contextPayload(database));
     const cases = await lib.evaluatePrefixes(corpus, database, translator, fractions, { only, log: line => console.error(line) });
     translator.close();
     const summary = lib.summarizePrefixes(cases, fractions);
@@ -119,7 +149,7 @@ for (const dataset of datasets) {
   } else {
     const endpoint = option('--endpoint');
     if (!endpoint && !rescore) { console.error('--endpoint ws://host:port/session, --rescore report.json, --rollup-check or --self-test'); process.exit(2); }
-    const translator = previous ? lib.replayTranslator(previous) : await lib.tb1Translator(endpoint, database.contextPayload);
+    const translator = previous ? lib.replayTranslator(previous) : await lib.tb1Translator(endpoint, contextPayload(database));
     const cases = await lib.evaluate(corpus, database, translator, { only, log: line => console.error(`${dataset.padEnd(8)} ${line}`), dbRepair: flag('--db-repair') });
     translator.close();
     const summary = lib.summarize(cases);
@@ -129,7 +159,7 @@ for (const dataset of datasets) {
       kind: 'time-blast.sql-eval', version: 1, date: new Date().toISOString(), label, translator: translator.name, model, dataset,
       endpoint: endpoint.replace(/\/\/[^@/]*@/, '//'), server: option('--server-note'),
       corpus: { path: corpusPath, cases: corpus.cases.length, version: corpus.version },
-      environment: { node: process.version, platform: platform(), arch: arch(), cpus: cpus().length, duckdbWasm: '1.32.0' },
+      environment: { node: process.version, platform: platform(), arch: arch(), cpus: cpus().length, duckdbWasm: '1.32.0', loadavgAtStart: loadAtStart, loadavgAtEnd: loadavg().map(v => +v.toFixed(1)) },
       context: { tables: database.context.tables.map(t => ({ name: t.name, rows: t.rows, columns: t.columns.length })), promptBytes: database.contextPayload.length },
       rollups: rollupInfo,
       summary, cases,

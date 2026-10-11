@@ -1,0 +1,1532 @@
+{
+ "kind": "time-blast.sql-eval",
+ "version": 1,
+ "date": "2026-10-11T11:42:54.649Z",
+ "label": "b3-v5-r4",
+ "translator": "tb1",
+ "model": "openai/gpt-oss-120b",
+ "dataset": "weather",
+ "endpoint": "ws://127.0.0.1:8793/session",
+ "server": "prompt experiment TB_PROMPT_EXP=, cache off, 127.0.0.1",
+ "corpus": {
+  "path": "evals/sql-corpus-weather.json",
+  "cases": 34,
+  "version": 1
+ },
+ "environment": {
+  "node": "v23.11.1",
+  "platform": "linux",
+  "arch": "arm64",
+  "cpus": 4,
+  "duckdbWasm": "1.32.0",
+  "loadavgAtStart": [
+   16.9,
+   15.8,
+   22.8
+  ],
+  "loadavgAtEnd": [
+   19.4,
+   16.6,
+   22.8
+  ]
+ },
+ "context": {
+  "tables": [
+   {
+    "name": "weather",
+    "rows": 210528,
+    "columns": 9
+   }
+  ],
+  "promptBytes": 1375
+ },
+ "rollups": [
+  {
+   "table": "weather",
+   "ms": 0,
+   "skipped": "too few rows per time cell"
+  },
+  {
+   "table": "*",
+   "ms": 0,
+   "done": true
+  }
+ ],
+ "summary": {
+  "n": 34,
+  "counts": {
+   "exact": 2,
+   "equivalent": 29,
+   "shape-violation": 1,
+   "wrong": 2,
+   "sql-error": 0,
+   "rejected-by-guard": 0
+  },
+  "correct": 0.912,
+  "issues": {
+   "viewHintUnasked": 0,
+   "viewHintInvalid": 0,
+   "viewHintMissed": 1,
+   "rawRows": 0,
+   "foreignDialect": 0,
+   "wallClock": 0
+  },
+  "latency": {
+   "firstDeltaP50": 254,
+   "firstDeltaP95": 589.3,
+   "sqlP50": 349.4,
+   "sqlP95": 779.2,
+   "providerFirstTokenP50": 252.1
+  },
+  "tokens": {
+   "prompt": 35173,
+   "completion": 3859,
+   "cached": 27136
+  },
+  "costUsd": 0.005556,
+  "costPerRequestUsd": 0.0001634
+ },
+ "cases": [
+  {
+   "id": "avg_temp_per_city",
+   "question": "average temperature per city",
+   "tags": [
+    "aggregate"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT city, avg(temperature) AS avg_temp FROM weather GROUP BY city ORDER BY city",
+   "referenceRows": 12,
+   "latency": {
+    "firstDeltaMs": 229.6318839999949,
+    "sqlMs": 275.68968699999823,
+    "providerFirstTokenMs": 225.325439453125,
+    "dbMs": 32.149399999994785
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 69,
+    "costUsd": 0.0001335,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 998,
+    "reasoningTokens": 42
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 12,
+   "columns": [
+    "city",
+    "avg_temp"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "max_temp_overall",
+   "question": "what was the highest temperature",
+   "tags": [
+    "aggregate",
+    "scalar",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT city, temperature AS max_temp FROM weather ORDER BY temperature DESC LIMIT 1",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 254.00710900000558,
+    "sqlMs": 294.7023790000021,
+    "providerFirstTokenMs": 252.135498046875,
+    "dbMs": 24.637629999997444
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 89,
+    "costUsd": 0.00014565,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 999,
+    "reasoningTokens": 64
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1,
+   "columns": [
+    "city",
+    "max_temp"
+   ],
+   "matchedReference": 3
+  },
+  {
+   "id": "precip_per_city_2024",
+   "question": "total precipitation per city in 2024",
+   "tags": [
+    "aggregate",
+    "filter"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT city, SUM(precipitation) AS total_precip FROM weather WHERE time >= TIMESTAMP '2024-01-01 00:00:00' AND time < TIMESTAMP '2025-01-01 00:00:00' GROUP BY city ORDER BY city",
+   "referenceRows": 12,
+   "latency": {
+    "firstDeltaMs": 248.0962059999947,
+    "sqlMs": 388.86078099999577,
+    "providerFirstTokenMs": 247.5244140625,
+    "dbMs": 20.04750999999669
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 118,
+    "costUsd": 0.0001635,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1002,
+    "reasoningTokens": 50
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 12,
+   "columns": [
+    "city",
+    "total_precip"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "monthly_temp_berlin",
+   "question": "monthly average temperature in Berlin",
+   "tags": [
+    "bucket",
+    "filter"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT time_bucket(INTERVAL '1 month', time) AS month, AVG(temperature) AS avg_temp FROM weather WHERE city='Berlin' GROUP BY month ORDER BY month LIMIT 5000",
+   "referenceRows": 24,
+   "latency": {
+    "firstDeltaMs": 259.8777709999995,
+    "sqlMs": 352.295103000004,
+    "providerFirstTokenMs": 255.45703125,
+    "dbMs": 39.83825500000239
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 103,
+    "costUsd": 0.00015405,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 999,
+    "reasoningTokens": 55
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 24,
+   "columns": [
+    "month",
+    "avg_temp"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "daily_max_madrid_30d",
+   "question": "daily maximum temperature in Madrid over the last 30 days",
+   "tags": [
+    "bucket",
+    "window",
+    "filter"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT time_bucket(INTERVAL '1 day', time) AS day, max(temperature) AS max_temp FROM weather WHERE city='Madrid' AND time >= TIMESTAMP '2024-12-31 23:00:00' - INTERVAL '30 days' GROUP BY day ORDER BY day",
+   "referenceRows": 31,
+   "latency": {
+    "firstDeltaMs": 341.31307100000413,
+    "sqlMs": 470.4737230000028,
+    "providerFirstTokenMs": 337.12841796875,
+    "dbMs": 15.447148999999627
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 180,
+    "costUsd": 0.00020115,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1005,
+    "reasoningTokens": 110
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 31,
+   "columns": [
+    "day",
+    "max_temp"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "hourly_wind_copenhagen_2d",
+   "question": "hourly wind speed in Copenhagen over the last 2 days",
+   "tags": [
+    "window",
+    "filter",
+    "raw-grain"
+   ],
+   "category": "exact",
+   "reason": "",
+   "sql": "SELECT time,wind_speed FROM weather WHERE city='Copenhagen' AND time>=TIMESTAMP '2024-12-31 23:00:00' - INTERVAL '2 days' ORDER BY time LIMIT 5000",
+   "referenceRows": 49,
+   "latency": {
+    "firstDeltaMs": 529.6715559999939,
+    "sqlMs": 846.1205139999947,
+    "providerFirstTokenMs": 516.502685546875,
+    "dbMs": 6.7720379999955185
+   },
+   "stats": {
+    "attempts": 2,
+    "cachedTokens": 1792,
+    "completionTokens": 185,
+    "costUsd": 0.00029414999999999997,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 2117,
+    "reasoningTokens": 79
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 49,
+   "columns": [
+    "time",
+    "wind_speed"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "coldest_city",
+   "question": "which city is the coldest on average",
+   "tags": [
+    "top-n",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT city, avg(temperature) AS avg_temp FROM weather GROUP BY city ORDER BY avg_temp LIMIT 5000",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 227.0768390000012,
+    "sqlMs": 281.5689100000018,
+    "providerFirstTokenMs": 221.2197265625,
+    "dbMs": 20.607679000000644
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 89,
+    "costUsd": 0.0001461,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1002,
+    "reasoningTokens": 57
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 12,
+   "columns": [
+    "city",
+    "avg_temp"
+   ],
+   "matchedReference": 2
+  },
+  {
+   "id": "top5_windiest_hours_oslo",
+   "question": "top 5 windiest hours in Oslo",
+   "tags": [
+    "top-n",
+    "filter"
+   ],
+   "category": "shape-violation",
+   "reason": "right rows in the wrong order",
+   "sql": "SELECT time,w as wind FROM (SELECT time,wind_speed AS w FROM weather WHERE city='Oslo' ORDER BY wind_speed DESC LIMIT 5) ORDER BY w DESC",
+   "referenceRows": 5,
+   "latency": {
+    "firstDeltaMs": 425.11337300000014,
+    "sqlMs": 445.20876300000236,
+    "providerFirstTokenMs": 424.570068359375,
+    "dbMs": 29.950282000005245
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 73,
+    "costUsd": 0.00013665,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1003,
+    "reasoningTokens": 29
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 5,
+   "columns": [
+    "time",
+    "wind"
+   ],
+   "matchedReference": 1
+  },
+  {
+   "id": "rainy_hours_per_city",
+   "question": "number of hours with rain per city",
+   "tags": [
+    "aggregate",
+    "filter"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT city, COUNT(*) AS hours_with_rain FROM weather WHERE precipitation>0 GROUP BY city ORDER BY city",
+   "referenceRows": 12,
+   "latency": {
+    "firstDeltaMs": 171.81771699999808,
+    "sqlMs": 226.83327599999757,
+    "providerFirstTokenMs": 168.104248046875,
+    "dbMs": 58.88010600000416
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 70,
+    "costUsd": 0.00013455,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1001,
+    "reasoningTokens": 39
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 12,
+   "columns": [
+    "city",
+    "hours_with_rain"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "humidity_by_country",
+   "question": "average humidity by country",
+   "tags": [
+    "aggregate"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT country,country_humidity_avg FROM (SELECT country,AVG(humidity) AS country_humidity_avg FROM weather GROUP BY country) ORDER BY country",
+   "referenceRows": 10,
+   "latency": {
+    "firstDeltaMs": 191.76214400000026,
+    "sqlMs": 276.82642699999997,
+    "providerFirstTokenMs": 188.251953125,
+    "dbMs": 27.532319999998435
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 74,
+    "costUsd": 0.0001365,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 998,
+    "reasoningTokens": 35
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 10,
+   "columns": [
+    "country",
+    "country_humidity_avg"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "temp_by_hour_of_day",
+   "question": "average temperature by hour of day",
+   "tags": [
+    "bucket",
+    "cyclic"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT EXTRACT(HOUR FROM time) AS hour,AVG(temperature) AS avg_temp FROM weather GROUP BY hour ORDER BY hour",
+   "referenceRows": 24,
+   "latency": {
+    "firstDeltaMs": 483.6475539999956,
+    "sqlMs": 506.42655099999683,
+    "providerFirstTokenMs": 476.906494140625,
+    "dbMs": 50.878326999998535
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 87,
+    "costUsd": 0.0001446,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1000,
+    "reasoningTokens": 52
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 24,
+   "columns": [
+    "hour",
+    "avg_temp"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "monthly_temp_all",
+   "question": "average temperature per month across all cities",
+   "tags": [
+    "bucket",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT time_bucket(INTERVAL '1 month', time) AS month, avg(temperature) AS avg_temp FROM weather GROUP BY month ORDER BY month LIMIT 5000",
+   "referenceRows": 24,
+   "latency": {
+    "firstDeltaMs": 244.74182799999835,
+    "sqlMs": 318.9600019999998,
+    "providerFirstTokenMs": 239.57666015625,
+    "dbMs": 50.240076000001864
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 91,
+    "costUsd": 0.00014715,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1001,
+    "reasoningTokens": 48
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 24,
+   "columns": [
+    "month",
+    "avg_temp"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "berlin_vs_london_daily_2024",
+   "question": "daily average temperature in Berlin vs London in 2024",
+   "tags": [
+    "bucket",
+    "series",
+    "comparison"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT time_bucket(INTERVAL '1 day', time) AS day, city, AVG(temperature) AS avg_temp FROM weather WHERE city IN ('Berlin','London') AND time >= TIMESTAMP '2024-01-01 00:00:00' AND time < TIMESTAMP '2025-01-01 00:00:00' GROUP BY day, city ORDER BY day, city",
+   "referenceRows": 732,
+   "latency": {
+    "firstDeltaMs": 541.8615690000006,
+    "sqlMs": 650.1157769999991,
+    "providerFirstTokenMs": 541.31591796875,
+    "dbMs": 24.48074700000143
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 147,
+    "costUsd": 0.00018135,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1005,
+    "reasoningTokens": 56
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 732,
+   "columns": [
+    "day",
+    "city",
+    "avg_temp"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "min_pressure_per_city",
+   "question": "lowest pressure recorded in each city",
+   "tags": [
+    "aggregate"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT city, MIN(pressure) AS min_pressure FROM weather GROUP BY city ORDER BY city",
+   "referenceRows": 12,
+   "latency": {
+    "firstDeltaMs": 231.98776499999803,
+    "sqlMs": 311.14574499999435,
+    "providerFirstTokenMs": 228.396484375,
+    "dbMs": 14.775498000002699
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 50,
+    "costUsd": 0.0001224,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1000,
+    "reasoningTokens": 23
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 12,
+   "columns": [
+    "city",
+    "min_pressure"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "temp_range_per_city",
+   "question": "difference between the highest and lowest temperature per city",
+   "tags": [
+    "aggregate",
+    "comparison"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT city, max(temperature)-min(temperature) AS diff FROM weather GROUP BY city ORDER BY city",
+   "referenceRows": 12,
+   "latency": {
+    "firstDeltaMs": 196.67874999999913,
+    "sqlMs": 245.61676299999817,
+    "providerFirstTokenMs": 194.72705078125,
+    "dbMs": 11.12331400000403
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 74,
+    "costUsd": 0.00013725,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1003,
+    "reasoningTokens": 44
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 12,
+   "columns": [
+    "city",
+    "diff"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "hottest_day_rome",
+   "question": "hottest day in Rome",
+   "tags": [
+    "top-n",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT date_trunc('day',time) AS day, max(temperature) AS hottest_temp FROM weather WHERE city='Rome' GROUP BY day ORDER BY hottest_temp DESC LIMIT 1",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 248.79337900000246,
+    "sqlMs": 330.0405549999996,
+    "providerFirstTokenMs": 242.18359375,
+    "dbMs": 10.861149999996996
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 115,
+    "costUsd": 0.00016125,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 999,
+    "reasoningTokens": 69
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1,
+   "columns": [
+    "day",
+    "hottest_temp"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "cloud_cover_monthly_london",
+   "question": "average cloud cover per month in London",
+   "tags": [
+    "bucket",
+    "filter"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT time_bucket(INTERVAL '1 month', time) AS month, AVG(cloud_cover) AS avg_cc FROM weather WHERE city='London' GROUP BY month ORDER BY month",
+   "referenceRows": 24,
+   "latency": {
+    "firstDeltaMs": 241.1377649999995,
+    "sqlMs": 315.63830400000006,
+    "providerFirstTokenMs": 230.75634765625,
+    "dbMs": 24.972756000002846
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 98,
+    "costUsd": 0.00015135,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1001,
+    "reasoningTokens": 53
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 24,
+   "columns": [
+    "month",
+    "avg_cc"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "weekly_precip_per_city",
+   "question": "weekly total precipitation per city",
+   "tags": [
+    "bucket",
+    "series"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT time_bucket(INTERVAL '1 week', time) AS week,city, SUM(precipitation) AS total_prec FROM weather GROUP BY week,city ORDER BY week,city",
+   "referenceRows": 1272,
+   "latency": {
+    "firstDeltaMs": 351.68521200000396,
+    "sqlMs": 429.792054000005,
+    "providerFirstTokenMs": 341.205810546875,
+    "dbMs": 112.3922390000007
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 124,
+    "costUsd": 0.00016665,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 999,
+    "reasoningTokens": 77
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1272,
+   "columns": [
+    "week",
+    "city",
+    "total_prec"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "freezing_hours_2023",
+   "question": "how many hours below freezing in each city in 2023",
+   "tags": [
+    "aggregate",
+    "filter"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT city,cnt FROM (SELECT city,COUNT(*) AS cnt FROM weather WHERE time>=TIMESTAMP '2023-01-01 00:00:00' AND time<TIMESTAMP '2024-01-01 00:00:00' AND temperature<0 GROUP BY city) ORDER BY city",
+   "referenceRows": 12,
+   "latency": {
+    "firstDeltaMs": 348.54907799999637,
+    "sqlMs": 481.36491399999795,
+    "providerFirstTokenMs": 340.866943359375,
+    "dbMs": 23.922496999999566
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 172,
+    "costUsd": 0.0001965,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1006,
+    "reasoningTokens": 99
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 12,
+   "columns": [
+    "city",
+    "cnt"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "scatter_pressure_wind_oslo",
+   "question": "scatter of pressure vs wind speed in Oslo",
+   "tags": [
+    "view",
+    "ambiguous",
+    "raw-rows-trap"
+   ],
+   "category": "wrong",
+   "reason": "rows 5000, expected 731",
+   "sql": "-- view: scatter\nSELECT wind_speed AS x, pressure AS y FROM weather WHERE city='Oslo' ORDER BY wind_speed LIMIT 5000",
+   "referenceRows": 731,
+   "latency": {
+    "firstDeltaMs": 280.6037720000022,
+    "sqlMs": 344.03911900000094,
+    "providerFirstTokenMs": 259.839111328125,
+    "dbMs": 28.195890999995754
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 107,
+    "costUsd": 0.0001569,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1002,
+    "reasoningTokens": 68
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 5000,
+   "columns": [
+    "x",
+    "y"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "partial_per_ci",
+   "question": "average temperature per ci",
+   "tags": [
+    "ambiguous",
+    "partial"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT city, AVG(temperature) AS avg_temp FROM weather GROUP BY city ORDER BY city",
+   "referenceRows": 12,
+   "latency": {
+    "firstDeltaMs": 219.49110700000165,
+    "sqlMs": 256.74863700000424,
+    "providerFirstTokenMs": 218.659423828125,
+    "dbMs": 12.950706000003265
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 65,
+    "costUsd": 0.0001311,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 998,
+    "reasoningTokens": 38
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 12,
+   "columns": [
+    "city",
+    "avg_temp"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "single_word_precipitation",
+   "question": "precipitation",
+   "tags": [
+    "ambiguous",
+    "partial"
+   ],
+   "category": "wrong",
+   "reason": "rows 5000, expected 731",
+   "sql": "SELECT time_bucket(INTERVAL '1 day', time) AS day, city, SUM(precipitation) AS total_precip FROM weather GROUP BY day, city ORDER BY day, city LIMIT 5000",
+   "referenceRows": 731,
+   "latency": {
+    "firstDeltaMs": 260.6715860000113,
+    "sqlMs": 349.38497300000745,
+    "providerFirstTokenMs": 260.10986328125,
+    "dbMs": 54.69459400000051
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 107,
+    "costUsd": 0.00015615,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 997,
+    "reasoningTokens": 55
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 5000,
+   "columns": [
+    "day",
+    "city",
+    "total_precip"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "temperature_last_week_vague",
+   "question": "temperature last week",
+   "tags": [
+    "ambiguous",
+    "window"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT time_bucket(INTERVAL '1 day', time) AS day, AVG(temperature) AS avg_temp FROM weather WHERE time >= TIMESTAMP '2024-12-31 23:00:00' - INTERVAL '7 days' GROUP BY day ORDER BY day",
+   "referenceRows": 169,
+   "latency": {
+    "firstDeltaMs": 199.91976600000635,
+    "sqlMs": 329.16413900000043,
+    "providerFirstTokenMs": 197.126708984375,
+    "dbMs": 5.126129999989644
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 112,
+    "costUsd": 0.00015915,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 997,
+    "reasoningTokens": 47
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 8,
+   "columns": [
+    "day",
+    "avg_temp"
+   ],
+   "matchedReference": 6
+  },
+  {
+   "id": "line_monthly_temp_per_city",
+   "question": "line chart of monthly average temperature per city",
+   "tags": [
+    "view",
+    "bucket",
+    "series"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT time_bucket(INTERVAL '1 month', time) AS month,city AS city,AVG(temperature) AS avg_temp FROM weather GROUP BY month,city ORDER BY month,city LIMIT 5000",
+   "referenceRows": 288,
+   "latency": {
+    "firstDeltaMs": 251.63142800000787,
+    "sqlMs": 410.45987700000114,
+    "providerFirstTokenMs": 250.8671875,
+    "dbMs": 37.41137300000992
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 107,
+    "costUsd": 0.0001569,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1002,
+    "reasoningTokens": 56
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": true,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 288,
+   "columns": [
+    "month",
+    "city",
+    "avg_temp"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "unknown_city_lisbon",
+   "question": "average temperature in Lisbon",
+   "tags": [
+    "filter",
+    "no-data"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT AVG(temperature) AS avg_temp FROM weather WHERE city = 'Lisbon'",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 632.7423930000077,
+    "sqlMs": 675.8959850000101,
+    "providerFirstTokenMs": 630.68603515625,
+    "dbMs": 5.363733000005595
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 73,
+    "costUsd": 0.0001359,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 998,
+    "reasoningTokens": 47
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1,
+   "columns": [
+    "avg_temp"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "warmest_month_per_city_2024",
+   "question": "which month of 2024 was the warmest in each city",
+   "tags": [
+    "top-n",
+    "series",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT city, date_trunc('month',time) AS mon, AVG(temperature) AS avg_temp FROM weather WHERE time>=TIMESTAMP '2024-01-01 00:00:00' AND time<TIMESTAMP '2025-01-01 00:00:00' GROUP BY city, date_trunc('month',time) QUALIFY AVG(temperature)=MAX(AVG(temperature)) OVER(PARTITION BY city) ORDER BY city, mon",
+   "referenceRows": 12,
+   "latency": {
+    "firstDeltaMs": 553.1305250000005,
+    "sqlMs": 779.1728659999935,
+    "providerFirstTokenMs": 550.454345703125,
+    "dbMs": 26.233858000006876
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 243,
+    "costUsd": 0.00023925,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1007,
+    "reasoningTokens": 137
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 12,
+   "columns": [
+    "city",
+    "mon",
+    "avg_temp"
+   ],
+   "matchedReference": 1
+  },
+  {
+   "id": "madrid_days_over_30_2024",
+   "question": "on how many days in 2024 did Madrid reach 30 degrees",
+   "tags": [
+    "filter",
+    "aggregate",
+    "scalar"
+   ],
+   "category": "exact",
+   "reason": "",
+   "sql": "SELECT COUNT(DISTINCT DATE(time)) AS days FROM weather WHERE city='Madrid' AND EXTRACT(YEAR FROM time)=2024 AND temperature>=30",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 207.31013399999938,
+    "sqlMs": 269.9721470000077,
+    "providerFirstTokenMs": 206.7724609375,
+    "dbMs": 9.325082999988808
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 75,
+    "costUsd": 0.0001386,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1008,
+    "reasoningTokens": 35
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1,
+   "columns": [
+    "days"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "winter_wind_per_city",
+   "question": "average wind speed per city in winter",
+   "tags": [
+    "filter",
+    "cyclic",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT city, avg(wind_speed) avg_ws FROM weather WHERE EXTRACT(MONTH FROM time) IN (12,1,2) GROUP BY city ORDER BY city",
+   "referenceRows": 12,
+   "latency": {
+    "firstDeltaMs": 521.574695000003,
+    "sqlMs": 753.665101999999,
+    "providerFirstTokenMs": 520.978271484375,
+    "dbMs": 29.863800999999512
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 164,
+    "costUsd": 0.00019095,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1001,
+    "reasoningTokens": 120
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 12,
+   "columns": [
+    "city",
+    "avg_ws"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "temp_humidity_corr",
+   "question": "correlation between temperature and humidity per city",
+   "tags": [
+    "aggregate",
+    "statistics"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT city, corr(temperature, humidity) AS corr_val FROM weather GROUP BY city ORDER BY city",
+   "referenceRows": 12,
+   "latency": {
+    "firstDeltaMs": 187.02302100000088,
+    "sqlMs": 230.0562510000018,
+    "providerFirstTokenMs": 184.25048828125,
+    "dbMs": 17.295782000001054
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 67,
+    "costUsd": 0.0001329,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1002,
+    "reasoningTokens": 38
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 12,
+   "columns": [
+    "city",
+    "corr_val"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "vienna_daily_range_july_2024",
+   "question": "daily temperature range in Vienna in July 2024",
+   "tags": [
+    "bucket",
+    "filter",
+    "comparison"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT time_bucket('1 day', time) AS day, max(temperature)-min(temperature) AS range FROM weather WHERE city='Vienna' AND time >= TIMESTAMP '2024-07-01 00:00:00' AND time < TIMESTAMP '2024-08-01 00:00:00' GROUP BY day ORDER BY day",
+   "referenceRows": 31,
+   "latency": {
+    "firstDeltaMs": 580.2075570000015,
+    "sqlMs": 620.8340250000037,
+    "providerFirstTokenMs": 579.54931640625,
+    "dbMs": 6.051624999992782
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 219,
+    "costUsd": 0.0002244,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1004,
+    "reasoningTokens": 136
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 31,
+   "columns": [
+    "day",
+    "range"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "partial_daily_temp_ber",
+   "question": "daily average temperature in Ber",
+   "tags": [
+    "ambiguous",
+    "partial",
+    "bucket"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT time_bucket('1 day', time) AS day, AVG(temperature) AS avg_temp FROM weather WHERE city='Berlin' GROUP BY day ORDER BY day LIMIT 5000",
+   "referenceRows": 731,
+   "latency": {
+    "firstDeltaMs": 301.1231310000003,
+    "sqlMs": 386.83522500000254,
+    "providerFirstTokenMs": 299.2861328125,
+    "dbMs": 15.671994000003906
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 123,
+    "costUsd": 0.00016605,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 999,
+    "reasoningTokens": 78
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 731,
+   "columns": [
+    "day",
+    "avg_temp"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "sunniest_city_2024",
+   "question": "which city had the least cloud cover in 2024",
+   "tags": [
+    "top-n",
+    "filter"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT city, AVG(cloud_cover) AS avg_cc FROM weather WHERE time >= TIMESTAMP '2024-01-01 00:00:00' AND time < TIMESTAMP '2025-01-01 00:00:00' GROUP BY city ORDER BY avg_cc ASC LIMIT 1",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 589.3268759999919,
+    "sqlMs": 620.4566589999886,
+    "providerFirstTokenMs": 587.600341796875,
+    "dbMs": 6.432351999988896
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 124,
+    "costUsd": 0.00016755,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1005,
+    "reasoningTokens": 53
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1,
+   "columns": [
+    "city",
+    "avg_cc"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "yearly_precip_compare",
+   "question": "total precipitation in 2023 compared to 2024 for each city",
+   "tags": [
+    "comparison",
+    "series"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT EXTRACT(year FROM time) AS yr,city AS c,SUM(precipitation) AS tot FROM weather WHERE time>=TIMESTAMP '2024-12-31 23:00:00'-INTERVAL '2 years' GROUP BY yr,city ORDER BY yr,c",
+   "referenceRows": 12,
+   "latency": {
+    "firstDeltaMs": 434.1820909999951,
+    "sqlMs": 561.8408369999961,
+    "providerFirstTokenMs": 432.7607421875,
+    "dbMs": 31.369067000006908
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 194,
+    "costUsd": 0.00021,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1008,
+    "reasoningTokens": 127
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 24,
+   "columns": [
+    "yr",
+    "c",
+    "tot"
+   ],
+   "matchedReference": 1
+  },
+  {
+   "id": "stormy_hours_count",
+   "question": "how many hours had wind above 50 km/h, per city",
+   "tags": [
+    "filter",
+    "aggregate",
+    "units"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT city, COUNT(*) AS cnt FROM weather WHERE wind_speed > 50 GROUP BY city ORDER BY city",
+   "referenceRows": 3,
+   "latency": {
+    "firstDeltaMs": 215.8856439999945,
+    "sqlMs": 255.9022619999887,
+    "providerFirstTokenMs": 203.680419921875,
+    "dbMs": 6.450953000006848
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 768,
+    "completionTokens": 71,
+    "costUsd": 0.00013605,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1007,
+    "reasoningTokens": 41
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 3,
+   "columns": [
+    "city",
+    "cnt"
+   ],
+   "matchedReference": 0
+  }
+ ]
+}

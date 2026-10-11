@@ -1,0 +1,1555 @@
+{
+ "kind": "time-blast.sql-eval",
+ "version": 1,
+ "date": "2026-10-11T11:08:31.487Z",
+ "label": "b3-v5-A",
+ "translator": "tb1",
+ "model": "openai/gpt-oss-120b",
+ "dataset": "flights",
+ "endpoint": "ws://127.0.0.1:8792/session",
+ "server": "prompt experiment TB_PROMPT_EXP=A, cache off, 127.0.0.1",
+ "corpus": {
+  "path": "evals/sql-corpus-flights.json",
+  "cases": 34,
+  "version": 1
+ },
+ "environment": {
+  "node": "v23.11.1",
+  "platform": "linux",
+  "arch": "arm64",
+  "cpus": 4,
+  "duckdbWasm": "1.32.0",
+  "loadavgAtStart": [
+   18.6,
+   75.8,
+   77.8
+  ],
+  "loadavgAtEnd": [
+   17.6,
+   69.3,
+   75.6
+  ]
+ },
+ "context": {
+  "tables": [
+   {
+    "name": "flights",
+    "rows": 611132,
+    "columns": 21
+   },
+   {
+    "name": "carriers",
+    "rows": 15,
+    "columns": 2
+   },
+   {
+    "name": "airports",
+    "rows": 340,
+    "columns": 7
+   }
+  ],
+  "promptBytes": 3509
+ },
+ "rollups": [
+  {
+   "table": "flights",
+   "grain": "hour",
+   "rows": 12084,
+   "ms": 1641.124380999987
+  },
+  {
+   "table": "flights",
+   "grain": "day",
+   "rows": 1038,
+   "ms": 96.31510100000014
+  },
+  {
+   "table": "*",
+   "ms": 0,
+   "done": true
+  }
+ ],
+ "summary": {
+  "n": 34,
+  "counts": {
+   "exact": 4,
+   "equivalent": 26,
+   "shape-violation": 0,
+   "wrong": 4,
+   "sql-error": 0,
+   "rejected-by-guard": 0
+  },
+  "correct": 0.882,
+  "issues": {
+   "viewHintUnasked": 1,
+   "viewHintInvalid": 0,
+   "viewHintMissed": 1,
+   "rawRows": 0,
+   "foreignDialect": 0,
+   "wallClock": 0
+  },
+  "latency": {
+   "firstDeltaP50": 267.7,
+   "firstDeltaP95": 659.6,
+   "sqlP50": 363.6,
+   "sqlP95": 701.6,
+   "providerFirstTokenP50": 254.2
+  },
+  "tokens": {
+   "prompt": 55317,
+   "completion": 3486,
+   "cached": 39424
+  },
+  "costUsd": 0.007432,
+  "costPerRequestUsd": 0.0002186
+ },
+ "cases": [
+  {
+   "id": "flights_per_airline",
+   "question": "number of flights per airline",
+   "tags": [
+    "aggregate",
+    "join",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT carriers.name AS airline,COUNT(*) AS flights FROM flights JOIN carriers ON flights.carrier=carriers.code GROUP BY carriers.name ORDER BY carriers.name",
+   "referenceRows": 15,
+   "latency": {
+    "firstDeltaMs": 345.6022399999929,
+    "sqlMs": 404.6258579999994,
+    "providerFirstTokenMs": 332.273193359375,
+    "dbMs": 287.2698679999994
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 256,
+    "completionTokens": 112,
+    "costUsd": 0.000285,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1580,
+    "reasoningTokens": 73
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 15,
+   "columns": [
+    "airline",
+    "flights"
+   ],
+   "matchedReference": 1
+  },
+  {
+   "id": "avg_dep_delay_per_carrier",
+   "question": "average departure delay by carrier",
+   "tags": [
+    "aggregate"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT f.carrier AS carrier,AVG(f.dep_delay) AS avg_dep_delay FROM flights AS f GROUP BY f.carrier ORDER BY f.carrier",
+   "referenceRows": 15,
+   "latency": {
+    "firstDeltaMs": 220.9306890000007,
+    "sqlMs": 299.41368300000613,
+    "providerFirstTokenMs": 219.231689453125,
+    "dbMs": 51.73106099999859
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 256,
+    "completionTokens": 75,
+    "costUsd": 0.0002628,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1580,
+    "reasoningTokens": 36
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 15,
+   "columns": [
+    "carrier",
+    "avg_dep_delay"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "cancellation_rate_per_airline",
+   "question": "cancellation rate per airline",
+   "tags": [
+    "aggregate",
+    "ratio",
+    "join",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT c.name AS airline, SUM(CASE WHEN f.cancelled THEN 1 ELSE 0 END)::DOUBLE/COUNT(*) AS cancel_rate FROM flights f JOIN carriers c ON f.carrier=c.code GROUP BY c.name ORDER BY cancel_rate DESC LIMIT 5000",
+   "referenceRows": 15,
+   "latency": {
+    "firstDeltaMs": 217.4331499999971,
+    "sqlMs": 342.6328289999947,
+    "providerFirstTokenMs": 210.97802734375,
+    "dbMs": 271.3766179999984
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 256,
+    "completionTokens": 95,
+    "costUsd": 0.0002748,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1580,
+    "reasoningTokens": 33
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 15,
+   "columns": [
+    "airline",
+    "cancel_rate"
+   ],
+   "matchedReference": 2
+  },
+  {
+   "id": "top10_busiest_airports",
+   "question": "top 10 busiest airports by departures",
+   "tags": [
+    "top-n"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT origin AS airport,COUNT(*) AS cnt FROM flights GROUP BY origin ORDER BY cnt DESC LIMIT 10",
+   "referenceRows": 10,
+   "latency": {
+    "firstDeltaMs": 659.5556539999961,
+    "sqlMs": 701.5566580000013,
+    "providerFirstTokenMs": 653.70068359375,
+    "dbMs": 32.347148999997444
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 256,
+    "completionTokens": 114,
+    "costUsd": 0.0002865,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1582,
+    "reasoningTokens": 84
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 10,
+   "columns": [
+    "airport",
+    "cnt"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "flights_per_day",
+   "question": "number of flights per day",
+   "tags": [
+    "bucket"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT flight_date AS x,COUNT(*) AS y FROM flights GROUP BY flight_date ORDER BY flight_date LIMIT 5000",
+   "referenceRows": 30,
+   "latency": {
+    "firstDeltaMs": 270.2811409999995,
+    "sqlMs": 314.4948640000075,
+    "providerFirstTokenMs": 253.093994140625,
+    "dbMs": 43.517070999998396
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 256,
+    "completionTokens": 78,
+    "costUsd": 0.0002646,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1580,
+    "reasoningTokens": 45
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 30,
+   "columns": [
+    "x",
+    "y"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "cancellations_per_day",
+   "question": "cancelled flights per day",
+   "tags": [
+    "bucket",
+    "filter"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT flight_date,COUNT(*) AS cnt FROM flights WHERE cancelled GROUP BY flight_date ORDER BY flight_date",
+   "referenceRows": 30,
+   "latency": {
+    "firstDeltaMs": 237.99414400001115,
+    "sqlMs": 302.8228220000019,
+    "providerFirstTokenMs": 237.42138671875,
+    "dbMs": 23.824674000003142
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 256,
+    "completionTokens": 72,
+    "costUsd": 0.000261,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1580,
+    "reasoningTokens": 43
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 30,
+   "columns": [
+    "flight_date",
+    "cnt"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "delay_by_hour_of_day",
+   "question": "average departure delay by hour of day",
+   "tags": [
+    "bucket",
+    "cyclic"
+   ],
+   "category": "wrong",
+   "reason": "values differ",
+   "sql": "SELECT date_part('hour', scheduled_departure) AS hour,AVG(dep_delay) AS avg_delay FROM flights WHERE NOT cancelled GROUP BY hour ORDER BY hour",
+   "referenceRows": 24,
+   "latency": {
+    "firstDeltaMs": 653.1411839999928,
+    "sqlMs": 696.1577249999973,
+    "providerFirstTokenMs": 650.3701171875,
+    "dbMs": 150.15705199999866
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 256,
+    "completionTokens": 96,
+    "costUsd": 0.0002757,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1582,
+    "reasoningTokens": 56
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 24,
+   "columns": [
+    "hour",
+    "avg_delay"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "arr_delay_per_carrier_7d",
+   "question": "average arrival delay per carrier over the last 7 days",
+   "tags": [
+    "aggregate",
+    "window"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT carrier AS carrier,AVG(arr_delay) AS avg_delay FROM flights WHERE flight_date>=DATE '2024-06-30'-INTERVAL '7 days' GROUP BY carrier ORDER BY carrier LIMIT 5000",
+   "referenceRows": 15,
+   "latency": {
+    "firstDeltaMs": 570.6734409999917,
+    "sqlMs": 657.1764919999987,
+    "providerFirstTokenMs": 570.11474609375,
+    "dbMs": 34.68847099999766
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 256,
+    "completionTokens": 168,
+    "costUsd": 0.0003195,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1586,
+    "reasoningTokens": 116
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 15,
+   "columns": [
+    "carrier",
+    "avg_delay"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "departures_per_state",
+   "question": "number of departures per state",
+   "tags": [
+    "aggregate",
+    "join"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT a.state AS state,COUNT(*) AS cnt FROM flights f JOIN airports a ON f.origin=a.code GROUP BY a.state ORDER BY a.state LIMIT 5000",
+   "referenceRows": 53,
+   "latency": {
+    "firstDeltaMs": 223.1929289999971,
+    "sqlMs": 635.9420469999895,
+    "providerFirstTokenMs": 222.618896484375,
+    "dbMs": 202.54632400000264
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 106,
+    "costUsd": 0.0001854,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1580,
+    "reasoningTokens": 64
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 53,
+   "columns": [
+    "state",
+    "cnt"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "airport_map_departures",
+   "question": "map of airports by number of departures",
+   "tags": [
+    "geo",
+    "join",
+    "view"
+   ],
+   "category": "exact",
+   "reason": "",
+   "sql": "-- view: map\nSELECT a.lat AS lat,a.lon AS lon,COUNT(*) AS departures FROM flights f JOIN airports a ON f.origin=a.code GROUP BY a.lat,a.lon ORDER BY departures LIMIT 5000",
+   "referenceRows": 340,
+   "latency": {
+    "firstDeltaMs": 282.79815699999745,
+    "sqlMs": 577.1505529999995,
+    "providerFirstTokenMs": 263.04150390625,
+    "dbMs": 159.25465699999768
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 117,
+    "costUsd": 0.0002307,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1838,
+    "reasoningTokens": 65
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 340,
+   "columns": [
+    "lat",
+    "lon",
+    "departures"
+   ],
+   "matchedReference": 2
+  },
+  {
+   "id": "top5_routes",
+   "question": "top 5 busiest routes",
+   "tags": [
+    "top-n",
+    "series"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT origin AS x,dest AS series,COUNT(*) AS cnt FROM flights GROUP BY origin,dest ORDER BY cnt DESC LIMIT 5",
+   "referenceRows": 5,
+   "latency": {
+    "firstDeltaMs": 490.21365399999195,
+    "sqlMs": 544.6342319999967,
+    "providerFirstTokenMs": 481.9697265625,
+    "dbMs": 130.78369899999961
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 107,
+    "costUsd": 0.000186,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1580,
+    "reasoningTokens": 71
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 5,
+   "columns": [
+    "x",
+    "series",
+    "cnt"
+   ],
+   "matchedReference": 1
+  },
+  {
+   "id": "avg_distance_per_airline",
+   "question": "average flight distance per airline",
+   "tags": [
+    "aggregate",
+    "join"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT c.name AS airline, AVG(f.distance) AS avg_distance FROM flights f JOIN carriers c ON f.carrier = c.code GROUP BY c.name ORDER BY c.name",
+   "referenceRows": 15,
+   "latency": {
+    "firstDeltaMs": 267.71069700000226,
+    "sqlMs": 350.83548999999766,
+    "providerFirstTokenMs": 254.58251953125,
+    "dbMs": 141.61445599999934
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 96,
+    "costUsd": 0.0001794,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1580,
+    "reasoningTokens": 53
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 15,
+   "columns": [
+    "airline",
+    "avg_distance"
+   ],
+   "matchedReference": 1
+  },
+  {
+   "id": "longest_route",
+   "question": "what is the longest route in miles",
+   "tags": [
+    "aggregate",
+    "scalar",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT origin AS origin,dest AS dest,distance AS max_dist FROM flights ORDER BY distance DESC LIMIT 1",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 851.7154480000027,
+    "sqlMs": 993.1641670000099,
+    "providerFirstTokenMs": 843.52587890625,
+    "dbMs": 81.56872300000032
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 116,
+    "costUsd": 0.0002301,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1838,
+    "reasoningTokens": 85
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1,
+   "columns": [
+    "origin",
+    "dest",
+    "max_dist"
+   ],
+   "matchedReference": 2
+  },
+  {
+   "id": "weather_delay_per_day",
+   "question": "total weather delay minutes per day",
+   "tags": [
+    "bucket"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT flight_date AS x, SUM(weather_delay) AS total_weather FROM flights GROUP BY flight_date ORDER BY flight_date LIMIT 5000",
+   "referenceRows": 30,
+   "latency": {
+    "firstDeltaMs": 200.93338499999663,
+    "sqlMs": 265.59593999999925,
+    "providerFirstTokenMs": 200.025634765625,
+    "dbMs": 35.799371000000974
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 75,
+    "costUsd": 0.00028215,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 2349,
+    "reasoningTokens": 39
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 30,
+   "columns": [
+    "x",
+    "total_weather"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "delay_causes",
+   "question": "average minutes of each delay cause",
+   "tags": [
+    "aggregate",
+    "wide",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT AVG(carrier_delay) AS avg_carrier_delay,AVG(weather_delay) AS avg_weather_delay,AVG(nas_delay) AS avg_nas_delay,AVG(security_delay) AS avg_security_delay,AVG(late_aircraft_delay) AS avg_late_aircraft_delay FROM flights",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 216.32025099999737,
+    "sqlMs": 336.0043549999973,
+    "providerFirstTokenMs": 206.151611328125,
+    "dbMs": 24.854413000000932
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 121,
+    "costUsd": 0.00019455,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1581,
+    "reasoningTokens": 54
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1,
+   "columns": [
+    "avg_carrier_delay",
+    "avg_weather_delay",
+    "avg_nas_delay",
+    "avg_security_delay",
+    "avg_late_aircraft_delay"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "diverted_per_airline",
+   "question": "how many flights were diverted per airline",
+   "tags": [
+    "aggregate",
+    "filter"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT carrier AS airline, COUNT(*) AS diverted_cnt FROM flights WHERE diverted = true GROUP BY carrier ORDER BY carrier",
+   "referenceRows": 15,
+   "latency": {
+    "firstDeltaMs": 157.3108729999949,
+    "sqlMs": 234.09399700000358,
+    "providerFirstTokenMs": 142.90185546875,
+    "dbMs": 44.32128699999885
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 56,
+    "costUsd": 0.0001557,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1582,
+    "reasoningTokens": 25
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 15,
+   "columns": [
+    "airline",
+    "diverted_cnt"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "jfk_june_15",
+   "question": "how many flights departed from JFK on June 15",
+   "tags": [
+    "filter",
+    "scalar",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT COUNT(*) AS flight_count FROM flights WHERE origin = 'JFK' AND flight_date = DATE '2024-06-15'",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 254.73751300000004,
+    "sqlMs": 324.45671500000753,
+    "providerFirstTokenMs": 254.234619140625,
+    "dbMs": 19.328832000002876
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 91,
+    "costUsd": 0.00017715,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1585,
+    "reasoningTokens": 54
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1,
+   "columns": [
+    "flight_count"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "taxi_out_busiest10",
+   "question": "average taxi-out time at the 10 busiest airports",
+   "tags": [
+    "top-n",
+    "subquery"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT f.origin AS airport, AVG(f.taxi_out) AS avg_taxi_out FROM flights f GROUP BY f.origin ORDER BY COUNT(*) DESC LIMIT 10",
+   "referenceRows": 10,
+   "latency": {
+    "firstDeltaMs": 206.71168400000897,
+    "sqlMs": 272.33061600000656,
+    "providerFirstTokenMs": 206.0068359375,
+    "dbMs": 54.099544000000606
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 83,
+    "costUsd": 0.00017235,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1585,
+    "reasoningTokens": 42
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 10,
+   "columns": [
+    "airport",
+    "avg_taxi_out"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "delta_daily_arr_delay",
+   "question": "delta average arrival delay per day",
+   "tags": [
+    "filter",
+    "bucket",
+    "entity-name"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT flight_date AS x, AVG(arr_delay) AS y FROM flights WHERE carrier='DL' GROUP BY flight_date ORDER BY flight_date",
+   "referenceRows": 30,
+   "latency": {
+    "firstDeltaMs": 301.6586820000084,
+    "sqlMs": 363.599589999998,
+    "providerFirstTokenMs": 297.774169921875,
+    "dbMs": 55.53692999999839
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 256,
+    "completionTokens": 83,
+    "costUsd": 0.00026775,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1581,
+    "reasoningTokens": 47
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 30,
+   "columns": [
+    "x",
+    "y"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "on_time_pct_per_carrier",
+   "question": "on-time percentage per carrier",
+   "tags": [
+    "ratio",
+    "ambiguous",
+    "domain"
+   ],
+   "category": "exact",
+   "reason": "",
+   "sql": "SELECT f.carrier AS carrier,100.0*SUM(CASE WHEN f.arr_delay<=0 THEN 1 ELSE 0 END)/COUNT(*) AS on_time_pct FROM flights f GROUP BY f.carrier ORDER BY f.carrier",
+   "referenceRows": 15,
+   "latency": {
+    "firstDeltaMs": 220.73732599998766,
+    "sqlMs": 320.7709709999908,
+    "providerFirstTokenMs": 218.491455078125,
+    "dbMs": 139.151850000002
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 114,
+    "costUsd": 0.0001902,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1580,
+    "reasoningTokens": 58
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 15,
+   "columns": [
+    "carrier",
+    "on_time_pct"
+   ],
+   "matchedReference": 4
+  },
+  {
+   "id": "wn_dl_daily_flights",
+   "question": "flights per day for Southwest and Delta",
+   "tags": [
+    "bucket",
+    "series",
+    "entity-name"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT f.flight_date AS x, c.name AS series, COUNT(*) AS y FROM flights f JOIN carriers c ON f.carrier=c.code WHERE f.carrier IN ('WN','DL') GROUP BY f.flight_date,c.name ORDER BY f.flight_date,c.name",
+   "referenceRows": 60,
+   "latency": {
+    "firstDeltaMs": 406.81869599998754,
+    "sqlMs": 514.246987999999,
+    "providerFirstTokenMs": 406.23974609375,
+    "dbMs": 240.40365100000054
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 256,
+    "completionTokens": 108,
+    "costUsd": 0.00028305,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1583,
+    "reasoningTokens": 47
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 60,
+   "columns": [
+    "x",
+    "series",
+    "y"
+   ],
+   "matchedReference": 1
+  },
+  {
+   "id": "worst_airports_dep_delay",
+   "question": "10 airports with the highest average departure delay",
+   "tags": [
+    "top-n"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT origin AS airport,AVG(dep_delay) AS avg_delay FROM flights WHERE NOT cancelled GROUP BY origin ORDER BY avg_delay DESC LIMIT 10",
+   "referenceRows": 10,
+   "latency": {
+    "firstDeltaMs": 279.868026000011,
+    "sqlMs": 338.79796200001147,
+    "providerFirstTokenMs": 269.74365234375,
+    "dbMs": 81.81616800000484
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 110,
+    "costUsd": 0.00018825,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1583,
+    "reasoningTokens": 73
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 10,
+   "columns": [
+    "airport",
+    "avg_delay"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "partial_cancelled_per_carr",
+   "question": "number of cancelled flights per carr",
+   "tags": [
+    "ambiguous",
+    "partial"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT f.carrier AS carr,COUNT(*) AS cnt FROM flights f WHERE f.cancelled GROUP BY f.carrier ORDER BY f.carrier LIMIT 5000",
+   "referenceRows": 15,
+   "latency": {
+    "firstDeltaMs": 209.88101900000765,
+    "sqlMs": 282.00242300001264,
+    "providerFirstTokenMs": 194.99169921875,
+    "dbMs": 49.02433200000087
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 78,
+    "costUsd": 0.00016875,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1581,
+    "reasoningTokens": 37
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 15,
+   "columns": [
+    "carr",
+    "cnt"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "single_word_delays",
+   "question": "delays",
+   "tags": [
+    "ambiguous",
+    "partial"
+   ],
+   "category": "wrong",
+   "reason": "values differ",
+   "sql": "SELECT flight_date AS x,AVG(dep_delay) AS avg_delay FROM flights WHERE cancelled=FALSE GROUP BY flight_date ORDER BY flight_date LIMIT 5000",
+   "referenceRows": 30,
+   "latency": {
+    "firstDeltaMs": 220.83184800000163,
+    "sqlMs": 292.71436700000777,
+    "providerFirstTokenMs": 207.137451171875,
+    "dbMs": 49.76946400000452
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 94,
+    "costUsd": 0.00017775,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1577,
+    "reasoningTokens": 54
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 30,
+   "columns": [
+    "x",
+    "avg_delay"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "unknown_airline_lufthansa",
+   "question": "how many flights did Lufthansa operate",
+   "tags": [
+    "filter",
+    "no-data",
+    "join"
+   ],
+   "category": "exact",
+   "reason": "",
+   "sql": "SELECT COUNT(*) AS flights FROM flights f JOIN carriers c ON f.carrier=c.code WHERE c.name ILIKE '%Lufthansa%'",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 578.7747810000001,
+    "sqlMs": 643.8456630000001,
+    "providerFirstTokenMs": 570.0732421875,
+    "dbMs": 39.17555200000061
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 131,
+    "costUsd": 0.00020055,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1581,
+    "reasoningTokens": 96
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1,
+   "columns": [
+    "flights"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "scatter_dep_arr_delay_airport",
+   "question": "scatter of average departure delay vs average arrival delay per airport",
+   "tags": [
+    "view",
+    "aggregate"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT avg(dep_delay) AS avg_dep, avg(arr_delay) AS avg_arr FROM flights GROUP BY origin ORDER BY avg_dep LIMIT 5000",
+   "referenceRows": 340,
+   "latency": {
+    "firstDeltaMs": 415.97765299999446,
+    "sqlMs": 481.0326950000017,
+    "providerFirstTokenMs": 415.09521484375,
+    "dbMs": 128.81982200000493
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 149,
+    "costUsd": 0.0002121,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1586,
+    "reasoningTokens": 111
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": true,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 340,
+   "columns": [
+    "avg_dep",
+    "avg_arr"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "cancellations_by_weekday",
+   "question": "cancellations by day of week",
+   "tags": [
+    "bucket",
+    "cyclic",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT EXTRACT(DOW FROM flight_date) AS dow,SUM(CASE WHEN cancelled THEN 1 ELSE 0 END) AS cancellations FROM flights GROUP BY dow ORDER BY dow LIMIT 5000",
+   "referenceRows": 7,
+   "latency": {
+    "firstDeltaMs": 343.7615280000027,
+    "sqlMs": 470.69163699999626,
+    "providerFirstTokenMs": 330.1806640625,
+    "dbMs": 67.97259599999961
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 149,
+    "costUsd": 0.0002115,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1582,
+    "reasoningTokens": 101
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 7,
+   "columns": [
+    "dow",
+    "cancellations"
+   ],
+   "matchedReference": 2
+  },
+  {
+   "id": "median_dep_delay_per_carrier",
+   "question": "median departure delay per carrier",
+   "tags": [
+    "aggregate",
+    "statistics"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT carrier, percentile_cont(0.5) WITHIN GROUP (ORDER BY dep_delay) AS med_delay FROM flights WHERE NOT cancelled GROUP BY carrier ORDER BY carrier",
+   "referenceRows": 15,
+   "latency": {
+    "firstDeltaMs": 202.02040300000226,
+    "sqlMs": 281.35329099999217,
+    "providerFirstTokenMs": 199.7216796875,
+    "dbMs": 178.04411700000492
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 93,
+    "costUsd": 0.000216,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1836,
+    "reasoningTokens": 51
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 15,
+   "columns": [
+    "carrier",
+    "med_delay"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "ohare_avg_delay",
+   "question": "average delay at Chicago O'Hare",
+   "tags": [
+    "filter",
+    "entity-name",
+    "ambiguous",
+    "scalar"
+   ],
+   "category": "wrong",
+   "reason": "values differ",
+   "sql": "SELECT avg(arr_delay) AS avg_delay FROM flights WHERE (origin='ORD' OR dest='ORD') AND NOT cancelled",
+   "referenceRows": 1,
+   "latency": {
+    "firstDeltaMs": 574.1790220000112,
+    "sqlMs": 623.4143509999994,
+    "providerFirstTokenMs": 564.307373046875,
+    "dbMs": 72.23023300000204
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 103,
+    "costUsd": 0.0001839,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1582,
+    "reasoningTokens": 70
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 1,
+   "columns": [
+    "avg_delay"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "weekly_flights_per_carrier",
+   "question": "flights per week for each carrier",
+   "tags": [
+    "bucket",
+    "series"
+   ],
+   "category": "wrong",
+   "reason": "values differ",
+   "sql": "SELECT date_trunc('week', flight_date) AS week, carriers.name AS carrier, COUNT(*) AS flights FROM flights JOIN carriers ON flights.carrier=carriers.code GROUP BY week, carriers.name ORDER BY week, carriers.name",
+   "referenceRows": 75,
+   "latency": {
+    "firstDeltaMs": 221.63186199999473,
+    "sqlMs": 424.6004019999964,
+    "providerFirstTokenMs": 220.44091796875,
+    "dbMs": 424.8978829999978
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 99,
+    "costUsd": 0.0001815,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1582,
+    "reasoningTokens": 44
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 75,
+   "columns": [
+    "week",
+    "carrier",
+    "flights"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "avg_speed_per_carrier_mph",
+   "question": "average speed in the air per airline in mph",
+   "tags": [
+    "units",
+    "ratio",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT c.name AS airline, AVG(f.distance/(f.air_time/60.0)) AS avg_speed FROM flights f JOIN carriers c ON f.carrier=c.code GROUP BY c.name ORDER BY c.name LIMIT 5000",
+   "referenceRows": 15,
+   "latency": {
+    "firstDeltaMs": 297.6604129999905,
+    "sqlMs": 394.87449000000197,
+    "providerFirstTokenMs": 294.001953125,
+    "dbMs": 165.08304000000498
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 108,
+    "costUsd": 0.0001872,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1584,
+    "reasoningTokens": 54
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 15,
+   "columns": [
+    "airline",
+    "avg_speed"
+   ],
+   "matchedReference": 3
+  },
+  {
+   "id": "share_delayed_over_hour_per_day",
+   "question": "share of flights delayed more than an hour, per day",
+   "tags": [
+    "ratio",
+    "bucket",
+    "ambiguous"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "SELECT flight_date, SUM(CASE WHEN dep_delay>60 THEN 1 ELSE 0 END)::DOUBLE/COUNT(*) AS share_delayed FROM flights GROUP BY flight_date ORDER BY flight_date",
+   "referenceRows": 30,
+   "latency": {
+    "firstDeltaMs": 259.7752000000037,
+    "sqlMs": 394.85248899999715,
+    "providerFirstTokenMs": 247.7177734375,
+    "dbMs": 93.43225800000073
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 84,
+    "costUsd": 0.0001731,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1586,
+    "reasoningTokens": 37
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 30,
+   "columns": [
+    "flight_date",
+    "share_delayed"
+   ],
+   "matchedReference": 2
+  },
+  {
+   "id": "cancellation_reasons",
+   "question": "breakdown of cancellation reasons",
+   "tags": [
+    "aggregate",
+    "filter"
+   ],
+   "category": "equivalent",
+   "reason": "different column names",
+   "sql": "-- view: bar\nSELECT cancellation_reason AS reason,COUNT(*) AS cnt FROM flights WHERE cancelled GROUP BY cancellation_reason ORDER BY reason",
+   "referenceRows": 3,
+   "latency": {
+    "firstDeltaMs": 214.27017499999783,
+    "sqlMs": 250.89380700000038,
+    "providerFirstTokenMs": 183.2744140625,
+    "dbMs": 26.208835999997973
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 67,
+    "costUsd": 0.000162,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1580,
+    "reasoningTokens": 32
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": true,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 3,
+   "columns": [
+    "reason",
+    "cnt"
+   ],
+   "matchedReference": 0
+  },
+  {
+   "id": "hourly_departures_atl_last_day",
+   "question": "departures per hour from Atlanta on the last day",
+   "tags": [
+    "bucket",
+    "window",
+    "filter",
+    "entity-name"
+   ],
+   "category": "exact",
+   "reason": "",
+   "sql": "SELECT time_bucket(INTERVAL '1 hour', scheduled_departure) AS hour, COUNT(*) AS departures FROM flights WHERE origin='ATL' AND flight_date=DATE '2024-06-30' GROUP BY hour ORDER BY hour",
+   "referenceRows": 19,
+   "latency": {
+    "firstDeltaMs": 297.83105599999544,
+    "sqlMs": 404.009487000003,
+    "providerFirstTokenMs": 295.2548828125,
+    "dbMs": 30.471232999996573
+   },
+   "stats": {
+    "attempts": 1,
+    "cachedTokens": 1536,
+    "completionTokens": 138,
+    "costUsd": 0.00020535,
+    "model": "openai/gpt-oss-120b",
+    "promptTokens": 1585,
+    "reasoningTokens": 82
+   },
+   "cached": false,
+   "issues": {
+    "viewHintUnasked": false,
+    "viewHintInvalid": false,
+    "viewHintMissed": false,
+    "rawRows": false,
+    "foreignDialect": false,
+    "wallClock": false
+   },
+   "rows": 19,
+   "columns": [
+    "hour",
+    "departures"
+   ],
+   "matchedReference": 0
+  }
+ ],
+ "rescoredAt": "2026-10-11T11:15:26.525Z"
+}

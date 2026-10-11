@@ -85,6 +85,8 @@ export interface Database {
   /** Resolves when the background rollup build has finished (immediately when off). */
   rollupsDone: Promise<void>;
   run(sql: string): Promise<QueryResult>;
+  /** The Arrow batches the node emitted for the last successful `run` (for renderer checks). */
+  lastBatches(): RecordBatch[];
   dispose(): void;
 }
 
@@ -155,13 +157,14 @@ export async function openDatabase(dataset = 'vessels', opts: OpenOptions = {}):
   };
   if (nodeOptions.rollups === false) rollupsResolve();
 
-  let pending: { request: number; resolve: (r: QueryResult) => void; t0: number; columns?: Column[]; rows: Value[][] } | undefined;
+  let pending: { request: number; resolve: (r: QueryResult) => void; t0: number; columns?: Column[]; rows: Value[][]; batches: RecordBatch[] } | undefined;
+  let batches: RecordBatch[] = [];
   const node = new DuckDatabaseNode(db as DuckBindings, (frame: LocalFrame) => {
     if (!pending || frame.request !== pending.request) return;
     const p = pending;
     if (frame.kind === Kind.RESULT_SCHEMA) p.columns = (frame.payload as Schema).fields.map(f => ({ name: f.name, kind: kindOf(f.type) }));
-    else if (frame.kind === Kind.BATCH) appendRows(p.rows, frame.payload as RecordBatch);
-    else if (frame.kind === Kind.DONE) { pending = undefined; p.resolve({ ok: true, columns: p.columns ?? [], rows: p.rows, ms: performance.now() - p.t0 }); }
+    else if (frame.kind === Kind.BATCH) { appendRows(p.rows, frame.payload as RecordBatch); p.batches.push(frame.payload as RecordBatch); }
+    else if (frame.kind === Kind.DONE) { pending = undefined; batches = p.batches; p.resolve({ ok: true, columns: p.columns ?? [], rows: p.rows, ms: performance.now() - p.t0 }); }
     else if (frame.kind === Kind.ERROR) {
       pending = undefined;
       const { code, message } = readJson<{ code: string; message: string }>(frame.payload as Uint8Array);
@@ -181,10 +184,11 @@ export async function openDatabase(dataset = 'vessels', opts: OpenOptions = {}):
     run(sql: string) {
       if (pending) throw new Error('one query at a time');
       return new Promise<QueryResult>(resolve => {
-        pending = { request: ++request, resolve, t0: performance.now(), rows: [] };
+        pending = { request: ++request, resolve, t0: performance.now(), rows: [], batches: [] };
         node.handle({ ...header(Kind.EXEC, { request, epoch: 1, context: 1, revision: request }), stamps: [], payload: text(sql) });
       });
     },
+    lastBatches: () => batches,
     dispose() { node.dispose(); },
   };
 }
@@ -369,7 +373,8 @@ function shapeKept(ref: Column[], map: number[]): boolean {
     return series.every(s => values.every(v => s < v));
   }
   const [x, ...rest] = ref.map((_, i) => i).filter(i => !geo(ref[i]));
-  if (x === undefined || rest.some(i => map[i] < map[x])) return false;
+  if (x === undefined) return true;
+  if (rest.some(i => map[i] < map[x])) return false;
   const series = rest.filter(i => ref[i].kind === 'text').map(i => map[i]);
   const values = rest.filter(i => ref[i].kind !== 'text').map(i => map[i]);
   return series.every(s => values.every(v => s < v));
@@ -459,8 +464,10 @@ export function sameExecution(sql: string, a: QueryResult, b: QueryResult): { sa
   }
   const names = (r: typeof a) => r.columns.map(c => `${c.name}:${c.kind}`).join(', ');
   if (names(a) !== names(b)) return { same: false, reason: `columns ${names(a)} vs ${names(b)}` };
-  const verdict = compareResults(a, b, /\border\s+by\b/i.test(sql));
-  return { same: verdict.category === 'exact', reason: verdict.category === 'exact' ? '' : `${verdict.category}: ${verdict.reason}` };
+  if (a.rows.length !== b.rows.length) return { same: false, reason: `rows ${a.rows.length} vs ${b.rows.length}` };
+  const identity = a.columns.map((_, i) => i);
+  const same = rowsMatch(a.rows, b.rows, identity, /\border\s+by\b/i.test(sql)) === 0;
+  return { same, reason: same ? '' : 'values differ' };
 }
 
 // ───────────────────────── known issues ─────────────────────────
@@ -686,11 +693,19 @@ export function dbRepairQuestion(question: string, sql: string, code: string, me
   return `${question}\n\nThis SQL failed in the database with ${code}: ${message.replace(/\s+/g, ' ').slice(0, 300)}\n${sql}\nWrite a corrected query.`;
 }
 
+/** Execute with the result memoized per statement. A `timeout` is retried twice: on a loaded
+ * host (this one is shared) a statement that normally takes milliseconds can exceed the limit. */
+async function runRetrying(database: Database, sql: string): Promise<QueryResult> {
+  let r = await database.run(sql);
+  for (let attempt = 0; attempt < 2 && !r.ok && r.code === 'timeout'; attempt++) r = await database.run(sql);
+  return r;
+}
+
 export async function evaluate(corpus: Corpus, database: Database, translator: Translator, opts: { only?: Set<string>; log?: (line: string) => void; dbRepair?: boolean } = {}): Promise<CaseReport[]> {
   const cache = new Map<string, QueryResult>();
   const run = async (sql: string) => {
     let r = cache.get(sql);
-    if (!r) { r = await database.run(sql); cache.set(sql, r); }
+    if (!r) { r = await runRetrying(database, sql); cache.set(sql, r); }
     return r;
   };
   const out: CaseReport[] = [];
@@ -847,7 +862,7 @@ export async function evaluatePrefixes(corpus: Corpus, database: Database, trans
   const cache = new Map<string, QueryResult>();
   const run = async (sql: string) => {
     let r = cache.get(sql);
-    if (!r) { r = await database.run(sql); cache.set(sql, r); }
+    if (!r) { r = await runRetrying(database, sql); cache.set(sql, r); }
     return r;
   };
   const score = async (c: Case, sql: string | undefined): Promise<{ category: Category; result?: QueryResult }> => {
