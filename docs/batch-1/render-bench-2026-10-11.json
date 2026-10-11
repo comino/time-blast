@@ -1,0 +1,472 @@
+{
+ "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.0 Safari/537.36",
+ "devicePixelRatio": 1,
+ "crossOriginIsolated": true,
+ "reps": 5,
+ "batchRows": 2048,
+ "series": 6,
+ "wasmBytes": 175094,
+ "workerRequestAnimationFrame": "requestAnimationFrame",
+ "runs": {
+  "legacy-canvas2d-8640": {
+   "batchToFirstDrawMs": {
+    "n": 5,
+    "median": 0.015,
+    "p95": 4.675,
+    "min": 0.01,
+    "max": 4.675
+   },
+   "appendMs": {
+    "n": 20,
+    "median": 0,
+    "p95": 0.005,
+    "min": 0,
+    "max": 0.005
+   },
+   "allBatchesDrawnMs": {
+    "n": 5,
+    "median": 101.48,
+    "p95": 371.69,
+    "min": 97.91,
+    "max": 371.69
+   },
+   "fullRedrawMs": {
+    "n": 5,
+    "median": 101.93,
+    "p95": 283.875,
+    "min": 98.14,
+    "max": 283.875
+   },
+   "note": "Canvas2D work runs in 4 ms slices per animation frame (FrameWork); totals are wall time including frame pacing."
+  },
+  "webgpu-8640": {
+   "batchToFirstDrawSubmittedMs": {
+    "n": 5,
+    "median": 1.855,
+    "p95": 30.54,
+    "min": 0.7651,
+    "max": 30.54
+   },
+   "firstIngestMs": {
+    "n": 5,
+    "median": 0.175,
+    "p95": 11.48,
+    "min": 0.16,
+    "max": 11.48
+   },
+   "firstBuildMs": {
+    "n": 5,
+    "median": 0.07,
+    "p95": 4.03,
+    "min": 0.06,
+    "max": 4.03
+   },
+   "firstReplaySubmitMs": {
+    "n": 5,
+    "median": 0.975,
+    "p95": 10.94,
+    "min": 0.14,
+    "max": 10.94
+   },
+   "appendIngestMs": {
+    "n": 20,
+    "median": 0.185,
+    "p95": 5.84,
+    "min": 0.095,
+    "max": 10.59
+   },
+   "appendFrameMs": {
+    "n": 20,
+    "median": 1.32,
+    "p95": 5.72,
+    "min": 0.27,
+    "max": 23.34
+   },
+   "allBatchesMs": {
+    "n": 5,
+    "median": 11.785,
+    "p95": 71.43,
+    "min": 7.815,
+    "max": 71.43
+   },
+   "fullRedrawCpuMs": {
+    "n": 5,
+    "median": 0.59,
+    "p95": 1.985,
+    "min": 0.52,
+    "max": 1.985
+   },
+   "fullRedrawGpuDoneMs": {
+    "n": 5,
+    "median": 1031.52,
+    "p95": 1388.835,
+    "min": 531.645,
+    "max": 1388.835
+   },
+   "fullRebuildMs": {
+    "n": 5,
+    "median": 0.4725,
+    "p95": 0.685,
+    "min": 0.3725,
+    "max": 0.685
+   },
+   "lastFrame": {
+    "build": 0.039999961853027344,
+    "replay": 0.059999942779541016,
+    "commands": 54,
+    "calls": 58,
+    "uploadedBytes": 3488
+   },
+   "wasmMemoryBytesBefore": 1179648,
+   "wasmMemoryBytesAfter": 1966080
+  },
+  "webgl2-8640": {
+   "batchToFirstDrawSubmittedMs": {
+    "n": 5,
+    "median": 3.895,
+    "p95": 9.53,
+    "min": 0.6548,
+    "max": 9.53
+   },
+   "firstIngestMs": {
+    "n": 5,
+    "median": 0.195,
+    "p95": 0.705,
+    "min": 0.145,
+    "max": 0.705
+   },
+   "firstBuildMs": {
+    "n": 5,
+    "median": 0.07,
+    "p95": 0.66,
+    "min": 0.065,
+    "max": 0.66
+   },
+   "firstReplaySubmitMs": {
+    "n": 5,
+    "median": 2.63,
+    "p95": 9.07,
+    "min": 0.225,
+    "max": 9.07
+   },
+   "appendIngestMs": {
+    "n": 20,
+    "median": 0.185,
+    "p95": 5.325,
+    "min": 0.11,
+    "max": 5.835
+   },
+   "appendFrameMs": {
+    "n": 20,
+    "median": 0.63,
+    "p95": 3.62,
+    "min": 0.215,
+    "max": 4.22
+   },
+   "allBatchesMs": {
+    "n": 5,
+    "median": 12.745,
+    "p95": 26.9,
+    "min": 8.72,
+    "max": 26.9
+   },
+   "fullRedrawCpuMs": {
+    "n": 5,
+    "median": 1.56,
+    "p95": 5.07,
+    "min": 0.56,
+    "max": 5.07
+   },
+   "fullRedrawGpuDoneMs": {
+    "n": 5,
+    "median": 12.785,
+    "p95": 36.5,
+    "min": 9.72,
+    "max": 36.5
+   },
+   "fullRebuildMs": {
+    "n": 5,
+    "median": 1.0525,
+    "p95": 3.4075,
+    "min": 0.3175,
+    "max": 3.4075
+   },
+   "lastFrame": {
+    "build": 0.04500007629394531,
+    "replay": 4.759999752044678,
+    "commands": 54,
+    "calls": 99,
+    "uploadedBytes": 3488
+   },
+   "wasmMemoryBytesBefore": 1179648,
+   "wasmMemoryBytesAfter": 1966080
+  },
+  "legacy-canvas2d-60480": {
+   "batchToFirstDrawMs": {
+    "n": 5,
+    "median": 0.01,
+    "p95": 0.02,
+    "min": 0.005,
+    "max": 0.02
+   },
+   "appendMs": {
+    "n": 145,
+    "median": 0,
+    "p95": 0.005,
+    "min": 0,
+    "max": 0.015
+   },
+   "allBatchesDrawnMs": {
+    "n": 5,
+    "median": 516.325,
+    "p95": 518.69,
+    "min": 497.27,
+    "max": 518.69
+   },
+   "fullRedrawMs": {
+    "n": 5,
+    "median": 521.63,
+    "p95": 566.52,
+    "min": 516.82,
+    "max": 566.52
+   },
+   "note": "Canvas2D work runs in 4 ms slices per animation frame (FrameWork); totals are wall time including frame pacing."
+  },
+  "webgpu-60480": {
+   "batchToFirstDrawSubmittedMs": {
+    "n": 5,
+    "median": 0.925,
+    "p95": 5.8201,
+    "min": 0.5801,
+    "max": 5.8201
+   },
+   "firstIngestMs": {
+    "n": 5,
+    "median": 0.13,
+    "p95": 0.26,
+    "min": 0.125,
+    "max": 0.26
+   },
+   "firstBuildMs": {
+    "n": 5,
+    "median": 0.07,
+    "p95": 0.125,
+    "min": 0.065,
+    "max": 0.125
+   },
+   "firstReplaySubmitMs": {
+    "n": 5,
+    "median": 0.605,
+    "p95": 3.6,
+    "min": 0.245,
+    "max": 3.6
+   },
+   "appendIngestMs": {
+    "n": 145,
+    "median": 0.145,
+    "p95": 4.77,
+    "min": 0.075,
+    "max": 11.26
+   },
+   "appendFrameMs": {
+    "n": 145,
+    "median": 0.39,
+    "p95": 6.27,
+    "min": 0.215,
+    "max": 35.235
+   },
+   "allBatchesMs": {
+    "n": 5,
+    "median": 84.69,
+    "p95": 106.085,
+    "min": 36.575,
+    "max": 106.085
+   },
+   "fullRedrawCpuMs": {
+    "n": 5,
+    "median": 1.65,
+    "p95": 4.45,
+    "min": 0.57,
+    "max": 4.45
+   },
+   "fullRedrawGpuDoneMs": {
+    "n": 5,
+    "median": 10002.395,
+    "p95": 10009.69,
+    "min": 10000.825,
+    "max": 10009.69
+   },
+   "fullRebuildMs": {
+    "n": 5,
+    "median": 1.365,
+    "p95": 7.325,
+    "min": 0.3625,
+    "max": 7.325
+   },
+   "lastFrame": {
+    "build": 0.05500030517578125,
+    "replay": 4.714999675750732,
+    "commands": 54,
+    "calls": 58,
+    "uploadedBytes": 3488
+   },
+   "wasmMemoryBytesBefore": 1179648,
+   "wasmMemoryBytesAfter": 3801088
+  },
+  "webgl2-60480": {
+   "batchToFirstDrawSubmittedMs": {
+    "n": 5,
+    "median": 5.7251,
+    "p95": 26.7349,
+    "min": 0.645,
+    "max": 26.7349
+   },
+   "firstIngestMs": {
+    "n": 5,
+    "median": 0.12,
+    "p95": 1.26,
+    "min": 0.12,
+    "max": 1.26
+   },
+   "firstBuildMs": {
+    "n": 5,
+    "median": 0.075,
+    "p95": 4.165,
+    "min": 0.065,
+    "max": 4.165
+   },
+   "firstReplaySubmitMs": {
+    "n": 5,
+    "median": 2.105,
+    "p95": 12.78,
+    "min": 0.19,
+    "max": 12.78
+   },
+   "appendIngestMs": {
+    "n": 145,
+    "median": 0.14,
+    "p95": 4.86,
+    "min": 0.07,
+    "max": 23.175
+   },
+   "appendFrameMs": {
+    "n": 145,
+    "median": 0.35,
+    "p95": 16.415,
+    "min": 0.155,
+    "max": 111.64
+   },
+   "allBatchesMs": {
+    "n": 5,
+    "median": 143.91,
+    "p95": 347.115,
+    "min": 37.41,
+    "max": 347.115
+   },
+   "fullRedrawCpuMs": {
+    "n": 5,
+    "median": 1.225,
+    "p95": 16.065,
+    "min": 0.39,
+    "max": 16.065
+   },
+   "fullRedrawGpuDoneMs": {
+    "n": 5,
+    "median": 36.675,
+    "p95": 1171.125,
+    "min": 21.145,
+    "max": 1171.125
+   },
+   "fullRebuildMs": {
+    "n": 5,
+    "median": 3.7225,
+    "p95": 5.56,
+    "min": 1.81,
+    "max": 5.56
+   },
+   "lastFrame": {
+    "build": 2.2750000953674316,
+    "replay": 0.1399998664855957,
+    "commands": 54,
+    "calls": 99,
+    "uploadedBytes": 3488
+   },
+   "wasmMemoryBytesBefore": 1179648,
+   "wasmMemoryBytesAfter": 3801088
+  }
+ },
+ "webgpuLabel": "google swiftshader",
+ "webgl2Label": "webgl2",
+ "dataPath": {
+  "rows": 60480,
+  "bytes": 483840,
+  "copyColumnIntoWasm": {
+   "n": 50,
+   "median": 0.015,
+   "p95": 0.5525,
+   "min": 0.0122,
+   "max": 0.6655
+  },
+  "rustConvertF64toRelativeF32": {
+   "n": 50,
+   "median": 0.1438,
+   "p95": 0.7415,
+   "min": 0.0945,
+   "max": 0.9908
+  },
+  "rustMinMaxScalar": {
+   "n": 50,
+   "median": 0.0985,
+   "p95": 0.168,
+   "min": 0.0825,
+   "max": 0.1855
+  },
+  "rustMinMaxSimd128": {
+   "n": 50,
+   "median": 0.0737,
+   "p95": 0.118,
+   "min": 0.0622,
+   "max": 0.267
+  },
+  "jsFloat32SetFromFloat64": {
+   "n": 50,
+   "median": 0.0998,
+   "p95": 0.2025,
+   "min": 0.0832,
+   "max": 0.265
+  },
+  "webgpuWriteBufferRawArrowF64": {
+   "n": 30,
+   "median": 0.48,
+   "p95": 3.285,
+   "min": 0.36,
+   "max": 3.3
+  },
+  "webgpuUploadUntilDoneMs": {
+   "n": 20,
+   "median": 0.94,
+   "p95": 3.095,
+   "min": 0.35,
+   "max": 60.45
+  },
+  "webgpuReadbackRoundTripMs": {
+   "n": 20,
+   "median": 1.765,
+   "p95": 4.285,
+   "min": 0.385,
+   "max": 7.08
+  }
+ },
+ "jsHeapBytes": 20500000,
+ "browserVersion": "145.0.7632.0",
+ "software": true,
+ "wallSeconds": 961.6,
+ "host": {
+  "machine": "4-core aarch64, no GPU; SwiftShader WebGPU/WebGL2 (CPU emulation, not hardware timings)",
+  "loadAverage1mStartEnd": [
+   18.63,
+   23.17
+  ],
+  "note": "shared with other agents; tails are contention"
+ }
+}

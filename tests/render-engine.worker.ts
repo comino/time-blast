@@ -22,6 +22,7 @@ const QUERIES: Array<{ name: string; slot: number; sql: string; view: string }> 
 ];
 
 const quantiles = (values: number[]) => {
+  if (!values.length) return { n: 0 };
   const s = [...values].sort((a, b) => a - b), at = (q: number) => +s[Math.min(s.length - 1, Math.floor(q * s.length))].toFixed(3);
   return { n: s.length, p50: at(0.5), p95: at(0.95), max: at(1) };
 };
@@ -60,7 +61,8 @@ async function run(canvases: OffscreenCanvas[], size: { width: number; height: n
     let last = 0;
     for (let rep = 0; rep < 11; rep++) {
       const id = await exec(q.slot, q.sql);
-      await new Promise(resolve => setTimeout(resolve, 30));
+      // Wait (bounded) for the second DRAWN carrying FIRST_PRESENTED.
+      for (let t = 0; t < 100 && !stage(id, Stage.FIRST_PRESENTED); t++) await new Promise(resolve => setTimeout(resolve, 20));
       last = id;
       const received = stage(id, Stage.EXEC_RECEIVED)!, first = stage(id, Stage.DB_FIRST_BATCH)!, render = stage(id, Stage.RENDER_FIRST_BATCH)!;
       const submitted = stage(id, Stage.FIRST_DRAW_SUBMITTED)!, presented = stage(id, Stage.FIRST_PRESENTED), done = stage(id, Stage.DB_DONE)!;

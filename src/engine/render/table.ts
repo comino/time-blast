@@ -35,8 +35,9 @@ function decimal(words: Uint32Array, at: number, scale: number, width: number): 
   return `${neg ? '-' : ''}${abs.slice(0, -scale)}.${abs.slice(-scale)}`;
 }
 
-/** Format row `i` of column data, or null for SQL NULL. */
-export function cell(data: Data, i: number): string | null {
+/** Format row `i` of column data, or null for SQL NULL. `digits` limits float significant
+ * digits (table preview); exports keep full precision. */
+export function cell(data: Data, i: number, digits?: number): string | null {
   if (!valid(data, i)) return null;
   const t = data.type as any;
   const values = data.values as any;
@@ -54,7 +55,7 @@ export function cell(data: Data, i: number): string | null {
     }
     case Type.Float: {
       const v = Number(values[i]);
-      return Number.isInteger(v) ? String(v) : String(Number(v.toPrecision(t.precision === 2 ? 15 : 7)));
+      return Number.isInteger(v) ? String(v) : String(Number(v.toPrecision(digits ?? (t.precision === 2 ? 17 : 9))));
     }
     case Type.Int: return String(values[i]);
     default: {
@@ -82,7 +83,7 @@ export class TablePreview {
   add(batch: RecordBatch): void {
     this.total += batch.numRows;
     const columns = batch.data.children as Data[];
-    for (let i = 0; i < batch.numRows && this.rows.length < TABLE_ROWS; i++) this.rows.push(columns.map(c => cell(c, i) ?? 'NULL'));
+    for (let i = 0; i < batch.numRows && this.rows.length < TABLE_ROWS; i++) this.rows.push(columns.map(c => cell(c, i, 6) ?? 'NULL'));
   }
 }
 
