@@ -96,7 +96,7 @@ beforeAll(async () => {
   const bytes = csv();
   const source = { kind: 'url', url: 'https://example.invalid/obs.csv', name: 'obs' } as const;
   base = await openNode({ rollups: false, resultCache: false, compressed: false, fetchBytes: async () => bytes }, source);
-  opt = await openNode({ resultCache: false, fetchBytes: async () => bytes }, source);
+  opt = await openNode({ resultCache: false, rollupShortRangeRows: 0, fetchBytes: async () => bytes }, source);
   await opt.rollupsDone;
   json = opt.node.rollups.length > 0 && opt.rollups.every(s => !s.skipped);
   if (!json) console.warn('[engine-rollup] no rollups (json extension not loadable offline?):', JSON.stringify(opt.rollups));
@@ -134,6 +134,21 @@ describe('exact rewrite', () => {
       expect(same.exact, same.reason).toBe(true);
     });
   }
+  it('leaves short ranges to the raw table (default threshold)', async () => {
+    if (!json) return;
+    const node = opt.node as unknown as { options: { rollupShortRangeRows?: number }; rewrites: Map<string, unknown> };
+    const sql = "SELECT time_bucket(INTERVAL '1 hour', ts) AS h, avg(d) AS d FROM obs WHERE ts >= TIMESTAMP '2026-03-01 23:59:54' - INTERVAL '3 hours' GROUP BY 1 ORDER BY 1";
+    node.options.rollupShortRangeRows = undefined;
+    node.rewrites.clear();
+    try {
+      const b = await opt.run(sql);
+      expect(b.stats.source).toBe('raw');
+      expect(b.stats.rewrite).toMatch(/short range/);
+    } finally {
+      node.options.rollupShortRangeRows = 0;
+      node.rewrites.clear();
+    }
+  });
   it('memoizes the decision per statement text', async () => {
     if (!json) return;
     const sql = REWRITTEN[1];

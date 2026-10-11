@@ -66,9 +66,21 @@ export function fixtureUrl(): string {
   return new URL(`${import.meta.env.BASE_URL}data/telemetry.parquet`, self.location.origin).href;
 }
 
+/** Measurement switches, set when starting Vite (e.g. `VITE_TB_RESULT_CACHE=0 pnpm dev`) to
+ * compare end to end with batch-2 database features off. Default: everything on. */
+function envOptions(): DatabaseNodeOptions {
+  const env = import.meta.env ?? {};
+  const off = (name: string) => env[name] === '0' || env[name] === 'false';
+  return {
+    ...(off('VITE_TB_RESULT_CACHE') ? { resultCache: false } : {}),
+    ...(off('VITE_TB_ROLLUPS') ? { rollups: false } : {}),
+    ...(off('VITE_TB_COMPRESSED') ? { compressed: false } : {}),
+  };
+}
+
 export async function createDatabaseWith(emit: Parameters<CreateDatabase>[0], options: DatabaseNodeOptions = {}) {
   const { bindings, stats } = await bootDuckDB();
-  return { node: new DuckDatabaseNode(bindings, emit, { fixtureUrl, ...options }), stats };
+  return { node: new DuckDatabaseNode(bindings, emit, { fixtureUrl, ...envOptions(), ...options }), stats };
 }
 
 export const createDatabase: CreateDatabase = async emit => (await createDatabaseWith(emit)).node;

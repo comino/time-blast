@@ -87,6 +87,8 @@ export interface DatabaseNodeOptions {
   compressed?: boolean;
   /** Measurement hook, called after each rollup grain is built (and once with `done`). */
   onRollupStats?: (stats: RollupStats) => void;
+  /** Bounded queries estimated to touch fewer raw rows run on the raw table (rollup.ts SHORT_RANGE_ROWS). */
+  rollupShortRangeRows?: number;
 }
 
 export interface RollupStats {
@@ -384,7 +386,7 @@ export class DuckDatabaseNode implements DatabaseNode {
       try {
         const [parsedText] = this.rowsSync(this.queryConn, `SELECT json_serialize_sql(${quoteLiteral(inner)})`)[0] as [string];
         const parsed = parseAst(parsedText);
-        const plan = !parsed ? { ok: false as const, reason: 'integer literal beyond 2^53' } : planRewrite({ parsed, rollups: this.rollups, catalog: this.catalog, template: sql => this.template(sql) });
+        const plan = !parsed ? { ok: false as const, reason: 'integer literal beyond 2^53' } : planRewrite({ parsed, rollups: this.rollups, catalog: this.catalog, template: sql => this.template(sql), shortRangeRows: this.options.rollupShortRangeRows });
         if (!plan.ok) result = { reason: plan.reason };
         else {
           const empty = (this.template(AGG_TEMPLATE_SQL) as { statements: Array<{ node: { from_table: unknown } }> }).statements[0].node.from_table;
@@ -417,7 +419,7 @@ export class DuckDatabaseNode implements DatabaseNode {
    * task; a new open() aborts it. Grains become usable one by one as they finish. */
   private async buildRollups(token: number, context: DatasetContext): Promise<void> {
     const specs = rollupSpecs(context);
-    if (!specs.length) return;
+    if (!specs.length) { this.options.onRollupStats?.({ table: '*', ms: 0, done: true, skipped: 'no table with a TIMESTAMP column and numeric columns' }); return; }
     if (!this.catalog) {
       const functions = await this.background(token, 'SELECT DISTINCT lower(function_name), function_type, stability FROM duckdb_functions()');
       const aggregates = new Set<string>(), forbidden = new Set<string>();

@@ -59,6 +59,10 @@ export const GRAINS: Grain[] = [
 ];
 /** With range bounds, edges are aggregated from raw rows: cap the grain so an edge is ≤ 1 hour. */
 const MAX_RANK_WITH_BOUNDS = 2;
+/** A range this small (estimated raw rows; two DuckDB row groups) is answered as fast by the
+ * zone-map-pruned raw scan as by the minute rollup + edge scans; with the hour rollup the
+ * crossover is ~8× lower (measured, docs/batch-2/database.md). */
+export const SHORT_RANGE_ROWS = 2 * 122_880;
 
 export interface Measure { name: string; type: string; nulls: boolean }
 export interface RollupSpec {
@@ -66,6 +70,10 @@ export interface RollupSpec {
   time: string;
   dims: string[];
   measures: Measure[];
+  /** Raw rows and time range (epoch ms), from the dataset statistics: for the short-range rule. */
+  rows?: number;
+  start?: number;
+  end?: number;
 }
 export interface BuiltGrain { grain: Grain; table: string; rows: number; ms: number }
 export interface RollupTable { spec: RollupSpec; grains: BuiltGrain[] }
@@ -87,7 +95,8 @@ export function rollupSpecs(context: DatasetContext): Array<RollupSpec & { rows:
     if (!Number.isFinite(span)) continue;
     const combos = dims.reduce((p, d) => p * ((d.values?.length ?? 1) + 1), 1);
     const estimate = (g: Grain) => Math.min(table.rows, (Math.floor(span * 1000 / g.micros) + 1) * combos);
-    out.push({ table: table.name, time: time.name, dims: dims.map(d => d.name), measures, rows: table.rows, estimate });
+    out.push({ table: table.name, time: time.name, dims: dims.map(d => d.name), measures, rows: table.rows, estimate,
+      start: parseTimestamp(time.min), end: parseTimestamp(time.max) });
   }
   return out;
 }
@@ -189,6 +198,8 @@ export interface RewriteInput {
   catalog: Catalog;
   /** Serialized templates, keyed by template SQL. */
   template(sql: string): Ast;
+  /** Ranges with fewer estimated raw rows run on the raw table (default SHORT_RANGE_ROWS). */
+  shortRangeRows?: number;
 }
 
 export type RewritePlan =
@@ -331,6 +342,47 @@ function isBoundExpr(e: Ast, top = true): boolean {
 function intervalLike(e: Ast): boolean {
   if (e?.class === 'CAST' && e.cast_type?.id === 'INTERVAL') return isVarchar(e.child);
   return e?.class === 'FUNCTION' && !!TO_INTERVAL[lower(e.function_name)] && e.children?.length === 1 && integerConstant(e.children[0]) !== undefined;
+}
+
+/** Value of a bound expression (see isBoundExpr) in epoch ms, UTC wall clock; undefined if
+ * unknown. Only used to estimate a range's size (a performance heuristic, not for exactness). */
+function evalBound(e: Ast): number | undefined {
+  if (isVarchar(e) || (e?.class === 'CAST' && isVarchar(e.child))) {
+    const m = /^\s*(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2})(?:\.(\d{1,6}))?)?)?\s*$/.exec(isVarchar(e) ? e.value.value : e.child.value.value);
+    return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +(m[4] ?? 0), +(m[5] ?? 0), +(m[6] ?? 0)) : undefined;
+  }
+  if (e?.class !== 'FUNCTION') return undefined;
+  const name = lower(e.function_name), [a, b] = e.children ?? [];
+  if ((name === '+' || name === '-') && e.children.length === 2) {
+    const base = evalBound(intervalLike(a) ? b : a), iv = intervalValue(intervalLike(a) ? a : b);
+    if (base === undefined || !iv) return undefined;
+    const sign = name === '-' ? -1 : 1, d = new Date(base);
+    d.setUTCMonth(d.getUTCMonth() + sign * iv.months);
+    return d.getTime() + sign * (iv.days * 86_400_000 + iv.micros / 1000);
+  }
+  if ((name === 'date_trunc' || name === 'datetrunc') && isVarchar(a)) {
+    const v = evalBound(b), part = PART_RANK[lower(a.value.value)];
+    if (v === undefined || part === undefined) return undefined;
+    const unit = part === 1 ? 60_000 : part === 2 ? 3_600_000 : 86_400_000;
+    return Math.floor(v / unit) * unit; // week/month/year truncate further; a day is a close enough estimate
+  }
+  return undefined;
+}
+
+function intervalValue(e: Ast): { micros: number; days: number; months: number } | undefined {
+  let micros = 0, days = 0, months = 0;
+  if (e?.class === 'CAST' && isVarchar(e.child)) {
+    const text = lower(e.child.value.value);
+    for (const m of text.matchAll(/(\d+)\s*([a-z]+)/g)) {
+      const unit = INTERVAL_UNITS[m[2]];
+      if (!unit) return undefined;
+      micros += +m[1] * (unit.micros ?? 0); days += +m[1] * (unit.days ?? 0); months += +m[1] * (unit.months ?? 0);
+    }
+    return { micros, days, months };
+  }
+  const unit = e?.class === 'FUNCTION' ? TO_INTERVAL[lower(e.function_name)] : undefined;
+  const n = unit ? integerConstant(e.children?.[0]) : undefined;
+  return unit && n !== undefined ? { micros: n * (unit.micros ?? 0), days: n * (unit.days ?? 0), months: n * (unit.months ?? 0) } : undefined;
 }
 
 const COMPARE_FLIP: Record<string, string> = {
@@ -520,6 +572,8 @@ function asBounds(term: Ast, ctx: Ctx): Bound[] | undefined {
     const expr = timeLeft ? term.right : term.left;
     const op = { COMPARE_GREATERTHANOREQUALTO: '>=', COMPARE_GREATERTHAN: '>', COMPARE_LESSTHAN: '<', COMPARE_LESSTHANOREQUALTO: '<=' }[type as string];
     if (!op || !isBoundExpr(expr)) return undefined;
+    // `ts >= c` / `ts < c` with a grain-aligned literal c is a plain invariant predicate (no edges).
+    if ((op === '>=' || op === '<') && (literalRank(expr) ?? 0) >= 1) return undefined;
     return [{ op, expr }];
   }
   if (term.class === 'BETWEEN' && isTimeRef(term.input, ctx) && isBoundExpr(term.lower) && isBoundExpr(term.upper)) {
@@ -549,7 +603,7 @@ export function planRewrite(input: RewriteInput): RewritePlan {
   }
 }
 
-function plan({ parsed, rollups, catalog, template }: RewriteInput): RewritePlan {
+function plan({ parsed, rollups, catalog, template, shortRangeRows = SHORT_RANGE_ROWS }: RewriteInput): RewritePlan {
   if (parsed?.error) reject('parse error');
   if (parsed.statements?.length !== 1) reject('not one statement');
   const statement = structuredClone(parsed.statements[0]);
@@ -606,6 +660,13 @@ function plan({ parsed, rollups, catalog, template }: RewriteInput): RewritePlan
   const built = [...rollup!.grains].sort((a, b) => b.grain.rank - a.grain.rank).find(g => g.grain.rank <= maxRank);
   if (!built) reject(`no rollup grain fine enough (rank ${ctx.rank})`);
   const grain = built!.grain;
+  if (edges && spec.rows && spec.start !== undefined && spec.end !== undefined && spec.end > spec.start) {
+    const from = lo ? evalBound(lo.expr) : spec.start, to = hi ? evalBound(hi.expr) : spec.end;
+    if (from !== undefined && to !== undefined) {
+      const rows = spec.rows * Math.max(0, Math.min(to, spec.end) - Math.max(from, spec.start)) / (spec.end - spec.start);
+      if (rows < shortRangeRows * (grain.rank === 1 ? 1 : 1 / 8)) reject('short range: the raw scan is as fast');
+    }
+  }
 
   // The new FROM: a placeholder table, replaced by the source SQL after printing.
   node.from_table = { ...from, table_name: SOURCE, schema_name: '', catalog_name: '', alias: from.alias || from.table_name };
