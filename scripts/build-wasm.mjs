@@ -6,8 +6,6 @@ import { copyFileSync, mkdirSync } from 'node:fs';
 const CRATES = {
   'tb-coordinator': { target: 'target/wasm32-unknown-unknown/release/tb_coordinator.wasm', out: 'public/wasm/tb-coordinator.wasm', args: ['-p', 'tb-coordinator'] },
   'tb-render': { target: 'target/wasm32-unknown-unknown/release/tb_render.wasm', out: 'public/wasm/tb-render.wasm', args: ['-p', 'tb-render'] },
-  // Legacy 7-field plan compiler; deleted when batch 1 lands.
-  'query-core': { target: 'crates/query-core/target/wasm32-unknown-unknown/release/time_blast_query_core.wasm', out: 'public/wasm/query-core.wasm', args: ['--manifest-path', 'crates/query-core/Cargo.toml'] },
 };
 const selected = process.argv.slice(2);
 const names = selected.length ? selected : ['tb-coordinator', 'tb-render'];

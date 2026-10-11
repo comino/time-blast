@@ -13,6 +13,10 @@ import { createDatabase } from './database';
 import { createRenderer } from './render/index';
 import { EngineHost } from './host';
 import { createPortLink, createWebSocketLink } from './links';
+// Remote database placement (docs/batch-1/remote-database.md): a `{kind: 'remote', endpoint}`
+// dataset source opens the ClickHouse node over a tb1 WebSocket; other sources use DuckDB-Wasm,
+// which now boots on the first local open instead of at worker start.
+import { createPlacedDatabase } from './remote-database';
 import { header, json, Kind } from '../protocol/frame';
 
 interface WorkerScope {
@@ -30,5 +34,5 @@ export function connectInference(placement: InferencePlacement): Link {
 }
 
 const postToUi: PostToUi = (message, transfer) => scope.postMessage(message, transfer ?? []);
-const host = new EngineHost({ createCoordinator, createRenderer, createDatabase, postToUi, connectInference });
+const host = new EngineHost({ createCoordinator, createRenderer, createDatabase: createPlacedDatabase(createDatabase), postToUi, connectInference });
 scope.addEventListener('message', event => host.onMessage(event.data));

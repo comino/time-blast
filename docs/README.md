@@ -11,9 +11,9 @@ background, and where it conflicts with the vision, the vision wins.
 | [vision.md](vision.md) | Purpose, metric, architecture principles, what to unlearn. **Canonical.** |
 | [status.md](status.md) | What is deployed and running right now, and the next steps |
 | [plan-batch-1.md](plan-batch-1.md) | The current batch of work toward the vision |
-| [../deploy/README.md](../deploy/README.md) | Operating and updating the live demo |
-| [backend-prototype.md](backend-prototype.md) | The running Rust inference service (its protocol is one of the ones to unify) |
-| [prototype.md](prototype.md) | Browser implementation as it exists: adapters, cancellation, streaming, canvas |
+| [protocol-v1.md](protocol-v1.md) | tb1: the one frame format and message vocabulary for every component and placement |
+| [batch-1/](batch-1/) | What batch 1 built and measured, per area: coordinator, engine, inference, ui, render; [evals.md](batch-1/evals.md) scores NL→SQL by executed results |
+| [../deploy/README.md](../deploy/README.md) | Operating and updating the live demo (still the prototype build) |
 
 ## Still-valid research and evidence
 
@@ -26,11 +26,11 @@ working on the relevant layer.
 | [rust-service-and-channels.md](rust-service-and-channels.md) | Socket and channel options for the uniform protocol |
 | [browser-and-transport.md](browser-and-transport.md) | Browser networking, memory movement and rendering limits |
 | [rust-and-wasm.md](rust-and-wasm.md) | Where Rust/Wasm helps and where bindings add copies |
-| [protocol.md](protocol.md) | `tb/0` draft: identities, draft/commit, cancellation. **Starting point** for the uniform protocol; never implemented |
+| [protocol.md](protocol.md) | `tb/0` draft: identities, draft/commit, cancellation. Superseded by protocol-v1.md; the reasoning still holds |
 | [data-plane.md](data-plane.md) | Getting an early point from DuckDB and ClickHouse |
 | [experiments.md](experiments.md) | Latency definitions and benchmark design (redefine around thought → result) |
 | [experiments/](experiments/) | Dated measurements: first-bucket query, hosted model comparison |
-| [verification.md](verification.md), [benchmarks/](benchmarks/) | Dated test and benchmark records |
+| [benchmarks/](benchmarks/) | Dated benchmark records. The QueryPlan meaning corpus and its runners were deleted in batch 1 (last present at commit 1afe91c) |
 
 ## Historical: superseded by the vision
 
@@ -41,4 +41,6 @@ working on the relevant layer.
 | [roadmap.md](roadmap.md) | Prototype milestones; the priorities in status.md replace its "next" sections |
 | [canvas-reference.md](canvas-reference.md) | Notes on the Data Canvas reference; already absorbed into the UI |
 | [reviews/](reviews/) | Reviews of the prototype, including its 7-field plan |
-| [../evals/](../evals/) | Meaning corpus scoring full 7-field `QueryPlan`s; needs replacing with SQL/result-based evaluation |
+| [prototype.md](prototype.md) | The prototype's browser implementation (adapters, plan compiler, Canvas2D); code deleted in batch 1 |
+| [backend-prototype.md](backend-prototype.md) | The prototype's JSON-plan inference service; replaced by the tb1 server ([batch-1/inference.md](batch-1/inference.md)) |
+| [verification.md](verification.md), [benchmark-browser.json](benchmark-browser.json) | Test and benchmark records of the prototype; their commands refer to deleted scripts |

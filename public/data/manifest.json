@@ -1,8 +1,0 @@
-{
-  "generator": "scripts/generate-dataset.py",
-  "duckdb": "1.4.1",
-  "file": "telemetry.parquet",
-  "bytes": 2186775,
-  "sha256": "46f5018cb6db964461c2f17a874bccdc100aa21683cee111efd5972afef4bb09",
-  "context_id": "synthetic-vessels-2026-09-v1"
-}

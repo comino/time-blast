@@ -108,21 +108,24 @@ export async function loadCoordinator(source?: CoordinatorSource): Promise<WasmC
       live();
       wasm.tb_coord_tick(handle, now);
     },
-    drain() {
+    drainEncoded() {
       live();
       const count = wasm.tb_coord_flush(handle);
       if (count === 0) return [];
       fresh();
       const index = wasm.tb_coord_out_index(handle), base = wasm.tb_coord_out_bytes(handle);
-      const out: Array<[LinkId, Frame<Uint8Array>]> = new Array(count);
+      const out: Array<[LinkId, Uint8Array]> = new Array(count);
       for (let i = 0; i < count; i++) {
         const link = view.getUint32(index + i * 12, true);
         const offset = view.getUint32(index + i * 12 + 4, true);
         const len = view.getUint32(index + i * 12 + 8, true);
         // Copy out: the Wasm buffer is reused, and each frame gets its own transferable buffer.
-        out[i] = [LINKS[link], decode(bytes.slice(base + offset, base + offset + len))];
+        out[i] = [LINKS[link], bytes.slice(base + offset, base + offset + len)];
       }
       return out;
+    },
+    drain() {
+      return core.drainEncoded().map(([link, encoded]) => [link, decode(encoded)] as [LinkId, Frame<Uint8Array>]);
     },
     nextDeadline() {
       live();

@@ -8,7 +8,14 @@ visiting browser. The demo defaults to OpenRouter's
 `google/gemini-2.5-flash-lite`, retained after the
 [hosted model comparison](../docs/experiments/hosted-models-2026-10-10.md).
 
-## Verified deployment — 2026-10-10
+> **Batch 1 is not deployed.** The live demo is the prototype build (JSON-plan inference
+> service, Canvas2D), whose source was deleted from `main` after `1afe91c`. The tb1 inference
+> server speaks a different protocol than the deployed browser build: deploy the new server and
+> a new browser build **together**, once the renderer is merged. Notes for that step:
+> [docs/batch-1/inference.md](../docs/batch-1/inference.md#deployment-notes-not-done). Health
+> must then report `"protocol":"tb1"`.
+
+## Verified deployment — 2026-10-10 (prototype)
 
 | Component | Live state |
 | --- | --- |
@@ -125,25 +132,12 @@ Build the browser with its public endpoint to enable remote inference by default
 ```sh
 VITE_INFERENCE_ENDPOINT=wss://time-blast.46-224-133-201.sslip.io/api/inference/session pnpm build
 sudo python3 scripts/deploy-static.py dist
-python3 tests/browser_production.py \
-  --url https://time-blast.46-224-133-201.sslip.io --default-inference remote
 ```
 
-That production smoke deliberately switches to local WebGPU/templates to check
-unavailable-model and real database regressions without spending provider tokens.
-For a live three-question end-to-end smoke, which **spends provider tokens**:
-
-```sh
-python3 tests/browser_backend_live.py \
-  --url https://time-blast.46-224-133-201.sslip.io \
-  --output /tmp/time-blast-public-live.json
-```
-
-Omitting its endpoint override checks that the deployed build defaults to remote
-inference. The recorded public smoke verified three complete plans and
-60,480 / 8,640 / 144 chart points; see
-[verification results and measurement limits](../docs/verification.md).
-Health alone cannot establish those results. See also
-[the backend contract, local fixture tests and configuration](../docs/backend-prototype.md).
+The prototype's production smokes (`tests/browser_production.py`, `tests/browser_backend_live.py`)
+were deleted with its code; their recorded results stay in
+[verification.md](../docs/verification.md). End-to-end browser smokes for the batch-1 build are
+wave-2 work. Until then, check a new server with `node scripts/eval-sql.mjs --endpoint
+ws://127.0.0.1:8787/session` (spends provider tokens; scores SQL by executed results).
 The prototype has origin checks, bounded sessions/concurrency and process-local
 generation budgets, but no user authentication or durable billing quota.

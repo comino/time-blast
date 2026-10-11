@@ -272,6 +272,8 @@ export class DuckDatabaseNode implements DatabaseNode {
           fileName = 'telemetry.parquet'; bytes = await fetchBytes(url);
         } else if (source.kind === 'file') {
           fileName = source.file.name || source.name; bytes = new Uint8Array(await source.file.arrayBuffer());
+        } else if (source.kind === 'remote') {
+          throw new Error('Remote sources open through the remote database node, not DuckDB.');
         } else {
           fileName = new URL(source.url, globalThis.location?.href).pathname.split('/').pop() || source.name;
           bytes = await fetchBytes(source.url);

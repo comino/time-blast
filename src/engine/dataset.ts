@@ -12,7 +12,7 @@ const VESSEL_NAMES = ['Aurora', 'Meridian', 'Kestrel', 'Solstice', 'Atlas', 'Nom
 export const VESSELS_ROWS = 1_209_600;
 const VESSELS_START_MS = 1_788_220_800_000; // 2026-09-01T00:00:00Z
 
-/** The prototype's synthetic generator (src/adapters/synthetic-data.ts), evaluated inside
+/** The prototype's synthetic generator (formerly src/adapters/synthetic-data.ts), evaluated inside
  * DuckDB: six vessels, one reading every six seconds, 1–14 September 2026 UTC. Time is a
  * real TIMESTAMP (UTC wall clock) and the vessel a VARCHAR name. */
 export const VESSELS_SQL = `CREATE TABLE telemetry AS

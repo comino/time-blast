@@ -1,10 +1,27 @@
 # Current status and handoff
 
-Updated **2026-10-10**. This page describes the completed prototype and the work
-remaining after the initial build. The source repository is private; the
+Updated **2026-10-10** (batch-1 cleanup). The source repository is private; the
 [live synthetic-data demo](https://time-blast.46-224-133-201.sslip.io) is public.
 
-## What runs today
+## Source on `main`: batch 1
+
+`main` holds the batch-1 architecture ([plan](plan-batch-1.md), [tb1 protocol](protocol-v1.md),
+notes per area in [batch-1/](batch-1/)): Rust/Wasm coordinator, engine worker with the DuckDB-Wasm
+database node, tb1 inference server writing SQL, WebLLM node, new main-thread UI. The prototype's
+code (7-field `QueryPlan`, `query-core`, adapters, old UI, its evals and smokes) is deleted; only
+the Canvas2D chart remains as the renderer benchmark's baseline.
+
+- **Not yet end to end in a browser:** the Rust/Wasm renderer is not merged (`main` has a stub).
+- **Not deployed:** neither the tb1 inference server nor the batch-1 browser build.
+- **Measured:** NL→SQL quality by executed results, [batch-1/evals.md](batch-1/evals.md); per-area
+  latencies in the batch-1 notes.
+
+## Deployed: the prototype
+
+Everything below this heading describes the **prototype build that is still live**. Its source
+was last present at `1afe91c`.
+
+### What runs today
 
 ```text
 Browser chat → browser coordinator → persistent WebSocket → Rust inference service
@@ -61,7 +78,7 @@ drawing, with no per-row objects or whole-result wait on that path. Engine,
 worker/IPC and graphics boundaries still have copy/scheduling costs. This is not
 literal end-to-end zero-copy.
 
-## Source and deployed versions
+### Source and deployed versions
 
 The last implementation commit is **`661a1d9`**: provider reasoning/sampling
 controls and the hosted model comparison. Those controls were tested in isolated
@@ -79,7 +96,7 @@ owned by root with mode `0600`. Backend installation preserves that file on
 updates; a source default change alone does not override its configured model.
 See the [deployment runbook](../deploy/README.md) for builds, checks and updates.
 
-## Evidence and limits
+### Evidence and limits (prototype)
 
 | Evidence | Observation | What it does not establish |
 | --- | --- | --- |
@@ -108,40 +125,22 @@ substitute for a hardware-WebGPU run.
 
 ## Pick up here next
 
-The direction is set by [vision.md](vision.md). In order:
+The direction is set by [vision.md](vision.md). Batch 1 delivered the uniform protocol, model-written
+SQL over generic data, and per-keystroke translation without the idle pause (in source). Next:
 
-1. **Uniform protocol.** One message vocabulary and binary frame for coordinator,
-   inference and database. MessagePort in the browser, binary WebSocket remotely,
-   with one spec and a TypeScript and a Rust codec tested against each other.
-   Replace the current per-component JSON protocols (`time-blast.v1`,
-   `time-blast.inference.v1`, the HTTP database bridge and the worker messages).
-   Start from the identities and lifecycle in [protocol.md](protocol.md).
-2. **Model writes SQL over generic data.** Replace the 7-field `QueryPlan` and the
-   vessel-shaped `ColumnBatch`: schema in the prompt, SQL out, sandboxed read-only
-   execution, arbitrary Arrow results, chart chosen from column types. Load any
-   Parquet/CSV.
-3. **Remove the 2-second idle pause.** Translate on every keystroke with
-   cancellation, prefix caching and change detection, within a few $/day.
-4. **Measure thought → result stage by stage.** Per-hop timestamps in frames;
-   a latency dial to simulate ~10× faster inference; fast providers and a
-   self-hosted model compared with OpenRouter.
-5. **Move components.** A server-side DuckDB node on the same protocol proves a
-   placement change needs no rewrite. ClickHouse follows. Remote inference
-   should hand SQL straight to a remote database.
-6. **Explore interactions:** per-keystroke results, next-question anticipation,
-   chart-as-query, voice.
+1. **Merge the renderer and wire the loop end to end** (wave 2): all ten chart types on the Rust/Wasm
+   core, browser tests across placements.
+2. **Measure thought → result stage by stage** with the TIMING ledger and the latency dial; then
+   deploy the tb1 server and the new browser build together ([deploy/README.md](../deploy/README.md)).
+3. **Raise NL→SQL quality** with the executed-result eval ([batch-1/evals.md](batch-1/evals.md)):
+   the default model is cheap but the weakest on it.
+4. **Move components.** A server-side DuckDB node on tb1; ClickHouse; remote inference handing SQL
+   straight to a remote database.
+5. **Explore interactions:** per-keystroke results, next-question anticipation, chart-as-query, voice.
 
-Operational debt to keep in mind: the public demo has no authentication, and its
-OpenRouter budget counters are process-local and reset on restart.
+Operational debt: the public demo has no authentication, and its OpenRouter budget counters are
+process-local and reset on restart.
 
 ## Documentation map
 
 Full map with current/historical classification: [README.md](README.md).
-
-
-- [Browser contract](prototype.md) and [Rust backend](backend-prototype.md): implemented behavior and interfaces.
-- [Deployment runbook](../deploy/README.md): operate and update the existing demo.
-- [Verification](verification.md): current and dated historical test evidence.
-- [Roadmap](roadmap.md): completed milestones and remaining gates.
-- [Architecture](architecture.md), [protocol draft](protocol.md), [inference ideas](inference.md), [data plane](data-plane.md): broader design; proposals are labeled. The shipped inference socket uses `time-blast.inference.v1`, not the proposed `tb/0` protocol.
-- [Evaluation corpus](../evals/README.md) and [historical reviews](reviews/README.md): reproducible semantic checks and past findings.

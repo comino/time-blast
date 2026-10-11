@@ -60,6 +60,9 @@ frame alone is authoritative. No SQL parser dependency; the database node valida
 
 ## Prompt design
 
+**Superseded in part by prompt v3** (window example, no SQLite functions, times stay timestamps,
+alias rule, stricter row and view-hint rules; ~992 prompt tokens): see [evals.md](evals.md).
+
 System message (stable prefix, built only from the `DatasetContext`), then the trimmed question
 as the only user message. Contents: role + dialect; output rules (only one SELECT, no prose or
 fences or semicolon, compact SQL, aliases, partial questions get the most plausible answer);
@@ -161,7 +164,7 @@ provider URL/model/key, `TIME_BLAST_OPENROUTER`, `TIME_BLAST_REASONING_EFFORT`,
 
 ## Known gaps
 
-- No executed-SQL eval; quality findings above are by reading.
+- Executed-SQL eval now exists: [evals.md](evals.md).
 - Upstream cost of aborted streams is unknown (OpenRouter returns usage only at stream end).
 - The view-hint rule is ignored by both Flash Lite models.
 - Legacy callers of the removed JSON protocol remain outside this area: `src/inference/remote-socket.ts`,

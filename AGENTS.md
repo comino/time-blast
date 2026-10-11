@@ -37,9 +37,9 @@ note in this repo.
 
 ## Current state vs. vision
 
-The first prototype (Oct 9–10, 2026) predates the vision and conflicts with it in places: the
-7-field plan, a 2-second idle pause, per-component JSON protocols and vessel-shaped column
-batches. See the "What to unlearn" table in [docs/vision.md](docs/vision.md).
+The first prototype (Oct 9–10, 2026) predated the vision; batch 1 replaced it (tb1 protocol,
+model-written SQL, per-keystroke translation) and deleted its code. The public demo still runs
+the prototype build until batch 1 is deployed.
 [docs/status.md](docs/status.md) records what is actually deployed;
 [docs/README.md](docs/README.md) says which docs are current and which are historical.
 
@@ -48,13 +48,20 @@ batches. See the "What to unlearn" table in [docs/vision.md](docs/vision.md).
 ```sh
 pnpm install --frozen-lockfile
 pnpm dev                     # browser app
-pnpm test && pnpm build      # required for implementation changes
+npx tsc --noEmit && pnpm test && pnpm build       # required for implementation changes
+cargo test --locked                               # workspace: tb-protocol, tb-coordinator, tb-render
 cargo test --locked --manifest-path crates/inference-server/Cargo.toml
-# After changing crates/query-core: rebuild and commit public/wasm/query-core.wasm
-pnpm build:wasm && cargo test --manifest-path crates/query-core/Cargo.toml
+# After changing crates/tb-coordinator or crates/tb-render: rebuild and commit public/wasm/*.wasm
+pnpm build:wasm
+# NL→SQL eval by executed results (evals/): scorer self-test, or live against a running server
+node scripts/eval-sql.mjs --self-test
+node scripts/eval-sql.mjs --endpoint ws://127.0.0.1:8787/session
 ```
 
-Browser smoke scripts in `tests/*.py` need a running dev server and Python Playwright.
+Browser smokes (`tests/engine_smoke.py`, `tests/ui_smoke.py`) need a running dev server and
+Python Playwright. Prompt changes go into both `crates/inference-server/src/prompt.rs` and
+`src/inference-node/prompt.ts` (byte-identical, golden files in
+`crates/inference-server/tests/fixtures/`; regenerate with `UPDATE_GOLDEN=1`) and get an eval run.
 Deployment: [deploy/README.md](deploy/README.md). Provider keys live only in
 `/etc/time-blast/inference.env` on the server; never commit credentials, private datasets
 or model weights.
