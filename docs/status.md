@@ -80,6 +80,15 @@ plan: [plan-batch-2.md](plan-batch-2.md).
   but only 8 are byte-identical SQL. The coordinator dedups on exact SQL; a result-level "keep the
   chart steady" check in the renderer would turn more of these into zero-latency answers.
 - DONE now says whether a result came from a rollup or the result cache (flags in protocol-v1).
+- **The chart is a query** ([batch-2/manipulation.md](batch-2/manipulation.md)). Brushing an x range,
+  clicking a series, bar or map point, and going back all rewrite the SQL deterministically with
+  DuckDB's own parser, with no model call. Brushing refines buckets; a new `QUERY` frame sends the
+  rewritten SQL through the coordinator. Pointer → first draw: brush 38 ms, series click 28 ms,
+  back 2.3 ms p50 (software GPU). Exactness: 101 statements × 246 filters, identical to filtering
+  the original result.
+- **Steady charts while typing:** when a new result's data equals what is on screen, the renderer
+  keeps the image (277 of 293 per-keystroke results with alias/case/layout variants of the SQL);
+  about 1.3 GPU redraws per typed question instead of about 25.
 
 The deployed demo is untouched. Its `/etc/time-blast/inference.env` pins
 `TIME_BLAST_MODEL=google/gemini-2.5-flash-lite`; remove that line when deploying to get the new
