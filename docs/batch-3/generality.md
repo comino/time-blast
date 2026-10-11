@@ -36,11 +36,12 @@ script deletes the target first.
   reference SQL, same scoring as `evals/sql-corpus.json` (aggregates, buckets, relative windows,
   top-N, joins, maps, scatters, ambiguous one-word and half-typed questions, unknown entities).
   `$SINCE` now expands on the corpus's `time` column.
-- `node scripts/eval-sql.mjs --dataset <name>|all` loads each dataset into the engine's own
-  `DuckDatabaseNode` from its Parquet files (`url` source), waits for the background rollups, and
-  sends the CONTEXT that node returns. The node's `open` takes one file, so extra tables and the
-  manifest description go through a documented shim in `evals/sql-eval.ts` (`openManifestEntry`)
-  until the cold-start loader opens `{kind:'fixture', name}`.
+- `node scripts/eval-sql.mjs --dataset <name>|all` opens each dataset with the engine's own
+  manifest loader (`DuckDatabaseNode`, `{kind:'fixture', name}`, Parquet tables, `prebuilt: false`),
+  waits for the background rollups and sends the CONTEXT that node returns. The scores below were
+  measured before the cold-start loader was merged, through an equivalent shim that kept the
+  manifest's table order; the merged loader lists tables alphabetically (flights: airports,
+  carriers, flights), which changes the flights prompt's table order (not re-measured).
 - Also new: `--rollup-check` (rollups/compression/cache on vs. off, every statement),
   `--export-arrow` (results for the renderer check), `--print-prompt`, `--no-description`.
   Database timeouts are retried twice (the shared host reached load 140 during these runs).
@@ -114,10 +115,9 @@ monthly precipitation per city 55 → 9 ms (loaded host, indicative).
 
 ## Contract changes needed
 
-- None to `contracts.ts`. The manifest-driven fixture loader (cold-start workstream) should load
-  every table of an entry, use the manifest description as the context description, keep the
-  manifest's table order (the prompt's "now" is the first temporal column in table order) and then
-  build rollups; `openManifestEntry` in `evals/sql-eval.ts` is the reference behaviour to replace.
+- None to `contracts.ts`. Suggestion for the database owner: `describe()` should list a manifest
+  entry's tables in manifest order (the fact table first), not alphabetically; the scores here were
+  measured that way.
 
 ## Next
 
@@ -127,4 +127,5 @@ monthly precipitation per city 55 → 9 ms (loaded host, indicative).
 - Data-aware view choice for one-row wide results and label-like text columns (renderer owner).
 - `approx_count_distinct` overstates small tables (airports.code: 393 distinct of 340 rows); use an
   exact count below ~100k rows (database owner).
+- Re-measure flights with the merged loader's table order (or restore manifest order first).
 - More runs per prompt: at n ≈ 30 and run-to-run spread of ±2 questions, single runs cannot rank prompts.

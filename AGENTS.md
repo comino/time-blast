@@ -38,8 +38,8 @@ note in this repo.
 ## Current state vs. vision
 
 The first prototype (Oct 9–10, 2026) predated the vision; batch 1 replaced it (tb1 protocol,
-model-written SQL, per-keystroke translation) and deleted its code. The public demo still runs
-the prototype build until batch 1 is deployed.
+model-written SQL, per-keystroke translation) and deleted its code. The public demo runs `main`
+(batches 1–2, deployed 2026-10-11).
 [docs/status.md](docs/status.md) records what is actually deployed;
 [docs/README.md](docs/README.md) says which docs are current and which are historical.
 

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Time Blast — hardware measurement</title>
+    <style>
+      :root { --bg: #f6f7f8; --fg: #16191c; --muted: #5d6670; --line: #d9dde2; --card: #fff; --accent: #0b6bcb; --warn: #a14b00; }
+      @media (prefers-color-scheme: dark) { :root { --bg: #101315; --fg: #e6e8ea; --muted: #98a2ad; --line: #2a3036; --card: #171b1e; --accent: #5aa9f0; --warn: #f0a050; } }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+      main { max-width: 1080px; margin: 0 auto; padding: 24px 16px 64px; }
+      h1 { font-size: 22px; margin: 0 0 4px; } h2 { font-size: 16px; margin: 28px 0 8px; } h3 { font-size: 14px; margin: 18px 0 6px; color: var(--muted); }
+      p { margin: 6px 0; } .muted { color: var(--muted); }
+      section { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin-top: 14px; }
+      form { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: end; }
+      label { display: flex; flex-direction: column; font-size: 12px; color: var(--muted); gap: 3px; }
+      label.check { flex-direction: row; align-items: center; gap: 6px; font-size: 14px; color: var(--fg); }
+      input[type=number] { width: 84px; } input[type=url] { width: 360px; max-width: 100%; }
+      input { font: inherit; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
+      button { font: inherit; padding: 7px 16px; border-radius: 7px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; }
+      button.secondary { background: transparent; color: var(--accent); }
+      button:disabled { opacity: .45; cursor: default; }
+      #state { font-family: ui-monospace, monospace; font-size: 13px; margin-top: 10px; }
+      #stage { display: flex; justify-content: center; margin-top: 10px; overflow: hidden; }
+      #stage canvas { border: 1px solid var(--line); border-radius: 6px; max-width: 100%; height: auto !important; background: #fff; }
+      textarea { position: absolute; left: -9999px; width: 10px; height: 10px; }
+      table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+      th, td { text-align: right; padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+      th:first-child { text-align: left; white-space: normal; font-weight: 500; }
+      thead th { font-size: 12px; color: var(--muted); font-weight: 600; }
+      th small { display: block; color: var(--muted); font-family: ui-monospace, monospace; font-size: 11px; font-weight: 400; }
+      table.stages { max-width: 560px; }
+      dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; }
+      dt { color: var(--muted); } dd { margin: 0; }
+      #definitions dt { font-family: ui-monospace, monospace; }
+      .warn { color: var(--warn); }
+      .scroll { overflow-x: auto; }
+      @media (max-width: 640px) { dl { grid-template-columns: 1fr; } dd { margin-bottom: 6px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Time Blast · hardware measurement</h1>
+      <p class="muted">Runs the real pipeline on this machine: engine worker (Wasm coordinator, DuckDB-Wasm, Wasm renderer on your GPU) and the app's UI controller.
+        Inference is an in-page fake that answers canned SQL after the delay below, so the numbers isolate our pipeline. Nothing is sent anywhere except the optional RTT probe and live pass.</p>
+      <section>
+        <form onsubmit="return false">
+          <label>Repetitions<input id="reps" type="number" min="1" max="20" /></label>
+          <label>Key cadence (ms)<input id="cadence" type="number" min="0" max="500" /></label>
+          <label>Fake inference delay (ms)<input id="latency" type="number" min="0" max="5000" /></label>
+          <label>Inference server (RTT, live pass)<input id="endpoint" type="url" placeholder="wss://…/session" /></label>
+          <label class="check"><input id="pass-echo" type="checkbox" />echo</label>
+          <label class="check"><input id="pass-vary" type="checkbox" />vary</label>
+          <label class="check"><input id="pass-live" type="checkbox" />live inference (costs a little)</label>
+          <button id="start" type="button" disabled>Start</button>
+          <button id="download" type="button" class="secondary" disabled>Download JSON</button>
+        </form>
+        <div id="state">Loading …</div>
+        <div id="stage" aria-label="Live chart"></div>
+        <textarea id="input" aria-label="Scripted question input" tabindex="-1"></textarea>
+      </section>
+      <h2>Hardware</h2>
+      <section id="hardware" class="muted">Measured when you press Start.</section>
+      <h2>Results</h2>
+      <section class="scroll" id="metrics"><p class="muted">Boot results appear when the engine is ready; typing results after Start.</p></section>
+      <h2>Stage breakdown (medians)</h2>
+      <section class="scroll" id="stages"></section>
+      <h2>Notes</h2>
+      <section><ul id="notes"></ul></section>
+      <h2>What the timestamps mean</h2>
+      <section><dl id="definitions"></dl>
+        <p class="muted">Passes: <b>echo</b> appends the question to the SQL as a comment (every keystroke runs the pipeline; the data matches the image on screen, so the renderer keeps it: harness-comparable).
+          <b>vary</b> shifts the time window per keystroke, so every keystroke, including the last, puts a new image on screen: the presented-frame numbers come from here.</p></section>
+    </main>
+    <script type="module" src="/src/measure/main.ts"></script>
+  </body>
+</html>

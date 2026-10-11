@@ -31,7 +31,7 @@ def install(source, destination):
 
 
 def precompress(path):
-    if path.suffix not in {".js", ".css", ".html", ".json", ".svg", ".wasm"}:
+    if path.suffix not in {".js", ".css", ".html", ".json", ".svg", ".wasm", ".duckdb"}:
         return
     destination = path.with_name(path.name + ".gz")
     if destination.exists():

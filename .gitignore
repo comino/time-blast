@@ -10,3 +10,7 @@ target/
 __pycache__/
 .sites-runtime/
 .claude/worktrees/
+
+# Built datasets (scripts/build-datasets.mjs): built during deployment, not committed
+public/data/vessels/
+public/data/.build-*
