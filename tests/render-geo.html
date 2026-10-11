@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>render geo</title>
+<style>
+body{margin:0;padding:8px;background:#08111b;color:#7695a2;font:11px ui-monospace,monospace}
+figure{margin:4px;display:inline-block;background:#10212d}
+figcaption{padding:2px 4px}
+canvas{width:480px;height:260px;display:block;background:#10212d}
+</style></head>
+<body>
+<figure><figcaption>map</figcaption><canvas data-slot="1"></canvas></figure>
+<figure><figcaption>density</figcaption><canvas data-slot="2"></canvas></figure>
+<figure><figcaption>tracks</figcaption><canvas data-slot="3"></canvas></figure>
+<figure><figcaption>tracks · playback 0.4</figcaption><canvas data-slot="4"></canvas></figure>
+<script type="module" src="./render-geo.ts"></script>
+</body>
+</html>
