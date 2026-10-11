@@ -34,7 +34,7 @@ export interface SlotCard {
   keep(): void;
   title(text: string, revision: number): void;
   result(info: ResultInfo, request: number): void;
-  views(available: ViewName[], chosen: ViewName): void;
+  views(available: ViewName[], chosen: ViewName, columns?: Array<{ name: string; role: string }>): void;
   axes(ticks: AxisTicks): void;
   table(columns: string[], rows: string[][], total: number): void;
   timing(t: TimingBreakdown): void;
@@ -167,7 +167,7 @@ export class UiController {
       }
       case 'context':
         this.context = message.context; this.drafts.context = message.context.id; this.rail.context(message.context); return;
-      case 'views': this.slots.get(message.slot)?.card.views(message.available, message.chosen); return;
+      case 'views': this.slots.get(message.slot)?.card.views(message.available, message.chosen, message.columns); return;
       case 'table': this.slots.get(message.slot)?.card.table(message.columns, message.rows, message.total); return;
       case 'axes': this.slots.get(message.slot)?.card.axes(message.ticks); return;
       case 'export': this.host.download(message.blob, message.filename); return;

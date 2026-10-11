@@ -406,7 +406,7 @@ fn newer_result_supersedes_bound_request_and_cancels_its_exec() {
 #[test]
 fn result_is_sent_once_on_schema_with_escaped_sql_and_view_hint() {
     let mut h = H::new();
-    let id = h.draft(1, "avg speed")[0].1.header.request;
+    let id = h.draft(1, "avg speed as bars")[0].1.header.request;
     let sql = "-- view: Bar\nSELECT \"a\\b\"\t1";
     h.sql(id, sql);
     let out = h.schema(id);
@@ -418,7 +418,7 @@ fn result_is_sent_once_on_schema_with_escaped_sql_and_view_hint() {
 
 #[test]
 fn result_view_is_null_without_hint_and_controls_are_escaped() {
-    assert_eq!(json::result_payload(3, b"SELECT 1\x01", true), br#"{"slot":3,"sql":"SELECT 1\u0001","columns":[],"view":null,"cached":true}"#);
+    assert_eq!(json::result_payload(3, b"SELECT 1\x01", true, None), br#"{"slot":3,"sql":"SELECT 1\u0001","columns":[],"view":null,"cached":true}"#);
     assert_eq!(json::view_hint(b"  --view:map\nSELECT"), Some(&b"map"[..]));
     assert_eq!(json::view_hint(b"-- view: pie\nSELECT"), None);
     assert_eq!(json::view_hint(b"SELECT 1 -- view: bar"), None);
@@ -1166,5 +1166,33 @@ fn bench_draft_input_native() {
         }
         report(&format!("native {name}: decode+input"), input_samples);
         report(&format!("native {name}: drain+encode"), encode_samples);
+    }
+}
+
+#[test]
+fn view_hint_is_honored_only_when_the_question_asks_for_it() {
+    use json::{requested_view, AUTO_VIEW};
+    let heat = b"-- view: heatmap\nSELECT 1";
+    assert_eq!(requested_view("wind by hour as a heat map", heat), Some(4));
+    assert_eq!(requested_view("wind by hour", heat), None);
+    // "heatmap" must not count as asking for "map".
+    assert_eq!(requested_view("heatmap of wind", b"-- view: map\nSELECT 1"), None);
+    assert_eq!(requested_view("where were the vessels", b"-- view: map\nSELECT 1"), Some(6));
+    assert_eq!(requested_view("Show voyage tracks", b"-- view: tracks\nSELECT 1"), Some(8));
+    assert_eq!(requested_view("speed by hour", b"SELECT 1"), None);
+    assert_eq!(AUTO_VIEW, 255);
+}
+
+#[test]
+fn bind_carries_the_requested_view_or_automatic() {
+    for (question, expected) in [("wind by hour", 255u32), ("wind by hour as a 3d surface", 5)] {
+        let mut h = H::new();
+        let id = h.draft(1, question)[0].1.header.request;
+        let out = h.sql(id, "-- view: surface\nSELECT 1");
+        for link in [Renderer, Ui] {
+            let bind = one(&out, link, Kind::Bind);
+            assert_eq!(bind.payload.len(), 8, "{question}");
+            assert_eq!(u32::from_le_bytes(bind.payload[4..8].try_into().unwrap()), expected, "{question}");
+        }
     }
 }

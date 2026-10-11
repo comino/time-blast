@@ -54,7 +54,8 @@ describe('tb-coordinator wasm', () => {
     c.input('database', frame(Kind.RESULT_SCHEMA, { request: 1, flags: Flag.HEADER_ONLY, stamps: [{ stage: Stage.EXEC_RECEIVED, node: Node.DATABASE, at: 1101 }] }), 1101);
     out = c.drain();
     expect(summary(out)).toEqual(['ui:33']);
-    expect(readJson(out[0][1].payload)).toEqual({ slot: 1, sql: '-- view: line\nSELECT 1', columns: [], view: 'line', cached: false });
+    // 'avg' never asks for a line chart, so the unasked hint is not honored.
+    expect(readJson(out[0][1].payload)).toEqual({ slot: 1, sql: '-- view: line\nSELECT 1', columns: [], view: null, cached: false });
 
     c.input('renderer', frame(Kind.DRAWN, { request: 1, payload: slotPayload(1, 24), stamps: [{ stage: Stage.FIRST_DRAW_SUBMITTED, node: Node.RENDERER, at: 1105 }] }), 1105);
     out = c.drain();

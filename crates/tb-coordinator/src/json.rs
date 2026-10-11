@@ -278,6 +278,41 @@ const VIEWS: [&[u8]; 10] = [
     b"line", b"bar", b"scatter", b"table", b"heatmap", b"surface", b"map", b"density", b"tracks", b"seasons",
 ];
 
+/// Question words that ask for each view in `VIEWS` (same order). A word matches where it
+/// starts a word in the question ("tracks" matches "track", "heatmap" never matches "map").
+const VIEW_WORDS: [&[&[u8]]; 10] = [
+    &[b"line"],
+    &[b"bar", b"histogram", b"column chart"],
+    &[b"scatter", b"correlat"],
+    &[b"table", b"tabular", b"list", b"rows"],
+    &[b"heatmap", b"heat map", b"heat-map"],
+    &[b"surface", b"3d", b"3-d"],
+    &[b"map", b"location", b"where"],
+    &[b"density", b"concentrat"],
+    &[b"track", b"voyage", b"route", b"trajector", b"path"],
+    &[b"season", b"wheel", b"calendar", b"cycle"],
+];
+
+/// Code of an automatic view choice in BIND (no hint, or a hint nobody asked for).
+pub(crate) const AUTO_VIEW: u32 = 255;
+
+/// The SQL's view hint, as an index into `VIEWS`, but only if the question asks for that
+/// presentation. Models add hints unasked; an unasked hint must not override the automatic
+/// choice made from the result's columns.
+pub(crate) fn requested_view(question: &str, sql: &[u8]) -> Option<u32> {
+    let hint = view_hint(sql)?;
+    let index = VIEWS.iter().position(|v| *v == hint)?;
+    let q = question.as_bytes();
+    let asked = VIEW_WORDS[index].iter().any(|word| {
+        (0..q.len()).any(|at| {
+            (at == 0 || !q[at - 1].is_ascii_alphanumeric())
+                && q.len() - at >= word.len()
+                && q[at..at + word.len()].eq_ignore_ascii_case(word)
+        })
+    });
+    asked.then_some(index as u32)
+}
+
 /// The view hint of the result-shape convention: a leading `-- view: <name>` comment.
 pub(crate) fn view_hint(sql: &[u8]) -> Option<&'static [u8]> {
     let s = trim_start(sql).strip_prefix(b"--")?;
@@ -295,17 +330,17 @@ fn trim_start(s: &[u8]) -> &[u8] {
 }
 
 /// `RESULT` payload: `{"slot", "sql", "columns": [], "view", "cached"}`.
-pub(crate) fn result_payload(slot: u32, sql: &[u8], cached: bool) -> Vec<u8> {
+pub(crate) fn result_payload(slot: u32, sql: &[u8], cached: bool, view: Option<u32>) -> Vec<u8> {
     let mut out = Vec::with_capacity(sql.len() + 64);
     out.extend_from_slice(b"{\"slot\":");
     push_u32(&mut out, slot);
     out.extend_from_slice(b",\"sql\":");
     push_string(&mut out, sql);
     out.extend_from_slice(b",\"columns\":[],\"view\":");
-    match view_hint(sql) {
+    match view {
         Some(view) => {
             out.push(b'"');
-            out.extend_from_slice(view);
+            out.extend_from_slice(VIEWS[view as usize]);
             out.push(b'"');
         }
         None => out.extend_from_slice(b"null"),

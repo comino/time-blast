@@ -410,6 +410,17 @@ impl Coordinator {
         self.emit(link, header, Vec::new(), slot.to_le_bytes().to_vec());
     }
 
+    /// BIND payload: `u32 slot, u32 view` (view = index into the protocol's view list when the
+    /// question asked for the SQL's hinted presentation, else AUTO_VIEW).
+    fn emit_bind(&mut self, link: LinkId, i: usize, slot: u32) {
+        let r = &self.requests[i];
+        let view = json::requested_view(&r.text, &r.sql).unwrap_or(json::AUTO_VIEW);
+        let header = self.header(Kind::Bind, r.id, r.revision, 0);
+        let mut payload = slot.to_le_bytes().to_vec();
+        payload.extend_from_slice(&view.to_le_bytes());
+        self.emit(link, header, Vec::new(), payload);
+    }
+
     fn emit_cancel(&mut self, link: LinkId, request: u32) {
         match link {
             LinkId::Inference => self.stats.inference_cancels += 1,
@@ -620,11 +631,11 @@ impl Coordinator {
         });
         match fallback {
             Some(p) => {
-                let (id, revision) = (self.requests[p].id, self.requests[p].revision);
+                let id = self.requests[p].id;
                 self.requests[p].slot = Some(slot);
                 self.live_bound = Some(id);
-                self.emit_slot(LinkId::Renderer, Kind::Bind, id, revision, slot);
-                self.emit_slot(LinkId::Ui, Kind::Bind, id, revision, slot);
+                self.emit_bind(LinkId::Renderer, p, slot);
+                self.emit_bind(LinkId::Ui, p, slot);
             }
             None => {
                 let (id, revision) = (self.requests[failed].id, self.requests[failed].revision);
@@ -684,7 +695,7 @@ impl Coordinator {
                 if let (Some(slot), false) = (r.slot, r.result_sent) {
                     r.result_sent = true;
                     let header = Header { kind: Kind::Result, flags: 0, epoch: self.epoch, request: r.id, revision: r.revision, context: r.context };
-                    let payload = json::result_payload(slot, &r.sql, r.cached);
+                    let payload = json::result_payload(slot, &r.sql, r.cached, json::requested_view(&r.text, &r.sql));
                     self.emit(LinkId::Ui, header, Vec::new(), payload);
                 }
             }
@@ -942,8 +953,8 @@ impl Coordinator {
         add_stamp(&mut r.ledger, coord(stage::EXEC_SENT, now));
         let (revision, context, committed) = (r.revision, r.context, r.committed);
         self.live_bound = Some(id);
-        self.emit_slot(LinkId::Renderer, Kind::Bind, id, revision, slot);
-        self.emit_slot(LinkId::Ui, Kind::Bind, id, revision, slot);
+        self.emit_bind(LinkId::Renderer, i, slot);
+        self.emit_bind(LinkId::Ui, i, slot);
         if committed {
             self.keep(i);
         }

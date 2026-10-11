@@ -93,6 +93,11 @@ pub extern "C" fn tb_set_param(slot: u32, name_len: u32, value: f64) {
 pub extern "C" fn tb_bind(slot: u32, request: u32, revision: u32, epoch: u32) -> u32 {
     r().bind(slot, Binding { request, revision, epoch }) as u32
 }
+/// BIND's view field: a view index, or anything else (255) for the automatic choice.
+#[no_mangle]
+pub extern "C" fn tb_bind_view(slot: u32, view: u32) {
+    r().bind_view(slot, View::from_u32(view));
+}
 #[no_mangle]
 pub extern "C" fn tb_unbind(slot: u32, request: u32) -> u32 {
     r().unbind(slot, request) as u32

@@ -339,6 +339,14 @@ impl Renderer {
         true
     }
 
+    /// The view a new binding asks for (BIND's view field): becomes the slot's hint for the
+    /// results that follow, without re-selecting the result still on screen.
+    pub fn bind_view(&mut self, slot: u32, hint: Option<View>) {
+        if let Some(i) = self.slot_index(slot) {
+            self.slots[i].hint = hint;
+        }
+    }
+
     /// UNBIND: forget the request and clear the canvas. Stale unbinds are ignored.
     pub fn unbind(&mut self, slot: u32, request: u32) -> bool {
         let Some(i) = self.slot_index(slot) else { return false };

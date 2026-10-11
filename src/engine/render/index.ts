@@ -2,7 +2,7 @@
  * WebGPU/WebGL2 shim. Runs in the engine worker on one OffscreenCanvas per slot.
  * See docs/batch-1/render.md. */
 import type { RecordBatch, Schema } from 'apache-arrow';
-import type { CreateRenderer, Emit, LocalFrame, PostToUi, RendererNode, SlotSize, ViewName } from '../contracts';
+import type { CreateRenderer, Emit, LocalFrame, PostToUi, RendererNode, SlotSize, ViewName, ColumnRole } from '../contracts';
 import { Flag, header, json, Kind, Node, now as clock, Stage, type Frame, type Stamp } from '../../protocol/frame';
 import { NullBackend, WebGl2Backend, WebGpuBackend, type BackendKind, type GpuBackend } from './backend';
 import { AUTO_VIEW, Ev, Flags, RenderCore, VIEW_NAMES } from './core';
@@ -126,9 +126,12 @@ export class Renderer implements RendererNode {
   }
 
   private bind(frame: Frame<Uint8Array>): void {
-    const slot = new DataView(frame.payload.buffer, frame.payload.byteOffset, 4).getUint32(0, true);
+    const payload = new DataView(frame.payload.buffer, frame.payload.byteOffset, frame.payload.byteLength);
+    const slot = payload.getUint32(0, true);
     const s = this.slots.get(slot);
     if (!s || !this.core.x.tb_bind(slot, frame.request, frame.revision, frame.epoch)) return;
+    // A BIND with a view field sets the view for its result: the requested one, or automatic.
+    if (frame.payload.byteLength >= 8) this.core.x.tb_bind_view(slot, payload.getUint32(4, true));
     if (s.request !== undefined && s.request !== frame.request) this.requests.delete(s.request);
     s.request = frame.request;
     const existing = this.requests.get(frame.request);
@@ -237,8 +240,8 @@ export class Renderer implements RendererNode {
   private drainEvents(submitted = this.now(), build = 0, replay = 0): void {
     for (const e of this.core.events()) {
       if (e.kind === Ev.VIEWS) {
-        const parsed = JSON.parse(e.text) as { available: ViewName[]; chosen: ViewName };
-        this.ui({ type: 'views', slot: e.slot, available: parsed.available, chosen: parsed.chosen });
+        const parsed = JSON.parse(e.text) as { available: ViewName[]; chosen: ViewName; columns?: Array<{ name: string; role: ColumnRole | 'none' }> };
+        this.ui({ type: 'views', slot: e.slot, available: parsed.available, chosen: parsed.chosen, columns: parsed.columns });
       } else if (e.kind === Ev.AXES) {
         this.ui({ type: 'axes', slot: e.slot, ticks: JSON.parse(e.text) });
       } else if (e.kind === Ev.FIRST_DRAW) {

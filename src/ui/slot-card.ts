@@ -118,12 +118,18 @@ export class SlotCardView implements SlotCard, BoardItem {
     this.q.state.dataset.state = 'ready';
     (this.element.querySelector('[data-a="export"]') as HTMLButtonElement).disabled = false;
   }
-  views(available: ViewName[], chosen: ViewName): void {
+  views(available: ViewName[], chosen: ViewName, columns?: Array<{ name: string; role: string }>): void {
     this.available = available; this.chosen = chosen;
     const select = this.q.view as HTMLSelectElement, current = select.value;
     const options = [`<option value="">Auto · ${VIEW_LABELS[chosen] ?? chosen}</option>`, ...available.map(v => `<option value="${v}">${VIEW_LABELS[v] ?? v}</option>`)];
     select.innerHTML = options.join('');
-    select.value = available.includes(current as ViewName) ? current : '';
+    // Each new result starts from the renderer's choice; keep a pick only if it is what's shown.
+    select.value = current === chosen ? current : '';
+    if (columns) {
+      this.q.columns.textContent = columns.map(c => `${c.name}${c.role !== 'none' ? `·${c.role}` : ''}`).join('  ');
+      const subtitle = this.q.subtitle.textContent?.split(' · ')[0] ?? '';
+      this.q.subtitle.textContent = `${subtitle} · ${columns.length} columns · ${VIEW_LABELS[chosen] ?? chosen}`;
+    }
     this.controls((select.value as ViewName) || chosen);
   }
   axes(ticks: AxisTicks): void {

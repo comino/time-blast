@@ -125,7 +125,7 @@ decoded Arrow `Schema` / `RecordBatch` objects instead of bytes.
 
 | Kind | Name | Direction | Header | Payload |
 |---|---|---|---|---|
-| 0x30 | `BIND` | coordinator → renderer, UI | request, revision | `u32 slot` |
+| 0x30 | `BIND` | coordinator → renderer, UI | request, revision | `u32 slot, u32 view`. `view` is an index into `line bar scatter table heatmap surface map density tracks seasons`, or 255 for the automatic choice. It is set only when the SQL's `-- view:` hint names a presentation **the question asked for** (models add hints unasked). A BIND with a view field resets the slot's view for its result; a 4-byte legacy BIND leaves it unchanged |
 | 0x31 | `UNBIND` | coordinator → renderer, UI | request | `u32 slot` |
 | 0x32 | `DRAWN` | renderer → coordinator | request | `u32 slot, u32 points` + stamp `FIRST_DRAW_SUBMITTED`. May repeat; a later DRAWN can carry `FIRST_PRESENTED` |
 | 0x33 | `RESULT` | coordinator → UI | request, revision, context | JSON `{slot, sql, columns: [{name, type, role}], view, cached}` once per bound request |
@@ -222,7 +222,7 @@ model ignores it.
 4. **Columns named `lat`/`latitude` and `lon`/`lng`/`longitude`:** geographic position.
 5. **Optional view hint:** a leading SQL comment `-- view: <name>`. Names: `line bar scatter table
    heatmap surface map density tracks seasons`. Emitted only when the user asks for a
-   presentation.
+   presentation; the coordinator ignores a hint the question did not ask for.
 
 Roles: `time`, `category`, `series`, `value`, `measure`, `lat`, `lon`.
 
