@@ -117,9 +117,13 @@ export class SlotCardView implements SlotCard, BoardItem {
   result(info: ResultInfo, request: number): void {
     this.q.sql.textContent = info.sql;
     this.q.source.textContent = info.cached ? 'CACHED SQL' : `REQUEST ${request}`;
-    this.q.columns.textContent = info.columns.map(c => `${c.name}${c.role ? `·${c.role}` : ''}`).join('  ');
-    const subtitle = this.q.subtitle.textContent?.split(' · ')[0] ?? '';
-    this.q.subtitle.textContent = `${subtitle} · ${info.columns.length} columns${info.view ? ` · ${VIEW_LABELS[info.view] ?? info.view}` : ''}`;
+    // The coordinator never sees the schema (columns: []); the renderer's views message fills
+    // columns and the subtitle, so only overwrite them when RESULT actually carries columns.
+    if (info.columns.length) {
+      this.q.columns.textContent = info.columns.map(c => `${c.name}${c.role ? `·${c.role}` : ''}`).join('  ');
+      const subtitle = this.q.subtitle.textContent?.split(' · ')[0] ?? '';
+      this.q.subtitle.textContent = `${subtitle} · ${info.columns.length} columns${info.view ? ` · ${VIEW_LABELS[info.view] ?? info.view}` : ''}`;
+    }
     this.q.state.dataset.state = 'ready';
     (this.element.querySelector('[data-a="export"]') as HTMLButtonElement).disabled = false;
   }

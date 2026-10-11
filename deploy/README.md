@@ -2,35 +2,27 @@
 
 The public synthetic-data demo is served at
 https://time-blast.46-224-133-201.sslip.io by the host's existing Caddy service.
-The GitHub repository remains private. Caddy exposes the running Rust inference
-service at `/api/inference/`; database execution and rendering remain in the
-visiting browser. The demo defaults to OpenRouter's
-`google/gemini-2.5-flash-lite`, retained after the
-[hosted model comparison](../docs/experiments/hosted-models-2026-10-10.md).
+The GitHub repository remains private. Caddy exposes the Rust tb1 inference service at
+`/api/inference/`; the coordinator, DuckDB and rendering run in the visiting browser
+(engine worker). The server's default profile is `openai/gpt-oss-120b` on Groq, reasoning low
+([batch-2/inference.md](../docs/batch-2/inference.md)).
 
-> **Batch 1 is not deployed.** The live demo is the prototype build (JSON-plan inference
-> service, Canvas2D), whose source was deleted from `main` after `1afe91c`. The tb1 inference
-> server speaks a different protocol than the deployed browser build: deploy the new server and
-> a new browser build **together**, once the renderer is merged. Notes for that step:
-> [docs/batch-1/inference.md](../docs/batch-1/inference.md#deployment-notes-not-done). Health
-> must then report `"protocol":"tb1"`.
-
-## Verified deployment — 2026-10-10 (prototype)
+## Verified deployment — 2026-10-11 (batch 1 + batch 2)
 
 | Component | Live state |
 | --- | --- |
-| Static release | `/srv/time-blast/releases/20261010T173044Z-a1890942`, selected by `/srv/time-blast/current`. |
-| Frontend index SHA-256 | `0f31aedc69ea9a65938c89959f11b35c868ba8be17542eb410bd380eee416534` |
-| Rust service | `time-blast-inference.service`, active; `/srv/time-blast/backend/time-blast-inference` on `127.0.0.1:8787`. |
-| Deployed backend source | `197b445`; binary SHA-256 `cbe6e99402d1e1ef6445326e5e082dc84aa8f634fcbc2b61fed266d0159c6ff8`. |
-| Provider configuration | `/etc/time-blast/inference.env`, owned by `root:root`, mode `0600`. |
-| Browser inference endpoint | `wss://time-blast.46-224-133-201.sslip.io/api/inference/session`. |
+| Source | `main` at deployment (frontend includes the card-subtitle fix after `a6678bd`) |
+| Static release | `/srv/time-blast/releases/20261011T083529Z-b73120fc`, selected by `/srv/time-blast/current`; index SHA-256 `1c4d863ac18ffe391539519731a0242481f2e598e86a78bc547bbdc3a5c04320` |
+| Rust service | `time-blast-inference.service`, `/srv/time-blast/backend/time-blast-inference` on `127.0.0.1:8787`, binary SHA-256 `002ae9b4c3900296172139a68f62815be673a7f8dd85df1ed289ef91e2ac4c86`; health reports `"protocol":"tb1"`, model `openai/gpt-oss-120b` |
+| Provider configuration | `/etc/time-blast/inference.env` (`root:root`, `0600`): no `TIME_BLAST_MODEL` (server default applies), 600 requests/min, 30,000/day, `TIME_BLAST_DAILY_BUDGET_USD="3"` |
+| Caddy | `/etc/caddy/sites/time-blast.caddy` from `deploy/time-blast.Caddyfile`, adds COOP `same-origin` + COEP `credentialless` (page is cross-origin isolated) |
+| Rollback copies | `/etc/time-blast/inference.env.bak-20261011`, `/srv/time-blast/backend/time-blast-inference.bak-197b445`, `/etc/caddy/sites/time-blast.caddy.bak-20261011`, previous release `20261010T173044Z-a1890942` |
 
-Source commit `661a1d9` adds reasoning-effort and sampling-temperature controls
-used in the model comparison. That binary has **not** replaced the live backend;
-the comparison started isolated local processes. The deployed model and its
-existing settings are unchanged. Build and deploy the newer service before
-expecting those new controls to take effect.
+Public browser check (headless Chromium, software GPU, real inference over HTTPS): the page is
+cross-origin isolated; typing "average wind speed per vessel by hour" drew the correct per-vessel
+hourly line chart without Enter, last keystroke → first draw **547 ms** (inference ~366 ms,
+first database query ~138 ms cold, draw ~17 ms), no console errors, suggestion chips shown.
+No ClickHouse node is deployed.
 
 This token-free health check verifies Caddy routing and service readiness:
 
@@ -39,8 +31,8 @@ curl --fail --silent --show-error \
   https://time-blast.46-224-133-201.sslip.io/api/inference/health
 ```
 
-It currently returns `status: "ready"`, model `google/gemini-2.5-flash-lite` and
-`providerWarmth: "unknown"`. It does not execute a model or database query.
+It returns `status: "ready"`, `protocol: "tb1"`, the model and today's budget counters. It does
+not execute a model or database query.
 
 ## Static hosting
 

@@ -1,8 +1,9 @@
 # Current status and handoff
 
 Updated **2026-10-11** (batch 1 merged; batch-2 database and inference work merged). Direction: [vision.md](vision.md). The source repository is
-private; the [live synthetic-data demo](https://time-blast.46-224-133-201.sslip.io) is public and
-still runs the **old prototype** (see the end of this page).
+private; the [live synthetic-data demo](https://time-blast.46-224-133-201.sslip.io) is public and,
+since 2026-10-11, **runs batch 1 + batch 2** ([deploy/README.md](../deploy/README.md)): public
+check, real inference, last keystroke → first draw 547 ms.
 
 ## On `main`: batch 1, complete in source
 
@@ -44,11 +45,6 @@ everything else ~10 ms. Batch 2 cut the database to a few ms for most queries (b
 
 ### Known gaps
 
-- **Not deployed.**
-  - The tb1 server and the new browser build must ship together.
-  - The rate limits in `/etc/time-blast/inference.env` must allow per-keystroke traffic.
-  - The ClickHouse node needs a dedicated read-only user before any public use.
-  - Deploying needs the owner's go-ahead.
 - **No hardware GPU measurements.** All render and end-to-end numbers are software-GPU.
 - **NL→SQL:** the default model still returns raw rows on ~7/45 questions. Repair on the database's
   `result_limit` error is not wired: it needs that error to reach inference.
@@ -97,29 +93,21 @@ plan: [plan-batch-2.md](plan-batch-2.md).
 - **Voice:** push-to-talk; interim transcripts drive DRAFT frames like typing, the final transcript
   commits. It is not measured with a real microphone (headless Chromium has no speech service).
 
-The deployed demo is untouched. Its `/etc/time-blast/inference.env` pins
-`TIME_BLAST_MODEL=google/gemini-2.5-flash-lite`; remove that line when deploying to get the new
-default (`scripts/deploy-inference.py` no longer writes it for new installs).
 
 ## Next
 
-See [plan-batch-2.md](plan-batch-2.md): shipping (needs the owner), real-GPU measurements (needs the
-owner), result-level stability while typing, and the interaction experiments.
+Real-GPU and photon measurements (need the owner's hardware), one model call per kept result for
+smarter follow-ups, repair on database errors, server-side speech-to-text.
 
-## Deployed: the old prototype
+## Deployed
 
-The live demo runs the prototype's build: frontend `20261010T173044Z-a1890942`, backend from
-`197b445`. It uses a 7-field query plan instead of SQL, a 2-second idle pause and Canvas2D charts.
+Since 2026-10-11 the demo runs `main` (batch 1 + 2): tb1 server with `openai/gpt-oss-120b` on Groq,
+$3/day cap, per-keystroke rate limits, cross-origin isolated page. Details, hashes and rollback
+copies: [deploy/README.md](../deploy/README.md). The old prototype's documentation is historical:
+[prototype.md](prototype.md), [backend-prototype.md](backend-prototype.md).
 
-- **Serving:** Caddy serves it from `/srv/time-blast/current` and proxies `/api/inference/` to
-  `time-blast-inference.service` on `127.0.0.1:8787`.
-- **Credentials:** provider credentials are in `/etc/time-blast/inference.env` (root, `0600`).
-- **Documentation (historical):** [prototype.md](prototype.md), [backend-prototype.md](backend-prototype.md),
-  and the dated records in [benchmarks/](benchmarks/) and [experiments/](experiments/).
-- **Operations:** [deploy/README.md](../deploy/README.md).
-
-Operational debt: the public demo has no authentication, and its OpenRouter budget counters are
-process-local and reset on restart.
+Operational debt: no user authentication; the budget counters are process-local and reset on
+restart; no ClickHouse node is public (it would need a dedicated read-only user).
 
 ## Documentation map
 
