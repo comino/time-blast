@@ -116,11 +116,19 @@ async function typeText(text: string, cadence: number): Promise<number[]> {
   return gaps;
 }
 
-interface Sample { pass: string; question: string; final: DrawnRequest | null; drawn: DrawnRequest[]; dedup: boolean; gaps: number[] }
+interface Sample { pass: string; question: string; final: DrawnRequest | null; drawn: DrawnRequest[]; dedup: boolean; gaps: number[]; hidden: boolean }
+
+/** A hidden tab throttles timers to 1/s and stops animation frames, which turns a 20 ms frame into
+ * seconds (a 2026-10-11 hardware run showed 1 s staircases up to 30 s). Count every hide so a
+ * sample that overlapped one is discarded instead of reported. */
+let hides = document.visibilityState === 'hidden' ? 1 : 0;
+let discarded = 0, hidesAtBoot = 0;
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') hides++; });
+const visible = () => document.visibilityState === 'visible';
 
 /** Type one question and wait until its last revision is answered and its frames are known. */
 async function measureQuestion(pass: string, text: string, cadence: number): Promise<Sample> {
-  const since = timings.length;
+  const since = timings.length, hidesBefore = hides;
   const gaps = await typeText(text, cadence);
   const rev = controller.drafts.revision;
   const mine = () => timings.slice(since);
@@ -132,7 +140,7 @@ async function measureQuestion(pass: string, text: string, cadence: number): Pro
   await until(() => (frames.last ?? 0) >= lastGpu, 2000, 'a frame after GPU completion').catch(() => {});
   const drawn = mergeDrawn(mine(), frames);
   const finals = drawn.filter(d => d.revision === rev);
-  return { pass, question: text, final: finals.at(-1) ?? null, drawn, dedup: !finals.length, gaps };
+  return { pass, question: text, final: finals.at(-1) ?? null, drawn, dedup: !finals.length, gaps, hidden: hides !== hidesBefore || !visible() };
 }
 
 async function setPlacement(next: InferencePlacement): Promise<void> {
@@ -254,6 +262,7 @@ for (const p of ['echo', 'vary', 'live']) $<HTMLInputElement>(`pass-${p}`).check
 async function bootQuestion(): Promise<void> {
   await until(answerable, 600_000, 'engine boot');
   mark('answerable');
+  hidesAtBoot = hides;
   say('Booted. Typing the first question (cold) …');
   try { firstQuery = await measureQuestion('boot', `${QUESTIONS[0]} boot`, num('cadence', 70)); }
   catch (error) { errors.push(String(error)); }
@@ -289,9 +298,16 @@ async function start(): Promise<void> {
       }
       for (let r = 0; r < reps; r++) for (const [i, q] of QUESTIONS.entries()) {
         const text = `${q} ${pass[0]}${String.fromCharCode(97 + ((r * QUESTIONS.length + i) % 26))}`;
-        say(`Pass ${pass}: ${r * QUESTIONS.length + i + 1}/${reps * QUESTIONS.length} · typing “${text}”`);
-        try { samples.push(await measureQuestion(pass, text, cadence)); }
-        catch (error) { errors.push(String(error)); }
+        say(`Pass ${pass}: ${r * QUESTIONS.length + i + 1}/${reps * QUESTIONS.length} · typing “${text}” · keep this tab visible`);
+        // A sample that overlapped a hidden tab is retried once the tab is visible again.
+        for (let attempt = 0; attempt < 5; attempt++) {
+          if (!visible()) { say('Paused: this tab is hidden, which throttles timers and frames. Measuring resumes when it is visible.'); await until(visible, 3_600_000, 'a visible tab'); await sleep(500); }
+          try {
+            const sample = await measureQuestion(pass, text, cadence);
+            if (!sample.hidden) { samples.push(sample); break; }
+            discarded++;
+          } catch (error) { errors.push(String(error)); break; }
+        }
         await sleep(250);
       }
     }
@@ -360,6 +376,8 @@ function buildReport(settings: Record<string, unknown>): MeasureReport {
     const gaps = stats(mine.flatMap(s => s.gaps));
     notes.push(`${pass}: ${mine.length} questions; final keystroke kept the image (steady) ${steady}, deduplicated (no new request) ${dedup}; typing gap median ${gaps?.median.toFixed(1)} ms, p95 ${gaps?.p95.toFixed(1)} ms`);
   }
+  if (discarded) notes.push(`${discarded} question(s) discarded and retried: the tab was hidden while they ran`);
+  if (firstQuery?.hidden || hidesAtBoot) notes.push('the tab was hidden during boot or the first question: boot and first-query numbers are throttled');
   if (rttResult?.error) notes.push(`RTT: ${rttResult.error}`);
   if (costUsd) notes.push(`live inference cost this session: $${costUsd.toFixed(5)}`);
   for (const e of errors) notes.push(`error: ${e}`);

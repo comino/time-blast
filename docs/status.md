@@ -45,7 +45,7 @@ everything else ~10 ms. Batch 2 cut the database to a few ms for most queries (b
 
 ### Known gaps
 
-- **No hardware GPU measurements.** All render and end-to-end numbers are software-GPU.
+- Hardware GPU numbers come from one owner run (below); every other render and end-to-end number is software-GPU.
 - **NL→SQL:** the default model still returns raw rows on ~7/45 questions. Repair on the database's
   `result_limit` error is not wired: it needs that error to reach inference.
 - **Renderer:**
@@ -125,7 +125,24 @@ hosted-inference latency.**
   ([perf/index.html](perf/index.html)). Notes: [batch-3/measurement.md](batch-3/measurement.md).
 - **Real-hardware page:** `/measure.html` runs the real pipeline with an in-page fake inference
   node and reports keystroke → GPU-presented frame, boot stages, GPU adapter and network RTT. Its
-  JSON goes into the history with `pnpm perf --ingest`. **Not yet run on real hardware.**
+  JSON goes into the history with `pnpm perf --ingest`. Samples taken while the tab was hidden
+  are now discarded and retried (a hidden tab throttles timers to 1/s and stops frames).
+- **First real-hardware run** (owner, Apple M5, macOS 26.6, Chrome 154, WebGPU on Metal, 60 Hz,
+  public deploy, fake in-page inference; [raw](perf/hardware/m5-chrome154-2026-10-11-raw.json)):
+
+  | What | median | max |
+  |---|---|---|
+  | Boot → answerable (repeat visit, cached) | 428 ms | — |
+  | Keystroke → draw submitted, new data each question (n=12) | 12.4 ms | 31.7 ms |
+  | Keystroke → GPU done, same | 14.3 ms | 34.0 ms |
+  | Keystroke → next frame, same data kept on screen (n=16) | 16.9 ms | 28.5 ms |
+  | First question after boot | 9.5 ms | — |
+  | WebSocket connect / HELLO→READY to the server | 66 / 18 ms | 75 / 19 ms |
+
+  Software GPU on the dev host: 63 ms keystroke → draw, 4.5–6.7 s boot. So on real hardware our
+  whole pipeline is about one frame, and the DuckDB-Wasm boot floor seen here is a slow-host
+  artifact. Inference (~300–600 ms) is now essentially the entire loop. Keystroke → frame for new
+  data was invalidated in this run (tab hidden) and needs a rerun; one run, n=12, no p95 claims.
 - **Cleanup and fixes:** the legacy Canvas2D chart is deleted; a disposed database node could
   cancel another connection's query through a reused connection id (flaky test, fixed).
 

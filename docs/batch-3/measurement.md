@@ -170,9 +170,10 @@ These are not GPU numbers.
 
 ## Known gaps
 
-- **No real-GPU numbers yet.** The owner opens `/measure.html` (deployed with the next deploy, or
-  `pnpm build && pnpm preview`), presses Start, downloads the JSON, and runs
-  `pnpm perf --ingest file.json`.
+- **One real-GPU run so far** (owner, Apple M5, 2026-10-11; results in [status.md](../status.md),
+  files in [perf/hardware/](../perf/hardware/)). Its vary-pass frame metrics were throttled by a
+  hidden tab (1 s staircase up to 30.7 s) and were removed at ingest; the page now discards and
+  retries samples that overlap a hidden tab, and notes it in the report.
 - The report has no commit. Ingest assumes the checkout HEAD and adds a note.
 - The measure page boots its own bundle, not the app shell, so it does not capture the app's boot
   exactly. The harness's `boot.*` metrics measure the real app.

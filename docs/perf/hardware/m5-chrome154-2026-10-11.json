@@ -1,0 +1,424 @@
+{
+ "kind": "time-blast.measure",
+ "version": 1,
+ "date": "2026-10-11T15:36:19.199Z",
+ "page": {
+  "url": "https://time-blast.46-224-133-201.sslip.io/measure.html",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36",
+  "browser": {
+   "name": "Google Chrome",
+   "version": "154.0.8037.98"
+  },
+  "crossOriginIsolated": true,
+  "timerResolutionMs": 0.005
+ },
+ "hardware": {
+  "cores": 10,
+  "deviceMemoryGb": 16,
+  "platform": "macOS 26.6.2 arm",
+  "devicePixelRatio": 2,
+  "screen": "1470\u00d7956",
+  "refreshHz": 60,
+  "gpu": {
+   "api": "webgpu",
+   "vendor": "apple",
+   "architecture": "metal-3",
+   "fallbackAdapter": false,
+   "webgl": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5, Unspecified Version)",
+   "engineRenderer": "webgpu \u00b7 apple metal-3; scheduler requestAnimationFrame",
+   "software": false
+  }
+ },
+ "settings": {
+  "reps": 4,
+  "cadence": 70,
+  "latency": 0,
+  "passes": [
+   "echo",
+   "vary"
+  ],
+  "endpoint": "wss://time-blast.46-224-133-201.sslip.io/api/inference/session",
+  "navigationType": "navigate",
+  "transferSize": 300,
+  "suggestions": "off (not mounted on this page)",
+  "dataset": {
+   "kind": "fixture",
+   "name": "vessels"
+  }
+ },
+ "metrics": {
+  "hw.boot.answerable": {
+   "unit": "ms",
+   "samples": [
+    428.085
+   ]
+  },
+  "hw.boot.renderer_ready": {
+   "unit": "ms",
+   "samples": [
+    207.08
+   ]
+  },
+  "hw.boot.engine_worker_created": {
+   "unit": "ms",
+   "samples": [
+    130.3
+   ]
+  },
+  "hw.first_query_after_boot": {
+   "unit": "ms",
+   "samples": [
+    9.525
+   ]
+  },
+  "hw.echo.keystroke_to_draw": {
+   "unit": "ms",
+   "samples": [
+    8.28,
+    14.035,
+    7.585,
+    8.445,
+    14.9,
+    6.465,
+    10.24,
+    15.98,
+    6.91,
+    8.18,
+    14.295,
+    7.74
+   ]
+  },
+  "hw.echo.any_redraw_keystroke_to_frame": {
+   "unit": "ms",
+   "samples": [
+    18.915,
+    16.04,
+    28.465,
+    16.885,
+    19.925,
+    4.88,
+    17.465,
+    19.895,
+    5.92,
+    16.25,
+    12.56,
+    17.515,
+    17.925,
+    16.505,
+    11.64,
+    16.925
+   ]
+  },
+  "hw.vary.keystroke_to_draw": {
+   "unit": "ms",
+   "samples": [
+    14.63,
+    14.545,
+    9.87,
+    30.51,
+    12.73,
+    7.96,
+    28.755,
+    12.16,
+    4.97,
+    31.655,
+    11.25,
+    7.15
+   ]
+  },
+  "hw.vary.keystroke_to_gpu_done": {
+   "unit": "ms",
+   "samples": [
+    15.635,
+    15.835,
+    11.145,
+    32.695,
+    14.115,
+    9.895,
+    30.515,
+    14.5,
+    6.35,
+    34.04,
+    12.29,
+    8.485
+   ]
+  },
+  "hw.net.ws_connect": {
+   "unit": "ms",
+   "samples": [
+    74.83,
+    62.675,
+    66.01,
+    66.88,
+    65.125
+   ]
+  },
+  "hw.net.hello_ready": {
+   "unit": "ms",
+   "samples": [
+    18.855,
+    17.72,
+    17.265,
+    17.725,
+    17.1
+   ]
+  }
+ },
+ "stages": {
+  "hw.boot": [
+   {
+    "label": "response end",
+    "n": 1,
+    "median": 97.965,
+    "p95": 97.965
+   },
+   {
+    "label": "script start",
+    "n": 1,
+    "median": 32.17,
+    "p95": 32.17
+   },
+   {
+    "label": "engine worker created",
+    "n": 1,
+    "median": 0.165,
+    "p95": 0.165
+   },
+   {
+    "label": "DOM content loaded",
+    "n": 1,
+    "median": 6.25,
+    "p95": 6.25
+   },
+   {
+    "label": "coordinator ready",
+    "n": 1,
+    "median": 54.205,
+    "p95": 54.205
+   },
+   {
+    "label": "inference ready",
+    "n": 1,
+    "median": 15.65,
+    "p95": 15.65
+   },
+   {
+    "label": "renderer ready",
+    "n": 1,
+    "median": 0.675,
+    "p95": 0.675
+   },
+   {
+    "label": "database ready",
+    "n": 1,
+    "median": 214.885,
+    "p95": 214.885
+   },
+   {
+    "label": "context",
+    "n": 1,
+    "median": 0.115,
+    "p95": 0.115
+   },
+   {
+    "label": "answerable",
+    "n": 1,
+    "median": 6.005,
+    "p95": 6.005
+   }
+  ],
+  "hw.echo.keystroke_to_draw": [
+   {
+    "label": "key",
+    "n": 12,
+    "median": 0,
+    "p95": 0
+   },
+   {
+    "label": "draft sent",
+    "n": 12,
+    "median": 0.074951171875,
+    "p95": 0.125
+   },
+   {
+    "label": "coordinator",
+    "n": 12,
+    "median": 0.157470703125,
+    "p95": 0.22998046875
+   },
+   {
+    "label": "inference sent",
+    "n": 12,
+    "median": 0,
+    "p95": 0
+   },
+   {
+    "label": "inference received",
+    "n": 12,
+    "median": 0.2200927734375,
+    "p95": 0.25
+   },
+   {
+    "label": "first SQL delta",
+    "n": 12,
+    "median": 0.0400390625,
+    "p95": 0.050048828125
+   },
+   {
+    "label": "SQL complete",
+    "n": 12,
+    "median": 0.08984375,
+    "p95": 0.155029296875
+   },
+   {
+    "label": "SQL received",
+    "n": 12,
+    "median": 0.054931640625,
+    "p95": 0.070068359375
+   },
+   {
+    "label": "exec sent",
+    "n": 12,
+    "median": 0,
+    "p95": 0
+   },
+   {
+    "label": "exec received",
+    "n": 12,
+    "median": 0.0723876953125,
+    "p95": 0.0849609375
+   },
+   {
+    "label": "render first batch",
+    "n": 12,
+    "median": 7.407470703125,
+    "p95": 15.22998046875
+   },
+   {
+    "label": "first draw submitted",
+    "n": 12,
+    "median": 0.1024169921875,
+    "p95": 0.22998046875
+   },
+   {
+    "label": "GPU work done",
+    "n": 12,
+    "median": 0,
+    "p95": 0
+   }
+  ],
+  "hw.vary.keystroke_to_draw": [
+   {
+    "label": "key",
+    "n": 12,
+    "median": 0,
+    "p95": 0
+   },
+   {
+    "label": "draft sent",
+    "n": 12,
+    "median": 0.080078125,
+    "p95": 0.18505859375
+   },
+   {
+    "label": "coordinator",
+    "n": 12,
+    "median": 0.169921875,
+    "p95": 0.300048828125
+   },
+   {
+    "label": "inference sent",
+    "n": 12,
+    "median": 0,
+    "p95": 0
+   },
+   {
+    "label": "inference received",
+    "n": 12,
+    "median": 0.5223388671875,
+    "p95": 0.69970703125
+   },
+   {
+    "label": "first SQL delta",
+    "n": 12,
+    "median": 0.0599365234375,
+    "p95": 0.0751953125
+   },
+   {
+    "label": "SQL complete",
+    "n": 12,
+    "median": 0.0950927734375,
+    "p95": 0.195068359375
+   },
+   {
+    "label": "SQL received",
+    "n": 12,
+    "median": -0.227294921875,
+    "p95": -0.159912109375
+   },
+   {
+    "label": "exec sent",
+    "n": 12,
+    "median": 0,
+    "p95": 0
+   },
+   {
+    "label": "exec received",
+    "n": 12,
+    "median": 0.0726318359375,
+    "p95": 0.090087890625
+   },
+   {
+    "label": "DB first batch",
+    "n": 12,
+    "median": 11.175048828125,
+    "p95": 29.330078125
+   },
+   {
+    "label": "DB done",
+    "n": 12,
+    "median": 0.6248779296875,
+    "p95": 2.385009765625
+   },
+   {
+    "label": "render first batch",
+    "n": 12,
+    "median": -0.6248779296875,
+    "p95": -0.25
+   },
+   {
+    "label": "first draw submitted",
+    "n": 12,
+    "median": 0.3548583984375,
+    "p95": 1.39013671875
+   },
+   {
+    "label": "GPU work done",
+    "n": 12,
+    "median": 1.382568359375,
+    "p95": 2.385009765625
+   },
+   {
+    "label": "next animation frame",
+    "n": 9,
+    "median": 11.264892578125,
+    "p95": 1592.780029296875
+   }
+  ]
+ },
+ "definitions": {
+  "keystroke": "KEY_INPUT: the synthetic input event's timeStamp (the page dispatches InputEvents; OS and hardware input latency are not included).",
+  "submitted": "FIRST_DRAW_SUBMITTED: the renderer returned from queue.submit (WebGPU) or the last GL call for the first frame of this result, in the engine worker. CPU side; the GPU may not have started.",
+  "steady": "When a result has the same data as the image on screen, the renderer keeps that image and stamps submitted = presented at the moment the result is proven identical. No new frame exists, so no frame time is reported.",
+  "gpuDone": "FIRST_PRESENTED: the promise of WebGPU queue.onSubmittedWorkDone() resolved in the engine worker (the GPU finished the frame's commands), observed one worker task later. With WebGL2 it is the worker's next animation frame instead.",
+  "frame": "The first main-thread requestAnimationFrame timestamp (frame begin, vsync-aligned) at or after GPU done: the first compositor frame that can show the new image. A lower bound for the frame that shows it, accurate to about one refresh interval; the pixels reach the glass at least one more refresh interval later (scan-out and display latency are not measurable from a page). requestVideoFrameCallback applies to <video>, not canvases, so it is not used.",
+  "boot": "Boot stages are performance.now() from navigation start when the main thread sees each engine STATUS ready frame and the dataset CONTEXT. \"Answerable\" = coordinator, renderer and inference ready and CONTEXT received. This page boots the same engine as the app but not the app shell.",
+  "rtt": "A fresh WebSocket per sample: connect = constructor \u2192 open (DNS, TCP, TLS, upgrade); HELLO\u2192READY = one tb1 round trip on the open socket."
+ },
+ "notes": [
+  "echo: 12 questions; final keystroke kept the image (steady) 12, deduplicated (no new request) 0; typing gap median 71.3 ms, p95 72.2 ms",
+  "vary: 12 questions; final keystroke kept the image (steady) 0, deduplicated (no new request) 0; typing gap median 71.6 ms, p95 1000.5 ms",
+  "ingest: hw.vary.keystroke_to_frame and hw.vary.any_redraw_keystroke_to_frame removed: the tab was hidden during the vary pass (1 s timer-throttling staircase up to 30.7 s; typing gap p95 1000 ms). Worker-side metrics are unaffected (max 34 ms). Raw: m5-chrome154-2026-10-11-raw.json"
+ ],
+ "commit": "f6882de"
+}
