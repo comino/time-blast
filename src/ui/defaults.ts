@@ -14,6 +14,9 @@ export const DEFAULT_MODEL_PROFILE = 'qwen-1.5b';
 export const FIXTURES = [
   { name: 'vessels', label: 'Vessels · 1.2 M rows (synthetic fixture)' },
   { name: 'vessels-small', label: 'Vessels · small (synthetic fixture)' },
+  { name: 'weather', label: 'Weather · 12 European cities, hourly 2023–24 · 211 k rows' },
+  { name: 'flights', label: 'Flights · US domestic, June 2024 · 3 tables · 611 k rows' },
+  { name: 'cities', label: 'Cities · world cities over 15,000 people · 2 tables · 34 k rows' },
 ] as const;
 export const DEFAULT_DATASET: DatasetSource = { kind: 'fixture', name: 'vessels' };
 

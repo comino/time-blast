@@ -23,7 +23,7 @@ export class SettingsPanel {
     act('settings', () => this.open());
     act('close-settings', () => this.dialog.close());
     act('apply-inference', () => this.applyInference());
-    act('load-fixture', () => callbacks.dataset({ kind: 'fixture', name: (f.fixture as HTMLSelectElement).value as 'vessels' | 'vessels-small' }));
+    act('load-fixture', () => callbacks.dataset({ kind: 'fixture', name: (f.fixture as HTMLSelectElement).value }));
     act('load-url', () => {
       const source = datasetFromUrl((f.datasetUrl as HTMLInputElement).value);
       if (source) { this.error(''); callbacks.dataset(source); } else this.error('Enter an http(s) URL to a Parquet or CSV file.');
