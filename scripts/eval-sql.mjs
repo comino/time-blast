@@ -5,9 +5,14 @@
 //       fake model (reference SQL + scripted wrong answers); checks the scorer, no network
 //   node scripts/eval-sql.mjs --endpoint ws://127.0.0.1:8787/session [--label prompt-v2] [--only id,id]
 //       live: tb1 over WebSocket to a running inference server; writes
-//       docs/batch-1/eval-<model>-<date>[-<label>].json and prints a summary row for evals.md
+//       docs/batch-2/eval-<model>-<date>[-<label>].json and prints a summary row for evals.md;
+//       --db-repair: on a database error, translate once more with the SQL and error appended to
+//       the question (simulates a repair turn the protocol cannot express yet), scored separately
 //   node scripts/eval-sql.mjs --rescore docs/batch-1/eval-….json
 //       re-run the scorer on a saved report's SQL (after a corpus or scorer change), no model calls
+//   node scripts/eval-sql.mjs --endpoint ws://… --prefixes 0.5,0.75,0.9 [--label x]
+//       prefix replay: translate each question and its typed prefixes; how often a prefix already
+//       yields the final SQL/result. Writes docs/batch-2/prefixes-<model>-<date>[-<label>].json
 //
 // The TypeScript modules are loaded with Vite's module runner (no build step, no new deps).
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -20,7 +25,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const flag = name => args.includes(name);
 const option = name => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
-if (flag('--help')) { console.log(readFileSync(fileURLToPath(import.meta.url), 'utf8').split("\n").slice(1, 11).join('\n')); process.exit(0); }
+if (flag('--help')) { console.log(readFileSync(fileURLToPath(import.meta.url), 'utf8').split("\n").slice(1, 16).join('\n')); process.exit(0); }
 
 const { module: lib } = await runnerImport(resolve(root, 'evals/sql-eval.ts'), { root, configFile: false, logLevel: 'error' });
 const corpusPath = option('--corpus') ?? 'evals/sql-corpus.json';
@@ -42,12 +47,28 @@ if (flag('--self-test')) {
   }
   const summary = lib.summarize(cases);
   console.log(JSON.stringify({ selfTest: failed ? 'failed' : 'ok', counts: summary.counts, issues: summary.issues, seconds: Number(((performance.now() - t0) / 1000).toFixed(1)) }));
+} else if (option('--prefixes')) {
+  const fractions = option('--prefixes').split(',').map(Number);
+  const endpoint = option('--endpoint');
+  const translator = await lib.tb1Translator(endpoint, database.contextPayload);
+  const cases = await lib.evaluatePrefixes(corpus, database, translator, fractions, { only, log: line => console.error(line) });
+  translator.close();
+  const summary = lib.summarizePrefixes(cases, fractions);
+  const model = translator.model ?? 'unknown', label = option('--label');
+  const out = option('--output') ?? `docs/batch-2/prefixes-${model.replace(/^.*\//, '').replace(/[^a-z0-9.-]+/gi, '-')}-${new Date().toISOString().slice(0, 10)}${label ? `-${label}` : ''}.json`;
+  mkdirSync(dirname(resolve(root, out)), { recursive: true });
+  writeFileSync(resolve(root, out), JSON.stringify({
+    kind: 'time-blast.sql-prefix-replay', version: 1, date: new Date().toISOString(), label, model,
+    server: option('--server-note'), corpus: { path: corpusPath, cases: corpus.cases.length, version: corpus.version }, fractions, summary, cases,
+  }, null, 1) + '\n');
+  console.log(JSON.stringify(summary));
+  console.error(`wrote ${out}`);
 } else {
   const endpoint = option('--endpoint'), rescore = option('--rescore');
   if (!endpoint && !rescore) { console.error('--endpoint ws://host:port/session, --rescore report.json or --self-test'); process.exit(2); }
   const previous = rescore ? JSON.parse(readFileSync(resolve(root, rescore), 'utf8')) : undefined;
   const translator = previous ? lib.replayTranslator(previous) : await lib.tb1Translator(endpoint, database.contextPayload);
-  const cases = await lib.evaluate(corpus, database, translator, { only, log: line => console.error(line) });
+  const cases = await lib.evaluate(corpus, database, translator, { only, log: line => console.error(line), dbRepair: flag('--db-repair') });
   translator.close();
   const summary = lib.summarize(cases);
   const date = new Date().toISOString().slice(0, 10);
@@ -60,7 +81,7 @@ if (flag('--self-test')) {
     environment: { node: process.version, platform: platform(), arch: arch(), cpus: cpus().length, duckdbWasm: '1.32.0' },
     summary, cases,
   };
-  const out = option('--output') ?? rescore ?? `docs/batch-1/eval-${model.replace(/^.*\//, '').replace(/[^a-z0-9.-]+/gi, '-')}-${date}${label ? `-${label}` : ''}.json`;
+  const out = option('--output') ?? rescore ?? `docs/batch-2/eval-${model.replace(/^.*\//, '').replace(/[^a-z0-9.-]+/gi, '-')}-${date}${label ? `-${label}` : ''}.json`;
   mkdirSync(dirname(resolve(root, out)), { recursive: true });
   writeFileSync(resolve(root, out), JSON.stringify(report, null, 1) + '\n');
   const k = summary.counts, l = summary.latency, i = summary.issues;

@@ -12,7 +12,7 @@ the synthetic vessel fixture one at a time and records, per request:
 
   # live (spends provider tokens; OPENROUTER_API_KEY stays in the environment, never argv)
   python3 scripts/benchmark-sql.py --binary path/to/release/time-blast-inference \
-      --model google/gemini-2.5-flash-lite --rounds 2 --output report.json
+      [--model google/gemini-2.5-flash-lite] --rounds 2 --output report.json
   # no provider: a local fake OpenAI-compatible SSE provider, checks protocol behaviour
   python3 scripts/benchmark-sql.py --binary path/to/release/time-blast-inference --self-test
 
@@ -313,7 +313,11 @@ def summarize(records):
 def run_benchmark(args):
     if not os.environ.get("OPENROUTER_API_KEY") and not os.environ.get("TIME_BLAST_API_KEY"):
         sys.exit("Set OPENROUTER_API_KEY (or TIME_BLAST_API_KEY) in the environment")
-    overrides = {"TIME_BLAST_MODEL": args.model, "TIME_BLAST_DAILY_BUDGET_USD": str(args.budget)}
+    overrides = {"TIME_BLAST_DAILY_BUDGET_USD": str(args.budget)}
+    if args.model != "default":  # "default": the server's default profile (model, reasoning, routing)
+        overrides["TIME_BLAST_MODEL"] = args.model
+    if args.request_extra:
+        overrides["TIME_BLAST_REQUEST_EXTRA"] = args.request_extra
     if args.reasoning:
         overrides["TIME_BLAST_REASONING_EFFORT"] = args.reasoning
     if args.temperature:
@@ -405,7 +409,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--self-test", action="store_true")
-    parser.add_argument("--model", default="google/gemini-2.5-flash-lite")
+    parser.add_argument("--model", default="default", help="OpenRouter model id, or 'default' for the server's default profile")
+    parser.add_argument("--request-extra", help="JSON object merged into provider requests (TIME_BLAST_REQUEST_EXTRA)")
     parser.add_argument("--reasoning", choices=["none", "minimal", "low", "medium", "high"])
     parser.add_argument("--temperature", help="number or 'provider' (default 0)")
     parser.add_argument("--rounds", type=int, default=2)
