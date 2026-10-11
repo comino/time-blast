@@ -1,0 +1,212 @@
+{
+ "kind": "time-blast.cold-start-ab",
+ "date": "2026-10-11",
+ "method": "scripts/perf/e2e.py --boots 2 --rounds 1, alternating main (72cbb5b) and this branch, 4 runs each (8 first + 8 repeat visits per side); both production builds served by vite preview with Caddy-like headers (this branch vite.config.ts); headless Chromium 145 SwiftShader; ms from navigation start; repeat = reload in the same context",
+ "host": "openclaw-fred, Neoverse-N1 4 cores, load 12-18 during the run",
+ "summary": {
+  "main": {
+   "firstVisit.response end": {
+    "p50": 18.6,
+    "p95": 36.5,
+    "n": 8
+   },
+   "firstVisit.DOM content loaded": {
+    "p50": 366.4,
+    "p95": 603.5,
+    "n": 8
+   },
+   "firstVisit.engine worker created": {
+    "p50": 328.5,
+    "p95": 526.0,
+    "n": 8
+   },
+   "firstVisit.coordinator ready": {
+    "p50": 947.9,
+    "p95": 1563.0,
+    "n": 8
+   },
+   "firstVisit.renderer ready": {
+    "p50": 1690.5,
+    "p95": 2456.1,
+    "n": 8
+   },
+   "firstVisit.inference ready": {
+    "p50": 1074.4,
+    "p95": 1791.8,
+    "n": 8
+   },
+   "firstVisit.database ready": {
+    "p50": 11870.2,
+    "p95": 16545.5,
+    "n": 8
+   },
+   "firstVisit.context": {
+    "p50": 11905.7,
+    "p95": 16592.8,
+    "n": 8
+   },
+   "firstVisit.answerable": {
+    "p50": 11905.7,
+    "p95": 16592.8,
+    "n": 8
+   },
+   "repeatVisit.response end": {
+    "p50": 19.9,
+    "p95": 279.0,
+    "n": 8
+   },
+   "repeatVisit.DOM content loaded": {
+    "p50": 235.1,
+    "p95": 867.5,
+    "n": 8
+   },
+   "repeatVisit.engine worker created": {
+    "p50": 173.5,
+    "p95": 815.7,
+    "n": 8
+   },
+   "repeatVisit.coordinator ready": {
+    "p50": 751.3,
+    "p95": 1293.2,
+    "n": 8
+   },
+   "repeatVisit.renderer ready": {
+    "p50": 2104.5,
+    "p95": 3656.4,
+    "n": 8
+   },
+   "repeatVisit.inference ready": {
+    "p50": 794.6,
+    "p95": 1913.5,
+    "n": 8
+   },
+   "repeatVisit.database ready": {
+    "p50": 12547.5,
+    "p95": 18458.1,
+    "n": 8
+   },
+   "repeatVisit.context": {
+    "p50": 12576.9,
+    "p95": 18527.0,
+    "n": 8
+   },
+   "repeatVisit.answerable": {
+    "p50": 12576.9,
+    "p95": 18527.0,
+    "n": 8
+   },
+   "e2e.first_query_after_boot": {
+    "p50": 496.6,
+    "p95": 747.5,
+    "n": 8
+   },
+   "e2e.keystroke_to_draw": {
+    "p50": 79.2,
+    "p95": 103.0,
+    "n": 4
+   }
+  },
+  "branch": {
+   "firstVisit.response end": {
+    "p50": 22.1,
+    "p95": 53.5,
+    "n": 8
+   },
+   "firstVisit.DOM content loaded": {
+    "p50": 434.5,
+    "p95": 641.7,
+    "n": 8
+   },
+   "firstVisit.engine worker created": {
+    "p50": 205.0,
+    "p95": 325.6,
+    "n": 8
+   },
+   "firstVisit.coordinator ready": {
+    "p50": 2008.9,
+    "p95": 2636.5,
+    "n": 8
+   },
+   "firstVisit.renderer ready": {
+    "p50": 2941.6,
+    "p95": 3372.4,
+    "n": 8
+   },
+   "firstVisit.inference ready": {
+    "p50": 2231.1,
+    "p95": 2927.5,
+    "n": 8
+   },
+   "firstVisit.database ready": {
+    "p50": 7511.8,
+    "p95": 9732.0,
+    "n": 8
+   },
+   "firstVisit.context": {
+    "p50": 7517.4,
+    "p95": 9733.7,
+    "n": 8
+   },
+   "firstVisit.answerable": {
+    "p50": 7517.4,
+    "p95": 9733.7,
+    "n": 8
+   },
+   "repeatVisit.response end": {
+    "p50": 23.9,
+    "p95": 43.0,
+    "n": 8
+   },
+   "repeatVisit.DOM content loaded": {
+    "p50": 154.4,
+    "p95": 218.0,
+    "n": 8
+   },
+   "repeatVisit.engine worker created": {
+    "p50": 79.3,
+    "p95": 97.2,
+    "n": 8
+   },
+   "repeatVisit.coordinator ready": {
+    "p50": 1404.9,
+    "p95": 2274.5,
+    "n": 8
+   },
+   "repeatVisit.renderer ready": {
+    "p50": 2175.6,
+    "p95": 2799.4,
+    "n": 8
+   },
+   "repeatVisit.inference ready": {
+    "p50": 1598.6,
+    "p95": 2306.4,
+    "n": 8
+   },
+   "repeatVisit.database ready": {
+    "p50": 4452.7,
+    "p95": 6814.3,
+    "n": 8
+   },
+   "repeatVisit.context": {
+    "p50": 4464.2,
+    "p95": 6821.6,
+    "n": 8
+   },
+   "repeatVisit.answerable": {
+    "p50": 4464.2,
+    "p95": 6821.6,
+    "n": 8
+   },
+   "e2e.first_query_after_boot": {
+    "p50": 90.8,
+    "p95": 210.9,
+    "n": 8
+   },
+   "e2e.keystroke_to_draw": {
+    "p50": 75.0,
+    "p95": 98.1,
+    "n": 4
+   }
+  }
+ }
+}

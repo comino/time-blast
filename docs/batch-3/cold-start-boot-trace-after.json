@@ -1,0 +1,3719 @@
+{
+ "kind": "time-blast.boot-bench",
+ "version": 1,
+ "label": "branch-final",
+ "url": "http://127.0.0.1:4731",
+ "date": "2026-10-11T11:41:24Z",
+ "runs": 4,
+ "loadavgStart": [
+  17.6,
+  15.7,
+  23.2
+ ],
+ "browser": "145.0.7632.0",
+ "loadavgEnd": [
+  19.1,
+  16.4,
+  22.8
+ ],
+ "first": {
+  "answerable": {
+   "p50": 6471.5,
+   "p95": 7143.0,
+   "min": 5942.6,
+   "max": 7143.0,
+   "n": 4
+  },
+  "rollups": {
+   "p50": 6468.3,
+   "p95": 7139.5,
+   "min": 5932.4,
+   "max": 7139.5,
+   "n": 4
+  },
+  "firstQueryHeadline": {
+   "p50": 1258.7,
+   "p95": 1546.5,
+   "min": 970.8,
+   "max": 1546.5,
+   "n": 4
+  },
+  "firstQueryDb": null,
+  "firstQueryBeforeRollups": 0,
+  "stages": {
+   "net:html": {
+    "end": {
+     "p50": 25.0,
+     "p95": 28.3,
+     "min": 8.1,
+     "max": 28.3,
+     "n": 4
+    },
+    "ms": {
+     "p50": 13.1,
+     "p95": 18.2,
+     "min": 4.6,
+     "max": 18.2,
+     "n": 4
+    }
+   },
+   "net:fetch page css": {
+    "end": {
+     "p50": 161.6,
+     "p95": 168.7,
+     "min": 130.1,
+     "max": 168.7,
+     "n": 4
+    },
+    "ms": {
+     "p50": 44.6,
+     "p95": 50.8,
+     "min": 36.5,
+     "max": 50.8,
+     "n": 4
+    }
+   },
+   "page:dom interactive": {
+    "end": {
+     "p50": 162.4,
+     "p95": 182.6,
+     "min": 145.6,
+     "max": 182.6,
+     "n": 4
+    },
+    "ms": null
+   },
+   "page:page.modules": {
+    "end": {
+     "p50": 192.2,
+     "p95": 204.9,
+     "min": 173.1,
+     "max": 204.9,
+     "n": 4
+    },
+    "ms": null
+   },
+   "page:page.worker": {
+    "end": {
+     "p50": 193.8,
+     "p95": 205.2,
+     "min": 175.4,
+     "max": 205.2,
+     "n": 4
+    },
+    "ms": null
+   },
+   "net:fetch engine worker js": {
+    "end": {
+     "p50": 209.4,
+     "p95": 230.1,
+     "min": 183.8,
+     "max": 230.1,
+     "n": 4
+    },
+    "ms": {
+     "p50": -253.9,
+     "p95": -215.3,
+     "min": -313.6,
+     "max": -215.3,
+     "n": 4
+    }
+   },
+   "page:page.boot": {
+    "end": {
+     "p50": 372.3,
+     "p95": 424.3,
+     "min": 331.4,
+     "max": 424.3,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:worker.entry": {
+    "end": {
+     "p50": 464.8,
+     "p95": 547.9,
+     "min": 420.4,
+     "max": 547.9,
+     "n": 4
+    },
+    "ms": {
+     "p50": 29.0,
+     "p95": 31.6,
+     "min": 15.3,
+     "max": 31.6,
+     "n": 4
+    }
+   },
+   "worker:ext.json.prefetch": {
+    "end": {
+     "p50": 1436.9,
+     "p95": 1625.1,
+     "min": 1157.8,
+     "max": 1625.1,
+     "n": 4
+    },
+    "ms": {
+     "p50": 955.4,
+     "p95": 1066.8,
+     "min": 723.3,
+     "max": 1066.8,
+     "n": 4
+    }
+   },
+   "worker:worker.main": {
+    "end": {
+     "p50": 1673.1,
+     "p95": 1845.1,
+     "min": 1402.9,
+     "max": 1845.1,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:boot.message": {
+    "end": {
+     "p50": 1673.9,
+     "p95": 1845.6,
+     "min": 1403.6,
+     "max": 1845.6,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:renderer.compile": {
+    "end": {
+     "p50": 1677.4,
+     "p95": 1850.0,
+     "min": 1420.8,
+     "max": 1850.0,
+     "n": 4
+    },
+    "ms": {
+     "p50": 0.0,
+     "p95": 0.0,
+     "min": 0,
+     "max": 0.0,
+     "n": 4
+    }
+   },
+   "worker:coordinator.compile": {
+    "end": {
+     "p50": 1680.2,
+     "p95": 1850.5,
+     "min": 1421.3,
+     "max": 1850.5,
+     "n": 4
+    },
+    "ms": {
+     "p50": 0.8,
+     "p95": 5.2,
+     "min": 0.7,
+     "max": 5.2,
+     "n": 4
+    }
+   },
+   "worker:renderer.instantiate": {
+    "end": {
+     "p50": 1688.2,
+     "p95": 1863.7,
+     "min": 1453.9,
+     "max": 1863.7,
+     "n": 4
+    },
+    "ms": {
+     "p50": 11.5,
+     "p95": 33.1,
+     "min": 7.7,
+     "max": 33.1,
+     "n": 4
+    }
+   },
+   "worker:coordinator.instantiate": {
+    "end": {
+     "p50": 1688.3,
+     "p95": 1863.9,
+     "min": 1454.9,
+     "max": 1863.9,
+     "n": 4
+    },
+    "ms": {
+     "p50": 11.2,
+     "p95": 33.6,
+     "min": 7.0,
+     "max": 33.6,
+     "n": 4
+    }
+   },
+   "worker:coordinator.ready": {
+    "end": {
+     "p50": 1689.8,
+     "p95": 1865.1,
+     "min": 1458.5,
+     "max": 1865.1,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:gpu.adapter": {
+    "end": {
+     "p50": 1906.3,
+     "p95": 1996.3,
+     "min": 1770.5,
+     "max": 1996.3,
+     "n": 4
+    },
+    "ms": {
+     "p50": 216.8,
+     "p95": 312.3,
+     "min": 131.5,
+     "max": 312.3,
+     "n": 4
+    }
+   },
+   "worker:inference.ready": {
+    "end": {
+     "p50": 1911.2,
+     "p95": 2364.6,
+     "min": 1763.7,
+     "max": 2364.6,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:gpu.device": {
+    "end": {
+     "p50": 1937.9,
+     "p95": 2002.2,
+     "min": 1781.8,
+     "max": 2002.2,
+     "n": 4
+    },
+    "ms": {
+     "p50": 9.7,
+     "p95": 55.0,
+     "min": 5.8,
+     "max": 55.0,
+     "n": 4
+    }
+   },
+   "worker:duckdb.compile": {
+    "end": {
+     "p50": 2198.9,
+     "p95": 2647.0,
+     "min": 1160.6,
+     "max": 2647.0,
+     "n": 4
+    },
+    "ms": {
+     "p50": 1711.6,
+     "p95": 2119.5,
+     "min": 733.7,
+     "max": 2119.5,
+     "n": 4
+    }
+   },
+   "worker:gpu.pipelines": {
+    "end": {
+     "p50": 2547.4,
+     "p95": 2656.0,
+     "min": 2430.3,
+     "max": 2656.0,
+     "n": 4
+    },
+    "ms": {
+     "p50": 655.3,
+     "p95": 700.7,
+     "min": 509.9,
+     "max": 700.7,
+     "n": 4
+    }
+   },
+   "worker:renderer.ready": {
+    "end": {
+     "p50": 2554.4,
+     "p95": 2660.6,
+     "min": 2432.4,
+     "max": 2660.6,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:duckdb.instantiate": {
+    "end": {
+     "p50": 5343.0,
+     "p95": 5736.3,
+     "min": 4929.7,
+     "max": 5736.3,
+     "n": 4
+    },
+    "ms": {
+     "p50": 2736.4,
+     "p95": 3034.8,
+     "min": 2455.3,
+     "max": 3034.8,
+     "n": 4
+    }
+   },
+   "worker:duckdb.open": {
+    "end": {
+     "p50": 5854.0,
+     "p95": 6387.9,
+     "min": 5389.8,
+     "max": 6387.9,
+     "n": 4
+    },
+    "ms": {
+     "p50": 522.4,
+     "p95": 651.5,
+     "min": 436.5,
+     "max": 651.5,
+     "n": 4
+    }
+   },
+   "worker:duckdb.boot": {
+    "end": {
+     "p50": 5903.6,
+     "p95": 6472.2,
+     "min": 5444.4,
+     "max": 6472.2,
+     "n": 4
+    },
+    "ms": {
+     "p50": 3299.4,
+     "p95": 3771.8,
+     "min": 2970.2,
+     "max": 3771.8,
+     "n": 4
+    }
+   },
+   "worker:duckdb.node": {
+    "end": {
+     "p50": 5921.1,
+     "p95": 6524.5,
+     "min": 5476,
+     "max": 6524.5,
+     "n": 4
+    },
+    "ms": {
+     "p50": 23.2,
+     "p95": 52.1,
+     "min": 16.2,
+     "max": 52.1,
+     "n": 4
+    }
+   },
+   "worker:dataset.download": {
+    "end": {
+     "p50": 5981.2,
+     "p95": 6636.2,
+     "min": 5574.9,
+     "max": 6636.2,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:dataset.fetch": {
+    "end": {
+     "p50": 5981.3,
+     "p95": 6636.3,
+     "min": 5576.6,
+     "max": 6636.3,
+     "n": 4
+    },
+    "ms": {
+     "p50": 76.2,
+     "p95": 103.9,
+     "min": 56.5,
+     "max": 103.9,
+     "n": 4
+    }
+   },
+   "worker:dataset.attach": {
+    "end": {
+     "p50": 6445.8,
+     "p95": 7096.8,
+     "min": 5897.5,
+     "max": 7096.8,
+     "n": 4
+    },
+    "ms": {
+     "p50": 384.0,
+     "p95": 602.7,
+     "min": 310.9,
+     "max": 602.7,
+     "n": 4
+    }
+   },
+   "worker:dataset.load": {
+    "end": {
+     "p50": 6446.2,
+     "p95": 7097.1,
+     "min": 5898.0,
+     "max": 7097.1,
+     "n": 4
+    },
+    "ms": {
+     "p50": 489.4,
+     "p95": 671.1,
+     "min": 376.0,
+     "max": 671.1,
+     "n": 4
+    }
+   },
+   "worker:rollups.ready": {
+    "end": {
+     "p50": 6468.3,
+     "p95": 7139.5,
+     "min": 5932.4,
+     "max": 7139.5,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:dataset.open": {
+    "end": {
+     "p50": 6471.5,
+     "p95": 7143.0,
+     "min": 5942.6,
+     "max": 7143.0,
+     "n": 4
+    },
+    "ms": {
+     "p50": 4836.4,
+     "p95": 5557.0,
+     "min": 4174.5,
+     "max": 5557.0,
+     "n": 4
+    }
+   },
+   "page:answerable": {
+    "end": {
+     "p50": 6477.0,
+     "p95": 7164.1,
+     "min": 5947.5,
+     "max": 7164.1,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:ext.json": {
+    "end": {
+     "p50": 7001.2,
+     "p95": 8041.1,
+     "min": 6571.1,
+     "max": 8041.1,
+     "n": 4
+    },
+    "ms": {
+     "p50": 630.1,
+     "p95": 890.2,
+     "min": 412.7,
+     "max": 890.2,
+     "n": 4
+    }
+   },
+   "worker:duckdb.lockdown-deferred": {
+    "end": {
+     "p50": 7013.3,
+     "p95": 8061.5,
+     "min": 6588.4,
+     "max": 8061.5,
+     "n": 4
+    },
+    "ms": {
+     "p50": 647.3,
+     "p95": 918.4,
+     "min": 433.8,
+     "max": 918.4,
+     "n": 4
+    }
+   }
+  },
+  "transfer": {
+   "page css": {
+    "transferSize": 9294,
+    "decodedBodySize": 37507,
+    "ms": 36.49
+   },
+   "engine worker js": {
+    "transferSize": 2719,
+    "decodedBodySize": 5199,
+    "ms": -313.65
+   }
+  }
+ },
+ "repeat": {
+  "answerable": {
+   "p50": 4300.3,
+   "p95": 5129.5,
+   "min": 4175.5,
+   "max": 5129.5,
+   "n": 4
+  },
+  "rollups": {
+   "p50": 4291.8,
+   "p95": 5123.3,
+   "min": 4169.1,
+   "max": 5123.3,
+   "n": 4
+  },
+  "firstQueryHeadline": {
+   "p50": 1222.1,
+   "p95": 1721.6,
+   "min": 877.0,
+   "max": 1721.6,
+   "n": 4
+  },
+  "firstQueryDb": null,
+  "firstQueryBeforeRollups": 0,
+  "stages": {
+   "net:html": {
+    "end": {
+     "p50": 13.6,
+     "p95": 15.8,
+     "min": 11.5,
+     "max": 15.8,
+     "n": 4
+    },
+    "ms": {
+     "p50": 8.6,
+     "p95": 11.1,
+     "min": 4.6,
+     "max": 11.1,
+     "n": 4
+    }
+   },
+   "page:dom interactive": {
+    "end": {
+     "p50": 119.5,
+     "p95": 170.1,
+     "min": 102.2,
+     "max": 170.1,
+     "n": 4
+    },
+    "ms": null
+   },
+   "net:fetch page css": {
+    "end": {
+     "p50": 126.3,
+     "p95": 136.6,
+     "min": 86.2,
+     "max": 136.6,
+     "n": 4
+    },
+    "ms": {
+     "p50": 27.9,
+     "p95": 40.4,
+     "min": 10.4,
+     "max": 40.4,
+     "n": 4
+    }
+   },
+   "page:page.modules": {
+    "end": {
+     "p50": 155.1,
+     "p95": 179.2,
+     "min": 120.8,
+     "max": 179.2,
+     "n": 4
+    },
+    "ms": null
+   },
+   "page:page.worker": {
+    "end": {
+     "p50": 156.7,
+     "p95": 183.3,
+     "min": 123.8,
+     "max": 183.3,
+     "n": 4
+    },
+    "ms": null
+   },
+   "net:fetch engine worker js": {
+    "end": {
+     "p50": 172.3,
+     "p95": 189.8,
+     "min": 137.7,
+     "max": 189.8,
+     "n": 4
+    },
+    "ms": {
+     "p50": -231.4,
+     "p95": -201.1,
+     "min": -263.3,
+     "max": -201.1,
+     "n": 4
+    }
+   },
+   "page:page.boot": {
+    "end": {
+     "p50": 317.2,
+     "p95": 322.2,
+     "min": 263.8,
+     "max": 322.2,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:worker.entry": {
+    "end": {
+     "p50": 399.5,
+     "p95": 462.8,
+     "min": 384.0,
+     "max": 462.8,
+     "n": 4
+    },
+    "ms": {
+     "p50": 42.4,
+     "p95": 60.4,
+     "min": 36.8,
+     "max": 60.4,
+     "n": 4
+    }
+   },
+   "worker:dataset.download": {
+    "end": {
+     "p50": 611.2,
+     "p95": 1401.2,
+     "min": 555.7,
+     "max": 1401.2,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:ext.json.prefetch": {
+    "end": {
+     "p50": 1114.8,
+     "p95": 1340.9,
+     "min": 611.2,
+     "max": 1340.9,
+     "n": 4
+    },
+    "ms": {
+     "p50": 674.3,
+     "p95": 922.3,
+     "min": 193.7,
+     "max": 922.3,
+     "n": 4
+    }
+   },
+   "worker:worker.main": {
+    "end": {
+     "p50": 1342.1,
+     "p95": 1849.5,
+     "min": 979.0,
+     "max": 1849.5,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:boot.message": {
+    "end": {
+     "p50": 1342.5,
+     "p95": 1849.6,
+     "min": 979.7,
+     "max": 1849.6,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:renderer.compile": {
+    "end": {
+     "p50": 1347.7,
+     "p95": 1851.4,
+     "min": 981.9,
+     "max": 1851.4,
+     "n": 4
+    },
+    "ms": {
+     "p50": 0.0,
+     "p95": 0.0,
+     "min": 0,
+     "max": 0.0,
+     "n": 4
+    }
+   },
+   "worker:coordinator.compile": {
+    "end": {
+     "p50": 1349.0,
+     "p95": 1851.8,
+     "min": 982.2,
+     "max": 1851.8,
+     "n": 4
+    },
+    "ms": {
+     "p50": 1.0,
+     "p95": 1.7,
+     "min": 0.4,
+     "max": 1.7,
+     "n": 4
+    }
+   },
+   "worker:renderer.instantiate": {
+    "end": {
+     "p50": 1351.6,
+     "p95": 1852.9,
+     "min": 983.4,
+     "max": 1852.9,
+     "n": 4
+    },
+    "ms": {
+     "p50": 2.3,
+     "p95": 3.3,
+     "min": 1.4,
+     "max": 3.3,
+     "n": 4
+    }
+   },
+   "worker:coordinator.instantiate": {
+    "end": {
+     "p50": 1351.7,
+     "p95": 1852.9,
+     "min": 983.4,
+     "max": 1852.9,
+     "n": 4
+    },
+    "ms": {
+     "p50": 1.7,
+     "p95": 2.7,
+     "min": 1.1,
+     "max": 2.7,
+     "n": 4
+    }
+   },
+   "worker:coordinator.ready": {
+    "end": {
+     "p50": 1353.8,
+     "p95": 1854.1,
+     "min": 994.8,
+     "max": 1854.1,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:duckdb.compile": {
+    "end": {
+     "p50": 1412.7,
+     "p95": 1844.5,
+     "min": 1293.5,
+     "max": 1844.5,
+     "n": 4
+    },
+    "ms": {
+     "p50": 975.1,
+     "p95": 1426.8,
+     "min": 882.6,
+     "max": 1426.8,
+     "n": 4
+    }
+   },
+   "worker:inference.ready": {
+    "end": {
+     "p50": 1439.0,
+     "p95": 1889.7,
+     "min": 1403.3,
+     "max": 1889.7,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:gpu.adapter": {
+    "end": {
+     "p50": 1439.7,
+     "p95": 1866.2,
+     "min": 1402.7,
+     "max": 1866.2,
+     "n": 4
+    },
+    "ms": {
+     "p50": 58.4,
+     "p95": 464.6,
+     "min": 12.1,
+     "max": 464.6,
+     "n": 4
+    }
+   },
+   "worker:gpu.device": {
+    "end": {
+     "p50": 1445.4,
+     "p95": 1879.5,
+     "min": 1409.2,
+     "max": 1879.5,
+     "n": 4
+    },
+    "ms": {
+     "p50": 7.0,
+     "p95": 13.3,
+     "min": 2.8,
+     "max": 13.3,
+     "n": 4
+    }
+   },
+   "worker:gpu.pipelines": {
+    "end": {
+     "p50": 1824.1,
+     "p95": 2277.8,
+     "min": 1754.4,
+     "max": 2277.8,
+     "n": 4
+    },
+    "ms": {
+     "p50": 366.6,
+     "p95": 437.1,
+     "min": 330.6,
+     "max": 437.1,
+     "n": 4
+    }
+   },
+   "worker:renderer.ready": {
+    "end": {
+     "p50": 1825.0,
+     "p95": 2278.8,
+     "min": 1755.5,
+     "max": 2278.8,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:duckdb.instantiate": {
+    "end": {
+     "p50": 3492.4,
+     "p95": 4119.7,
+     "min": 3278.9,
+     "max": 4119.7,
+     "n": 4
+    },
+    "ms": {
+     "p50": 1615.4,
+     "p95": 1821.5,
+     "min": 1499.9,
+     "max": 1821.5,
+     "n": 4
+    }
+   },
+   "worker:duckdb.open": {
+    "end": {
+     "p50": 3882.0,
+     "p95": 4597.7,
+     "min": 3675.4,
+     "max": 4597.7,
+     "n": 4
+    },
+    "ms": {
+     "p50": 397.4,
+     "p95": 477.6,
+     "min": 377.2,
+     "max": 477.6,
+     "n": 4
+    }
+   },
+   "worker:duckdb.boot": {
+    "end": {
+     "p50": 3930.8,
+     "p95": 4656.1,
+     "min": 3738.5,
+     "max": 4656.1,
+     "n": 4
+    },
+    "ms": {
+     "p50": 2061.3,
+     "p95": 2357.9,
+     "min": 1946.8,
+     "max": 2357.9,
+     "n": 4
+    }
+   },
+   "worker:duckdb.node": {
+    "end": {
+     "p50": 3946.7,
+     "p95": 4670.2,
+     "min": 3760.5,
+     "max": 4670.2,
+     "n": 4
+    },
+    "ms": {
+     "p50": 16.7,
+     "p95": 19.6,
+     "min": 12.2,
+     "max": 19.6,
+     "n": 4
+    }
+   },
+   "worker:dataset.fetch": {
+    "end": {
+     "p50": 3949.8,
+     "p95": 4671.7,
+     "min": 3771.0,
+     "max": 4671.7,
+     "n": 4
+    },
+    "ms": {
+     "p50": 0.3,
+     "p95": 0.9,
+     "min": 0.3,
+     "max": 0.9,
+     "n": 4
+    }
+   },
+   "worker:dataset.attach": {
+    "end": {
+     "p50": 4261.0,
+     "p95": 5102.1,
+     "min": 4137.4,
+     "max": 5102.1,
+     "n": 4
+    },
+    "ms": {
+     "p50": 301.2,
+     "p95": 367.2,
+     "min": 256.7,
+     "max": 367.2,
+     "n": 4
+    }
+   },
+   "worker:dataset.load": {
+    "end": {
+     "p50": 4261.4,
+     "p95": 5102.4,
+     "min": 4137.8,
+     "max": 5102.4,
+     "n": 4
+    },
+    "ms": {
+     "p50": 351.9,
+     "p95": 431.3,
+     "min": 288.6,
+     "max": 431.3,
+     "n": 4
+    }
+   },
+   "worker:rollups.ready": {
+    "end": {
+     "p50": 4291.8,
+     "p95": 5123.3,
+     "min": 4169.1,
+     "max": 5123.3,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:dataset.open": {
+    "end": {
+     "p50": 4300.3,
+     "p95": 5129.5,
+     "min": 4175.5,
+     "max": 5129.5,
+     "n": 4
+    },
+    "ms": {
+     "p50": 3147.5,
+     "p95": 3278.1,
+     "min": 2804.4,
+     "max": 3278.1,
+     "n": 4
+    }
+   },
+   "page:answerable": {
+    "end": {
+     "p50": 4308.9,
+     "p95": 5132.9,
+     "min": 4181.4,
+     "max": 5132.9,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:ext.json": {
+    "end": {
+     "p50": 5051.6,
+     "p95": 5641.9,
+     "min": 4645.4,
+     "max": 5641.9,
+     "n": 4
+    },
+    "ms": {
+     "p50": 580.2,
+     "p95": 850.3,
+     "min": 467.9,
+     "max": 850.3,
+     "n": 4
+    }
+   },
+   "worker:duckdb.lockdown-deferred": {
+    "end": {
+     "p50": 5077.1,
+     "p95": 5651.0,
+     "min": 4653.5,
+     "max": 5651.0,
+     "n": 4
+    },
+    "ms": {
+     "p50": 595.3,
+     "p95": 883.6,
+     "min": 477.3,
+     "max": 883.6,
+     "n": 4
+    }
+   }
+  },
+  "transfer": {
+   "page css": {
+    "transferSize": 0,
+    "decodedBodySize": 37507,
+    "ms": 28.32
+   },
+   "engine worker js": {
+    "transferSize": 0,
+    "decodedBodySize": 5199,
+    "ms": -214.53
+   }
+  }
+ },
+ "raw": {
+  "first": [
+   {
+    "answerable": 6788.75,
+    "rollups": 6786.9,
+    "rows": [
+     {
+      "stage": "html",
+      "thread": "net",
+      "startMs": 14.44,
+      "endMs": 27.93,
+      "ms": 13.49
+     },
+     {
+      "stage": "dom interactive",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 145.57,
+      "ms": null
+     },
+     {
+      "stage": "fetch page css",
+      "thread": "net",
+      "startMs": 122.09,
+      "endMs": 163.43,
+      "ms": 41.34
+     },
+     {
+      "stage": "page.modules",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 173.14,
+      "ms": null
+     },
+     {
+      "stage": "page.worker",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 175.45,
+      "ms": null
+     },
+     {
+      "stage": "fetch engine worker js",
+      "thread": "net",
+      "startMs": 412.74,
+      "endMs": 183.81,
+      "ms": -228.93
+     },
+     {
+      "stage": "page.boot",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 361.97,
+      "ms": null
+     },
+     {
+      "stage": "worker.entry",
+      "thread": "worker",
+      "startMs": 391.36,
+      "endMs": 420.42,
+      "ms": 29.05
+     },
+     {
+      "stage": "duckdb.compile",
+      "thread": "worker",
+      "startMs": 426.88,
+      "endMs": 1160.58,
+      "ms": 733.71,
+      "detail": "eh streaming"
+     },
+     {
+      "stage": "ext.json.prefetch",
+      "thread": "worker",
+      "startMs": 434.53,
+      "endMs": 1340.82,
+      "ms": 906.29,
+      "detail": "820646 B"
+     },
+     {
+      "stage": "worker.main",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1402.89,
+      "ms": null
+     },
+     {
+      "stage": "boot.message",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1403.64,
+      "ms": null
+     },
+     {
+      "stage": "renderer.compile",
+      "thread": "worker",
+      "startMs": 1420.8,
+      "endMs": 1420.8,
+      "ms": 0
+     },
+     {
+      "stage": "coordinator.compile",
+      "thread": "worker",
+      "startMs": 1420.6,
+      "endMs": 1421.3,
+      "ms": 0.7
+     },
+     {
+      "stage": "renderer.instantiate",
+      "thread": "worker",
+      "startMs": 1420.85,
+      "endMs": 1453.94,
+      "ms": 33.08
+     },
+     {
+      "stage": "coordinator.instantiate",
+      "thread": "worker",
+      "startMs": 1421.32,
+      "endMs": 1454.88,
+      "ms": 33.56
+     },
+     {
+      "stage": "coordinator.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1458.49,
+      "ms": null
+     },
+     {
+      "stage": "inference.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1763.72,
+      "ms": null
+     },
+     {
+      "stage": "gpu.adapter",
+      "thread": "worker",
+      "startMs": 1458.26,
+      "endMs": 1770.52,
+      "ms": 312.26
+     },
+     {
+      "stage": "gpu.device",
+      "thread": "worker",
+      "startMs": 1770.55,
+      "endMs": 1781.84,
+      "ms": 11.29
+     },
+     {
+      "stage": "gpu.pipelines",
+      "thread": "worker",
+      "startMs": 1781.97,
+      "endMs": 2444.95,
+      "ms": 662.99,
+      "detail": "13"
+     },
+     {
+      "stage": "renderer.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 2452.99,
+      "ms": null
+     },
+     {
+      "stage": "duckdb.instantiate",
+      "thread": "worker",
+      "startMs": 2510.08,
+      "endMs": 5449.45,
+      "ms": 2939.38,
+      "detail": "eh"
+     },
+     {
+      "stage": "duckdb.open",
+      "thread": "worker",
+      "startMs": 5449.66,
+      "endMs": 6034.56,
+      "ms": 584.91
+     },
+     {
+      "stage": "duckdb.boot",
+      "thread": "worker",
+      "startMs": 2508.22,
+      "endMs": 6084.62,
+      "ms": 3576.41,
+      "detail": "lockdown deferred"
+     },
+     {
+      "stage": "duckdb.node",
+      "thread": "worker",
+      "startMs": 6084.72,
+      "endMs": 6102.04,
+      "ms": 17.32
+     },
+     {
+      "stage": "dataset.download",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 6164.27,
+      "ms": null,
+      "detail": "network 25.0 MiB 5634 ms"
+     },
+     {
+      "stage": "dataset.fetch",
+      "thread": "worker",
+      "startMs": 6103.99,
+      "endMs": 6164.39,
+      "ms": 60.41,
+      "detail": "25.0 MiB blob"
+     },
+     {
+      "stage": "dataset.attach",
+      "thread": "worker",
+      "startMs": 6171.62,
+      "endMs": 6774.29,
+      "ms": 602.67
+     },
+     {
+      "stage": "dataset.load",
+      "thread": "worker",
+      "startMs": 6103.75,
+      "endMs": 6774.86,
+      "ms": 671.11,
+      "detail": "vessels (prebuilt)"
+     },
+     {
+      "stage": "rollups.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 6786.9,
+      "ms": null,
+      "detail": "prebuilt"
+     },
+     {
+      "stage": "dataset.open",
+      "thread": "worker",
+      "startMs": 1420.5,
+      "endMs": 6788.75,
+      "ms": 5368.25,
+      "detail": "vessels"
+     },
+     {
+      "stage": "answerable",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 6796.49,
+      "ms": null
+     },
+     {
+      "stage": "ext.json",
+      "thread": "worker",
+      "startMs": 6790.15,
+      "endMs": 7425.16,
+      "ms": 635.02
+     },
+     {
+      "stage": "duckdb.lockdown-deferred",
+      "thread": "worker",
+      "startMs": 6789.15,
+      "endMs": 7434.16,
+      "ms": 645
+     }
+    ],
+    "transfer": {
+     "page css": {
+      "transferSize": 9294,
+      "decodedBodySize": 37507,
+      "ms": 41.34
+     },
+     "engine worker js": {
+      "transferSize": 2719,
+      "decodedBodySize": 5199,
+      "ms": -228.93
+     }
+    },
+    "firstQuery": {
+     "headline": 1248.2001953125,
+     "db": null,
+     "cacheHit": false,
+     "rollupsBefore": true,
+     "rows": [
+      [
+       "key",
+       0
+      ],
+      [
+       "draft sent",
+       2.91
+      ],
+      [
+       "coordinator",
+       587.87
+      ],
+      [
+       "inference sent",
+       587.87
+      ],
+      [
+       "inference received",
+       589.31
+      ],
+      [
+       "first SQL delta",
+       589.33
+      ],
+      [
+       "SQL complete",
+       590.52
+      ],
+      [
+       "SQL received",
+       591.15
+      ],
+      [
+       "exec sent",
+       591.15
+      ],
+      [
+       "exec received",
+       592.35
+      ],
+      [
+       "render first batch",
+       1201.31
+      ],
+      [
+       "first draw submitted",
+       1248.2
+      ]
+     ]
+    },
+    "errors": []
+   },
+   {
+    "answerable": 5942.57,
+    "rollups": 5932.4,
+    "rows": [
+     {
+      "stage": "html",
+      "thread": "net",
+      "startMs": 3.45,
+      "endMs": 8.08,
+      "ms": 4.63
+     },
+     {
+      "stage": "fetch page css",
+      "thread": "net",
+      "startMs": 82.25,
+      "endMs": 130.08,
+      "ms": 47.83
+     },
+     {
+      "stage": "dom interactive",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 172.78,
+      "ms": null
+     },
+     {
+      "stage": "page.modules",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 182.73,
+      "ms": null
+     },
+     {
+      "stage": "page.worker",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 183.22,
+      "ms": null
+     },
+     {
+      "stage": "fetch engine worker js",
+      "thread": "net",
+      "startMs": 411.74,
+      "endMs": 196.46,
+      "ms": -215.28
+     },
+     {
+      "stage": "page.boot",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 331.35,
+      "ms": null
+     },
+     {
+      "stage": "worker.entry",
+      "thread": "worker",
+      "startMs": 388.8,
+      "endMs": 420.38,
+      "ms": 31.57
+     },
+     {
+      "stage": "ext.json.prefetch",
+      "thread": "worker",
+      "startMs": 434.49,
+      "endMs": 1157.76,
+      "ms": 723.27,
+      "detail": "820646 B"
+     },
+     {
+      "stage": "duckdb.compile",
+      "thread": "worker",
+      "startMs": 428.43,
+      "endMs": 1756.41,
+      "ms": 1327.98,
+      "detail": "eh streaming"
+     },
+     {
+      "stage": "worker.main",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1764.71,
+      "ms": null
+     },
+     {
+      "stage": "boot.message",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1765.38,
+      "ms": null
+     },
+     {
+      "stage": "renderer.compile",
+      "thread": "worker",
+      "startMs": 1768.39,
+      "endMs": 1768.4,
+      "ms": 0.01
+     },
+     {
+      "stage": "coordinator.compile",
+      "thread": "worker",
+      "startMs": 1768.19,
+      "endMs": 1769.06,
+      "ms": 0.87
+     },
+     {
+      "stage": "renderer.instantiate",
+      "thread": "worker",
+      "startMs": 1768.55,
+      "endMs": 1776.22,
+      "ms": 7.67
+     },
+     {
+      "stage": "coordinator.instantiate",
+      "thread": "worker",
+      "startMs": 1769.24,
+      "endMs": 1776.26,
+      "ms": 7.02
+     },
+     {
+      "stage": "coordinator.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1778.16,
+      "ms": null
+     },
+     {
+      "stage": "gpu.adapter",
+      "thread": "worker",
+      "startMs": 1777.77,
+      "endMs": 1912.31,
+      "ms": 134.53
+     },
+     {
+      "stage": "inference.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1915.83,
+      "ms": null
+     },
+     {
+      "stage": "gpu.device",
+      "thread": "worker",
+      "startMs": 1912.34,
+      "endMs": 1920.43,
+      "ms": 8.08
+     },
+     {
+      "stage": "gpu.pipelines",
+      "thread": "worker",
+      "startMs": 1920.45,
+      "endMs": 2430.34,
+      "ms": 509.89,
+      "detail": "13"
+     },
+     {
+      "stage": "renderer.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 2432.42,
+      "ms": null
+     },
+     {
+      "stage": "duckdb.instantiate",
+      "thread": "worker",
+      "startMs": 2474.37,
+      "endMs": 4929.71,
+      "ms": 2455.34,
+      "detail": "eh"
+     },
+     {
+      "stage": "duckdb.open",
+      "thread": "worker",
+      "startMs": 4929.85,
+      "endMs": 5389.83,
+      "ms": 459.97
+     },
+     {
+      "stage": "duckdb.boot",
+      "thread": "worker",
+      "startMs": 2474.25,
+      "endMs": 5444.43,
+      "ms": 2970.17,
+      "detail": "lockdown deferred"
+     },
+     {
+      "stage": "duckdb.node",
+      "thread": "worker",
+      "startMs": 5446.82,
+      "endMs": 5476,
+      "ms": 29.18
+     },
+     {
+      "stage": "dataset.download",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 5574.94,
+      "ms": null,
+      "detail": "network 25.0 MiB 5098 ms"
+     },
+     {
+      "stage": "dataset.fetch",
+      "thread": "worker",
+      "startMs": 5484.6,
+      "endMs": 5576.56,
+      "ms": 91.96,
+      "detail": "25.0 MiB blob"
+     },
+     {
+      "stage": "dataset.attach",
+      "thread": "worker",
+      "startMs": 5586.61,
+      "endMs": 5897.48,
+      "ms": 310.88
+     },
+     {
+      "stage": "dataset.load",
+      "thread": "worker",
+      "startMs": 5484.23,
+      "endMs": 5897.96,
+      "ms": 413.73,
+      "detail": "vessels (prebuilt)"
+     },
+     {
+      "stage": "rollups.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 5932.4,
+      "ms": null,
+      "detail": "prebuilt"
+     },
+     {
+      "stage": "dataset.open",
+      "thread": "worker",
+      "startMs": 1768.1,
+      "endMs": 5942.57,
+      "ms": 4174.48,
+      "detail": "vessels"
+     },
+     {
+      "stage": "answerable",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 5947.54,
+      "ms": null
+     },
+     {
+      "stage": "ext.json",
+      "thread": "worker",
+      "startMs": 5952.03,
+      "endMs": 6577.27,
+      "ms": 625.24
+     },
+     {
+      "stage": "duckdb.lockdown-deferred",
+      "thread": "worker",
+      "startMs": 5942.96,
+      "endMs": 6592.53,
+      "ms": 649.57
+     }
+    ],
+    "transfer": {
+     "page css": {
+      "transferSize": 9294,
+      "decodedBodySize": 37507,
+      "ms": 47.83
+     },
+     "engine worker js": {
+      "transferSize": 2719,
+      "decodedBodySize": 5199,
+      "ms": -215.28
+     }
+    },
+    "firstQuery": {
+     "headline": 1269.224853515625,
+     "db": null,
+     "cacheHit": false,
+     "rollupsBefore": true,
+     "rows": [
+      [
+       "key",
+       0
+      ],
+      [
+       "draft sent",
+       0.3
+      ],
+      [
+       "coordinator",
+       605.2
+      ],
+      [
+       "inference sent",
+       605.2
+      ],
+      [
+       "inference received",
+       607.79
+      ],
+      [
+       "first SQL delta",
+       607.82
+      ],
+      [
+       "SQL complete",
+       607.91
+      ],
+      [
+       "SQL received",
+       616.64
+      ],
+      [
+       "exec sent",
+       616.64
+      ],
+      [
+       "exec received",
+       623.07
+      ],
+      [
+       "render first batch",
+       1193.21
+      ],
+      [
+       "first draw submitted",
+       1269.22
+      ]
+     ]
+    },
+    "errors": []
+   },
+   {
+    "answerable": 7142.99,
+    "rollups": 7139.54,
+    "rows": [
+     {
+      "stage": "html",
+      "thread": "net",
+      "startMs": 9.32,
+      "endMs": 22.1,
+      "ms": 12.78
+     },
+     {
+      "stage": "dom interactive",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 151.97,
+      "ms": null
+     },
+     {
+      "stage": "fetch page css",
+      "thread": "net",
+      "startMs": 109.06,
+      "endMs": 159.86,
+      "ms": 50.8
+     },
+     {
+      "stage": "page.modules",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 204.87,
+      "ms": null
+     },
+     {
+      "stage": "page.worker",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 205.16,
+      "ms": null
+     },
+     {
+      "stage": "fetch engine worker js",
+      "thread": "net",
+      "startMs": 501.09,
+      "endMs": 222.28,
+      "ms": -278.8
+     },
+     {
+      "stage": "page.boot",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 424.33,
+      "ms": null
+     },
+     {
+      "stage": "worker.entry",
+      "thread": "worker",
+      "startMs": 480.31,
+      "endMs": 509.23,
+      "ms": 28.92
+     },
+     {
+      "stage": "ext.json.prefetch",
+      "thread": "worker",
+      "startMs": 528.38,
+      "endMs": 1532.94,
+      "ms": 1004.56,
+      "detail": "820646 B"
+     },
+     {
+      "stage": "worker.main",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1581.51,
+      "ms": null
+     },
+     {
+      "stage": "boot.message",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1582.42,
+      "ms": null
+     },
+     {
+      "stage": "renderer.compile",
+      "thread": "worker",
+      "startMs": 1586.29,
+      "endMs": 1586.31,
+      "ms": 0.02
+     },
+     {
+      "stage": "coordinator.compile",
+      "thread": "worker",
+      "startMs": 1586.12,
+      "endMs": 1591.29,
+      "ms": 5.17
+     },
+     {
+      "stage": "renderer.instantiate",
+      "thread": "worker",
+      "startMs": 1590.77,
+      "endMs": 1600.23,
+      "ms": 9.46
+     },
+     {
+      "stage": "coordinator.instantiate",
+      "thread": "worker",
+      "startMs": 1591.31,
+      "endMs": 1600.27,
+      "ms": 8.96
+     },
+     {
+      "stage": "coordinator.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1601.39,
+      "ms": null
+     },
+     {
+      "stage": "gpu.adapter",
+      "thread": "worker",
+      "startMs": 1601.2,
+      "endMs": 1900.25,
+      "ms": 299.05
+     },
+     {
+      "stage": "inference.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1906.52,
+      "ms": null
+     },
+     {
+      "stage": "gpu.device",
+      "thread": "worker",
+      "startMs": 1900.3,
+      "endMs": 1955.29,
+      "ms": 54.99
+     },
+     {
+      "stage": "duckdb.compile",
+      "thread": "worker",
+      "startMs": 521.85,
+      "endMs": 2641.33,
+      "ms": 2119.48,
+      "detail": "eh streaming"
+     },
+     {
+      "stage": "gpu.pipelines",
+      "thread": "worker",
+      "startMs": 1955.32,
+      "endMs": 2656.01,
+      "ms": 700.68,
+      "detail": "13"
+     },
+     {
+      "stage": "renderer.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 2660.56,
+      "ms": null
+     },
+     {
+      "stage": "duckdb.instantiate",
+      "thread": "worker",
+      "startMs": 2701.56,
+      "endMs": 5736.31,
+      "ms": 3034.76,
+      "detail": "eh"
+     },
+     {
+      "stage": "duckdb.open",
+      "thread": "worker",
+      "startMs": 5736.47,
+      "endMs": 6387.93,
+      "ms": 651.46
+     },
+     {
+      "stage": "duckdb.boot",
+      "thread": "worker",
+      "startMs": 2700.43,
+      "endMs": 6472.25,
+      "ms": 3771.82,
+      "detail": "lockdown deferred"
+     },
+     {
+      "stage": "duckdb.node",
+      "thread": "worker",
+      "startMs": 6472.37,
+      "endMs": 6524.5,
+      "ms": 52.13
+     },
+     {
+      "stage": "dataset.download",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 6636.21,
+      "ms": null,
+      "detail": "network 25.0 MiB 6064 ms"
+     },
+     {
+      "stage": "dataset.fetch",
+      "thread": "worker",
+      "startMs": 6532.41,
+      "endMs": 6636.28,
+      "ms": 103.87,
+      "detail": "25.0 MiB blob"
+     },
+     {
+      "stage": "dataset.attach",
+      "thread": "worker",
+      "startMs": 6640.31,
+      "endMs": 7096.77,
+      "ms": 456.46
+     },
+     {
+      "stage": "dataset.load",
+      "thread": "worker",
+      "startMs": 6532.07,
+      "endMs": 7097.05,
+      "ms": 564.97,
+      "detail": "vessels (prebuilt)"
+     },
+     {
+      "stage": "rollups.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 7139.54,
+      "ms": null,
+      "detail": "prebuilt"
+     },
+     {
+      "stage": "dataset.open",
+      "thread": "worker",
+      "startMs": 1586.03,
+      "endMs": 7142.99,
+      "ms": 5556.96,
+      "detail": "vessels"
+     },
+     {
+      "stage": "answerable",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 7164.09,
+      "ms": null
+     },
+     {
+      "stage": "ext.json",
+      "thread": "worker",
+      "startMs": 7150.97,
+      "endMs": 8041.15,
+      "ms": 890.18
+     },
+     {
+      "stage": "duckdb.lockdown-deferred",
+      "thread": "worker",
+      "startMs": 7143.14,
+      "endMs": 8061.53,
+      "ms": 918.39
+     }
+    ],
+    "transfer": {
+     "page css": {
+      "transferSize": 9294,
+      "decodedBodySize": 37507,
+      "ms": 50.8
+     },
+     "engine worker js": {
+      "transferSize": 2719,
+      "decodedBodySize": 5199,
+      "ms": -278.8
+     }
+    },
+    "firstQuery": {
+     "headline": 1546.544921875,
+     "db": null,
+     "cacheHit": false,
+     "rollupsBefore": true,
+     "rows": [
+      [
+       "key",
+       0
+      ],
+      [
+       "draft sent",
+       0.36
+      ],
+      [
+       "coordinator",
+       864.36
+      ],
+      [
+       "inference sent",
+       864.36
+      ],
+      [
+       "inference received",
+       865.72
+      ],
+      [
+       "first SQL delta",
+       865.73
+      ],
+      [
+       "SQL complete",
+       865.97
+      ],
+      [
+       "SQL received",
+       872.46
+      ],
+      [
+       "exec sent",
+       872.46
+      ],
+      [
+       "exec received",
+       873.71
+      ],
+      [
+       "render first batch",
+       1482.86
+      ],
+      [
+       "first draw submitted",
+       1546.54
+      ]
+     ]
+    },
+    "errors": []
+   },
+   {
+    "answerable": 6154.31,
+    "rollups": 6149.69,
+    "rows": [
+     {
+      "stage": "html",
+      "thread": "net",
+      "startMs": 10.06,
+      "endMs": 28.27,
+      "ms": 18.21
+     },
+     {
+      "stage": "fetch page css",
+      "thread": "net",
+      "startMs": 132.17,
+      "endMs": 168.66,
+      "ms": 36.49
+     },
+     {
+      "stage": "dom interactive",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 182.55,
+      "ms": null
+     },
+     {
+      "stage": "page.modules",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 201.68,
+      "ms": null
+     },
+     {
+      "stage": "page.worker",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 204.48,
+      "ms": null
+     },
+     {
+      "stage": "fetch engine worker js",
+      "thread": "net",
+      "startMs": 543.77,
+      "endMs": 230.12,
+      "ms": -313.65
+     },
+     {
+      "stage": "page.boot",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 382.72,
+      "ms": null
+     },
+     {
+      "stage": "worker.entry",
+      "thread": "worker",
+      "startMs": 532.62,
+      "endMs": 547.94,
+      "ms": 15.32
+     },
+     {
+      "stage": "ext.json.prefetch",
+      "thread": "worker",
+      "startMs": 558.23,
+      "endMs": 1625.06,
+      "ms": 1066.83,
+      "detail": "820646 B"
+     },
+     {
+      "stage": "worker.main",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1845.1,
+      "ms": null
+     },
+     {
+      "stage": "boot.message",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1845.6,
+      "ms": null
+     },
+     {
+      "stage": "renderer.compile",
+      "thread": "worker",
+      "startMs": 1850.02,
+      "endMs": 1850.05,
+      "ms": 0.03
+     },
+     {
+      "stage": "coordinator.compile",
+      "thread": "worker",
+      "startMs": 1849.77,
+      "endMs": 1850.47,
+      "ms": 0.71
+     },
+     {
+      "stage": "renderer.instantiate",
+      "thread": "worker",
+      "startMs": 1850.1,
+      "endMs": 1863.67,
+      "ms": 13.57
+     },
+     {
+      "stage": "coordinator.instantiate",
+      "thread": "worker",
+      "startMs": 1850.49,
+      "endMs": 1863.9,
+      "ms": 13.41
+     },
+     {
+      "stage": "coordinator.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1865.11,
+      "ms": null
+     },
+     {
+      "stage": "gpu.adapter",
+      "thread": "worker",
+      "startMs": 1864.89,
+      "endMs": 1996.34,
+      "ms": 131.46
+     },
+     {
+      "stage": "gpu.device",
+      "thread": "worker",
+      "startMs": 1996.4,
+      "endMs": 2002.18,
+      "ms": 5.78
+     },
+     {
+      "stage": "inference.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 2364.55,
+      "ms": null
+     },
+     {
+      "stage": "duckdb.compile",
+      "thread": "worker",
+      "startMs": 551.76,
+      "endMs": 2647.04,
+      "ms": 2095.28,
+      "detail": "eh streaming"
+     },
+     {
+      "stage": "gpu.pipelines",
+      "thread": "worker",
+      "startMs": 2002.23,
+      "endMs": 2649.89,
+      "ms": 647.66,
+      "detail": "13"
+     },
+     {
+      "stage": "renderer.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 2655.76,
+      "ms": null
+     },
+     {
+      "stage": "duckdb.instantiate",
+      "thread": "worker",
+      "startMs": 2703.06,
+      "endMs": 5236.49,
+      "ms": 2533.43,
+      "detail": "eh"
+     },
+     {
+      "stage": "duckdb.open",
+      "thread": "worker",
+      "startMs": 5236.84,
+      "endMs": 5673.35,
+      "ms": 436.52
+     },
+     {
+      "stage": "duckdb.boot",
+      "thread": "worker",
+      "startMs": 2700.07,
+      "endMs": 5722.56,
+      "ms": 3022.48,
+      "detail": "lockdown deferred"
+     },
+     {
+      "stage": "duckdb.node",
+      "thread": "worker",
+      "startMs": 5724.01,
+      "endMs": 5740.24,
+      "ms": 16.23
+     },
+     {
+      "stage": "dataset.download",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 5798.1,
+      "ms": null,
+      "detail": "network 25.0 MiB 5209 ms"
+     },
+     {
+      "stage": "dataset.fetch",
+      "thread": "worker",
+      "startMs": 5741.69,
+      "endMs": 5798.19,
+      "ms": 56.5,
+      "detail": "25.0 MiB blob"
+     },
+     {
+      "stage": "dataset.attach",
+      "thread": "worker",
+      "startMs": 5805.61,
+      "endMs": 6117.22,
+      "ms": 311.61
+     },
+     {
+      "stage": "dataset.load",
+      "thread": "worker",
+      "startMs": 5741.44,
+      "endMs": 6117.46,
+      "ms": 376.02,
+      "detail": "vessels (prebuilt)"
+     },
+     {
+      "stage": "rollups.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 6149.69,
+      "ms": null,
+      "detail": "prebuilt"
+     },
+     {
+      "stage": "dataset.open",
+      "thread": "worker",
+      "startMs": 1849.68,
+      "endMs": 6154.31,
+      "ms": 4304.63,
+      "detail": "vessels"
+     },
+     {
+      "stage": "answerable",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 6157.48,
+      "ms": null
+     },
+     {
+      "stage": "ext.json",
+      "thread": "worker",
+      "startMs": 6158.43,
+      "endMs": 6571.14,
+      "ms": 412.71
+     },
+     {
+      "stage": "duckdb.lockdown-deferred",
+      "thread": "worker",
+      "startMs": 6154.61,
+      "endMs": 6588.41,
+      "ms": 433.8
+     }
+    ],
+    "transfer": {
+     "page css": {
+      "transferSize": 9294,
+      "decodedBodySize": 37507,
+      "ms": 36.49
+     },
+     "engine worker js": {
+      "transferSize": 2719,
+      "decodedBodySize": 5199,
+      "ms": -313.65
+     }
+    },
+    "firstQuery": {
+     "headline": 970.804931640625,
+     "db": null,
+     "cacheHit": false,
+     "rollupsBefore": true,
+     "rows": [
+      [
+       "key",
+       0
+      ],
+      [
+       "draft sent",
+       6.57
+      ],
+      [
+       "coordinator",
+       347.2
+      ],
+      [
+       "inference sent",
+       347.2
+      ],
+      [
+       "inference received",
+       348.41
+      ],
+      [
+       "first SQL delta",
+       348.43
+      ],
+      [
+       "SQL complete",
+       350.28
+      ],
+      [
+       "SQL received",
+       354.63
+      ],
+      [
+       "exec sent",
+       354.63
+      ],
+      [
+       "exec received",
+       355.96
+      ],
+      [
+       "render first batch",
+       930.26
+      ],
+      [
+       "first draw submitted",
+       970.8
+      ]
+     ]
+    },
+    "errors": []
+   }
+  ],
+  "repeat": [
+   {
+    "answerable": 4410.34,
+    "rollups": 4407.59,
+    "rows": [
+     {
+      "stage": "html",
+      "thread": "net",
+      "startMs": 4.78,
+      "endMs": 15.84,
+      "ms": 11.05
+     },
+     {
+      "stage": "fetch page css",
+      "thread": "net",
+      "startMs": 75.81,
+      "endMs": 86.16,
+      "ms": 10.36
+     },
+     {
+      "stage": "dom interactive",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 102.21,
+      "ms": null
+     },
+     {
+      "stage": "page.modules",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 120.84,
+      "ms": null
+     },
+     {
+      "stage": "page.worker",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 123.79,
+      "ms": null
+     },
+     {
+      "stage": "fetch engine worker js",
+      "thread": "net",
+      "startMs": 385.96,
+      "endMs": 137.7,
+      "ms": -248.26
+     },
+     {
+      "stage": "page.boot",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 263.8,
+      "ms": null
+     },
+     {
+      "stage": "worker.entry",
+      "thread": "worker",
+      "startMs": 336.86,
+      "endMs": 397.24,
+      "ms": 60.38
+     },
+     {
+      "stage": "ext.json.prefetch",
+      "thread": "worker",
+      "startMs": 417.5,
+      "endMs": 611.17,
+      "ms": 193.66,
+      "detail": "820646 B"
+     },
+     {
+      "stage": "dataset.download",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 623.97,
+      "ms": null,
+      "detail": "cache 25.0 MiB 132 ms"
+     },
+     {
+      "stage": "duckdb.compile",
+      "thread": "worker",
+      "startMs": 410.82,
+      "endMs": 1293.46,
+      "ms": 882.64,
+      "detail": "eh streaming"
+     },
+     {
+      "stage": "worker.main",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1304.15,
+      "ms": null
+     },
+     {
+      "stage": "boot.message",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1304.92,
+      "ms": null
+     },
+     {
+      "stage": "renderer.compile",
+      "thread": "worker",
+      "startMs": 1309.49,
+      "endMs": 1309.49,
+      "ms": 0.01
+     },
+     {
+      "stage": "coordinator.compile",
+      "thread": "worker",
+      "startMs": 1308.99,
+      "endMs": 1310.65,
+      "ms": 1.66
+     },
+     {
+      "stage": "renderer.instantiate",
+      "thread": "worker",
+      "startMs": 1309.68,
+      "endMs": 1313,
+      "ms": 3.32
+     },
+     {
+      "stage": "coordinator.instantiate",
+      "thread": "worker",
+      "startMs": 1310.82,
+      "endMs": 1313.05,
+      "ms": 2.23
+     },
+     {
+      "stage": "coordinator.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1316.02,
+      "ms": null
+     },
+     {
+      "stage": "gpu.adapter",
+      "thread": "worker",
+      "startMs": 1315.35,
+      "endMs": 1402.66,
+      "ms": 87.3
+     },
+     {
+      "stage": "inference.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1403.27,
+      "ms": null
+     },
+     {
+      "stage": "gpu.device",
+      "thread": "worker",
+      "startMs": 1402.71,
+      "endMs": 1409.19,
+      "ms": 6.48
+     },
+     {
+      "stage": "gpu.pipelines",
+      "thread": "worker",
+      "startMs": 1409.22,
+      "endMs": 1846.34,
+      "ms": 437.13,
+      "detail": "13"
+     },
+     {
+      "stage": "renderer.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1847.24,
+      "ms": null
+     },
+     {
+      "stage": "duckdb.instantiate",
+      "thread": "worker",
+      "startMs": 1907.74,
+      "endMs": 3611.56,
+      "ms": 1703.82,
+      "detail": "eh"
+     },
+     {
+      "stage": "duckdb.open",
+      "thread": "worker",
+      "startMs": 3611.89,
+      "endMs": 4010.89,
+      "ms": 399
+     },
+     {
+      "stage": "duckdb.boot",
+      "thread": "worker",
+      "startMs": 1905.8,
+      "endMs": 4068.73,
+      "ms": 2162.93,
+      "detail": "lockdown deferred"
+     },
+     {
+      "stage": "duckdb.node",
+      "thread": "worker",
+      "startMs": 4068.84,
+      "endMs": 4088.17,
+      "ms": 19.32
+     },
+     {
+      "stage": "dataset.fetch",
+      "thread": "worker",
+      "startMs": 4092.38,
+      "endMs": 4092.68,
+      "ms": 0.3,
+      "detail": "25.0 MiB blob"
+     },
+     {
+      "stage": "dataset.attach",
+      "thread": "worker",
+      "startMs": 4123.64,
+      "endMs": 4380.37,
+      "ms": 256.73
+     },
+     {
+      "stage": "dataset.load",
+      "thread": "worker",
+      "startMs": 4092.09,
+      "endMs": 4380.68,
+      "ms": 288.59,
+      "detail": "vessels (prebuilt)"
+     },
+     {
+      "stage": "rollups.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 4407.59,
+      "ms": null,
+      "detail": "prebuilt"
+     },
+     {
+      "stage": "dataset.open",
+      "thread": "worker",
+      "startMs": 1308.88,
+      "endMs": 4410.34,
+      "ms": 3101.47,
+      "detail": "vessels"
+     },
+     {
+      "stage": "answerable",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 4417.77,
+      "ms": null
+     },
+     {
+      "stage": "ext.json",
+      "thread": "worker",
+      "startMs": 4411.71,
+      "endMs": 5061.13,
+      "ms": 649.42
+     },
+     {
+      "stage": "duckdb.lockdown-deferred",
+      "thread": "worker",
+      "startMs": 4410.55,
+      "endMs": 5080.11,
+      "ms": 669.56
+     }
+    ],
+    "transfer": {
+     "page css": {
+      "transferSize": 0,
+      "decodedBodySize": 37507,
+      "ms": 10.36
+     },
+     "engine worker js": {
+      "transferSize": 0,
+      "decodedBodySize": 5199,
+      "ms": -248.26
+     }
+    },
+    "firstQuery": {
+     "headline": 1320.02490234375,
+     "db": null,
+     "cacheHit": false,
+     "rollupsBefore": true,
+     "rows": [
+      [
+       "key",
+       0
+      ],
+      [
+       "draft sent",
+       0.37
+      ],
+      [
+       "coordinator",
+       629.26
+      ],
+      [
+       "inference sent",
+       629.26
+      ],
+      [
+       "inference received",
+       633.65
+      ],
+      [
+       "first SQL delta",
+       633.66
+      ],
+      [
+       "SQL complete",
+       633.76
+      ],
+      [
+       "SQL received",
+       641.38
+      ],
+      [
+       "exec sent",
+       641.38
+      ],
+      [
+       "exec received",
+       642.71
+      ],
+      [
+       "render first batch",
+       1272.8
+      ],
+      [
+       "first draw submitted",
+       1320.02
+      ]
+     ]
+    },
+    "errors": []
+   },
+   {
+    "answerable": 4190.21,
+    "rollups": 4176.06,
+    "rows": [
+     {
+      "stage": "html",
+      "thread": "net",
+      "startMs": 4.15,
+      "endMs": 12.83,
+      "ms": 8.68
+     },
+     {
+      "stage": "fetch page css",
+      "thread": "net",
+      "startMs": 108.64,
+      "endMs": 136.16,
+      "ms": 27.53
+     },
+     {
+      "stage": "dom interactive",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 170.07,
+      "ms": null
+     },
+     {
+      "stage": "page.modules",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 179.17,
+      "ms": null
+     },
+     {
+      "stage": "page.worker",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 183.29,
+      "ms": null
+     },
+     {
+      "stage": "fetch engine worker js",
+      "thread": "net",
+      "startMs": 450.98,
+      "endMs": 187.72,
+      "ms": -263.26
+     },
+     {
+      "stage": "page.boot",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 312.79,
+      "ms": null
+     },
+     {
+      "stage": "worker.entry",
+      "thread": "worker",
+      "startMs": 421.46,
+      "endMs": 462.83,
+      "ms": 41.37
+     },
+     {
+      "stage": "ext.json.prefetch",
+      "thread": "worker",
+      "startMs": 483.72,
+      "endMs": 1306.18,
+      "ms": 822.46,
+      "detail": "820646 B"
+     },
+     {
+      "stage": "duckdb.compile",
+      "thread": "worker",
+      "startMs": 480.24,
+      "endMs": 1368.72,
+      "ms": 888.49,
+      "detail": "eh streaming"
+     },
+     {
+      "stage": "worker.main",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1379.99,
+      "ms": null
+     },
+     {
+      "stage": "boot.message",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1380.1,
+      "ms": null
+     },
+     {
+      "stage": "renderer.compile",
+      "thread": "worker",
+      "startMs": 1385.87,
+      "endMs": 1385.87,
+      "ms": 0
+     },
+     {
+      "stage": "coordinator.compile",
+      "thread": "worker",
+      "startMs": 1385.84,
+      "endMs": 1387.4,
+      "ms": 1.56
+     },
+     {
+      "stage": "renderer.instantiate",
+      "thread": "worker",
+      "startMs": 1387.07,
+      "endMs": 1390.18,
+      "ms": 3.1
+     },
+     {
+      "stage": "coordinator.instantiate",
+      "thread": "worker",
+      "startMs": 1387.67,
+      "endMs": 1390.33,
+      "ms": 2.66
+     },
+     {
+      "stage": "coordinator.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1391.62,
+      "ms": null
+     },
+     {
+      "stage": "dataset.download",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1401.16,
+      "ms": null,
+      "detail": "cache 25.0 MiB 783 ms"
+     },
+     {
+      "stage": "inference.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1414.89,
+      "ms": null
+     },
+     {
+      "stage": "gpu.adapter",
+      "thread": "worker",
+      "startMs": 1391.48,
+      "endMs": 1420.99,
+      "ms": 29.52
+     },
+     {
+      "stage": "gpu.device",
+      "thread": "worker",
+      "startMs": 1421.03,
+      "endMs": 1423.82,
+      "ms": 2.78
+     },
+     {
+      "stage": "gpu.pipelines",
+      "thread": "worker",
+      "startMs": 1423.86,
+      "endMs": 1754.41,
+      "ms": 330.55,
+      "detail": "13"
+     },
+     {
+      "stage": "renderer.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1755.47,
+      "ms": null
+     },
+     {
+      "stage": "duckdb.instantiate",
+      "thread": "worker",
+      "startMs": 1779.04,
+      "endMs": 3278.94,
+      "ms": 1499.9,
+      "detail": "eh"
+     },
+     {
+      "stage": "duckdb.open",
+      "thread": "worker",
+      "startMs": 3279.62,
+      "endMs": 3675.37,
+      "ms": 395.75
+     },
+     {
+      "stage": "duckdb.boot",
+      "thread": "worker",
+      "startMs": 1778.76,
+      "endMs": 3738.49,
+      "ms": 1959.73,
+      "detail": "lockdown deferred"
+     },
+     {
+      "stage": "duckdb.node",
+      "thread": "worker",
+      "startMs": 3740.89,
+      "endMs": 3760.46,
+      "ms": 19.57
+     },
+     {
+      "stage": "dataset.fetch",
+      "thread": "worker",
+      "startMs": 3770.12,
+      "endMs": 3771.03,
+      "ms": 0.91,
+      "detail": "25.0 MiB blob"
+     },
+     {
+      "stage": "dataset.attach",
+      "thread": "worker",
+      "startMs": 3831.64,
+      "endMs": 4137.43,
+      "ms": 305.79
+     },
+     {
+      "stage": "dataset.load",
+      "thread": "worker",
+      "startMs": 3769.76,
+      "endMs": 4137.83,
+      "ms": 368.08,
+      "detail": "vessels (prebuilt)"
+     },
+     {
+      "stage": "rollups.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 4176.06,
+      "ms": null,
+      "detail": "prebuilt"
+     },
+     {
+      "stage": "dataset.open",
+      "thread": "worker",
+      "startMs": 1385.83,
+      "endMs": 4190.21,
+      "ms": 2804.38,
+      "detail": "vessels"
+     },
+     {
+      "stage": "answerable",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 4199.94,
+      "ms": null
+     },
+     {
+      "stage": "ext.json",
+      "thread": "worker",
+      "startMs": 4191.73,
+      "endMs": 5042,
+      "ms": 850.28
+     },
+     {
+      "stage": "duckdb.lockdown-deferred",
+      "thread": "worker",
+      "startMs": 4190.53,
+      "endMs": 5074.15,
+      "ms": 883.62
+     }
+    ],
+    "transfer": {
+     "page css": {
+      "transferSize": 0,
+      "decodedBodySize": 37507,
+      "ms": 27.53
+     },
+     "engine worker js": {
+      "transferSize": 0,
+      "decodedBodySize": 5199,
+      "ms": -263.26
+     }
+    },
+    "firstQuery": {
+     "headline": 1721.605224609375,
+     "db": null,
+     "cacheHit": false,
+     "rollupsBefore": true,
+     "rows": [
+      [
+       "key",
+       0
+      ],
+      [
+       "draft sent",
+       0.43
+      ],
+      [
+       "coordinator",
+       818.01
+      ],
+      [
+       "inference sent",
+       818.01
+      ],
+      [
+       "inference received",
+       822.17
+      ],
+      [
+       "first SQL delta",
+       822.19
+      ],
+      [
+       "SQL complete",
+       823.02
+      ],
+      [
+       "SQL received",
+       827.36
+      ],
+      [
+       "exec sent",
+       827.36
+      ],
+      [
+       "exec received",
+       833.87
+      ],
+      [
+       "render first batch",
+       1661.58
+      ],
+      [
+       "first draw submitted",
+       1721.61
+      ]
+     ]
+    },
+    "errors": []
+   },
+   {
+    "answerable": 5129.46,
+    "rollups": 5123.32,
+    "rows": [
+     {
+      "stage": "html",
+      "thread": "net",
+      "startMs": 6.9,
+      "endMs": 11.53,
+      "ms": 4.63
+     },
+     {
+      "stage": "dom interactive",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 128.93,
+      "ms": null
+     },
+     {
+      "stage": "fetch page css",
+      "thread": "net",
+      "startMs": 96.23,
+      "endMs": 136.64,
+      "ms": 40.41
+     },
+     {
+      "stage": "page.modules",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 168.1,
+      "ms": null
+     },
+     {
+      "stage": "page.worker",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 170.15,
+      "ms": null
+     },
+     {
+      "stage": "fetch engine worker js",
+      "thread": "net",
+      "startMs": 390.86,
+      "endMs": 189.76,
+      "ms": -201.1
+     },
+     {
+      "stage": "page.boot",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 321.69,
+      "ms": null
+     },
+     {
+      "stage": "worker.entry",
+      "thread": "worker",
+      "startMs": 358.24,
+      "endMs": 401.7,
+      "ms": 43.46
+     },
+     {
+      "stage": "dataset.download",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 555.71,
+      "ms": null,
+      "detail": "cache 25.0 MiB 100 ms"
+     },
+     {
+      "stage": "ext.json.prefetch",
+      "thread": "worker",
+      "startMs": 418.6,
+      "endMs": 1340.89,
+      "ms": 922.29,
+      "detail": "820646 B"
+     },
+     {
+      "stage": "duckdb.compile",
+      "thread": "worker",
+      "startMs": 417.67,
+      "endMs": 1844.53,
+      "ms": 1426.85,
+      "detail": "eh streaming"
+     },
+     {
+      "stage": "worker.main",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1849.47,
+      "ms": null
+     },
+     {
+      "stage": "boot.message",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1849.61,
+      "ms": null
+     },
+     {
+      "stage": "renderer.compile",
+      "thread": "worker",
+      "startMs": 1851.43,
+      "endMs": 1851.44,
+      "ms": 0.01
+     },
+     {
+      "stage": "coordinator.compile",
+      "thread": "worker",
+      "startMs": 1851.42,
+      "endMs": 1851.78,
+      "ms": 0.36
+     },
+     {
+      "stage": "renderer.instantiate",
+      "thread": "worker",
+      "startMs": 1851.49,
+      "endMs": 1852.88,
+      "ms": 1.39
+     },
+     {
+      "stage": "coordinator.instantiate",
+      "thread": "worker",
+      "startMs": 1851.81,
+      "endMs": 1852.94,
+      "ms": 1.13
+     },
+     {
+      "stage": "coordinator.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1854.09,
+      "ms": null
+     },
+     {
+      "stage": "gpu.adapter",
+      "thread": "worker",
+      "startMs": 1854.02,
+      "endMs": 1866.16,
+      "ms": 12.14
+     },
+     {
+      "stage": "gpu.device",
+      "thread": "worker",
+      "startMs": 1866.19,
+      "endMs": 1879.48,
+      "ms": 13.29
+     },
+     {
+      "stage": "inference.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1889.67,
+      "ms": null
+     },
+     {
+      "stage": "gpu.pipelines",
+      "thread": "worker",
+      "startMs": 1879.53,
+      "endMs": 2277.82,
+      "ms": 398.3,
+      "detail": "13"
+     },
+     {
+      "stage": "renderer.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 2278.82,
+      "ms": null
+     },
+     {
+      "stage": "duckdb.instantiate",
+      "thread": "worker",
+      "startMs": 2298.23,
+      "endMs": 4119.69,
+      "ms": 1821.46,
+      "detail": "eh"
+     },
+     {
+      "stage": "duckdb.open",
+      "thread": "worker",
+      "startMs": 4120.15,
+      "endMs": 4597.74,
+      "ms": 477.59
+     },
+     {
+      "stage": "duckdb.boot",
+      "thread": "worker",
+      "startMs": 2298.14,
+      "endMs": 4656.05,
+      "ms": 2357.92,
+      "detail": "lockdown deferred"
+     },
+     {
+      "stage": "duckdb.node",
+      "thread": "worker",
+      "startMs": 4656.17,
+      "endMs": 4670.22,
+      "ms": 14.05
+     },
+     {
+      "stage": "dataset.fetch",
+      "thread": "worker",
+      "startMs": 4671.45,
+      "endMs": 4671.71,
+      "ms": 0.26,
+      "detail": "25.0 MiB blob"
+     },
+     {
+      "stage": "dataset.attach",
+      "thread": "worker",
+      "startMs": 4734.85,
+      "endMs": 5102.05,
+      "ms": 367.2
+     },
+     {
+      "stage": "dataset.load",
+      "thread": "worker",
+      "startMs": 4671.13,
+      "endMs": 5102.44,
+      "ms": 431.31,
+      "detail": "vessels (prebuilt)"
+     },
+     {
+      "stage": "rollups.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 5123.32,
+      "ms": null,
+      "detail": "prebuilt"
+     },
+     {
+      "stage": "dataset.open",
+      "thread": "worker",
+      "startMs": 1851.4,
+      "endMs": 5129.46,
+      "ms": 3278.06,
+      "detail": "vessels"
+     },
+     {
+      "stage": "answerable",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 5132.95,
+      "ms": null
+     },
+     {
+      "stage": "ext.json",
+      "thread": "worker",
+      "startMs": 5131.05,
+      "endMs": 5641.94,
+      "ms": 510.89
+     },
+     {
+      "stage": "duckdb.lockdown-deferred",
+      "thread": "worker",
+      "startMs": 5129.91,
+      "endMs": 5651.03,
+      "ms": 521.13
+     }
+    ],
+    "transfer": {
+     "page css": {
+      "transferSize": 0,
+      "decodedBodySize": 37507,
+      "ms": 40.41
+     },
+     "engine worker js": {
+      "transferSize": 0,
+      "decodedBodySize": 5199,
+      "ms": -201.1
+     }
+    },
+    "firstQuery": {
+     "headline": 877.014892578125,
+     "db": null,
+     "cacheHit": false,
+     "rollupsBefore": true,
+     "rows": [
+      [
+       "key",
+       0
+      ],
+      [
+       "draft sent",
+       0.4
+      ],
+      [
+       "coordinator",
+       479.73
+      ],
+      [
+       "inference sent",
+       479.73
+      ],
+      [
+       "inference received",
+       481.71
+      ],
+      [
+       "first SQL delta",
+       481.73
+      ],
+      [
+       "SQL complete",
+       481.81
+      ],
+      [
+       "SQL received",
+       486.71
+      ],
+      [
+       "exec sent",
+       486.71
+      ],
+      [
+       "exec received",
+       488.06
+      ],
+      [
+       "render first batch",
+       864.75
+      ],
+      [
+       "first draw submitted",
+       877.01
+      ]
+     ]
+    },
+    "errors": []
+   },
+   {
+    "answerable": 4175.47,
+    "rollups": 4169.08,
+    "rows": [
+     {
+      "stage": "html",
+      "thread": "net",
+      "startMs": 5.86,
+      "endMs": 14.41,
+      "ms": 8.55
+     },
+     {
+      "stage": "dom interactive",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 110.08,
+      "ms": null
+     },
+     {
+      "stage": "fetch page css",
+      "thread": "net",
+      "startMs": 88.15,
+      "endMs": 116.47,
+      "ms": 28.32
+     },
+     {
+      "stage": "page.modules",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 142,
+      "ms": null
+     },
+     {
+      "stage": "page.worker",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 143.28,
+      "ms": null
+     },
+     {
+      "stage": "fetch engine worker js",
+      "thread": "net",
+      "startMs": 371.51,
+      "endMs": 156.98,
+      "ms": -214.53
+     },
+     {
+      "stage": "page.boot",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 322.25,
+      "ms": null
+     },
+     {
+      "stage": "worker.entry",
+      "thread": "worker",
+      "startMs": 347.17,
+      "endMs": 383.98,
+      "ms": 36.81
+     },
+     {
+      "stage": "dataset.download",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 598.43,
+      "ms": null,
+      "detail": "cache 25.0 MiB 169 ms"
+     },
+     {
+      "stage": "ext.json.prefetch",
+      "thread": "worker",
+      "startMs": 397.23,
+      "endMs": 923.38,
+      "ms": 526.15,
+      "detail": "820646 B"
+     },
+     {
+      "stage": "worker.main",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 978.96,
+      "ms": null
+     },
+     {
+      "stage": "boot.message",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 979.73,
+      "ms": null
+     },
+     {
+      "stage": "renderer.compile",
+      "thread": "worker",
+      "startMs": 981.89,
+      "endMs": 981.9,
+      "ms": 0.01
+     },
+     {
+      "stage": "coordinator.compile",
+      "thread": "worker",
+      "startMs": 981.87,
+      "endMs": 982.23,
+      "ms": 0.36
+     },
+     {
+      "stage": "renderer.instantiate",
+      "thread": "worker",
+      "startMs": 981.93,
+      "endMs": 983.38,
+      "ms": 1.45
+     },
+     {
+      "stage": "coordinator.instantiate",
+      "thread": "worker",
+      "startMs": 982.25,
+      "endMs": 983.41,
+      "ms": 1.16
+     },
+     {
+      "stage": "coordinator.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 994.78,
+      "ms": null
+     },
+     {
+      "stage": "duckdb.compile",
+      "thread": "worker",
+      "startMs": 394.89,
+      "endMs": 1456.63,
+      "ms": 1061.74,
+      "detail": "eh streaming"
+     },
+     {
+      "stage": "gpu.adapter",
+      "thread": "worker",
+      "startMs": 993.93,
+      "endMs": 1458.48,
+      "ms": 464.55
+     },
+     {
+      "stage": "inference.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1463.17,
+      "ms": null
+     },
+     {
+      "stage": "gpu.device",
+      "thread": "worker",
+      "startMs": 1459.41,
+      "endMs": 1466.89,
+      "ms": 7.48
+     },
+     {
+      "stage": "gpu.pipelines",
+      "thread": "worker",
+      "startMs": 1466.92,
+      "endMs": 1801.78,
+      "ms": 334.86,
+      "detail": "13"
+     },
+     {
+      "stage": "renderer.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1802.73,
+      "ms": null
+     },
+     {
+      "stage": "duckdb.instantiate",
+      "thread": "worker",
+      "startMs": 1846.25,
+      "endMs": 3373.26,
+      "ms": 1527.01,
+      "detail": "eh"
+     },
+     {
+      "stage": "duckdb.open",
+      "thread": "worker",
+      "startMs": 3375.86,
+      "endMs": 3753.05,
+      "ms": 377.19
+     },
+     {
+      "stage": "duckdb.boot",
+      "thread": "worker",
+      "startMs": 1846.11,
+      "endMs": 3792.93,
+      "ms": 1946.82,
+      "detail": "lockdown deferred"
+     },
+     {
+      "stage": "duckdb.node",
+      "thread": "worker",
+      "startMs": 3793.05,
+      "endMs": 3805.27,
+      "ms": 12.22
+     },
+     {
+      "stage": "dataset.fetch",
+      "thread": "worker",
+      "startMs": 3806.5,
+      "endMs": 3806.85,
+      "ms": 0.35,
+      "detail": "25.0 MiB blob"
+     },
+     {
+      "stage": "dataset.attach",
+      "thread": "worker",
+      "startMs": 3845.07,
+      "endMs": 4141.7,
+      "ms": 296.62
+     },
+     {
+      "stage": "dataset.load",
+      "thread": "worker",
+      "startMs": 3806.25,
+      "endMs": 4142.02,
+      "ms": 335.77,
+      "detail": "vessels (prebuilt)"
+     },
+     {
+      "stage": "rollups.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 4169.08,
+      "ms": null,
+      "detail": "prebuilt"
+     },
+     {
+      "stage": "dataset.open",
+      "thread": "worker",
+      "startMs": 981.86,
+      "endMs": 4175.47,
+      "ms": 3193.6,
+      "detail": "vessels"
+     },
+     {
+      "stage": "answerable",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 4181.4,
+      "ms": null
+     },
+     {
+      "stage": "ext.json",
+      "thread": "worker",
+      "startMs": 4177.45,
+      "endMs": 4645.39,
+      "ms": 467.94
+     },
+     {
+      "stage": "duckdb.lockdown-deferred",
+      "thread": "worker",
+      "startMs": 4176.17,
+      "endMs": 4653.51,
+      "ms": 477.34
+     }
+    ],
+    "transfer": {
+     "page css": {
+      "transferSize": 0,
+      "decodedBodySize": 37507,
+      "ms": 28.32
+     },
+     "engine worker js": {
+      "transferSize": 0,
+      "decodedBodySize": 5199,
+      "ms": -214.53
+     }
+    },
+    "firstQuery": {
+     "headline": 1124.18505859375,
+     "db": null,
+     "cacheHit": false,
+     "rollupsBefore": true,
+     "rows": [
+      [
+       "key",
+       0
+      ],
+      [
+       "draft sent",
+       0.38
+      ],
+      [
+       "coordinator",
+       441.44
+      ],
+      [
+       "inference sent",
+       441.44
+      ],
+      [
+       "inference received",
+       443.5
+      ],
+      [
+       "first SQL delta",
+       443.52
+      ],
+      [
+       "SQL complete",
+       443.63
+      ],
+      [
+       "SQL received",
+       445.1
+      ],
+      [
+       "exec sent",
+       445.1
+      ],
+      [
+       "exec received",
+       446.93
+      ],
+      [
+       "render first batch",
+       1091.07
+      ],
+      [
+       "first draw submitted",
+       1124.19
+      ]
+     ]
+    },
+    "errors": []
+   }
+  ]
+ }
+}

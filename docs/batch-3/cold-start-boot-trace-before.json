@@ -1,0 +1,3689 @@
+{
+ "kind": "time-blast.boot-bench",
+ "version": 1,
+ "label": "baseline-prod",
+ "url": "http://127.0.0.1:4731",
+ "date": "2026-10-11T10:08:33Z",
+ "runs": 4,
+ "loadavgStart": [
+  27.1,
+  24.1,
+  19.8
+ ],
+ "browser": "145.0.7632.0",
+ "loadavgEnd": [
+  30.2,
+  27.3,
+  22.3
+ ],
+ "first": {
+  "answerable": {
+   "p50": 20161.5,
+   "p95": 25811.3,
+   "min": 18844.5,
+   "max": 25811.3,
+   "n": 4
+  },
+  "rollups": {
+   "p50": 27973.2,
+   "p95": 31022.9,
+   "min": 23732.9,
+   "max": 31022.9,
+   "n": 4
+  },
+  "firstQueryHeadline": {
+   "p50": 1546.2,
+   "p95": 2576.0,
+   "min": 1085.1,
+   "max": 2576.0,
+   "n": 4
+  },
+  "firstQueryDb": null,
+  "firstQueryBeforeRollups": 4,
+  "stages": {
+   "net:html": {
+    "end": {
+     "p50": 32.8,
+     "p95": 88.3,
+     "min": 17.6,
+     "max": 88.3,
+     "n": 4
+    },
+    "ms": {
+     "p50": 28.3,
+     "p95": 33.2,
+     "min": 13.2,
+     "max": 33.2,
+     "n": 4
+    }
+   },
+   "net:fetch page css": {
+    "end": {
+     "p50": 217.8,
+     "p95": 384.1,
+     "min": 154.8,
+     "max": 384.1,
+     "n": 4
+    },
+    "ms": {
+     "p50": 57.4,
+     "p95": 121.4,
+     "min": 54.3,
+     "max": 121.4,
+     "n": 4
+    }
+   },
+   "net:fetch page js": {
+    "end": {
+     "p50": 224.9,
+     "p95": 409.0,
+     "min": 159.4,
+     "max": 409.0,
+     "n": 4
+    },
+    "ms": {
+     "p50": 71.8,
+     "p95": 146.8,
+     "min": 60.1,
+     "max": 146.8,
+     "n": 4
+    }
+   },
+   "page:dom interactive": {
+    "end": {
+     "p50": 226.8,
+     "p95": 415.4,
+     "min": 125.5,
+     "max": 415.4,
+     "n": 4
+    },
+    "ms": null
+   },
+   "page:page.modules": {
+    "end": {
+     "p50": 332.2,
+     "p95": 589.1,
+     "min": 213.7,
+     "max": 589.1,
+     "n": 4
+    },
+    "ms": null
+   },
+   "page:page.worker": {
+    "end": {
+     "p50": 512.7,
+     "p95": 1102.0,
+     "min": 377.3,
+     "max": 1102.0,
+     "n": 4
+    },
+    "ms": null
+   },
+   "page:page.boot": {
+    "end": {
+     "p50": 568.4,
+     "p95": 1183.5,
+     "min": 440.7,
+     "max": 1183.5,
+     "n": 4
+    },
+    "ms": null
+   },
+   "net:fetch engine worker js": {
+    "end": {
+     "p50": 847.3,
+     "p95": 1613.1,
+     "min": 710.1,
+     "max": 1613.1,
+     "n": 4
+    },
+    "ms": {
+     "p50": 162.7,
+     "p95": 204.4,
+     "min": -173.2,
+     "max": 204.4,
+     "n": 4
+    }
+   },
+   "worker:worker.modules": {
+    "end": {
+     "p50": 1604.8,
+     "p95": 2361.7,
+     "min": 1204.0,
+     "max": 2361.7,
+     "n": 4
+    },
+    "ms": {
+     "p50": 832.7,
+     "p95": 1032.5,
+     "min": 553.5,
+     "max": 1032.5,
+     "n": 4
+    }
+   },
+   "worker:boot.message": {
+    "end": {
+     "p50": 1847.4,
+     "p95": 2420.8,
+     "min": 1486.1,
+     "max": 2420.8,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:coordinator.compile": {
+    "end": {
+     "p50": 1904.7,
+     "p95": 2490.2,
+     "min": 1561.0,
+     "max": 2490.2,
+     "n": 4
+    },
+    "ms": {
+     "p50": 293.8,
+     "p95": 349.7,
+     "min": 127.2,
+     "max": 349.7,
+     "n": 4
+    }
+   },
+   "worker:coordinator.instantiate": {
+    "end": {
+     "p50": 1906.0,
+     "p95": 2490.4,
+     "min": 1561.2,
+     "max": 2490.4,
+     "n": 4
+    },
+    "ms": {
+     "p50": 0.2,
+     "p95": 0.2,
+     "min": 0.2,
+     "max": 0.2,
+     "n": 4
+    }
+   },
+   "worker:coordinator.ready": {
+    "end": {
+     "p50": 1911.2,
+     "p95": 2497.8,
+     "min": 1567.1,
+     "max": 2497.8,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:renderer.compile": {
+    "end": {
+     "p50": 1971.8,
+     "p95": 2536.0,
+     "min": 1635.4,
+     "max": 2536.0,
+     "n": 4
+    },
+    "ms": {
+     "p50": 137.1,
+     "p95": 174.4,
+     "min": 119.9,
+     "max": 174.4,
+     "n": 4
+    }
+   },
+   "worker:renderer.instantiate": {
+    "end": {
+     "p50": 1983.8,
+     "p95": 2555.6,
+     "min": 1672.7,
+     "max": 2555.6,
+     "n": 4
+    },
+    "ms": {
+     "p50": 17.2,
+     "p95": 37.3,
+     "min": 3.7,
+     "max": 37.3,
+     "n": 4
+    }
+   },
+   "worker:inference.ready": {
+    "end": {
+     "p50": 2079.9,
+     "p95": 2705.0,
+     "min": 1688,
+     "max": 2705.0,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:gpu.adapter": {
+    "end": {
+     "p50": 2169.4,
+     "p95": 2854.7,
+     "min": 1884.6,
+     "max": 2854.7,
+     "n": 4
+    },
+    "ms": {
+     "p50": 196.0,
+     "p95": 298.7,
+     "min": 171.5,
+     "max": 298.7,
+     "n": 4
+    }
+   },
+   "worker:gpu.device": {
+    "end": {
+     "p50": 2245.5,
+     "p95": 3000.6,
+     "min": 1912.1,
+     "max": 3000.6,
+     "n": 4
+    },
+    "ms": {
+     "p50": 76.0,
+     "p95": 145.8,
+     "min": 27.5,
+     "max": 145.8,
+     "n": 4
+    }
+   },
+   "worker:gpu.pipelines": {
+    "end": {
+     "p50": 3131.2,
+     "p95": 4626.3,
+     "min": 2659.7,
+     "max": 4626.3,
+     "n": 4
+    },
+    "ms": {
+     "p50": 930.7,
+     "p95": 1619.8,
+     "min": 646.6,
+     "max": 1619.8,
+     "n": 4
+    }
+   },
+   "worker:renderer.ready": {
+    "end": {
+     "p50": 3148.1,
+     "p95": 4627.3,
+     "min": 2660.7,
+     "max": 4627.3,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:duckdb.fetch": {
+    "end": {
+     "p50": 3149.0,
+     "p95": 4249.0,
+     "min": 2692.2,
+     "max": 4249.0,
+     "n": 4
+    },
+    "ms": {
+     "p50": 1282.0,
+     "p95": 1812.6,
+     "min": 1174.2,
+     "max": 1812.6,
+     "n": 4
+    }
+   },
+   "worker:duckdb.instantiate": {
+    "end": {
+     "p50": 7589.2,
+     "p95": 11370.2,
+     "min": 6436.2,
+     "max": 11370.2,
+     "n": 4
+    },
+    "ms": {
+     "p50": 4440.1,
+     "p95": 7121.2,
+     "min": 3742.5,
+     "max": 7121.2,
+     "n": 4
+    }
+   },
+   "worker:ext.parquet": {
+    "end": {
+     "p50": 10246.2,
+     "p95": 15909.6,
+     "min": 8763.1,
+     "max": 15909.6,
+     "n": 4
+    },
+    "ms": {
+     "p50": 1817.1,
+     "p95": 2953.6,
+     "min": 1437.0,
+     "max": 2953.6,
+     "n": 4
+    }
+   },
+   "worker:ext.json": {
+    "end": {
+     "p50": 10713.7,
+     "p95": 16980.8,
+     "min": 9548.7,
+     "max": 16980.8,
+     "n": 4
+    },
+    "ms": {
+     "p50": 628.7,
+     "p95": 1071.2,
+     "min": 462.9,
+     "max": 1071.2,
+     "n": 4
+    }
+   },
+   "worker:duckdb.lockdown": {
+    "end": {
+     "p50": 10763.6,
+     "p95": 17049.3,
+     "min": 9584.5,
+     "max": 17049.3,
+     "n": 4
+    },
+    "ms": {
+     "p50": 2573.7,
+     "p95": 4256.5,
+     "min": 2023.8,
+     "max": 4256.5,
+     "n": 4
+    }
+   },
+   "worker:duckdb.boot": {
+    "end": {
+     "p50": 10763.7,
+     "p95": 17049.4,
+     "min": 9584.5,
+     "max": 17049.4,
+     "n": 4
+    },
+    "ms": {
+     "p50": 8902.4,
+     "p95": 14626.7,
+     "min": 8096.6,
+     "max": 14626.7,
+     "n": 4
+    }
+   },
+   "worker:dataset.load": {
+    "end": {
+     "p50": 19093.8,
+     "p95": 24723.1,
+     "min": 17114.6,
+     "max": 24723.1,
+     "n": 4
+    },
+    "ms": {
+     "p50": 7732.4,
+     "p95": 8728.9,
+     "min": 7508.3,
+     "max": 8728.9,
+     "n": 4
+    }
+   },
+   "worker:dataset.context": {
+    "end": {
+     "p50": 20100.9,
+     "p95": 25778.1,
+     "min": 18727.8,
+     "max": 25778.1,
+     "n": 4
+    },
+    "ms": {
+     "p50": 1107.6,
+     "p95": 1613.2,
+     "min": 854.1,
+     "max": 1613.2,
+     "n": 4
+    }
+   },
+   "worker:dataset.open": {
+    "end": {
+     "p50": 20161.5,
+     "p95": 25811.3,
+     "min": 18844.5,
+     "max": 25811.3,
+     "n": 4
+    },
+    "ms": {
+     "p50": 18309.5,
+     "p95": 23388.8,
+     "min": 17356.8,
+     "max": 23388.8,
+     "n": 4
+    }
+   },
+   "page:answerable": {
+    "end": {
+     "p50": 20165.7,
+     "p95": 25818.8,
+     "min": 18860.4,
+     "max": 25818.8,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:rollup.minute": {
+    "end": {
+     "p50": 27526.5,
+     "p95": 30942.6,
+     "min": 23386.7,
+     "max": 30942.6,
+     "n": 4
+    },
+    "ms": {
+     "p50": 4266.6,
+     "p95": 5168.3,
+     "min": 2550.3,
+     "max": 5168.3,
+     "n": 4
+    }
+   },
+   "worker:rollup.hour": {
+    "end": {
+     "p50": 27856.8,
+     "p95": 30994.1,
+     "min": 23691.6,
+     "max": 30994.1,
+     "n": 4
+    },
+    "ms": {
+     "p50": 228.6,
+     "p95": 508.2,
+     "min": 51.5,
+     "max": 508.2,
+     "n": 4
+    }
+   },
+   "worker:rollup.day": {
+    "end": {
+     "p50": 27973.2,
+     "p95": 31022.8,
+     "min": 23732.9,
+     "max": 31022.8,
+     "n": 4
+    },
+    "ms": {
+     "p50": 42.0,
+     "p95": 189.8,
+     "min": 28.7,
+     "max": 189.8,
+     "n": 4
+    }
+   },
+   "worker:rollups.ready": {
+    "end": {
+     "p50": 27973.2,
+     "p95": 31022.9,
+     "min": 23732.9,
+     "max": 31022.9,
+     "n": 4
+    },
+    "ms": null
+   }
+  },
+  "transfer": {
+   "page js": {
+    "transferSize": 28618,
+    "decodedBodySize": 82276,
+    "ms": 78.84
+   },
+   "page css": {
+    "transferSize": 9294,
+    "decodedBodySize": 37507,
+    "ms": 58.7
+   },
+   "engine worker js": {
+    "transferSize": 360565,
+    "decodedBodySize": 1508081,
+    "ms": 135.95
+   }
+  }
+ },
+ "repeat": {
+  "answerable": {
+   "p50": 23573.6,
+   "p95": 25124.6,
+   "min": 18179.4,
+   "max": 25124.6,
+   "n": 4
+  },
+  "rollups": {
+   "p50": 28724.0,
+   "p95": 30154.4,
+   "min": 23295.9,
+   "max": 30154.4,
+   "n": 4
+  },
+  "firstQueryHeadline": {
+   "p50": 1525.9,
+   "p95": 2146.7,
+   "min": 925.9,
+   "max": 2146.7,
+   "n": 4
+  },
+  "firstQueryDb": null,
+  "firstQueryBeforeRollups": 4,
+  "stages": {
+   "net:html": {
+    "end": {
+     "p50": 23.7,
+     "p95": 84.8,
+     "min": 14.1,
+     "max": 84.8,
+     "n": 4
+    },
+    "ms": {
+     "p50": 16.1,
+     "p95": 59.4,
+     "min": 11.8,
+     "max": 59.4,
+     "n": 4
+    }
+   },
+   "net:fetch page css": {
+    "end": {
+     "p50": 153.0,
+     "p95": 277.2,
+     "min": 110.3,
+     "max": 277.2,
+     "n": 4
+    },
+    "ms": {
+     "p50": 16.2,
+     "p95": 36.3,
+     "min": 13.2,
+     "max": 36.3,
+     "n": 4
+    }
+   },
+   "net:fetch page js": {
+    "end": {
+     "p50": 158.5,
+     "p95": 284.1,
+     "min": 99.1,
+     "max": 284.1,
+     "n": 4
+    },
+    "ms": {
+     "p50": 21.7,
+     "p95": 47.0,
+     "min": 4.9,
+     "max": 47.0,
+     "n": 4
+    }
+   },
+   "page:dom interactive": {
+    "end": {
+     "p50": 202.1,
+     "p95": 328.4,
+     "min": 131.8,
+     "max": 328.4,
+     "n": 4
+    },
+    "ms": null
+   },
+   "page:page.modules": {
+    "end": {
+     "p50": 290.8,
+     "p95": 473.2,
+     "min": 219.6,
+     "max": 473.2,
+     "n": 4
+    },
+    "ms": null
+   },
+   "page:page.worker": {
+    "end": {
+     "p50": 704.2,
+     "p95": 812.9,
+     "min": 311.2,
+     "max": 812.9,
+     "n": 4
+    },
+    "ms": null
+   },
+   "net:fetch engine worker js": {
+    "end": {
+     "p50": 750.2,
+     "p95": 921.4,
+     "min": 350.0,
+     "max": 921.4,
+     "n": 4
+    },
+    "ms": {
+     "p50": -130.2,
+     "p95": -70.6,
+     "min": -326.9,
+     "max": -70.6,
+     "n": 4
+    }
+   },
+   "page:page.boot": {
+    "end": {
+     "p50": 762.2,
+     "p95": 880.2,
+     "min": 351.8,
+     "max": 880.2,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:worker.modules": {
+    "end": {
+     "p50": 1385.8,
+     "p95": 1822.5,
+     "min": 988.2,
+     "max": 1822.5,
+     "n": 4
+    },
+    "ms": {
+     "p50": 593.5,
+     "p95": 605.1,
+     "min": 496.7,
+     "max": 605.1,
+     "n": 4
+    }
+   },
+   "worker:boot.message": {
+    "end": {
+     "p50": 1604.1,
+     "p95": 2089.8,
+     "min": 1221.5,
+     "max": 2089.8,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:coordinator.compile": {
+    "end": {
+     "p50": 1691.7,
+     "p95": 2187.6,
+     "min": 1287.3,
+     "max": 2187.6,
+     "n": 4
+    },
+    "ms": {
+     "p50": 329.6,
+     "p95": 370.7,
+     "min": 233.5,
+     "max": 370.7,
+     "n": 4
+    }
+   },
+   "worker:coordinator.instantiate": {
+    "end": {
+     "p50": 1692.0,
+     "p95": 2194.9,
+     "min": 1287.5,
+     "max": 2194.9,
+     "n": 4
+    },
+    "ms": {
+     "p50": 0.2,
+     "p95": 0.3,
+     "min": 0.1,
+     "max": 0.3,
+     "n": 4
+    }
+   },
+   "worker:coordinator.ready": {
+    "end": {
+     "p50": 1695.7,
+     "p95": 2206.8,
+     "min": 1288.1,
+     "max": 2206.8,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:inference.ready": {
+    "end": {
+     "p50": 1792.1,
+     "p95": 2361.9,
+     "min": 1395.9,
+     "max": 2361.9,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:renderer.compile": {
+    "end": {
+     "p50": 1797.4,
+     "p95": 2314.2,
+     "min": 1332.6,
+     "max": 2314.2,
+     "n": 4
+    },
+    "ms": {
+     "p50": 199.8,
+     "p95": 250.3,
+     "min": 123.1,
+     "max": 250.3,
+     "n": 4
+    }
+   },
+   "worker:renderer.instantiate": {
+    "end": {
+     "p50": 1806.2,
+     "p95": 2328.7,
+     "min": 1335.8,
+     "max": 2328.7,
+     "n": 4
+    },
+    "ms": {
+     "p50": 8.7,
+     "p95": 14.4,
+     "min": 2.9,
+     "max": 14.4,
+     "n": 4
+    }
+   },
+   "worker:gpu.adapter": {
+    "end": {
+     "p50": 1894.8,
+     "p95": 2554.8,
+     "min": 1407.3,
+     "max": 2554.8,
+     "n": 4
+    },
+    "ms": {
+     "p50": 82.3,
+     "p95": 210.8,
+     "min": 70.9,
+     "max": 210.8,
+     "n": 4
+    }
+   },
+   "worker:gpu.device": {
+    "end": {
+     "p50": 1932.5,
+     "p95": 2608.0,
+     "min": 1411.2,
+     "max": 2608.0,
+     "n": 4
+    },
+    "ms": {
+     "p50": 37.0,
+     "p95": 53.0,
+     "min": 3.9,
+     "max": 53.0,
+     "n": 4
+    }
+   },
+   "worker:gpu.pipelines": {
+    "end": {
+     "p50": 2601.5,
+     "p95": 3405.1,
+     "min": 1928.5,
+     "max": 3405.1,
+     "n": 4
+    },
+    "ms": {
+     "p50": 669.0,
+     "p95": 782.2,
+     "min": 517.3,
+     "max": 782.2,
+     "n": 4
+    }
+   },
+   "worker:renderer.ready": {
+    "end": {
+     "p50": 2604.8,
+     "p95": 3407.6,
+     "min": 1931.3,
+     "max": 3407.6,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:duckdb.fetch": {
+    "end": {
+     "p50": 3288.8,
+     "p95": 3868.9,
+     "min": 2332.2,
+     "max": 3868.9,
+     "n": 4
+    },
+    "ms": {
+     "p50": 1632.0,
+     "p95": 1774.2,
+     "min": 1075.6,
+     "max": 1774.2,
+     "n": 4
+    }
+   },
+   "worker:duckdb.instantiate": {
+    "end": {
+     "p50": 9614.2,
+     "p95": 11025.5,
+     "min": 5963.7,
+     "max": 11025.5,
+     "n": 4
+    },
+    "ms": {
+     "p50": 6325.2,
+     "p95": 7156.5,
+     "min": 3631.3,
+     "max": 7156.5,
+     "n": 4
+    }
+   },
+   "worker:ext.parquet": {
+    "end": {
+     "p50": 13043.7,
+     "p95": 14699.1,
+     "min": 7332.3,
+     "max": 14699.1,
+     "n": 4
+    },
+    "ms": {
+     "p50": 1888.9,
+     "p95": 2420.6,
+     "min": 655.4,
+     "max": 2420.6,
+     "n": 4
+    }
+   },
+   "worker:ext.json": {
+    "end": {
+     "p50": 13571.5,
+     "p95": 15344.1,
+     "min": 7547.9,
+     "max": 15344.1,
+     "n": 4
+    },
+    "ms": {
+     "p50": 526.6,
+     "p95": 643.4,
+     "min": 215.5,
+     "max": 643.4,
+     "n": 4
+    }
+   },
+   "worker:duckdb.lockdown": {
+    "end": {
+     "p50": 13686.8,
+     "p95": 15389.6,
+     "min": 7561.4,
+     "max": 15389.6,
+     "n": 4
+    },
+    "ms": {
+     "p50": 2612.9,
+     "p95": 3280.7,
+     "min": 937.6,
+     "max": 3280.7,
+     "n": 4
+    }
+   },
+   "worker:duckdb.boot": {
+    "end": {
+     "p50": 13686.8,
+     "p95": 15389.7,
+     "min": 7561.4,
+     "max": 15389.7,
+     "n": 4
+    },
+    "ms": {
+     "p50": 11895.9,
+     "p95": 13588.6,
+     "min": 6315.6,
+     "max": 13588.6,
+     "n": 4
+    }
+   },
+   "worker:dataset.load": {
+    "end": {
+     "p50": 21998.3,
+     "p95": 23760.7,
+     "min": 16917.8,
+     "max": 23760.7,
+     "n": 4
+    },
+    "ms": {
+     "p50": 8906.1,
+     "p95": 9598.9,
+     "min": 6845.7,
+     "max": 9598.9,
+     "n": 4
+    }
+   },
+   "worker:dataset.context": {
+    "end": {
+     "p50": 23511.3,
+     "p95": 25049.1,
+     "min": 18157.6,
+     "max": 25049.1,
+     "n": 4
+    },
+    "ms": {
+     "p50": 1399.0,
+     "p95": 1516.5,
+     "min": 1239.8,
+     "max": 1516.5,
+     "n": 4
+    }
+   },
+   "worker:dataset.open": {
+    "end": {
+     "p50": 23573.6,
+     "p95": 25124.6,
+     "min": 18179.4,
+     "max": 25124.6,
+     "n": 4
+    },
+    "ms": {
+     "p50": 21736.0,
+     "p95": 23443.0,
+     "min": 16937.9,
+     "max": 23443.0,
+     "n": 4
+    }
+   },
+   "page:answerable": {
+    "end": {
+     "p50": 23575.0,
+     "p95": 25128.4,
+     "min": 18185.8,
+     "max": 25128.4,
+     "n": 4
+    },
+    "ms": null
+   },
+   "worker:rollup.minute": {
+    "end": {
+     "p50": 28320.6,
+     "p95": 29914.3,
+     "min": 23133.2,
+     "max": 29914.3,
+     "n": 4
+    },
+    "ms": {
+     "p50": 2996.2,
+     "p95": 3565.1,
+     "min": 2435.9,
+     "max": 3565.1,
+     "n": 4
+    }
+   },
+   "worker:rollup.hour": {
+    "end": {
+     "p50": 28651.6,
+     "p95": 30096.7,
+     "min": 23243.5,
+     "max": 30096.7,
+     "n": 4
+    },
+    "ms": {
+     "p50": 239.2,
+     "p95": 365.8,
+     "min": 110.2,
+     "max": 365.8,
+     "n": 4
+    }
+   },
+   "worker:rollup.day": {
+    "end": {
+     "p50": 28723.9,
+     "p95": 30154.4,
+     "min": 23295.8,
+     "max": 30154.4,
+     "n": 4
+    },
+    "ms": {
+     "p50": 57.9,
+     "p95": 86.4,
+     "min": 52.3,
+     "max": 86.4,
+     "n": 4
+    }
+   },
+   "worker:rollups.ready": {
+    "end": {
+     "p50": 28724.0,
+     "p95": 30154.4,
+     "min": 23295.9,
+     "max": 30154.4,
+     "n": 4
+    },
+    "ms": null
+   }
+  },
+  "transfer": {
+   "page js": {
+    "transferSize": 0,
+    "decodedBodySize": 82276,
+    "ms": 4.92
+   },
+   "page css": {
+    "transferSize": 0,
+    "decodedBodySize": 37507,
+    "ms": 14.83
+   },
+   "engine worker js": {
+    "transferSize": 0,
+    "decodedBodySize": 1508081,
+    "ms": -122.53
+   }
+  }
+ },
+ "raw": {
+  "first": [
+   {
+    "answerable": 25811.3,
+    "rollups": 31022.94,
+    "rows": [
+     {
+      "stage": "html",
+      "thread": "net",
+      "startMs": 55.86,
+      "endMs": 88.26,
+      "ms": 32.41
+     },
+     {
+      "stage": "fetch page css",
+      "thread": "net",
+      "startMs": 262.63,
+      "endMs": 384.07,
+      "ms": 121.44
+     },
+     {
+      "stage": "fetch page js",
+      "thread": "net",
+      "startMs": 262.22,
+      "endMs": 408.98,
+      "ms": 146.76
+     },
+     {
+      "stage": "dom interactive",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 415.36,
+      "ms": null
+     },
+     {
+      "stage": "page.modules",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 589.15,
+      "ms": null
+     },
+     {
+      "stage": "page.worker",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 1102.02,
+      "ms": null
+     },
+     {
+      "stage": "page.boot",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 1183.45,
+      "ms": null
+     },
+     {
+      "stage": "fetch engine worker js",
+      "thread": "net",
+      "startMs": 1408.74,
+      "endMs": 1613.13,
+      "ms": 204.39
+     },
+     {
+      "stage": "worker.modules",
+      "thread": "worker",
+      "startMs": 1373.56,
+      "endMs": 2361.68,
+      "ms": 988.11
+     },
+     {
+      "stage": "boot.message",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 2420.81,
+      "ms": null
+     },
+     {
+      "stage": "coordinator.compile",
+      "thread": "worker",
+      "startMs": 2362.97,
+      "endMs": 2490.19,
+      "ms": 127.22
+     },
+     {
+      "stage": "coordinator.instantiate",
+      "thread": "worker",
+      "startMs": 2490.24,
+      "endMs": 2490.42,
+      "ms": 0.18
+     },
+     {
+      "stage": "coordinator.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 2497.76,
+      "ms": null
+     },
+     {
+      "stage": "renderer.compile",
+      "thread": "worker",
+      "startMs": 2416.06,
+      "endMs": 2535.97,
+      "ms": 119.91
+     },
+     {
+      "stage": "renderer.instantiate",
+      "thread": "worker",
+      "startMs": 2541.38,
+      "endMs": 2555.57,
+      "ms": 14.19
+     },
+     {
+      "stage": "inference.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 2704.96,
+      "ms": null
+     },
+     {
+      "stage": "gpu.adapter",
+      "thread": "worker",
+      "startMs": 2556.04,
+      "endMs": 2854.7,
+      "ms": 298.66
+     },
+     {
+      "stage": "gpu.device",
+      "thread": "worker",
+      "startMs": 2854.77,
+      "endMs": 3000.55,
+      "ms": 145.78
+     },
+     {
+      "stage": "duckdb.fetch",
+      "thread": "worker",
+      "startMs": 2436.39,
+      "endMs": 4248.99,
+      "ms": 1812.6
+     },
+     {
+      "stage": "gpu.pipelines",
+      "thread": "worker",
+      "startMs": 3006.54,
+      "endMs": 4626.32,
+      "ms": 1619.78,
+      "detail": "13"
+     },
+     {
+      "stage": "renderer.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 4627.28,
+      "ms": null
+     },
+     {
+      "stage": "duckdb.instantiate",
+      "thread": "worker",
+      "startMs": 4249.03,
+      "endMs": 11370.23,
+      "ms": 7121.2,
+      "detail": "eh"
+     },
+     {
+      "stage": "ext.parquet",
+      "thread": "worker",
+      "startMs": 12955.97,
+      "endMs": 15909.6,
+      "ms": 2953.64
+     },
+     {
+      "stage": "ext.json",
+      "thread": "worker",
+      "startMs": 15909.67,
+      "endMs": 16980.85,
+      "ms": 1071.19
+     },
+     {
+      "stage": "duckdb.lockdown",
+      "thread": "worker",
+      "startMs": 12792.86,
+      "endMs": 17049.35,
+      "ms": 4256.49
+     },
+     {
+      "stage": "duckdb.boot",
+      "thread": "worker",
+      "startMs": 2422.71,
+      "endMs": 17049.41,
+      "ms": 14626.7
+     },
+     {
+      "stage": "dataset.load",
+      "thread": "worker",
+      "startMs": 17115.23,
+      "endMs": 24723.08,
+      "ms": 7607.85,
+      "detail": "vessels"
+     },
+     {
+      "stage": "dataset.context",
+      "thread": "worker",
+      "startMs": 24723.07,
+      "endMs": 25778.13,
+      "ms": 1055.05,
+      "detail": "statistics 849.7 ms"
+     },
+     {
+      "stage": "dataset.open",
+      "thread": "worker",
+      "startMs": 2422.5,
+      "endMs": 25811.3,
+      "ms": 23388.8,
+      "detail": "vessels"
+     },
+     {
+      "stage": "answerable",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 25818.85,
+      "ms": null
+     },
+     {
+      "stage": "rollup.minute",
+      "thread": "worker",
+      "startMs": 27254.03,
+      "endMs": 30942.56,
+      "ms": 3688.53,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollup.hour",
+      "thread": "worker",
+      "startMs": 30942.62,
+      "endMs": 30994.07,
+      "ms": 51.46,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollup.day",
+      "thread": "worker",
+      "startMs": 30994.15,
+      "endMs": 31022.85,
+      "ms": 28.71,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollups.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 31022.94,
+      "ms": null
+     }
+    ],
+    "transfer": {
+     "page js": {
+      "transferSize": 28618,
+      "decodedBodySize": 82276,
+      "ms": 146.76
+     },
+     "page css": {
+      "transferSize": 9294,
+      "decodedBodySize": 37507,
+      "ms": 121.44
+     },
+     "engine worker js": {
+      "transferSize": 360565,
+      "decodedBodySize": 1508081,
+      "ms": 204.39
+     }
+    },
+    "firstQuery": {
+     "headline": 1085.074951171875,
+     "db": null,
+     "cacheHit": false,
+     "rollupsBefore": false,
+     "rows": [
+      [
+       "key",
+       0
+      ],
+      [
+       "draft sent",
+       0.41
+      ],
+      [
+       "coordinator",
+       317.98
+      ],
+      [
+       "inference sent",
+       317.98
+      ],
+      [
+       "inference received",
+       326.94
+      ],
+      [
+       "first SQL delta",
+       326.96
+      ],
+      [
+       "SQL complete",
+       327.08
+      ],
+      [
+       "SQL received",
+       417.9
+      ],
+      [
+       "exec sent",
+       417.9
+      ],
+      [
+       "exec received",
+       419.23
+      ],
+      [
+       "render first batch",
+       1053
+      ],
+      [
+       "first draw submitted",
+       1085.07
+      ]
+     ]
+    },
+    "errors": []
+   },
+   {
+    "answerable": 21093.82,
+    "rollups": 28288.63,
+    "rows": [
+     {
+      "stage": "html",
+      "thread": "net",
+      "startMs": 5.59,
+      "endMs": 38.77,
+      "ms": 33.18
+     },
+     {
+      "stage": "dom interactive",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 194.07,
+      "ms": null
+     },
+     {
+      "stage": "fetch page css",
+      "thread": "net",
+      "startMs": 171.45,
+      "endMs": 225.76,
+      "ms": 54.31
+     },
+     {
+      "stage": "fetch page js",
+      "thread": "net",
+      "startMs": 166,
+      "endMs": 226.11,
+      "ms": 60.11
+     },
+     {
+      "stage": "page.modules",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 334.34,
+      "ms": null
+     },
+     {
+      "stage": "page.worker",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 505.1,
+      "ms": null
+     },
+     {
+      "stage": "page.boot",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 561.74,
+      "ms": null
+     },
+     {
+      "stage": "fetch engine worker js",
+      "thread": "net",
+      "startMs": 668.21,
+      "endMs": 857.68,
+      "ms": 189.47
+     },
+     {
+      "stage": "worker.modules",
+      "thread": "worker",
+      "startMs": 641.18,
+      "endMs": 1673.73,
+      "ms": 1032.55
+     },
+     {
+      "stage": "boot.message",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1932.41,
+      "ms": null
+     },
+     {
+      "stage": "coordinator.compile",
+      "thread": "worker",
+      "startMs": 1680.19,
+      "endMs": 1996.45,
+      "ms": 316.26
+     },
+     {
+      "stage": "coordinator.instantiate",
+      "thread": "worker",
+      "startMs": 1996.49,
+      "endMs": 1996.66,
+      "ms": 0.17
+     },
+     {
+      "stage": "coordinator.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 2000.63,
+      "ms": null
+     },
+     {
+      "stage": "renderer.compile",
+      "thread": "worker",
+      "startMs": 1919.11,
+      "endMs": 2065.57,
+      "ms": 146.46
+     },
+     {
+      "stage": "renderer.instantiate",
+      "thread": "worker",
+      "startMs": 2065.66,
+      "endMs": 2069.35,
+      "ms": 3.69
+     },
+     {
+      "stage": "inference.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 2126.48,
+      "ms": null
+     },
+     {
+      "stage": "gpu.adapter",
+      "thread": "worker",
+      "startMs": 2080.94,
+      "endMs": 2267.56,
+      "ms": 186.63
+     },
+     {
+      "stage": "gpu.device",
+      "thread": "worker",
+      "startMs": 2267.63,
+      "endMs": 2391.96,
+      "ms": 124.33
+     },
+     {
+      "stage": "gpu.pipelines",
+      "thread": "worker",
+      "startMs": 2402.74,
+      "endMs": 3049.39,
+      "ms": 646.65,
+      "detail": "13"
+     },
+     {
+      "stage": "renderer.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 3069.93,
+      "ms": null
+     },
+     {
+      "stage": "duckdb.fetch",
+      "thread": "worker",
+      "startMs": 1955.56,
+      "endMs": 3314.34,
+      "ms": 1358.77
+     },
+     {
+      "stage": "duckdb.instantiate",
+      "thread": "worker",
+      "startMs": 3314.39,
+      "endMs": 7832.91,
+      "ms": 4518.52,
+      "detail": "eh"
+     },
+     {
+      "stage": "ext.parquet",
+      "thread": "worker",
+      "startMs": 8892.18,
+      "endMs": 10889.98,
+      "ms": 1997.81
+     },
+     {
+      "stage": "ext.json",
+      "thread": "worker",
+      "startMs": 10890.04,
+      "endMs": 11352.91,
+      "ms": 462.87
+     },
+     {
+      "stage": "duckdb.lockdown",
+      "thread": "worker",
+      "startMs": 8776.41,
+      "endMs": 11412.31,
+      "ms": 2635.91
+     },
+     {
+      "stage": "duckdb.boot",
+      "thread": "worker",
+      "startMs": 1952.25,
+      "endMs": 11412.37,
+      "ms": 9460.11
+     },
+     {
+      "stage": "dataset.load",
+      "thread": "worker",
+      "startMs": 11453.65,
+      "endMs": 20182.57,
+      "ms": 8728.92,
+      "detail": "vessels"
+     },
+     {
+      "stage": "dataset.context",
+      "thread": "worker",
+      "startMs": 20182.56,
+      "endMs": 21036.65,
+      "ms": 854.08,
+      "detail": "statistics 652.0 ms"
+     },
+     {
+      "stage": "dataset.open",
+      "thread": "worker",
+      "startMs": 1934.08,
+      "endMs": 21093.82,
+      "ms": 19159.73,
+      "detail": "vessels"
+     },
+     {
+      "stage": "answerable",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 21100.02,
+      "ms": null
+     },
+     {
+      "stage": "rollup.minute",
+      "thread": "worker",
+      "startMs": 23248.66,
+      "endMs": 28093.26,
+      "ms": 4844.6,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollup.hour",
+      "thread": "worker",
+      "startMs": 28093.32,
+      "endMs": 28245.59,
+      "ms": 152.27,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollup.day",
+      "thread": "worker",
+      "startMs": 28245.65,
+      "endMs": 28288.56,
+      "ms": 42.91,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollups.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 28288.63,
+      "ms": null
+     }
+    ],
+    "transfer": {
+     "page js": {
+      "transferSize": 28618,
+      "decodedBodySize": 82276,
+      "ms": 60.11
+     },
+     "page css": {
+      "transferSize": 9294,
+      "decodedBodySize": 37507,
+      "ms": 54.31
+     },
+     "engine worker js": {
+      "transferSize": 360565,
+      "decodedBodySize": 1508081,
+      "ms": 189.47
+     }
+    },
+    "firstQuery": {
+     "headline": 1751.449951171875,
+     "db": null,
+     "cacheHit": false,
+     "rollupsBefore": false,
+     "rows": [
+      [
+       "key",
+       0
+      ],
+      [
+       "draft sent",
+       0.56
+      ],
+      [
+       "coordinator",
+       341.41
+      ],
+      [
+       "inference sent",
+       341.41
+      ],
+      [
+       "inference received",
+       347.3
+      ],
+      [
+       "first SQL delta",
+       347.32
+      ],
+      [
+       "SQL complete",
+       347.43
+      ],
+      [
+       "SQL received",
+       412.09
+      ],
+      [
+       "exec sent",
+       412.09
+      ],
+      [
+       "exec received",
+       413.48
+      ],
+      [
+       "render first batch",
+       1674.71
+      ],
+      [
+       "first draw submitted",
+       1751.45
+      ]
+     ]
+    },
+    "errors": []
+   },
+   {
+    "answerable": 19229.28,
+    "rollups": 23732.93,
+    "rows": [
+     {
+      "stage": "html",
+      "thread": "net",
+      "startMs": 2.72,
+      "endMs": 26.81,
+      "ms": 24.1
+     },
+     {
+      "stage": "dom interactive",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 125.51,
+      "ms": null
+     },
+     {
+      "stage": "fetch page css",
+      "thread": "net",
+      "startMs": 98.65,
+      "endMs": 154.82,
+      "ms": 56.16
+     },
+     {
+      "stage": "fetch page js",
+      "thread": "net",
+      "startMs": 94.64,
+      "endMs": 159.41,
+      "ms": 64.77
+     },
+     {
+      "stage": "page.modules",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 213.65,
+      "ms": null
+     },
+     {
+      "stage": "page.worker",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 377.32,
+      "ms": null
+     },
+     {
+      "stage": "page.boot",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 440.73,
+      "ms": null
+     },
+     {
+      "stage": "fetch engine worker js",
+      "thread": "net",
+      "startMs": 883.3,
+      "endMs": 710.06,
+      "ms": -173.24
+     },
+     {
+      "stage": "worker.modules",
+      "thread": "worker",
+      "startMs": 858.66,
+      "endMs": 1535.92,
+      "ms": 677.26
+     },
+     {
+      "stage": "boot.message",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1762.35,
+      "ms": null
+     },
+     {
+      "stage": "coordinator.compile",
+      "thread": "worker",
+      "startMs": 1541.63,
+      "endMs": 1813.04,
+      "ms": 271.41
+     },
+     {
+      "stage": "coordinator.instantiate",
+      "thread": "worker",
+      "startMs": 1815.16,
+      "endMs": 1815.36,
+      "ms": 0.21
+     },
+     {
+      "stage": "coordinator.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1821.7,
+      "ms": null
+     },
+     {
+      "stage": "renderer.compile",
+      "thread": "worker",
+      "startMs": 1750.38,
+      "endMs": 1878.09,
+      "ms": 127.71
+     },
+     {
+      "stage": "renderer.instantiate",
+      "thread": "worker",
+      "startMs": 1878.14,
+      "endMs": 1898.31,
+      "ms": 20.18
+     },
+     {
+      "stage": "inference.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 2033.26,
+      "ms": null
+     },
+     {
+      "stage": "gpu.adapter",
+      "thread": "worker",
+      "startMs": 1899.81,
+      "endMs": 2071.33,
+      "ms": 171.52
+     },
+     {
+      "stage": "gpu.device",
+      "thread": "worker",
+      "startMs": 2071.39,
+      "endMs": 2098.96,
+      "ms": 27.57
+     },
+     {
+      "stage": "duckdb.fetch",
+      "thread": "worker",
+      "startMs": 1778.49,
+      "endMs": 2983.7,
+      "ms": 1205.21
+     },
+     {
+      "stage": "gpu.pipelines",
+      "thread": "worker",
+      "startMs": 2099.06,
+      "endMs": 3212.92,
+      "ms": 1113.85,
+      "detail": "13"
+     },
+     {
+      "stage": "renderer.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 3226.24,
+      "ms": null
+     },
+     {
+      "stage": "duckdb.instantiate",
+      "thread": "worker",
+      "startMs": 2983.74,
+      "endMs": 7345.44,
+      "ms": 4361.7,
+      "detail": "eh"
+     },
+     {
+      "stage": "ext.parquet",
+      "thread": "worker",
+      "startMs": 8165.51,
+      "endMs": 9602.49,
+      "ms": 1436.98
+     },
+     {
+      "stage": "ext.json",
+      "thread": "worker",
+      "startMs": 9602.55,
+      "endMs": 10074.4,
+      "ms": 471.85
+     },
+     {
+      "stage": "duckdb.lockdown",
+      "thread": "worker",
+      "startMs": 8091.08,
+      "endMs": 10114.89,
+      "ms": 2023.8
+     },
+     {
+      "stage": "duckdb.boot",
+      "thread": "worker",
+      "startMs": 1770.18,
+      "endMs": 10114.96,
+      "ms": 8344.78
+     },
+     {
+      "stage": "dataset.load",
+      "thread": "worker",
+      "startMs": 10148.15,
+      "endMs": 18005,
+      "ms": 7856.85,
+      "detail": "vessels"
+     },
+     {
+      "stage": "dataset.context",
+      "thread": "worker",
+      "startMs": 18005,
+      "endMs": 19165.13,
+      "ms": 1160.14,
+      "detail": "statistics 843.2 ms"
+     },
+     {
+      "stage": "dataset.open",
+      "thread": "worker",
+      "startMs": 1769.92,
+      "endMs": 19229.28,
+      "ms": 17459.36,
+      "detail": "vessels"
+     },
+     {
+      "stage": "answerable",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 19231.39,
+      "ms": null
+     },
+     {
+      "stage": "rollup.minute",
+      "thread": "worker",
+      "startMs": 20836.33,
+      "endMs": 23386.68,
+      "ms": 2550.34,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollup.hour",
+      "thread": "worker",
+      "startMs": 23386.74,
+      "endMs": 23691.64,
+      "ms": 304.9,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollup.day",
+      "thread": "worker",
+      "startMs": 23691.75,
+      "endMs": 23732.86,
+      "ms": 41.12,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollups.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 23732.93,
+      "ms": null
+     }
+    ],
+    "transfer": {
+     "page js": {
+      "transferSize": 28618,
+      "decodedBodySize": 82276,
+      "ms": 64.77
+     },
+     "page css": {
+      "transferSize": 9294,
+      "decodedBodySize": 37507,
+      "ms": 56.16
+     },
+     "engine worker js": {
+      "transferSize": 360565,
+      "decodedBodySize": 1508081,
+      "ms": -173.24
+     }
+    },
+    "firstQuery": {
+     "headline": 1340.9150390625,
+     "db": null,
+     "cacheHit": false,
+     "rollupsBefore": false,
+     "rows": [
+      [
+       "key",
+       0
+      ],
+      [
+       "draft sent",
+       13.3
+      ],
+      [
+       "coordinator",
+       316.17
+      ],
+      [
+       "inference sent",
+       316.17
+      ],
+      [
+       "inference received",
+       331.58
+      ],
+      [
+       "first SQL delta",
+       331.59
+      ],
+      [
+       "SQL complete",
+       331.72
+      ],
+      [
+       "SQL received",
+       419.85
+      ],
+      [
+       "exec sent",
+       419.85
+      ],
+      [
+       "exec received",
+       421.5
+      ],
+      [
+       "render first batch",
+       1306.54
+      ],
+      [
+       "first draw submitted",
+       1340.92
+      ]
+     ]
+    },
+    "errors": []
+   },
+   {
+    "answerable": 18844.46,
+    "rollups": 27657.81,
+    "rows": [
+     {
+      "stage": "html",
+      "thread": "net",
+      "startMs": 4.39,
+      "endMs": 17.64,
+      "ms": 13.25
+     },
+     {
+      "stage": "fetch page css",
+      "thread": "net",
+      "startMs": 151.07,
+      "endMs": 209.77,
+      "ms": 58.7
+     },
+     {
+      "stage": "fetch page js",
+      "thread": "net",
+      "startMs": 144.94,
+      "endMs": 223.78,
+      "ms": 78.84
+     },
+     {
+      "stage": "dom interactive",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 259.45,
+      "ms": null
+     },
+     {
+      "stage": "page.modules",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 330.05,
+      "ms": null
+     },
+     {
+      "stage": "page.worker",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 520.29,
+      "ms": null
+     },
+     {
+      "stage": "page.boot",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 575.14,
+      "ms": null
+     },
+     {
+      "stage": "fetch engine worker js",
+      "thread": "net",
+      "startMs": 701.05,
+      "endMs": 837,
+      "ms": 135.95
+     },
+     {
+      "stage": "worker.modules",
+      "thread": "worker",
+      "startMs": 650.5,
+      "endMs": 1203.99,
+      "ms": 553.49
+     },
+     {
+      "stage": "boot.message",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1486.09,
+      "ms": null
+     },
+     {
+      "stage": "coordinator.compile",
+      "thread": "worker",
+      "startMs": 1211.28,
+      "endMs": 1560.95,
+      "ms": 349.67
+     },
+     {
+      "stage": "coordinator.instantiate",
+      "thread": "worker",
+      "startMs": 1560.98,
+      "endMs": 1561.15,
+      "ms": 0.17
+     },
+     {
+      "stage": "coordinator.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1567.14,
+      "ms": null
+     },
+     {
+      "stage": "renderer.compile",
+      "thread": "worker",
+      "startMs": 1460.96,
+      "endMs": 1635.4,
+      "ms": 174.44
+     },
+     {
+      "stage": "renderer.instantiate",
+      "thread": "worker",
+      "startMs": 1635.45,
+      "endMs": 1672.74,
+      "ms": 37.29
+     },
+     {
+      "stage": "inference.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1688,
+      "ms": null
+     },
+     {
+      "stage": "gpu.adapter",
+      "thread": "worker",
+      "startMs": 1679.13,
+      "endMs": 1884.57,
+      "ms": 205.45
+     },
+     {
+      "stage": "gpu.device",
+      "thread": "worker",
+      "startMs": 1884.63,
+      "endMs": 1912.12,
+      "ms": 27.49
+     },
+     {
+      "stage": "gpu.pipelines",
+      "thread": "worker",
+      "startMs": 1912.18,
+      "endMs": 2659.74,
+      "ms": 747.56,
+      "detail": "13"
+     },
+     {
+      "stage": "renderer.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 2660.73,
+      "ms": null
+     },
+     {
+      "stage": "duckdb.fetch",
+      "thread": "worker",
+      "startMs": 1517.99,
+      "endMs": 2692.23,
+      "ms": 1174.24
+     },
+     {
+      "stage": "duckdb.instantiate",
+      "thread": "worker",
+      "startMs": 2693.72,
+      "endMs": 6436.22,
+      "ms": 3742.5,
+      "detail": "eh"
+     },
+     {
+      "stage": "ext.parquet",
+      "thread": "worker",
+      "startMs": 7126.68,
+      "endMs": 8763.08,
+      "ms": 1636.4
+     },
+     {
+      "stage": "ext.json",
+      "thread": "worker",
+      "startMs": 8763.13,
+      "endMs": 9548.68,
+      "ms": 785.55
+     },
+     {
+      "stage": "duckdb.lockdown",
+      "thread": "worker",
+      "startMs": 7073.07,
+      "endMs": 9584.48,
+      "ms": 2511.41
+     },
+     {
+      "stage": "duckdb.boot",
+      "thread": "worker",
+      "startMs": 1487.93,
+      "endMs": 9584.53,
+      "ms": 8096.6
+     },
+     {
+      "stage": "dataset.load",
+      "thread": "worker",
+      "startMs": 9606.31,
+      "endMs": 17114.64,
+      "ms": 7508.32,
+      "detail": "vessels"
+     },
+     {
+      "stage": "dataset.context",
+      "thread": "worker",
+      "startMs": 17114.63,
+      "endMs": 18727.81,
+      "ms": 1613.18,
+      "detail": "statistics 1304.5 ms"
+     },
+     {
+      "stage": "dataset.open",
+      "thread": "worker",
+      "startMs": 1487.7,
+      "endMs": 18844.46,
+      "ms": 17356.76,
+      "detail": "vessels"
+     },
+     {
+      "stage": "answerable",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 18860.36,
+      "ms": null
+     },
+     {
+      "stage": "rollup.minute",
+      "thread": "worker",
+      "startMs": 21791.4,
+      "endMs": 26959.7,
+      "ms": 5168.3,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollup.hour",
+      "thread": "worker",
+      "startMs": 26959.76,
+      "endMs": 27467.94,
+      "ms": 508.18,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollup.day",
+      "thread": "worker",
+      "startMs": 27467.99,
+      "endMs": 27657.75,
+      "ms": 189.76,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollups.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 27657.81,
+      "ms": null
+     }
+    ],
+    "transfer": {
+     "page js": {
+      "transferSize": 28618,
+      "decodedBodySize": 82276,
+      "ms": 78.84
+     },
+     "page css": {
+      "transferSize": 9294,
+      "decodedBodySize": 37507,
+      "ms": 58.7
+     },
+     "engine worker js": {
+      "transferSize": 360565,
+      "decodedBodySize": 1508081,
+      "ms": 135.95
+     }
+    },
+    "firstQuery": {
+     "headline": 2575.979736328125,
+     "db": null,
+     "cacheHit": false,
+     "rollupsBefore": false,
+     "rows": [
+      [
+       "key",
+       0
+      ],
+      [
+       "draft sent",
+       24.64
+      ],
+      [
+       "coordinator",
+       490.03
+      ],
+      [
+       "inference sent",
+       490.03
+      ],
+      [
+       "inference received",
+       501.52
+      ],
+      [
+       "first SQL delta",
+       501.54
+      ],
+      [
+       "SQL complete",
+       501.64
+      ],
+      [
+       "SQL received",
+       992.53
+      ],
+      [
+       "exec sent",
+       992.53
+      ],
+      [
+       "exec received",
+       1002.41
+      ],
+      [
+       "render first batch",
+       2481.71
+      ],
+      [
+       "first draw submitted",
+       2575.98
+      ]
+     ]
+    },
+    "errors": []
+   }
+  ],
+  "repeat": [
+   {
+    "answerable": 23820.55,
+    "rollups": 29517.32,
+    "rows": [
+     {
+      "stage": "html",
+      "thread": "net",
+      "startMs": 25.39,
+      "endMs": 84.75,
+      "ms": 59.36
+     },
+     {
+      "stage": "fetch page css",
+      "thread": "net",
+      "startMs": 240.83,
+      "endMs": 277.17,
+      "ms": 36.34
+     },
+     {
+      "stage": "fetch page js",
+      "thread": "net",
+      "startMs": 237.01,
+      "endMs": 284.07,
+      "ms": 47.05
+     },
+     {
+      "stage": "dom interactive",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 328.43,
+      "ms": null
+     },
+     {
+      "stage": "page.modules",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 473.16,
+      "ms": null
+     },
+     {
+      "stage": "page.worker",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 812.9,
+      "ms": null
+     },
+     {
+      "stage": "page.boot",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 880.22,
+      "ms": null
+     },
+     {
+      "stage": "fetch engine worker js",
+      "thread": "net",
+      "startMs": 1248.24,
+      "endMs": 921.38,
+      "ms": -326.86
+     },
+     {
+      "stage": "worker.modules",
+      "thread": "worker",
+      "startMs": 1217.41,
+      "endMs": 1822.54,
+      "ms": 605.13
+     },
+     {
+      "stage": "boot.message",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 2089.77,
+      "ms": null
+     },
+     {
+      "stage": "coordinator.compile",
+      "thread": "worker",
+      "startMs": 1825.18,
+      "endMs": 2187.58,
+      "ms": 362.4
+     },
+     {
+      "stage": "coordinator.instantiate",
+      "thread": "worker",
+      "startMs": 2194.59,
+      "endMs": 2194.87,
+      "ms": 0.28
+     },
+     {
+      "stage": "coordinator.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 2206.85,
+      "ms": null
+     },
+     {
+      "stage": "renderer.compile",
+      "thread": "worker",
+      "startMs": 2071.77,
+      "endMs": 2314.24,
+      "ms": 242.46
+     },
+     {
+      "stage": "renderer.instantiate",
+      "thread": "worker",
+      "startMs": 2314.29,
+      "endMs": 2328.68,
+      "ms": 14.39
+     },
+     {
+      "stage": "inference.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 2361.95,
+      "ms": null
+     },
+     {
+      "stage": "gpu.adapter",
+      "thread": "worker",
+      "startMs": 2344.01,
+      "endMs": 2554.85,
+      "ms": 210.83
+     },
+     {
+      "stage": "gpu.device",
+      "thread": "worker",
+      "startMs": 2555.06,
+      "endMs": 2608.04,
+      "ms": 52.98
+     },
+     {
+      "stage": "gpu.pipelines",
+      "thread": "worker",
+      "startMs": 2622.94,
+      "endMs": 3405.11,
+      "ms": 782.17,
+      "detail": "13"
+     },
+     {
+      "stage": "renderer.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 3407.57,
+      "ms": null
+     },
+     {
+      "stage": "duckdb.fetch",
+      "thread": "worker",
+      "startMs": 2150.39,
+      "endMs": 3868.92,
+      "ms": 1718.53
+     },
+     {
+      "stage": "duckdb.instantiate",
+      "thread": "worker",
+      "startMs": 3868.97,
+      "endMs": 11025.49,
+      "ms": 7156.52,
+      "detail": "eh"
+     },
+     {
+      "stage": "ext.parquet",
+      "thread": "worker",
+      "startMs": 12577.56,
+      "endMs": 14699.11,
+      "ms": 2121.55
+     },
+     {
+      "stage": "ext.json",
+      "thread": "worker",
+      "startMs": 14700.72,
+      "endMs": 15344.1,
+      "ms": 643.38
+     },
+     {
+      "stage": "duckdb.lockdown",
+      "thread": "worker",
+      "startMs": 12445.38,
+      "endMs": 15389.61,
+      "ms": 2944.23
+     },
+     {
+      "stage": "duckdb.boot",
+      "thread": "worker",
+      "startMs": 2134.9,
+      "endMs": 15389.68,
+      "ms": 13254.78
+     },
+     {
+      "stage": "dataset.load",
+      "thread": "worker",
+      "startMs": 15425.14,
+      "endMs": 22270.82,
+      "ms": 6845.68,
+      "detail": "vessels"
+     },
+     {
+      "stage": "dataset.context",
+      "thread": "worker",
+      "startMs": 22270.81,
+      "endMs": 23780.37,
+      "ms": 1509.56,
+      "detail": "statistics 1167.6 ms"
+     },
+     {
+      "stage": "dataset.open",
+      "thread": "worker",
+      "startMs": 2109.47,
+      "endMs": 23820.55,
+      "ms": 21711.07,
+      "detail": "vessels"
+     },
+     {
+      "stage": "answerable",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 23821.8,
+      "ms": null
+     },
+     {
+      "stage": "rollup.minute",
+      "thread": "worker",
+      "startMs": 26213.62,
+      "endMs": 29162.92,
+      "ms": 2949.3,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollup.hour",
+      "thread": "worker",
+      "startMs": 29162.99,
+      "endMs": 29459.05,
+      "ms": 296.06,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollup.day",
+      "thread": "worker",
+      "startMs": 29459.12,
+      "endMs": 29517.26,
+      "ms": 58.14,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollups.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 29517.32,
+      "ms": null
+     }
+    ],
+    "transfer": {
+     "page js": {
+      "transferSize": 0,
+      "decodedBodySize": 82276,
+      "ms": 47.05
+     },
+     "page css": {
+      "transferSize": 0,
+      "decodedBodySize": 37507,
+      "ms": 36.34
+     },
+     "engine worker js": {
+      "transferSize": 0,
+      "decodedBodySize": 1508081,
+      "ms": -326.86
+     }
+    },
+    "firstQuery": {
+     "headline": 2146.68994140625,
+     "db": null,
+     "cacheHit": false,
+     "rollupsBefore": false,
+     "rows": [
+      [
+       "key",
+       0
+      ],
+      [
+       "draft sent",
+       2.75
+      ],
+      [
+       "coordinator",
+       238.42
+      ],
+      [
+       "inference sent",
+       238.42
+      ],
+      [
+       "inference received",
+       247.9
+      ],
+      [
+       "first SQL delta",
+       247.91
+      ],
+      [
+       "SQL complete",
+       261.28
+      ],
+      [
+       "SQL received",
+       433.87
+      ],
+      [
+       "exec sent",
+       433.87
+      ],
+      [
+       "exec received",
+       450.38
+      ],
+      [
+       "render first batch",
+       1985.55
+      ],
+      [
+       "first draw submitted",
+       2146.69
+      ]
+     ]
+    },
+    "errors": []
+   },
+   {
+    "answerable": 25124.6,
+    "rollups": 30154.42,
+    "rows": [
+     {
+      "stage": "html",
+      "thread": "net",
+      "startMs": 7.89,
+      "endMs": 19.96,
+      "ms": 12.07
+     },
+     {
+      "stage": "fetch page css",
+      "thread": "net",
+      "startMs": 155.76,
+      "endMs": 173.36,
+      "ms": 17.61
+     },
+     {
+      "stage": "fetch page js",
+      "thread": "net",
+      "startMs": 155.46,
+      "endMs": 183.58,
+      "ms": 28.12
+     },
+     {
+      "stage": "dom interactive",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 244.63,
+      "ms": null
+     },
+     {
+      "stage": "page.modules",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 325.33,
+      "ms": null
+     },
+     {
+      "stage": "page.worker",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 771.08,
+      "ms": null
+     },
+     {
+      "stage": "fetch engine worker js",
+      "thread": "net",
+      "startMs": 968.58,
+      "endMs": 830.64,
+      "ms": -137.93
+     },
+     {
+      "stage": "page.boot",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 836.75,
+      "ms": null
+     },
+     {
+      "stage": "worker.modules",
+      "thread": "worker",
+      "startMs": 932.65,
+      "endMs": 1518.45,
+      "ms": 585.8
+     },
+     {
+      "stage": "boot.message",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1677.21,
+      "ms": null
+     },
+     {
+      "stage": "coordinator.compile",
+      "thread": "worker",
+      "startMs": 1519.46,
+      "endMs": 1752.93,
+      "ms": 233.47
+     },
+     {
+      "stage": "coordinator.instantiate",
+      "thread": "worker",
+      "startMs": 1753.29,
+      "endMs": 1753.51,
+      "ms": 0.22
+     },
+     {
+      "stage": "coordinator.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1760.3,
+      "ms": null
+     },
+     {
+      "stage": "inference.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1806.02,
+      "ms": null
+     },
+     {
+      "stage": "renderer.compile",
+      "thread": "worker",
+      "startMs": 1673.45,
+      "endMs": 1830.59,
+      "ms": 157.14
+     },
+     {
+      "stage": "renderer.instantiate",
+      "thread": "worker",
+      "startMs": 1830.65,
+      "endMs": 1841.25,
+      "ms": 10.6
+     },
+     {
+      "stage": "gpu.adapter",
+      "thread": "worker",
+      "startMs": 1853.52,
+      "endMs": 1933.26,
+      "ms": 79.74
+     },
+     {
+      "stage": "gpu.device",
+      "thread": "worker",
+      "startMs": 1933.31,
+      "endMs": 1964.3,
+      "ms": 30.99
+     },
+     {
+      "stage": "gpu.pipelines",
+      "thread": "worker",
+      "startMs": 1964.38,
+      "endMs": 2606.49,
+      "ms": 642.11,
+      "detail": "13"
+     },
+     {
+      "stage": "renderer.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 2609.93,
+      "ms": null
+     },
+     {
+      "stage": "duckdb.fetch",
+      "thread": "worker",
+      "startMs": 1682.71,
+      "endMs": 3456.93,
+      "ms": 1774.22
+     },
+     {
+      "stage": "duckdb.instantiate",
+      "thread": "worker",
+      "startMs": 3457.12,
+      "endMs": 10212.72,
+      "ms": 6755.6,
+      "detail": "eh"
+     },
+     {
+      "stage": "ext.parquet",
+      "thread": "worker",
+      "startMs": 12099.1,
+      "endMs": 14519.66,
+      "ms": 2420.56
+     },
+     {
+      "stage": "ext.json",
+      "thread": "worker",
+      "startMs": 14521.82,
+      "endMs": 15084.15,
+      "ms": 562.33
+     },
+     {
+      "stage": "duckdb.lockdown",
+      "thread": "worker",
+      "startMs": 11989.7,
+      "endMs": 15270.44,
+      "ms": 3280.74
+     },
+     {
+      "stage": "duckdb.boot",
+      "thread": "worker",
+      "startMs": 1681.86,
+      "endMs": 15270.49,
+      "ms": 13588.63
+     },
+     {
+      "stage": "dataset.load",
+      "thread": "worker",
+      "startMs": 15291.78,
+      "endMs": 23760.69,
+      "ms": 8468.92,
+      "detail": "vessels"
+     },
+     {
+      "stage": "dataset.context",
+      "thread": "worker",
+      "startMs": 23760.68,
+      "endMs": 25049.06,
+      "ms": 1288.38,
+      "detail": "statistics 922.6 ms"
+     },
+     {
+      "stage": "dataset.open",
+      "thread": "worker",
+      "startMs": 1681.65,
+      "endMs": 25124.6,
+      "ms": 23442.96,
+      "detail": "vessels"
+     },
+     {
+      "stage": "answerable",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 25128.36,
+      "ms": null
+     },
+     {
+      "stage": "rollup.minute",
+      "thread": "worker",
+      "startMs": 26349.25,
+      "endMs": 29914.34,
+      "ms": 3565.08,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollup.hour",
+      "thread": "worker",
+      "startMs": 29914.39,
+      "endMs": 30096.69,
+      "ms": 182.3,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollup.day",
+      "thread": "worker",
+      "startMs": 30096.73,
+      "endMs": 30154.36,
+      "ms": 57.64,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollups.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 30154.42,
+      "ms": null
+     }
+    ],
+    "transfer": {
+     "page js": {
+      "transferSize": 0,
+      "decodedBodySize": 82276,
+      "ms": 28.12
+     },
+     "page css": {
+      "transferSize": 0,
+      "decodedBodySize": 37507,
+      "ms": 17.61
+     },
+     "engine worker js": {
+      "transferSize": 0,
+      "decodedBodySize": 1508081,
+      "ms": -137.93
+     }
+    },
+    "firstQuery": {
+     "headline": 925.93994140625,
+     "db": null,
+     "cacheHit": false,
+     "rollupsBefore": false,
+     "rows": [
+      [
+       "key",
+       0
+      ],
+      [
+       "draft sent",
+       0.47
+      ],
+      [
+       "coordinator",
+       218.38
+      ],
+      [
+       "inference sent",
+       218.38
+      ],
+      [
+       "inference received",
+       230.46
+      ],
+      [
+       "first SQL delta",
+       230.87
+      ],
+      [
+       "SQL complete",
+       230.97
+      ],
+      [
+       "SQL received",
+       309.97
+      ],
+      [
+       "exec sent",
+       309.97
+      ],
+      [
+       "exec received",
+       317.07
+      ],
+      [
+       "render first batch",
+       894.96
+      ],
+      [
+       "first draw submitted",
+       925.94
+      ]
+     ]
+    },
+    "errors": []
+   },
+   {
+    "answerable": 18179.41,
+    "rollups": 23295.89,
+    "rows": [
+     {
+      "stage": "html",
+      "thread": "net",
+      "startMs": 7.29,
+      "endMs": 27.43,
+      "ms": 20.14
+     },
+     {
+      "stage": "fetch page css",
+      "thread": "net",
+      "startMs": 119.42,
+      "endMs": 132.64,
+      "ms": 13.22
+     },
+     {
+      "stage": "fetch page js",
+      "thread": "net",
+      "startMs": 118.2,
+      "endMs": 133.42,
+      "ms": 15.22
+     },
+     {
+      "stage": "dom interactive",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 159.49,
+      "ms": null
+     },
+     {
+      "stage": "page.modules",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 219.56,
+      "ms": null
+     },
+     {
+      "stage": "page.worker",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 311.23,
+      "ms": null
+     },
+     {
+      "stage": "fetch engine worker js",
+      "thread": "net",
+      "startMs": 420.54,
+      "endMs": 349.97,
+      "ms": -70.57
+     },
+     {
+      "stage": "page.boot",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 351.84,
+      "ms": null
+     },
+     {
+      "stage": "worker.modules",
+      "thread": "worker",
+      "startMs": 387.03,
+      "endMs": 988.22,
+      "ms": 601.19
+     },
+     {
+      "stage": "boot.message",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1221.51,
+      "ms": null
+     },
+     {
+      "stage": "coordinator.compile",
+      "thread": "worker",
+      "startMs": 990.53,
+      "endMs": 1287.3,
+      "ms": 296.77
+     },
+     {
+      "stage": "coordinator.instantiate",
+      "thread": "worker",
+      "startMs": 1287.35,
+      "endMs": 1287.51,
+      "ms": 0.16
+     },
+     {
+      "stage": "coordinator.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1288.1,
+      "ms": null
+     },
+     {
+      "stage": "renderer.compile",
+      "thread": "worker",
+      "startMs": 1209.47,
+      "endMs": 1332.61,
+      "ms": 123.14
+     },
+     {
+      "stage": "renderer.instantiate",
+      "thread": "worker",
+      "startMs": 1332.83,
+      "endMs": 1335.75,
+      "ms": 2.92
+     },
+     {
+      "stage": "inference.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1395.9,
+      "ms": null
+     },
+     {
+      "stage": "gpu.adapter",
+      "thread": "worker",
+      "startMs": 1336.38,
+      "endMs": 1407.27,
+      "ms": 70.9
+     },
+     {
+      "stage": "gpu.device",
+      "thread": "worker",
+      "startMs": 1407.31,
+      "endMs": 1411.2,
+      "ms": 3.89
+     },
+     {
+      "stage": "gpu.pipelines",
+      "thread": "worker",
+      "startMs": 1411.26,
+      "endMs": 1928.54,
+      "ms": 517.28,
+      "detail": "13"
+     },
+     {
+      "stage": "renderer.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1931.26,
+      "ms": null
+     },
+     {
+      "stage": "duckdb.fetch",
+      "thread": "worker",
+      "startMs": 1256.61,
+      "endMs": 2332.21,
+      "ms": 1075.59
+     },
+     {
+      "stage": "duckdb.instantiate",
+      "thread": "worker",
+      "startMs": 2332.35,
+      "endMs": 5963.67,
+      "ms": 3631.31,
+      "detail": "eh"
+     },
+     {
+      "stage": "ext.parquet",
+      "thread": "worker",
+      "startMs": 6676.93,
+      "endMs": 7332.33,
+      "ms": 655.4
+     },
+     {
+      "stage": "ext.json",
+      "thread": "worker",
+      "startMs": 7332.39,
+      "endMs": 7547.85,
+      "ms": 215.46
+     },
+     {
+      "stage": "duckdb.lockdown",
+      "thread": "worker",
+      "startMs": 6623.77,
+      "endMs": 7561.37,
+      "ms": 937.6
+     },
+     {
+      "stage": "duckdb.boot",
+      "thread": "worker",
+      "startMs": 1245.79,
+      "endMs": 7561.43,
+      "ms": 6315.64
+     },
+     {
+      "stage": "dataset.load",
+      "thread": "worker",
+      "startMs": 7574.56,
+      "endMs": 16917.79,
+      "ms": 9343.23,
+      "detail": "vessels"
+     },
+     {
+      "stage": "dataset.context",
+      "thread": "worker",
+      "startMs": 16917.78,
+      "endMs": 18157.6,
+      "ms": 1239.82,
+      "detail": "statistics 985.5 ms"
+     },
+     {
+      "stage": "dataset.open",
+      "thread": "worker",
+      "startMs": 1241.48,
+      "endMs": 18179.41,
+      "ms": 16937.93,
+      "detail": "vessels"
+     },
+     {
+      "stage": "answerable",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 18185.79,
+      "ms": null
+     },
+     {
+      "stage": "rollup.minute",
+      "thread": "worker",
+      "startMs": 20090.01,
+      "endMs": 23133.21,
+      "ms": 3043.2,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollup.hour",
+      "thread": "worker",
+      "startMs": 23133.27,
+      "endMs": 23243.47,
+      "ms": 110.2,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollup.day",
+      "thread": "worker",
+      "startMs": 23243.53,
+      "endMs": 23295.82,
+      "ms": 52.29,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollups.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 23295.89,
+      "ms": null
+     }
+    ],
+    "transfer": {
+     "page js": {
+      "transferSize": 0,
+      "decodedBodySize": 82276,
+      "ms": 15.22
+     },
+     "page css": {
+      "transferSize": 0,
+      "decodedBodySize": 37507,
+      "ms": 13.22
+     },
+     "engine worker js": {
+      "transferSize": 0,
+      "decodedBodySize": 1508081,
+      "ms": -70.57
+     }
+    },
+    "firstQuery": {
+     "headline": 1703.759765625,
+     "db": null,
+     "cacheHit": false,
+     "rollupsBefore": false,
+     "rows": [
+      [
+       "key",
+       0
+      ],
+      [
+       "draft sent",
+       0.73
+      ],
+      [
+       "coordinator",
+       309.24
+      ],
+      [
+       "inference sent",
+       309.24
+      ],
+      [
+       "inference received",
+       315.19
+      ],
+      [
+       "first SQL delta",
+       315.21
+      ],
+      [
+       "SQL complete",
+       315.35
+      ],
+      [
+       "SQL received",
+       444.83
+      ],
+      [
+       "exec sent",
+       444.83
+      ],
+      [
+       "exec received",
+       459.5
+      ],
+      [
+       "render first batch",
+       1678.51
+      ],
+      [
+       "first draw submitted",
+       1703.76
+      ]
+     ]
+    },
+    "errors": []
+   },
+   {
+    "answerable": 23326.68,
+    "rollups": 27930.7,
+    "rows": [
+     {
+      "stage": "html",
+      "thread": "net",
+      "startMs": 2.31,
+      "endMs": 14.06,
+      "ms": 11.75
+     },
+     {
+      "stage": "fetch page js",
+      "thread": "net",
+      "startMs": 94.16,
+      "endMs": 99.08,
+      "ms": 4.92
+     },
+     {
+      "stage": "fetch page css",
+      "thread": "net",
+      "startMs": 95.48,
+      "endMs": 110.31,
+      "ms": 14.83
+     },
+     {
+      "stage": "dom interactive",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 131.85,
+      "ms": null
+     },
+     {
+      "stage": "page.modules",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 256.27,
+      "ms": null
+     },
+     {
+      "stage": "page.worker",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 637.25,
+      "ms": null
+     },
+     {
+      "stage": "fetch engine worker js",
+      "thread": "net",
+      "startMs": 792.2,
+      "endMs": 669.67,
+      "ms": -122.53
+     },
+     {
+      "stage": "page.boot",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 687.69,
+      "ms": null
+     },
+     {
+      "stage": "worker.modules",
+      "thread": "worker",
+      "startMs": 756.5,
+      "endMs": 1253.21,
+      "ms": 496.71
+     },
+     {
+      "stage": "boot.message",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1531.02,
+      "ms": null
+     },
+     {
+      "stage": "coordinator.compile",
+      "thread": "worker",
+      "startMs": 1259.67,
+      "endMs": 1630.37,
+      "ms": 370.7
+     },
+     {
+      "stage": "coordinator.instantiate",
+      "thread": "worker",
+      "startMs": 1630.41,
+      "endMs": 1630.55,
+      "ms": 0.14
+     },
+     {
+      "stage": "coordinator.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1631.15,
+      "ms": null
+     },
+     {
+      "stage": "renderer.compile",
+      "thread": "worker",
+      "startMs": 1513.95,
+      "endMs": 1764.22,
+      "ms": 250.26
+     },
+     {
+      "stage": "renderer.instantiate",
+      "thread": "worker",
+      "startMs": 1764.26,
+      "endMs": 1771.11,
+      "ms": 6.85
+     },
+     {
+      "stage": "inference.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 1778.27,
+      "ms": null
+     },
+     {
+      "stage": "gpu.adapter",
+      "thread": "worker",
+      "startMs": 1771.59,
+      "endMs": 1856.43,
+      "ms": 84.84
+     },
+     {
+      "stage": "gpu.device",
+      "thread": "worker",
+      "startMs": 1857.55,
+      "endMs": 1900.63,
+      "ms": 43.08
+     },
+     {
+      "stage": "gpu.pipelines",
+      "thread": "worker",
+      "startMs": 1900.7,
+      "endMs": 2596.57,
+      "ms": 695.87,
+      "detail": "13"
+     },
+     {
+      "stage": "renderer.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 2599.7,
+      "ms": null
+     },
+     {
+      "stage": "duckdb.fetch",
+      "thread": "worker",
+      "startMs": 1575.18,
+      "endMs": 3120.71,
+      "ms": 1545.53
+     },
+     {
+      "stage": "duckdb.instantiate",
+      "thread": "worker",
+      "startMs": 3120.76,
+      "endMs": 9015.6,
+      "ms": 5894.84,
+      "detail": "eh"
+     },
+     {
+      "stage": "ext.parquet",
+      "thread": "worker",
+      "startMs": 9911.54,
+      "endMs": 11567.83,
+      "ms": 1656.29
+     },
+     {
+      "stage": "ext.json",
+      "thread": "worker",
+      "startMs": 11567.89,
+      "endMs": 12058.78,
+      "ms": 490.89
+     },
+     {
+      "stage": "duckdb.lockdown",
+      "thread": "worker",
+      "startMs": 9821.54,
+      "endMs": 12103.13,
+      "ms": 2281.59
+     },
+     {
+      "stage": "duckdb.boot",
+      "thread": "worker",
+      "startMs": 1566.13,
+      "endMs": 12103.19,
+      "ms": 10537.07
+     },
+     {
+      "stage": "dataset.load",
+      "thread": "worker",
+      "startMs": 12126.95,
+      "endMs": 21725.86,
+      "ms": 9598.91,
+      "detail": "vessels"
+     },
+     {
+      "stage": "dataset.context",
+      "thread": "worker",
+      "startMs": 21725.85,
+      "endMs": 23242.32,
+      "ms": 1516.47,
+      "detail": "statistics 1156.8 ms"
+     },
+     {
+      "stage": "dataset.open",
+      "thread": "worker",
+      "startMs": 1565.78,
+      "endMs": 23326.68,
+      "ms": 21760.91,
+      "detail": "vessels"
+     },
+     {
+      "stage": "answerable",
+      "thread": "page",
+      "startMs": null,
+      "endMs": 23328.3,
+      "ms": null
+     },
+     {
+      "stage": "rollup.minute",
+      "thread": "worker",
+      "startMs": 25042.5,
+      "endMs": 27478.37,
+      "ms": 2435.87,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollup.hour",
+      "thread": "worker",
+      "startMs": 27478.42,
+      "endMs": 27844.18,
+      "ms": 365.75,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollup.day",
+      "thread": "worker",
+      "startMs": 27844.21,
+      "endMs": 27930.62,
+      "ms": 86.42,
+      "detail": "telemetry"
+     },
+     {
+      "stage": "rollups.ready",
+      "thread": "worker",
+      "startMs": null,
+      "endMs": 27930.7,
+      "ms": null
+     }
+    ],
+    "transfer": {
+     "page js": {
+      "transferSize": 0,
+      "decodedBodySize": 82276,
+      "ms": 4.92
+     },
+     "page css": {
+      "transferSize": 0,
+      "decodedBodySize": 37507,
+      "ms": 14.83
+     },
+     "engine worker js": {
+      "transferSize": 0,
+      "decodedBodySize": 1508081,
+      "ms": -122.53
+     }
+    },
+    "firstQuery": {
+     "headline": 1348.0751953125,
+     "db": null,
+     "cacheHit": false,
+     "rollupsBefore": false,
+     "rows": [
+      [
+       "key",
+       0
+      ],
+      [
+       "draft sent",
+       0.31
+      ],
+      [
+       "coordinator",
+       172.18
+      ],
+      [
+       "inference sent",
+       172.18
+      ],
+      [
+       "inference received",
+       184.23
+      ],
+      [
+       "first SQL delta",
+       184.24
+      ],
+      [
+       "SQL complete",
+       184.39
+      ],
+      [
+       "SQL received",
+       268.13
+      ],
+      [
+       "exec sent",
+       268.13
+      ],
+      [
+       "exec received",
+       278.63
+      ],
+      [
+       "render first batch",
+       1284.19
+      ],
+      [
+       "first draw submitted",
+       1348.08
+      ]
+     ]
+    },
+    "errors": []
+   }
+  ]
+ }
+}
