@@ -19,7 +19,8 @@ import type {
   CoordinatorCore, CreateCoordinator, StatusComponent, CreateDatabase, CreateRenderer, DatabaseNode, DatasetContext, DatasetSource,
   InferencePlacement, Link, LinkId, LocalFrame, PostToUi, RendererNode, UiToEngine,
 } from './contracts';
-import { decode, encode, Flag, header, json, Kind, readJson, now as clockNow, type Frame } from '../protocol/frame';
+import { decode, encode, Flag, header, json, Kind, readJson, SENDER_REQUEST_BIT, now as clockNow, type Frame } from '../protocol/frame';
+import { PrimedTranslations } from './prime';
 import { yieldToEventLoop } from './yield';
 
 export interface Timers {
@@ -69,6 +70,8 @@ export class EngineHost {
   inference?: Link;
   /** Resolves when all three nodes exist (rejects if one fails to start). */
   readonly ready: Promise<void>;
+  /** PRIMEd question → SQL pairs answered at the edge of the inference link (src/engine/prime.ts). */
+  readonly primed: PrimedTranslations;
 
   private readonly now: () => number;
   private readonly timers: Timers;
@@ -98,6 +101,7 @@ export class EngineHost {
     this.controlBacklog = new Backlog(max);
     this.databaseBacklog = new Backlog(max);
     this.inferenceBacklog = new Backlog(max);
+    this.primed = new PrimedTranslations(this.now);
 
     const coordinator = deps.createCoordinator().then(core => {
       this.coordinator = core;
@@ -132,10 +136,15 @@ export class EngineHost {
   onMessage(message: UiToEngine): void {
     if (this.disposed) return;
     switch (message.type) {
-      case 'frame':
-        // Encoded straight into the coordinator: no decode + re-encode in JS.
-        this.toCoordinator('ui', new Uint8Array(message.bytes));
+      case 'frame': {
+        const bytes = new Uint8Array(message.bytes);
+        // Suggestions (docs/batch-2/voice-anticipation.md): PRIME goes to the inference edge, a
+        // WARM EXEC straight to the database. Everything else is encoded straight into the
+        // coordinator: no decode + re-encode in JS.
+        if (bytes[1] === Kind.PRIME || bytes[1] === Kind.EXEC) { this.fromUiSide(bytes); return; }
+        this.toCoordinator('ui', bytes);
         return;
+      }
       case 'boot':
         this.setInference(message.inference);
         void this.openDataset(message.dataset);
@@ -144,6 +153,17 @@ export class EngineHost {
       case 'inference': this.setInference(message.placement); return;
       default: this.control(message);
     }
+  }
+
+  /** PRIME and WARM EXEC from the UI. Only WARM EXECs with sender-assigned request ids pass:
+   * a UI can never start visible work behind the coordinator's back. */
+  private fromUiSide(bytes: Uint8Array): void {
+    let frame: Frame<Uint8Array>;
+    try { frame = decode(bytes); } catch { return; }
+    if (frame.kind === Kind.PRIME) { this.primed.prime(frame); return; }
+    if (!(frame.flags & Flag.WARM) || !(frame.request & SENDER_REQUEST_BIT)) return;
+    if (this.database) this.database.handle(frame);
+    else this.databaseBacklog.push(frame);
   }
 
   private control(message: RenderControl): void {
@@ -240,6 +260,14 @@ export class EngineHost {
   // ───────────────────────── node outputs ─────────────────────────
 
   private fromDatabase(frame: LocalFrame): void {
+    if (frame.request & SENDER_REQUEST_BIT) {
+      // Answers to a UI's WARM EXEC (DONE or ERROR) go back to the UI only.
+      if (frame.kind === Kind.DONE || frame.kind === Kind.ERROR) {
+        const bytes = encode(frame as Frame<Uint8Array>);
+        this.deps.postToUi({ type: 'frame', bytes: bytes.buffer as ArrayBuffer }, [bytes.buffer as ArrayBuffer]);
+      }
+      return;
+    }
     switch (frame.kind) {
       case Kind.RESULT_SCHEMA:
       case Kind.BATCH:
@@ -304,10 +332,13 @@ export class EngineHost {
           if (this.database) this.database.handle(frame);
           else this.databaseBacklog.push(frame);
           break;
-        case 'inference':
+        case 'inference': {
+          const primed = this.primed.answer(frame);
+          if (primed) { for (const answer of primed) this.toCoordinator('inference', answer); break; }
           if (this.inference) this.inference.send(frame);
           else this.inferenceBacklog.push(frame);
           break;
+        }
       }
     }
   }

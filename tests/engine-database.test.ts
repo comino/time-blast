@@ -9,7 +9,7 @@ import { RecordBatch, Schema } from 'apache-arrow';
 import { DuckDatabaseNode, lockDown, type DuckBindings, type ExecStats } from '../src/engine/database-node';
 import { guardSql, unwrapError } from '../src/engine/sql-guard';
 import type { DatasetContext, LocalFrame } from '../src/engine/contracts';
-import { header, Kind, readJson, Stage, text, type Frame } from '../src/protocol/frame';
+import { Flag, header, Kind, readJson, Stage, text, type Frame } from '../src/protocol/frame';
 import { tableNameFor } from '../src/engine/dataset';
 import { yieldToEventLoop } from '../src/engine/yield';
 
@@ -284,4 +284,60 @@ describe('dropped files', () => {
     expect(tableNameFor('/x/y/Data.parquet')).toBe('data');
     expect(tableNameFor('...')).toBe('data');
   });
+});
+
+describe('WARM EXEC (result-cache warm-up for suggestions)', () => {
+  const csv = () => new File(['city,temp\nOslo,3.5\nRome,14.25\nOslo,4\n'], 'warm.csv');
+  const warmId = (n: number) => (0x8000_0000 | n) >>> 0;
+  const until = async (ok: () => boolean) => { for (let i = 0; i < 5000 && !ok(); i++) await new Promise(r => setTimeout(r, 2)); };
+  const doneOf = (frames: LocalFrame[], request: number) => frames.find(f => f.kind === Kind.DONE && f.request === request);
+
+  it('runs, caches and answers only DONE (WARM); the real EXEC then replays from the cache', async () => {
+    const frames: LocalFrame[] = [];
+    const node = new DuckDatabaseNode(db, f => frames.push(f));
+    await node.open({ kind: 'file', name: 'warm.csv', file: csv() }, 9);
+    frames.length = 0;
+    const sql = 'SELECT city, avg(temp) AS t FROM warm GROUP BY 1 ORDER BY 1';
+    node.handle(exec(sql, { context: 9, request: warmId(1), flags: Flag.WARM }));
+    await until(() => !!doneOf(frames, warmId(1)));
+    expect(kinds(frames)).toEqual([Kind.DONE]);
+    const done = frames.find(f => f.kind === Kind.DONE) as Frame;
+    expect(done.flags & Flag.DONE_WARM).toBe(Flag.DONE_WARM);
+    expect(new DataView(done.payload.buffer, done.payload.byteOffset).getBigUint64(0, true)).toBe(2n);
+    frames.length = 0;
+    node.handle(exec(sql, { context: 9, request: 2 }));
+    await until(() => !!doneOf(frames, 2));
+    expect(kinds(frames)).toEqual([Kind.RESULT_SCHEMA, Kind.BATCH, Kind.DONE]);
+    expect((doneOf(frames, 2) as Frame).flags).toBe(Flag.RESULT_CACHE);
+    // Warming a cached statement answers at once, flagged as a cache hit.
+    frames.length = 0;
+    node.handle(exec(`-- view: table\n${sql}`, { context: 9, request: warmId(2), flags: Flag.WARM }));
+    await until(() => !!doneOf(frames, warmId(2)));
+    expect((doneOf(frames, warmId(2)) as Frame).flags).toBe(Flag.DONE_WARM | Flag.RESULT_CACHE);
+    // Volatile statements are not cacheable: warming them is refused.
+    frames.length = 0;
+    node.handle(exec('SELECT random() AS r', { context: 9, request: warmId(3), flags: Flag.WARM }));
+    await until(() => frames.some(f => f.kind === Kind.ERROR));
+    expect(errorOf(frames).code).toBe('not_cacheable');
+    node.dispose();
+  });
+
+  it('yields to real work: queued warm-ups wait, a running one is preempted and requeued', async () => {
+    const frames: LocalFrame[] = [];
+    const stats: ExecStats[] = [];
+    const node = new DuckDatabaseNode(db, f => frames.push(f), { onExecStats: s => stats.push(s) });
+    await node.open({ kind: 'file', name: 'warm.csv', file: csv() }, 9);
+    frames.length = 0;
+    const slow = (k: number) => `SELECT count(*) + ${k} AS n FROM range(30000000) t(i) WHERE i % 7 = 3`;
+    node.handle(exec(slow(1), { context: 9, request: warmId(10), flags: Flag.WARM })); // starts running
+    node.handle(exec(slow(2), { context: 9, request: warmId(11), flags: Flag.WARM })); // queued
+    node.handle(exec('SELECT 42 AS answer', { context: 9, request: 5 })); // preempts warm 10
+    await until(() => !!doneOf(frames, warmId(10)) && !!doneOf(frames, warmId(11)));
+    const order = frames.filter(f => f.kind === Kind.DONE).map(f => f.request);
+    expect(order[0]).toBe(5);
+    expect(order.sort()).toEqual([5, warmId(10), warmId(11)].sort());
+    expect(frames.filter(f => f.kind === Kind.ERROR)).toEqual([]);
+    expect(stats.filter(s => s.warm && s.outcome === 'canceled').length).toBeGreaterThanOrEqual(1);
+    node.dispose();
+  }, 60_000);
 });

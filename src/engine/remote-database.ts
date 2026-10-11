@@ -23,7 +23,7 @@
 import type { CreateDatabase, DatabaseNode, DatasetContext, DatasetSource, Emit, Link } from './contracts';
 import { createWebSocketLink } from './links';
 import { IpcMessageDecoder } from './arrow-ipc';
-import { header, json, Kind, readJson, type Frame } from '../protocol/frame';
+import { Flag, header, json, Kind, readJson, type Frame } from '../protocol/frame';
 
 /** Proposed DatasetSource variant (contract change requested in docs/batch-1/remote-database.md). */
 export type RemoteDatasetSource = Extract<DatasetSource, { kind: 'remote' }>;
@@ -92,6 +92,8 @@ export class RemoteDatabaseNode implements DatabaseNode {
     if (frame.kind === Kind.EXEC) {
       if (frame.epoch < this.epoch || frame.context !== this.contextId || this.contextId === 0) { this.dropped++; return; }
       if (!this.link) { this.unavailable(frame, 'Database link is down; reconnecting'); return; }
+      // WARM (result-cache warm-up) is not implemented by crates/database-server yet.
+      if (frame.flags & Flag.WARM) { this.emit({ ...frame, kind: Kind.ERROR, flags: 0, stamps: [], payload: json({ code: 'unsupported', message: 'WARM is not supported by the remote database' }) }); return; }
       this.inflight.set(frame.request, frame);
       this.cancelled.delete(frame.request);
       this.link.send(frame);

@@ -4,7 +4,7 @@ import { createInProcessPair } from '../src/engine/links';
 import type {
   CoordinatorCore, DatabaseNode, DatasetContext, Emit, EngineToUi, Link, LinkId, LocalFrame, PostToUi, RendererNode, UiToEngine,
 } from '../src/engine/contracts';
-import { decode, encode, Flag, header, json, Kind, readJson, text, type Frame } from '../src/protocol/frame';
+import { decode, encode, Flag, header, json, Kind, readJson, readText, text, type Frame } from '../src/protocol/frame';
 
 const frame = (kind: number, fields: Partial<Frame> = {}, payload: Uint8Array = new Uint8Array(0)): Frame =>
   ({ ...header(kind as never, fields), stamps: [], payload });
@@ -275,5 +275,48 @@ describe('engine host', () => {
     expect(await second).toMatchObject({ id: 2, name: 'vessels-small' });
     expect(t.database.opened).toEqual([['vessels-small', 2]]);
     expect(t.posted.filter(([m]) => m.type === 'context')).toHaveLength(1);
+  });
+});
+
+describe('engine host: suggestions (PRIME, WARM EXEC)', () => {
+  const WARM_ID = 0x8000_0007;
+  const prime = (question: string, sql: string, context = 1) => uiFrame(frame(Kind.PRIME, { context }, json({ question, sql })));
+
+  it('answers a primed INFER at the inference edge: SQL (CACHED) + INFER_STATS with the INFER identities, nothing sent to the node', async () => {
+    const t = setup();
+    await t.host.ready;
+    t.host.onMessage({ type: 'inference', placement: { kind: 'remote', endpoint: 'wss://example.test' } });
+    const seen: Frame[] = [];
+    t.inferenceEnds[0].listen(f => seen.push(f as Frame));
+    t.host.onMessage(prime('  Max Speed   per vessel ', 'SELECT vessel, max(speed) AS s FROM telemetry GROUP BY 1'));
+    expect(t.coordinator.inputs).toHaveLength(0); // PRIME never reaches the coordinator
+    t.coordinator.react = (link, f) => link === 'ui' ? [['inference', frame(Kind.INFER, { request: 4, epoch: 2, revision: 9, context: 1 }, text(readText(f.payload)))]] : [];
+    t.host.onMessage(uiFrame(frame(Kind.COMMIT, { revision: 9, context: 1 }, text('max speed per vessel'))));
+    expect(seen).toEqual([]);
+    const answers = t.coordinator.inputs.filter(([link]) => link === 'inference').map(([, f]) => f);
+    expect(answers.map(f => [f.kind, f.flags, f.request, f.epoch, f.revision, f.context])).toEqual([
+      [Kind.SQL, Flag.CACHED, 4, 2, 9, 1], [Kind.INFER_STATS, 0, 4, 2, 9, 1],
+    ]);
+    expect(readText(answers[0].payload)).toBe('SELECT vessel, max(speed) AS s FROM telemetry GROUP BY 1');
+    expect(answers[0].stamps.map(s => s.stage)).toEqual([5, 9]);
+    expect(readJson<{ costUsd: number; model: string }>(answers[1].payload)).toMatchObject({ costUsd: 0, model: 'primed' });
+    // Another context or another question goes to the inference node.
+    t.host.onMessage(uiFrame(frame(Kind.COMMIT, { revision: 10, context: 1 }, text('max speed per vessel today'))));
+    expect(seen.map(f => f.kind)).toEqual([Kind.INFER]);
+    expect(t.host.primed.hits).toBe(1);
+  });
+
+  it('routes a WARM EXEC from the UI to the database and its answer back to the UI only; refuses other EXECs from the UI', async () => {
+    const t = setup();
+    await t.host.ready;
+    t.host.onMessage(uiFrame(frame(Kind.EXEC, { request: 3, context: 1 }, text('SELECT 1')))); // not WARM: dropped
+    t.host.onMessage(uiFrame(frame(Kind.EXEC, { request: 3, context: 1, flags: Flag.WARM }, text('SELECT 1')))); // WARM, coordinator-range id: dropped
+    expect(t.database.frames).toEqual([]);
+    t.host.onMessage(uiFrame(frame(Kind.EXEC, { request: WARM_ID, context: 1, flags: Flag.WARM }, text('SELECT 1'))));
+    expect(t.database.frames.map(f => [f.kind, f.request])).toEqual([[Kind.EXEC, WARM_ID]]);
+    // The fake database streams; the host keeps everything of a sender-id request away from renderer and coordinator.
+    expect(t.renderer.frames).toEqual([]);
+    expect(t.coordinator.inputs).toEqual([]);
+    expect(t.uiFrames().filter(f => f.kind === Kind.DONE).map(f => f.request)).toEqual([WARM_ID]);
   });
 });

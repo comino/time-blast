@@ -45,6 +45,8 @@ export interface DuckBindings extends Tokenizer {
 export interface ExecStats {
   request: number;
   outcome: 'done' | 'canceled' | 'error';
+  /** A WARM EXEC (result-cache warm-up; nothing streamed). */
+  warm?: boolean;
   /** Where the result came from: DuckDB on the raw table, DuckDB on a rollup, or the result cache. */
   source: 'raw' | 'rollup' | 'cache';
   guardMs: number;
@@ -113,7 +115,15 @@ interface Keep { schema?: Schema; batches: RecordBatch[]; rows: number; bytes: n
 interface Job {
   request: number; epoch: number; revision: number; context: number;
   sql: string; receivedAt: number; t0: number; canceled: boolean;
+  /** WARM EXEC: run at the lowest priority, cache the result, stream nothing. */
+  warm?: boolean;
+  /** A warm job yielded to a real EXEC this many times (it is requeued up to MAX_WARM_PREEMPTIONS). */
+  preempted?: number;
 }
+
+/** Waiting WARM EXECs beyond the running one; the oldest is refused first. */
+const MAX_WARM_QUEUED = 8;
+const MAX_WARM_PREEMPTIONS = 3;
 
 async function defaultFetchBytes(url: string): Promise<Uint8Array> {
   const response = await fetch(url);
@@ -130,6 +140,8 @@ export class DuckDatabaseNode implements DatabaseNode {
   private epoch = 0;
   private contextId = 0;
   private readonly queue: Job[] = [];
+  /** WARM EXECs: run only when `queue` is empty, newest first; a real EXEC preempts a running one. */
+  private readonly warmQueue: Job[] = [];
   private running?: Job;
   private pumping?: Promise<void>;
   private disposed = false;
@@ -180,6 +192,15 @@ export class DuckDatabaseNode implements DatabaseNode {
       request: frame.request, epoch: frame.epoch, revision: frame.revision, context: frame.context,
       sql: readText(frame.payload), receivedAt, t0, canceled: false,
     };
+    if (frame.flags & Flag.WARM) {
+      job.warm = true;
+      if (this.warmQueue.length >= MAX_WARM_QUEUED) this.fail(this.warmQueue.shift()!, 'queue_full', 'Too many warm-ups waiting');
+      this.warmQueue.push(job);
+      this.pump();
+      return;
+    }
+    // Real work first: a running warm-up stops at its next poll and is requeued.
+    if (this.running?.warm) { this.running.canceled = true; this.running.preempted = (this.running.preempted ?? 0) + 1; }
     if (this.queue.length >= this.limits.maxQueued) {
       this.fail(job, 'queue_full', `More than ${this.limits.maxQueued} queries are waiting`);
       return;
@@ -196,14 +217,17 @@ export class DuckDatabaseNode implements DatabaseNode {
       this.cancelAll();
       return;
     }
-    const index = this.queue.findIndex(job => job.request === request);
-    if (index >= 0) this.queue.splice(index, 1);
+    for (const queue of [this.queue, this.warmQueue]) {
+      const index = queue.findIndex(job => job.request === request);
+      if (index >= 0) queue.splice(index, 1);
+    }
     if (this.running?.request === request) this.running.canceled = true;
   }
 
   private cancelAll(): void {
     this.queue.length = 0;
-    if (this.running) this.running.canceled = true;
+    this.warmQueue.length = 0;
+    if (this.running) { this.running.canceled = true; this.running.preempted = undefined; }
   }
 
   /** Starts executing synchronously: a small query may finish inside handle(). */
@@ -211,7 +235,17 @@ export class DuckDatabaseNode implements DatabaseNode {
     if (this.pumping) return;
     this.pumping = (async () => {
       try {
-        while (this.queue.length && !this.disposed) await this.execute(this.queue.shift()!);
+        while ((this.queue.length || this.warmQueue.length) && !this.disposed) {
+          // Warm-ups newest first: the latest result's suggestions are the ones on screen.
+          const job = this.queue.shift() ?? this.warmQueue.pop()!;
+          await this.execute(job);
+          // A preempted warm-up runs again next (behind all real work).
+          if (job.warm && job.canceled && job.preempted && job.preempted <= MAX_WARM_PREEMPTIONS && !this.disposed) {
+            job.canceled = false;
+            job.t0 = performance.now();
+            this.warmQueue.push(job);
+          }
+        }
       } finally {
         this.pumping = undefined;
       }
@@ -233,6 +267,7 @@ export class DuckDatabaseNode implements DatabaseNode {
 
   private async execute(job: Job): Promise<void> {
     const stats: ExecStats = { request: job.request, outcome: 'error', source: 'raw', guardMs: 0, polls: 0, fetchRetries: 0, yields: 0, batches: 0, rows: 0, bytes: 0 };
+    if (job.warm) stats.warm = true;
     this.running = job;
     try {
       if (job.canceled) { stats.outcome = 'canceled'; return; }
@@ -242,8 +277,14 @@ export class DuckDatabaseNode implements DatabaseNode {
       if (!guard.ok) { this.fail(job, 'sql_rejected', guard.message); return; }
 
       const key = cacheKey(guard.inner);
+      if (job.warm && !this.cache?.cacheable(key)) { this.fail(job, 'not_cacheable', 'The statement is not cacheable; warming it is pointless'); return; }
       const hit = this.cache?.get(key);
-      if (hit) { stats.source = 'cache'; await this.replay(job, hit, stats); return; }
+      if (hit) {
+        stats.source = 'cache';
+        if (job.warm) { stats.rows = hit.rows; stats.bytes = hit.bytes; this.done(job, stats); return; }
+        await this.replay(job, hit, stats);
+        return;
+      }
 
       let sql = guard.sql;
       if (this.rollups.length) {
@@ -300,7 +341,7 @@ export class DuckDatabaseNode implements DatabaseNode {
       if (first.kind !== 'schema') throw new Error('DuckDB result did not start with a schema');
       stats.schemaMs = performance.now() - job.t0;
       if (keep) keep.schema = first.schema;
-      this.send(job, Kind.RESULT_SCHEMA, first.schema, [this.stamp(Stage.EXEC_RECEIVED, job.receivedAt)]);
+      if (!job.warm) this.send(job, Kind.RESULT_SCHEMA, first.schema, [this.stamp(Stage.EXEC_RECEIVED, job.receivedAt)]);
 
       let sliceStart = performance.now();
       for (;;) {
@@ -343,7 +384,7 @@ export class DuckDatabaseNode implements DatabaseNode {
     const stamps = stats.batches === 0 ? [this.stamp(Stage.DB_FIRST_BATCH)] : [];
     if (stats.batches === 0) stats.firstBatchMs = performance.now() - job.t0;
     stats.batches++;
-    this.send(job, Kind.BATCH, batch, stamps);
+    if (!job.warm) this.send(job, Kind.BATCH, batch, stamps);
     if (performance.now() > job.t0 + this.limits.timeMs) { this.fail(job, 'timeout', `Query exceeded ${this.limits.timeMs} ms`); return false; }
     return true;
   }
@@ -355,7 +396,7 @@ export class DuckDatabaseNode implements DatabaseNode {
     stats.doneMs = performance.now() - job.t0;
     stats.outcome = 'done';
     const source = stats.source === 'rollup' ? Flag.ROLLUP : stats.source === 'cache' ? Flag.RESULT_CACHE : 0;
-    this.send(job, Kind.DONE, done, [this.stamp(Stage.DB_DONE)], source);
+    this.send(job, Kind.DONE, done, [this.stamp(Stage.DB_DONE)], source | (job.warm ? Flag.DONE_WARM : 0));
   }
 
   /** Replay a cached result: same frames, stamps, time slicing and cancellation as a live one. */
