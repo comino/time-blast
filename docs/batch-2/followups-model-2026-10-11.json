@@ -1,0 +1,745 @@
+{
+ "date": "2026-10-11T08:18:48.265Z",
+ "summary": {
+  "model": "openai/gpt-oss-120b",
+  "calls": 15,
+  "latencyMs": {
+   "p50": 970,
+   "p95": 1719
+  },
+  "costUsd": 0.004856,
+  "costPerCallUsd": 0.0003237,
+  "proposals": 60,
+  "valid": 55,
+  "sameResultAsADeterministicVariant": 6,
+  "promptTokensMean": 1140,
+  "completionTokensMean": 331
+ },
+ "rows": [
+  {
+   "id": "avg_speed_per_vessel",
+   "question": "average speed per vessel",
+   "ms": 1719,
+   "status": 200,
+   "promptTokens": 1015,
+   "completionTokens": 298,
+   "cachedTokens": 768,
+   "costUsd": 0.00027345,
+   "proposals": [
+    {
+     "label": "Speed over time",
+     "question": "What is the average speed of each vessel per day?",
+     "sql": "SELECT time_bucket(INTERVAL '1 day', ts) AS day,vessel,avg(speed) AS avg_speed FROM telemetry GROUP BY day,vessel ORDER BY day,vessel",
+     "ok": true,
+     "rows": 84,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "Top speed",
+     "question": "What is the maximum speed recorded for each vessel?",
+     "sql": "SELECT vessel,max(speed) AS max_speed FROM telemetry GROUP BY vessel ORDER BY vessel",
+     "ok": true,
+     "rows": 6,
+     "sameAsDeterministic": true
+    },
+    {
+     "label": "Speed trend",
+     "question": "How has the average speed of the Atlas vessel changed over the last week?",
+     "sql": "SELECT time_bucket(INTERVAL '1 day', ts) AS day,avg(speed) AS avg_speed FROM telemetry WHERE vessel='Atlas' AND ts>=TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days' GROUP BY day ORDER BY day",
+     "ok": true,
+     "rows": 8,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "Speed comparison",
+     "question": "Which vessel had the highest overall average speed?",
+     "sql": "SELECT vessel,avg(speed) AS avg_speed FROM telemetry GROUP BY vessel ORDER BY avg_speed DESC LIMIT 1",
+     "ok": true,
+     "rows": 1,
+     "sameAsDeterministic": false
+    }
+   ],
+   "deterministic": [
+    "last 24 hours",
+    "max",
+    "as table"
+   ]
+  },
+  {
+   "id": "fleet_avg_water_temp",
+   "question": "average water temperature across the fleet",
+   "ms": 635,
+   "status": 200,
+   "promptTokens": 1012,
+   "completionTokens": 217,
+   "cachedTokens": 0,
+   "costUsd": 0.000282,
+   "proposals": [
+    {
+     "label": "by vessel",
+     "question": "What is the average water temperature for each vessel?",
+     "sql": "SELECT vessel, avg(water_temp) AS avg_temp FROM telemetry GROUP BY vessel ORDER BY vessel",
+     "ok": true,
+     "rows": 6,
+     "sameAsDeterministic": true
+    },
+    {
+     "label": "over time",
+     "question": "How does the average water temperature change daily?",
+     "sql": "SELECT time_bucket(INTERVAL '1 day', ts) AS day, avg(water_temp) AS avg_temp FROM telemetry GROUP BY day ORDER BY day",
+     "ok": true,
+     "rows": 14,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "max temperature",
+     "question": "What is the maximum water temperature recorded and when?",
+     "sql": "SELECT ts, vessel, water_temp FROM telemetry ORDER BY water_temp DESC LIMIT 1",
+     "ok": true,
+     "rows": 1,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "temp vs speed",
+     "question": "Is there a correlation between water temperature and vessel speed?",
+     "sql": "SELECT speed, water_temp FROM telemetry LIMIT 5000",
+     "ok": true,
+     "rows": 5000,
+     "sameAsDeterministic": false
+    }
+   ],
+   "deterministic": [
+    "by vessel",
+    "last 24 hours",
+    "max",
+    "as table"
+   ]
+  },
+  {
+   "id": "daily_max_wave_per_vessel",
+   "question": "max wave height per vessel per day",
+   "ms": 888,
+   "status": 200,
+   "promptTokens": 1036,
+   "completionTokens": 334,
+   "cachedTokens": 768,
+   "costUsd": 0.0002982,
+   "proposals": [
+    {
+     "label": "average speed per vessel per day",
+     "question": "What is the average speed for each vessel per day?",
+     "sql": "SELECT date_trunc('day', ts) AS day,vessel,AVG(speed) AS avg_speed FROM telemetry GROUP BY day,vessel ORDER BY day,vessel",
+     "ok": true,
+     "rows": 84,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "daily wind summary",
+     "question": "Show the daily minimum and maximum wind speed for each vessel.",
+     "sql": "SELECT date_trunc('day', ts) AS day,vessel,MIN(wind) AS min_wind,MAX(wind) AS max_wind FROM telemetry GROUP BY day,vessel ORDER BY day,vessel",
+     "ok": true,
+     "rows": 84,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "top wave days",
+     "question": "Which three days had the highest overall wave height across all vessels?",
+     "sql": "SELECT day,MAX(wave_height) AS max_wave FROM (SELECT date_trunc('day', ts) AS day,wave_height FROM telemetry) t GROUP BY day ORDER BY max_wave DESC LIMIT 3",
+     "ok": true,
+     "rows": 3,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "compare vessels wave",
+     "question": "How does the average daily wave height compare between Atlas and Solstice?",
+     "sql": "SELECT date_trunc('day', ts) AS day,vessel,AVG(wave_height) AS avg_wave FROM telemetry WHERE vessel IN ('Atlas','Solstice') GROUP BY day,vessel ORDER BY day,vessel",
+     "ok": true,
+     "rows": 28,
+     "sameAsDeterministic": false
+    }
+   ],
+   "deterministic": [
+    "per hour",
+    "last 24 hours",
+    "average",
+    "as heatmap"
+   ]
+  },
+  {
+   "id": "six_hour_wind_per_vessel",
+   "question": "average wind per vessel in six-hour buckets",
+   "ms": 1056,
+   "status": 200,
+   "promptTokens": 1038,
+   "completionTokens": 361,
+   "cachedTokens": 768,
+   "costUsd": 0.0003147,
+   "proposals": [
+    {
+     "label": "Top vessels",
+     "question": "Which vessel had the highest average wind speed in each six-hour bucket?",
+     "sql": "SELECT time_bucket(INTERVAL '6 hours', ts) AS t,vessel,AVG(wind) AS avg_wind FROM telemetry GROUP BY t,vessel ORDER BY t,vessel",
+     "ok": true,
+     "rows": 336,
+     "sameAsDeterministic": true
+    },
+    {
+     "label": "Wind trend",
+     "question": "What is the overall trend of average wind speed across all vessels over the entire period in six-hour buckets?",
+     "sql": "SELECT time_bucket(INTERVAL '6 hours', ts) AS t,AVG(wind) AS avg_wind FROM telemetry GROUP BY t ORDER BY t",
+     "ok": true,
+     "rows": 56,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "Recent wind",
+     "question": "What were the average wind speeds per vessel in the last 48 hours, using six-hour buckets?",
+     "sql": "SELECT time_bucket(INTERVAL '6 hours', ts) AS t,vessel,AVG(wind) AS avg_wind FROM telemetry WHERE ts>=TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '48 hours' GROUP BY t,vessel ORDER BY t,vessel",
+     "ok": true,
+     "rows": 54,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "Wind vs speed",
+     "question": "How does average wind speed compare to average vessel speed in each six-hour bucket per vessel?",
+     "sql": "SELECT time_bucket(INTERVAL '6 hours', ts) AS t,vessel,AVG(wind) AS avg_wind,AVG(speed) AS avg_speed FROM telemetry GROUP BY t,vessel ORDER BY t,vessel",
+     "ok": true,
+     "rows": 336,
+     "sameAsDeterministic": false
+    }
+   ],
+   "deterministic": [
+    "per day",
+    "last 24 hours",
+    "max",
+    "as heatmap"
+   ]
+  },
+  {
+   "id": "atlas_speed_10min_today",
+   "question": "speed of Atlas every 10 minutes today",
+   "ms": 970,
+   "status": 200,
+   "promptTokens": 1058,
+   "completionTokens": 395,
+   "cachedTokens": 0,
+   "costUsd": 0.0003957,
+   "proposals": [
+    {
+     "label": "compare vessels",
+     "question": "How does Atlas speed compare to Aurora over the same period?",
+     "sql": "SELECT time_bucket(INTERVAL '10 minutes', ts) AS t, avg(CASE WHEN vessel='Atlas' THEN speed END) AS atlas_speed, avg(CASE WHEN vessel='Aurora' THEN speed END) AS aurora_speed FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 00:00:00' AND vessel IN ('Atlas','Aurora') GROUP BY 1 ORDER BY 1",
+     "ok": true,
+     "rows": 144,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "max speed",
+     "question": "What was the maximum speed of Atlas today?",
+     "sql": "SELECT max(speed) AS max_speed FROM telemetry WHERE vessel='Atlas' AND ts >= TIMESTAMP '2026-09-14 00:00:00'",
+     "ok": true,
+     "rows": 1,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "speed distribution",
+     "question": "Show the distribution of Atlas speed today in 1‑knot bins.",
+     "sql": "SELECT width_bucket(speed,0,20,20) AS bin, count(*) AS cnt FROM telemetry WHERE vessel='Atlas' AND ts >= TIMESTAMP '2026-09-14 00:00:00' GROUP BY 1 ORDER BY 1",
+     "ok": false,
+     "error": "sql_error",
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "wind vs speed",
+     "question": "What is the average wind speed for each 10‑minute interval alongside Atlas speed today?",
+     "sql": "SELECT time_bucket(INTERVAL '10 minutes', ts) AS t, avg(speed) AS avg_speed, avg(wind) AS avg_wind FROM telemetry WHERE vessel='Atlas' AND ts >= TIMESTAMP '2026-09-14 00:00:00' GROUP BY 1 ORDER BY 1",
+     "ok": true,
+     "rows": 144,
+     "sameAsDeterministic": false
+    }
+   ],
+   "deterministic": [
+    "per hour",
+    "max",
+    "as table"
+   ]
+  },
+  {
+   "id": "wave_by_hour_last_12h",
+   "question": "compare wave height of all vessels by hour over the last 12 hours",
+   "ms": 901,
+   "status": 200,
+   "promptTokens": 1328,
+   "completionTokens": 339,
+   "cachedTokens": 1024,
+   "costUsd": 0.0003258,
+   "proposals": [
+    {
+     "label": "peak wave height",
+     "question": "What was the maximum wave height for each vessel in the last 12 hours?",
+     "sql": "SELECT vessel, max(wave_height) AS max_wave FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '12 hour' GROUP BY vessel ORDER BY vessel",
+     "ok": true,
+     "rows": 6,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "average speed",
+     "question": "What is the average speed of each vessel over the same period?",
+     "sql": "SELECT vessel, avg(speed) AS avg_speed FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '12 hour' GROUP BY vessel ORDER BY vessel",
+     "ok": true,
+     "rows": 6,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "wind vs wave",
+     "question": "How does wind speed correlate with wave height by hour for all vessels in the last 12 hours?",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour, corr(wind,wave_height) AS wind_wave_corr FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '12 hour' GROUP BY hour ORDER BY hour",
+     "ok": true,
+     "rows": 13,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "current locations",
+     "question": "Where were the vessels located at the most recent timestamp?",
+     "sql": "SELECT vessel, lat, lon FROM telemetry WHERE ts = (SELECT max(ts) FROM telemetry)",
+     "ok": true,
+     "rows": 6,
+     "sameAsDeterministic": false
+    }
+   ],
+   "deterministic": [
+    "per day",
+    "max",
+    "as heatmap"
+   ]
+  },
+  {
+   "id": "wave_last_hour_minutes",
+   "question": "Average wave height for the last hour in one-minute buckets",
+   "ms": 1251,
+   "status": 200,
+   "promptTokens": 1321,
+   "completionTokens": 442,
+   "cachedTokens": 1024,
+   "costUsd": 0.00038655,
+   "proposals": [
+    {
+     "label": "by vessel",
+     "question": "What is the average wave height for each vessel in the last hour, in one‑minute buckets?",
+     "sql": "SELECT time_bucket(INTERVAL '1 minute', ts) AS minute,vessel,AVG(wave_height) AS avg_wave FROM telemetry WHERE ts>=TIMESTAMP '2026-09-14 23:59:54'-INTERVAL '1 hour' GROUP BY 1,2 ORDER BY 1,2",
+     "ok": true,
+     "rows": 366,
+     "sameAsDeterministic": true
+    },
+    {
+     "label": "with speed",
+     "question": "How does the average wave height compare to the average speed in one‑minute buckets over the last hour?",
+     "sql": "SELECT time_bucket(INTERVAL '1 minute', ts) AS minute,AVG(wave_height) AS avg_wave,AVG(speed) AS avg_speed FROM telemetry WHERE ts>=TIMESTAMP '2026-09-14 23:59:54'-INTERVAL '1 hour' GROUP BY 1 ORDER BY 1",
+     "ok": true,
+     "rows": 61,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "peak hour",
+     "question": "What was the maximum wave height recorded in each one‑minute bucket during the last hour?",
+     "sql": "SELECT time_bucket(INTERVAL '1 minute', ts) AS minute,MAX(wave_height) AS max_wave FROM telemetry WHERE ts>=TIMESTAMP '2026-09-14 23:59:54'-INTERVAL '1 hour' GROUP BY 1 ORDER BY 1",
+     "ok": true,
+     "rows": 61,
+     "sameAsDeterministic": true
+    },
+    {
+     "label": "trend line",
+     "question": "Show the trend of average wave height over the last 24 hours using hourly buckets.",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour,AVG(wave_height) AS avg_wave FROM telemetry WHERE ts>=TIMESTAMP '2026-09-14 23:59:54'-INTERVAL '24 hours' GROUP BY 1 ORDER BY 1",
+     "ok": true,
+     "rows": 25,
+     "sameAsDeterministic": false
+    }
+   ],
+   "deterministic": [
+    "by vessel",
+    "per hour",
+    "max",
+    "as table"
+   ]
+  },
+  {
+   "id": "waves_above_4_per_vessel",
+   "question": "how many readings had waves above 4 metres, per vessel",
+   "ms": 881,
+   "status": 200,
+   "promptTokens": 1028,
+   "completionTokens": 346,
+   "cachedTokens": 0,
+   "costUsd": 0.0003618,
+   "proposals": [
+    {
+     "label": "Average speed",
+     "question": "What is the average speed of each vessel when wave height is above 4 metres?",
+     "sql": "SELECT vessel, avg(speed) AS avg_speed FROM telemetry WHERE wave_height > 4 GROUP BY vessel ORDER BY vessel",
+     "ok": true,
+     "rows": 6,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "Peak wave time",
+     "question": "When did each vessel experience its highest wave height above 4 metres?",
+     "sql": "SELECT vessel, max(wave_height) AS max_wave, ts FROM telemetry t1 WHERE wave_height > 4 AND ts = (SELECT ts FROM telemetry t2 WHERE t2.vessel=t1.vessel AND t2.wave_height>4 ORDER BY wave_height DESC LIMIT 1) ORDER BY vessel",
+     "ok": false,
+     "error": "sql_error",
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "Daily counts",
+     "question": "How many readings per day had wave height above 4 metres for each vessel?",
+     "sql": "SELECT time_bucket(INTERVAL '1 day', ts) AS day, vessel, count(*) AS cnt FROM telemetry WHERE wave_height > 4 GROUP BY day, vessel ORDER BY day, vessel LIMIT 5000",
+     "ok": true,
+     "rows": 13,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "Location map",
+     "question": "What are the latitudes and longitudes of readings with wave height above 4 metres for each vessel?",
+     "sql": "SELECT vessel, lat, lon FROM telemetry WHERE wave_height > 4 ORDER BY vessel LIMIT 5000",
+     "ok": true,
+     "rows": 5000,
+     "sameAsDeterministic": false
+    }
+   ],
+   "deterministic": [
+    "last 24 hours",
+    "as table"
+   ]
+  },
+  {
+   "id": "solstice_strong_wind_hours",
+   "question": "in how many hours did Solstice see wind above 30 knots",
+   "ms": 1039,
+   "status": 200,
+   "promptTokens": 1037,
+   "completionTokens": 276,
+   "cachedTokens": 768,
+   "costUsd": 0.00026355,
+   "proposals": [
+    {
+     "label": "total duration",
+     "question": "What total duration in hours did Solstice experience wind above 30 knots?",
+     "sql": "SELECT COUNT(*)/3600.0 AS hours FROM telemetry WHERE vessel='Solstice' AND wind>30",
+     "ok": true,
+     "rows": 1,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "percentage time",
+     "question": "What percentage of Solstice's total recorded time had wind above 30 knots?",
+     "sql": "SELECT 100.0*SUM(CASE WHEN wind>30 THEN 1 ELSE 0 END)/COUNT(*) AS pct FROM telemetry WHERE vessel='Solstice'",
+     "ok": true,
+     "rows": 1,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "daily breakdown",
+     "question": "How many hours per day did Solstice see wind above 30 knots?",
+     "sql": "SELECT date_trunc('day', ts) AS day, COUNT(DISTINCT date_trunc('hour', ts)) AS hours FROM telemetry WHERE vessel='Solstice' AND wind>30 GROUP BY day ORDER BY day",
+     "ok": true,
+     "rows": 2,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "compare vessels",
+     "question": "Which vessels had the most hours with wind above 30 knots?",
+     "sql": "SELECT vessel, COUNT(DISTINCT date_trunc('hour', ts)) AS hours FROM telemetry WHERE wind>30 GROUP BY vessel ORDER BY hours DESC",
+     "ok": true,
+     "rows": 6,
+     "sameAsDeterministic": false
+    }
+   ],
+   "deterministic": [
+    "last 24 hours",
+    "as table"
+   ]
+  },
+  {
+   "id": "windiest_day",
+   "question": "which day had the strongest average wind",
+   "ms": 2001,
+   "status": 200,
+   "promptTokens": 1033,
+   "completionTokens": 311,
+   "cachedTokens": 768,
+   "costUsd": 0.00028395,
+   "proposals": [
+    {
+     "label": "Wind by vessel",
+     "question": "What was the average wind speed for each vessel over the whole period?",
+     "sql": "SELECT vessel, avg(wind) AS avg_wind FROM telemetry GROUP BY vessel ORDER BY avg_wind DESC",
+     "ok": true,
+     "rows": 6,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "Wind by day chart",
+     "question": "Show the daily average wind speed for the last 7 days",
+     "sql": "SELECT date_trunc('day', ts) AS day, avg(wind) AS avg_wind FROM telemetry WHERE ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '7 days' GROUP BY day ORDER BY day",
+     "ok": true,
+     "rows": 8,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "Wind vs speed",
+     "question": "How does average wind speed correlate with average vessel speed per day?",
+     "sql": "SELECT date_trunc('day', ts) AS day, avg(wind) AS avg_wind, avg(speed) AS avg_speed FROM telemetry GROUP BY day ORDER BY day",
+     "ok": true,
+     "rows": 14,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "Wind map",
+     "question": "Where were the highest wind readings recorded? List the top 10 locations by wind speed.",
+     "sql": "SELECT lat, lon, wind FROM telemetry ORDER BY wind DESC LIMIT 10",
+     "ok": true,
+     "rows": 10,
+     "sameAsDeterministic": false
+    }
+   ],
+   "deterministic": [
+    "per hour",
+    "last 24 hours",
+    "max",
+    "as table"
+   ]
+  },
+  {
+   "id": "wind_speed_correlation",
+   "question": "correlation between wind and speed per vessel",
+   "ms": 1037,
+   "status": 200,
+   "promptTokens": 1021,
+   "completionTokens": 301,
+   "cachedTokens": 768,
+   "costUsd": 0.00027615,
+   "proposals": [
+    {
+     "label": "Wind-Speed Trend",
+     "question": "How does the correlation between wind and speed change over time for each vessel?",
+     "sql": "SELECT time_bucket(INTERVAL '1 day', ts) AS day,vessel,corr(wind,speed) AS corr FROM telemetry WHERE ts>=TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '14 days' GROUP BY day,vessel ORDER BY day,vessel",
+     "ok": true,
+     "rows": 84,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "Highest Speed",
+     "question": "What is the maximum speed recorded for each vessel?",
+     "sql": "SELECT vessel, max(speed) AS max_speed FROM telemetry GROUP BY vessel ORDER BY vessel",
+     "ok": true,
+     "rows": 6,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "Wind Distribution",
+     "question": "What is the average wind speed for each vessel?",
+     "sql": "SELECT vessel, avg(wind) AS avg_wind FROM telemetry GROUP BY vessel ORDER BY vessel",
+     "ok": true,
+     "rows": 6,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "Scatter Data",
+     "question": "Give a sample of wind and speed pairs for the vessel 'Atlas' to plot a scatter chart?",
+     "sql": "SELECT wind, speed FROM telemetry WHERE vessel='Atlas' ORDER BY ts LIMIT 5000",
+     "ok": true,
+     "rows": 5000,
+     "sameAsDeterministic": false
+    }
+   ],
+   "deterministic": [
+    "last 24 hours",
+    "as table"
+   ]
+  },
+  {
+   "id": "wave_wind_ratio_hourly",
+   "question": "Average ratio of wave height to wind speed per hour over the last day",
+   "ms": 1025,
+   "status": 200,
+   "promptTokens": 1069,
+   "completionTokens": 427,
+   "cachedTokens": 768,
+   "costUsd": 0.00035895,
+   "proposals": [
+    {
+     "invalidJson": "{\"label\":\"Vessel comparison\",\"question\":\"How does the average wave-to-wind ratio per hour differ between vessels over th",
+     "ok": false
+    },
+    {
+     "invalidJson": "{\"label\":\"Peak ratio time\",\"question\":\"At what hour was the highest average wave-to-wind ratio observed in the last day?",
+     "ok": false
+    },
+    {
+     "invalidJson": "{\"label\":\"Speed filter\",\"question\":\"What is the average wave-to-wind ratio per hour for periods when vessel speed was ab",
+     "ok": false
+    },
+    {
+     "label": "Correlation analysis",
+     "question": "What is the correlation between wind speed and wave height per hour over the last day?",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour,CORR(wind,wave_height) AS corr FROM telemetry WHERE ts>=TIMESTAMP '2026-09-14 23:59:54'-INTERVAL '1 day' GROUP BY 1 ORDER BY 1",
+     "ok": true,
+     "rows": 25,
+     "sameAsDeterministic": false
+    }
+   ],
+   "deterministic": [
+    "by vessel",
+    "per day",
+    "max",
+    "as table"
+   ]
+  },
+  {
+   "id": "latest_position",
+   "question": "latest position of every vessel",
+   "ms": 787,
+   "status": 200,
+   "promptTokens": 1029,
+   "completionTokens": 330,
+   "cachedTokens": 768,
+   "costUsd": 0.00029475,
+   "proposals": [
+    {
+     "label": "latest speed",
+     "question": "What was the speed of each vessel at its latest reported position?",
+     "sql": "SELECT t.vessel,t.speed FROM telemetry t JOIN (SELECT vessel,MAX(ts) AS max_ts FROM telemetry GROUP BY vessel) m ON t.vessel=m.vessel AND t.ts=m.max_ts ORDER BY t.vessel",
+     "ok": true,
+     "rows": 6,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "last 24h path",
+     "question": "Show the latitude and longitude of each vessel for the last 24 hours, ordered by time.",
+     "sql": "SELECT ts,vessel,lat,lon FROM telemetry WHERE ts>=TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '1 day' ORDER BY ts,vessel",
+     "ok": true,
+     "rows": 86406,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "average speed",
+     "question": "What is the average speed of each vessel over the entire dataset?",
+     "sql": "SELECT vessel,AVG(speed) AS avg_speed FROM telemetry GROUP BY vessel ORDER BY vessel",
+     "ok": true,
+     "rows": 6,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "map latest positions",
+     "question": "Provide the latest latitude and longitude for each vessel suitable for a map view.",
+     "sql": "SELECT vessel,lat,lon FROM (SELECT vessel,lat,lon,ROW_NUMBER() OVER(PARTITION BY vessel ORDER BY ts DESC) AS rn FROM telemetry) sub WHERE rn=1 ORDER BY vessel",
+     "ok": true,
+     "rows": 6,
+     "sameAsDeterministic": true
+    }
+   ],
+   "deterministic": [
+    "last 24 hours",
+    "as table"
+   ]
+  },
+  {
+   "id": "bounding_box_north",
+   "question": "how many readings were taken north of 50 degrees latitude, per vessel",
+   "ms": 681,
+   "status": 200,
+   "promptTokens": 2053,
+   "completionTokens": 269,
+   "cachedTokens": 1024,
+   "costUsd": 0.00039255,
+   "proposals": [
+    {
+     "label": "average speed",
+     "question": "What is the average speed of each vessel north of 50 degrees latitude?",
+     "sql": "SELECT vessel, avg(speed) AS avg_speed FROM telemetry WHERE lat > 50 GROUP BY vessel ORDER BY vessel",
+     "ok": true,
+     "rows": 2,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "daily counts",
+     "question": "How many readings north of 50 degrees latitude were recorded each day per vessel?",
+     "sql": "SELECT time_bucket(INTERVAL '1 day', ts) AS day, vessel, count(*) AS readings FROM telemetry WHERE lat > 50 GROUP BY day, vessel ORDER BY day, vessel",
+     "ok": true,
+     "rows": 18,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "max wind",
+     "question": "What is the maximum wind speed recorded north of 50 degrees latitude for each vessel?",
+     "sql": "SELECT vessel, max(wind) AS max_wind FROM telemetry WHERE lat > 50 GROUP BY vessel ORDER BY vessel",
+     "ok": true,
+     "rows": 2,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "time range",
+     "question": "During what time period were readings north of 50 degrees latitude taken for each vessel?",
+     "sql": "SELECT vessel, min(ts) AS start_ts, max(ts) AS end_ts FROM telemetry WHERE lat > 50 GROUP BY vessel ORDER BY vessel",
+     "ok": true,
+     "rows": 2,
+     "sameAsDeterministic": false
+    }
+   ],
+   "deterministic": [
+    "last 24 hours",
+    "as table"
+   ]
+  },
+  {
+   "id": "single_word_wind",
+   "question": "wind",
+   "ms": 823,
+   "status": 200,
+   "promptTokens": 1027,
+   "completionTokens": 323,
+   "cachedTokens": 0,
+   "costUsd": 0.00034785,
+   "proposals": [
+    {
+     "label": "Wind by vessel",
+     "question": "What is the average wind speed per vessel per hour for the last 3 days?",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour,vessel,AVG(wind) AS avg_wind FROM telemetry WHERE ts>=TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '3 days' GROUP BY 1,2 ORDER BY 1,2",
+     "ok": true,
+     "rows": 438,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "Wind trend",
+     "question": "Show the hourly wind trend for the entire period as a line chart",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour,AVG(wind) AS avg_wind FROM telemetry GROUP BY 1 ORDER BY 1",
+     "ok": true,
+     "rows": 336,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "Wind vs speed",
+     "question": "How does wind speed correlate with vessel speed hourly?",
+     "sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour,AVG(wind) AS avg_wind,AVG(speed) AS avg_speed FROM telemetry GROUP BY 1 ORDER BY 1",
+     "ok": true,
+     "rows": 336,
+     "sameAsDeterministic": false
+    },
+    {
+     "label": "Wind map",
+     "question": "What are the latest wind readings on a map?",
+     "sql": "SELECT lat,lon,wind FROM telemetry WHERE ts= (SELECT MAX(ts) FROM telemetry)",
+     "ok": true,
+     "rows": 6,
+     "sameAsDeterministic": false
+    }
+   ],
+   "deterministic": [
+    "by vessel",
+    "per day",
+    "last 24 hours",
+    "max"
+   ]
+  }
+ ]
+}
