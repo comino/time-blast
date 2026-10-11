@@ -776,7 +776,7 @@ export class DuckDatabaseNode implements DatabaseNode {
       const t1 = performance.now();
       bootMark('dataset.load', performance.timeOrigin + t0, source.name);
       this.status('loading', 'Computing statistics', 0.8);
-      const { context, statisticsMs } = await this.describe(contextId, source.name, description);
+      const { context, statisticsMs } = await this.describe(contextId, source.name, description, entry?.tables.map(t => t.name));
       const t2 = performance.now();
       bootMark('dataset.context', performance.timeOrigin + t1, `statistics ${statisticsMs.toFixed(1)} ms`);
       this.options.onOpenStats?.({ loadMs: t1 - t0, contextMs: t2 - t1, statisticsMs });
@@ -968,7 +968,9 @@ export class DuckDatabaseNode implements DatabaseNode {
     }
   }
 
-  private async describe(id: number, name: string, description: string): Promise<{ context: DatasetContext; statisticsMs: number }> {
+  /** `order`: the manifest's table order (the prompt lists tables in it; evals were measured so).
+   * Tables it doesn't name follow alphabetically. */
+  private async describe(id: number, name: string, description: string, order: string[] = []): Promise<{ context: DatasetContext; statisticsMs: number }> {
     const columns = await this.rows(this.loadConn,
       "SELECT table_name, column_name, data_type FROM duckdb_columns() WHERE schema_name = 'main' AND database_name = current_database() ORDER BY table_name, column_index");
     const byTable = new Map<string, ColumnInfo[]>();
@@ -978,7 +980,9 @@ export class DuckDatabaseNode implements DatabaseNode {
     }
     const tables: DatasetContext['tables'] = [];
     let statisticsMs = 0;
-    for (const [table, info] of byTable) {
+    const rank = (table: string) => { const i = order.indexOf(table); return i < 0 ? order.length : i; };
+    const ordered = [...byTable].sort(([a], [b]) => rank(a) - rank(b));
+    for (const [table, info] of ordered) {
       const s0 = performance.now();
       const [values] = await this.rows(this.loadConn, statisticsSql(table, info));
       statisticsMs += performance.now() - s0;
