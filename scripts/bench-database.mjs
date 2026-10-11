@@ -2,6 +2,11 @@
 // Database first-batch benchmark + exactness check (evals/database-bench.ts, docs/batch-2/database.md).
 //
 //   node scripts/bench-database.mjs [--repeats 5] [--json docs/batch-2/database-bench.json] [--limit n] [--no-models]
+//                                   [--load generated|parquet|prebuilt]
+//
+// --load: how the optimized node gets `vessels` (the baseline is always generated in the engine):
+// prebuilt = public/data/vessels/vessels.duckdb with its rollups (scripts/build-datasets.mjs),
+// parquet = public/data/vessels/telemetry.parquet (rollups built here).
 //
 // Runs every corpus reference statement ($SINCE expanded) and every saved model statement from
 // docs/batch-1/eval-*.json on a baseline node (batch-1 behaviour) and an optimized node (compressed
@@ -32,13 +37,15 @@ const round = v => v === undefined ? undefined : Number(v.toFixed(2));
 const out = {
   kind: 'time-blast.database-bench', version: 1, date: new Date().toISOString(),
   environment: { node: process.version, platform: platform(), arch: arch(), cpus: cpus().length, loadavgAtStart: loadavg().map(v => +v.toFixed(1)), duckdbWasm: '1.32.0 (node-blocking, eh)' },
+  load: option('--load', 'generated'),
   method: `EXEC → first BATCH (ExecStats.firstBatchMs, worker-side performance.now()), ${repeats} paired interleaved repeats after one warm-up each; optimized result cache cleared before every timed run (rewrite memo kept: steady state); cold rewrite = first execution`,
 };
 
 log('opening baseline (default catalog, no rollups, no cache) …');
 const base = await lib.openNode({ rollups: false, resultCache: false, compressed: false });
 log('opening optimized (compressed catalog, rollups, cache) …');
-const opt = await lib.openNode({});
+const load = option('--load', 'generated');
+const opt = await lib.openNode(lib.manifestOptions(root, load), undefined, load === 'parquet');
 const during = [];
 const probe = "SELECT date_trunc('minute', ts) AS t, vessel, avg(speed) AS speed FROM telemetry WHERE ts < TIMESTAMP '2026-09-08' GROUP BY ALL ORDER BY 1, 2";
 let building = true;

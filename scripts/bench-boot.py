@@ -8,7 +8,7 @@ so "inference ready" is our own link setup, not a provider.
   repeat visit  one context, warmed by one visit, then a new page per run (HTTP cache, V8 code
                 cache, Cache API and OPFS persist, as for a returning user)
 
-Right after the first question becomes answerable, one question is typed (a single input event)
+Right after the first question becomes answerable (or --query-delay ms later), one question is typed (a single input event)
 and its keystroke → first draw is recorded: the first query, usually before rollups exist.
 
 Start a server first (dev: `pnpm exec vite --port 5199 --strictPort`; production:
@@ -64,7 +64,7 @@ def quantiles(values):
             "max": round(values[-1], 1), "n": len(values)}
 
 
-def visit(context, url, timeout_s, first_query):
+def visit(context, url, timeout_s, first_query, query_delay=0):
     page = context.new_page()
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
@@ -73,6 +73,8 @@ def visit(context, url, timeout_s, first_query):
     try:
         page.wait_for_function("() => globalThis.__timeBlastBoot && globalThis.__timeBlastBoot.report().answerable !== null",
                                timeout=timeout_s * 1000, polling=20)
+        if first_query and query_delay:
+            time.sleep(query_delay / 1000)
         query = page.evaluate(FIRST_QUERY, QUESTION) if first_query else None
         page.wait_for_function("() => globalThis.__timeBlastBoot.report().rollups !== null", timeout=timeout_s * 1000, polling=50)
     except Exception as e:  # noqa: BLE001 - report the partial trace and go on
@@ -131,6 +133,7 @@ def main():
     p.add_argument("--software", action="store_true")
     p.add_argument("--timeout", type=int, default=180)
     p.add_argument("--no-first-query", action="store_true")
+    p.add_argument("--query-delay", type=int, default=0, help="ms between answerable and typing the first question")
     p.add_argument("--only", choices=["first", "repeat"], default=None)
     p.add_argument("--label", default="")
     p.add_argument("--json")
@@ -150,7 +153,7 @@ def main():
             if args.only != "repeat":
                 ctx = browser.new_context(viewport={"width": 1400, "height": 950})
                 ctx.add_init_script(init)
-                r = visit(ctx, args.url, args.timeout, not args.no_first_query)
+                r = visit(ctx, args.url, args.timeout, not args.no_first_query, args.query_delay)
                 ctx.close()
                 if r is None:
                     continue
@@ -166,7 +169,7 @@ def main():
             ctx.add_init_script(init)
             visit(ctx, args.url, args.timeout, False)  # warm-up visit
             for i in range(args.runs):
-                r = visit(ctx, args.url, args.timeout, not args.no_first_query)
+                r = visit(ctx, args.url, args.timeout, not args.no_first_query, args.query_delay)
                 if r is None:
                     continue
                 repeat.append(r)
