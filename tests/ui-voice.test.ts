@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Kind, readText, Stage } from '../src/protocol/frame';
 import { UiController } from '../src/ui/controller';
 import { browserRecognition, VoiceInput, type RecognitionLike, type RecognitionResultEvent, type VoiceState } from '../src/ui/voice';
@@ -104,6 +104,20 @@ describe('voice → DRAFT / COMMIT', () => {
     h.rec.onerror?.({ error: 'network', timeStamp: 5 });
     expect(h.voice.state).toBe('error');
     expect(h.states.at(-1)![1]).toMatch(/speech service/);
+  });
+
+  it('reports an error when the recognizer never starts (headless Chromium: API present, no backend)', () => {
+    vi.useFakeTimers();
+    try {
+      const states: VoiceState[] = [];
+      let rec!: FakeRecognition;
+      const voice = new VoiceInput(() => { rec = new FakeRecognition(); rec.start = () => {}; return rec; }, { draft() {}, commit() {}, status: s => states.push(s) }, { startTimeoutMs: 100 });
+      voice.start();
+      expect(voice.state).toBe('starting');
+      vi.advanceTimersByTime(100);
+      expect([voice.state, voice.active]).toEqual(['error', false]);
+      expect(states).toEqual(['idle', 'starting', 'error']);
+    } finally { vi.useRealTimers(); }
   });
 
   it('reports unsupported browsers and finds the prefixed constructor', () => {

@@ -40,6 +40,8 @@ export interface SuggestPorts {
   epoch(): number;
   context(): DatasetContext | null;
   textOf(revision: number): string | undefined;
+  /** The editor's newest revision (a newer one means the user is still typing). */
+  revision(): number;
   now(): number;
 }
 
@@ -50,6 +52,9 @@ export interface SuggestOptions {
   /** Send PRIMEs (click without inference). */
   prime?: boolean;
   max?: number;
+  /** Wait this long after a live result's first draw with no newer draft before preparing
+   * (a KEEP prepares at once). Measured: warming on every keystroke's result slowed typing. */
+  settleMs?: number;
 }
 
 export interface SuggestStats {
@@ -70,11 +75,12 @@ export class SuggestController {
   options: Required<SuggestOptions>;
   private readonly sql = new Map<number, string>();
   private lastSuggested = 0;
+  private pending: { request: number; timer: ReturnType<typeof setTimeout> } | undefined;
   private seq = 0;
   private readonly warming = new Map<number, { chip: Chip; sentAt: number }>();
 
   constructor(private readonly ports: SuggestPorts, private readonly view: SuggestView, options: SuggestOptions = {}) {
-    this.options = { enabled: true, warm: true, prime: true, max: 4, ...options };
+    this.options = { enabled: true, warm: true, prime: true, max: 4, settleMs: 250, ...options };
   }
 
   /** Observe one engine → UI frame. Returns true when the frame was ours (a WARM answer). */
@@ -90,14 +96,33 @@ export class SuggestController {
         }
       } catch { /* the controller reports unreadable RESULTs */ }
     } else if (frame.kind === Kind.TIMING && frame.request > this.lastSuggested && frame.stamps.some(s => s.stage === Stage.FIRST_DRAW_SUBMITTED)) {
-      const sql = this.sql.get(frame.request), question = this.ports.textOf(frame.revision);
-      if (sql !== undefined && question) { this.lastSuggested = frame.request; this.propose(frame.request, question, sql); }
+      this.schedule(frame.request, frame.revision, this.options.settleMs);
+    } else if (frame.kind === Kind.KEEP && frame.request >= this.lastSuggested) {
+      this.schedule(frame.request, frame.revision, 0);
     }
     return false;
   }
 
   /** A chip was clicked: count it; the caller sends the COMMIT. */
   picked(chip: Chip): void { this.stats.picks++; void chip; }
+
+  /** Prepare follow-ups for `request` once the editor has been quiet for `delay` ms. */
+  private schedule(request: number, revision: number, delay: number): void {
+    const sql = this.sql.get(request), question = this.ports.textOf(revision);
+    if (sql === undefined || !question || request < this.lastSuggested) return;
+    if (this.pending) clearTimeout(this.pending.timer);
+    const typed = this.ports.revision();
+    const fire = () => {
+      this.pending = undefined;
+      // Still typing: the next result will schedule again. A KEEP (delay 0) always prepares.
+      if (delay > 0 && this.ports.revision() !== typed) return;
+      if (request < this.lastSuggested || (request === this.lastSuggested && this.chips.length && this.chips[0].from === request)) return;
+      this.lastSuggested = request;
+      this.propose(request, question, sql);
+    };
+    if (delay <= 0) { this.pending = undefined; fire(); return; }
+    this.pending = { request, timer: setTimeout(fire, delay) };
+  }
 
   clear(): void { this.chips = []; this.warming.clear(); this.view.show(this.chips); }
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { DatasetContext } from '../src/engine/contracts';
 import { decode, Flag, Kind, readJson, readText, SENDER_REQUEST_BIT, Stage } from '../src/protocol/frame';
 import { UiController } from '../src/ui/controller';
@@ -97,8 +97,8 @@ function harness(options = {}) {
   let t = 0;
   const suggestions = new SuggestController({
     send: bytes => ui.sendFrame(bytes), epoch: () => ui.drafts.epoch, context: () => ui.context,
-    textOf: r => ui.drafts.textOf(r), now: () => (t += 0.5),
-  }, { show: chips => shown.push([...chips]) }, options);
+    textOf: r => ui.drafts.textOf(r), revision: () => ui.drafts.revision, now: () => (t += 0.5),
+  }, { show: chips => shown.push([...chips]) }, { settleMs: 0, ...options });
   ui.observer = frame => suggestions.observe(frame);
   engine.clear();
   return { engine, ui, rail, suggestions, shown };
@@ -137,6 +137,33 @@ describe('SuggestController: PRIME + WARM after a drawn result', () => {
     expect(h.shown.at(-1)!.map(c => [c.suggestion.label, c.status, c.source])).toEqual([['by vessel', 'ready', 'rollup'], ['max', 'ready', 'cache']]);
     expect(h.rail.errors).toEqual([]);
     expect(h.suggestions.stats).toMatchObject({ results: 1, generated: 4, primed: 4, warmSent: 4, warmDone: 3, warmFailed: 1, warmEmpty: 1, warmCacheHits: 1 });
+  });
+
+  it('waits for the editor to settle after a live draw; typing on skips that result, KEEP prepares at once', () => {
+    vi.useFakeTimers();
+    try {
+      const h = harness({ settleMs: 250 });
+      h.ui.input('average speed per hour', false, 1);
+      h.engine.clear();
+      h.ui.receive(engineFrame(Kind.RESULT, { request: 3, revision: 1 }, jsonPayload({ slot: 1, sql })));
+      h.ui.receive(drawn(3, 1));
+      h.ui.input('average speed per hour b', false, 2); // still typing
+      vi.advanceTimersByTime(300);
+      expect(h.engine.frames.filter(f => f.kind !== Kind.DRAFT)).toEqual([]);
+      h.ui.receive(engineFrame(Kind.RESULT, { request: 4, revision: 2 }, jsonPayload({ slot: 1, sql })));
+      h.ui.receive(drawn(4, 2));
+      vi.advanceTimersByTime(249);
+      expect(h.engine.frames.filter(f => f.kind === Kind.PRIME)).toEqual([]);
+      vi.advanceTimersByTime(1);
+      expect(h.engine.frames.filter(f => f.kind === Kind.PRIME)).toHaveLength(4);
+      h.engine.clear();
+      h.ui.receive(engineFrame(Kind.KEEP, { request: 4, revision: 2 }, slotPayload(1))); // same result: nothing new
+      expect(h.engine.frames.filter(f => f.kind === Kind.PRIME)).toEqual([]);
+      h.ui.input('max wind', false, 3);
+      h.ui.receive(engineFrame(Kind.RESULT, { request: 5, revision: 3 }, jsonPayload({ slot: 2, sql: 'SELECT max(wind) AS w FROM telemetry' })));
+      h.ui.receive(engineFrame(Kind.KEEP, { request: 5, revision: 3 }, slotPayload(2)));
+      expect(h.engine.frames.filter(f => f.kind === Kind.PRIME).length).toBeGreaterThan(0);
+    } finally { vi.useRealTimers(); }
   });
 
   it('can prime without warming, and does nothing when disabled', () => {

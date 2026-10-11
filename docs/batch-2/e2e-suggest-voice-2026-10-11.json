@@ -1,0 +1,1047 @@
+{
+ "fake": "echo, 0 ms",
+ "chips": {
+  "prepared": {
+   "clicks": [
+    {
+     "headline": 12.929931640625,
+     "kind": "bucket",
+     "warmSource": "rollup",
+     "warmMs": 36.144999980926514,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 8.79,
+      "coordinator": 2.445,
+      "inference sent": 0,
+      "inference received": 0.095,
+      "SQL complete": 0,
+      "SQL received": 0.08,
+      "exec sent": 0,
+      "exec received": 0.315,
+      "DB first batch": 0.55,
+      "DB done": 0.85,
+      "render first batch": -0.84,
+      "first draw submitted": 0.645
+     },
+     "dbFirstBatchMs": 0.55
+    },
+    {
+     "headline": 3.26513671875,
+     "kind": "bucket",
+     "warmSource": "rollup",
+     "warmMs": 131.75999975204468,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 1.255,
+      "coordinator": 0.795,
+      "inference sent": 0,
+      "inference received": 0.09,
+      "SQL complete": 0,
+      "SQL received": 0.065,
+      "exec sent": 0,
+      "exec received": 0.34,
+      "DB first batch": 0.29,
+      "DB done": 0.58,
+      "render first batch": -0.57,
+      "first draw submitted": 0.42
+     },
+     "dbFirstBatchMs": 0.29
+    },
+    {
+     "headline": 10.6748046875,
+     "kind": "view",
+     "warmSource": "cache",
+     "warmMs": 52.875,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 5.925,
+      "coordinator": 0.34,
+      "inference sent": 0,
+      "inference received": 0.12,
+      "SQL complete": 0,
+      "SQL received": 0.06,
+      "exec sent": 0,
+      "exec received": 0.095,
+      "DB first batch": 1.86,
+      "DB done": 2.435,
+      "render first batch": -2.43,
+      "first draw submitted": 2.27,
+      "presented": 3.74
+     },
+     "dbFirstBatchMs": 1.86
+    },
+    {
+     "headline": 14.489990234375,
+     "kind": "view",
+     "warmSource": "cache",
+     "warmMs": 86.78499984741211,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 4.62,
+      "coordinator": 0.215,
+      "inference sent": 0,
+      "inference received": 0.125,
+      "SQL complete": 0,
+      "SQL received": 0.04,
+      "exec sent": 0,
+      "exec received": 0.09,
+      "DB first batch": 0.48,
+      "DB done": 9.47,
+      "render first batch": -9.455,
+      "first draw submitted": 8.905
+     },
+     "dbFirstBatchMs": 0.48
+    },
+    {
+     "headline": 16.625,
+     "kind": "split",
+     "warmSource": "rollup",
+     "warmMs": 106.98000001907349,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 10.255,
+      "coordinator": 0.39,
+      "inference sent": 0,
+      "inference received": 0.065,
+      "SQL complete": 0,
+      "SQL received": 0.035,
+      "exec sent": 0,
+      "exec received": 0.12,
+      "DB first batch": 0.29,
+      "DB done": 15.53,
+      "render first batch": -15.52,
+      "first draw submitted": 5.46
+     },
+     "dbFirstBatchMs": 0.29
+    },
+    {
+     "headline": 14.009765625,
+     "kind": "view",
+     "warmSource": "cache",
+     "warmMs": 47.83500003814697,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 5.855,
+      "coordinator": 2.455,
+      "inference sent": 0,
+      "inference received": 0.08,
+      "SQL complete": 0,
+      "SQL received": 1.735,
+      "exec sent": 0,
+      "exec received": 0.15,
+      "DB first batch": 0.305,
+      "DB done": 3.635,
+      "render first batch": -3.625,
+      "first draw submitted": 3.42,
+      "presented": 9.325
+     },
+     "dbFirstBatchMs": 0.305
+    },
+    {
+     "headline": 7.705078125,
+     "kind": "agg",
+     "warmSource": "rollup",
+     "warmMs": 47.359999656677246,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 6.255,
+      "coordinator": 0.125,
+      "inference sent": 0,
+      "inference received": 0.065,
+      "SQL complete": 0,
+      "SQL received": 0.045,
+      "exec sent": 0,
+      "exec received": 0.09,
+      "DB first batch": 0.43,
+      "DB done": 0.88,
+      "render first batch": -0.865,
+      "first draw submitted": 0.68
+     },
+     "dbFirstBatchMs": 0.43
+    },
+    {
+     "headline": 6.7099609375,
+     "kind": "agg",
+     "warmSource": "rollup",
+     "warmMs": 55.44500017166138,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 4.33,
+      "coordinator": 0.61,
+      "inference sent": 0,
+      "inference received": 0.07,
+      "SQL complete": 0,
+      "SQL received": 0.03,
+      "exec sent": 0,
+      "exec received": 0.08,
+      "DB first batch": 0.27,
+      "DB done": 1.475,
+      "render first batch": -1.465,
+      "first draw submitted": 1.31
+     },
+     "dbFirstBatchMs": 0.27
+    },
+    {
+     "headline": 8.829833984375,
+     "kind": "view",
+     "warmSource": "cache",
+     "warmMs": 39.079999923706055,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 5.645,
+      "coordinator": 2.495,
+      "inference sent": 0,
+      "inference received": 0.065,
+      "SQL complete": 0,
+      "SQL received": 0.03,
+      "exec sent": 0,
+      "exec received": 0.095,
+      "DB first batch": 0.255,
+      "DB done": 1.49,
+      "render first batch": -1.485,
+      "first draw submitted": 0.24,
+      "presented": 5.81
+     },
+     "dbFirstBatchMs": 0.255
+    },
+    {
+     "headline": 12.164794921875,
+     "kind": "window",
+     "warmSource": "rollup",
+     "warmMs": 23.19000005722046,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 3.275,
+      "coordinator": 1.72,
+      "inference sent": 0,
+      "inference received": 0.065,
+      "SQL complete": 0,
+      "SQL received": 0.035,
+      "exec sent": 0,
+      "exec received": 6.115,
+      "DB first batch": 0.355,
+      "DB done": 0.76,
+      "render first batch": -0.75,
+      "first draw submitted": 0.59
+     },
+     "dbFirstBatchMs": 0.355
+    },
+    {
+     "headline": 6.114990234375,
+     "kind": "window",
+     "warmSource": "raw",
+     "warmMs": 168.69500017166138,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 2.315,
+      "coordinator": 2.9,
+      "inference sent": 0,
+      "inference received": 0.08,
+      "SQL complete": 0,
+      "SQL received": 0.04,
+      "exec sent": 0,
+      "exec received": 0.1,
+      "DB first batch": 0.275,
+      "DB done": 0.55,
+      "render first batch": -0.54,
+      "first draw submitted": 0.395,
+      "presented": 47.7
+     },
+     "dbFirstBatchMs": 0.275
+    },
+    {
+     "headline": 7.60498046875,
+     "kind": "view",
+     "warmSource": "cache",
+     "warmMs": 59.829999923706055,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 3.865,
+      "coordinator": 0.25,
+      "inference sent": 0,
+      "inference received": 0.07,
+      "SQL complete": 0,
+      "SQL received": 0.04,
+      "exec sent": 0,
+      "exec received": 2.815,
+      "DB first batch": 0.295,
+      "DB done": 0.37,
+      "render first batch": -0.36,
+      "first draw submitted": 0.26,
+      "presented": 10.1
+     },
+     "dbFirstBatchMs": 0.295
+    }
+   ],
+   "inferCalls": 0,
+   "kinds": {
+    "bucket": 2,
+    "view": 5,
+    "split": 1,
+    "agg": 2,
+    "window": 2
+   },
+   "suggestStats": {
+    "results": 17,
+    "generated": 62,
+    "primed": 62,
+    "warmSent": 62,
+    "warmDone": 62,
+    "warmFailed": 0,
+    "warmEmpty": 0,
+    "warmCacheHits": 17,
+    "picks": 12
+   },
+   "warmMs": {
+    "n": 62,
+    "median": 57.6,
+    "p95": 168.7,
+    "min": 3.44,
+    "max": 210.66
+   },
+   "generateUs": {
+    "n": 17,
+    "median": 700.0,
+    "p95": 7780.0,
+    "min": 265.0,
+    "max": 9200.0
+   },
+   "headlineMs": {
+    "n": 12,
+    "median": 9.75,
+    "p95": 14.49,
+    "min": 3.27,
+    "max": 16.62
+   },
+   "dbFirstBatchMs": {
+    "n": 12,
+    "median": 0.3,
+    "p95": 0.55,
+    "min": 0.26,
+    "max": 1.86
+   }
+  },
+  "primed": {
+   "clicks": [
+    {
+     "headline": 30.929931640625,
+     "kind": "bucket",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 7.14,
+      "coordinator": 0.13,
+      "inference sent": 0,
+      "inference received": 0.08,
+      "SQL complete": 0,
+      "SQL received": 0.08,
+      "exec sent": 0,
+      "exec received": 0.235,
+      "DB first batch": 21.435,
+      "DB done": 2.375,
+      "render first batch": -2.37,
+      "first draw submitted": 1.825
+     },
+     "dbFirstBatchMs": 21.435
+    },
+    {
+     "headline": 23.56494140625,
+     "kind": "bucket",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 3.085,
+      "coordinator": 0.785,
+      "inference sent": 0,
+      "inference received": 0.08,
+      "SQL complete": 0,
+      "SQL received": 0.06,
+      "exec sent": 0,
+      "exec received": 0.085,
+      "DB first batch": 18.875,
+      "DB done": 1.565,
+      "render first batch": -1.555,
+      "first draw submitted": 0.585
+     },
+     "dbFirstBatchMs": 18.875
+    },
+    {
+     "headline": 8.625,
+     "kind": "view",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 3.01,
+      "coordinator": 4.37,
+      "inference sent": 0,
+      "inference received": 0.135,
+      "SQL complete": 0,
+      "SQL received": 0.045,
+      "exec sent": 0,
+      "exec received": 0.09,
+      "DB first batch": 0.555,
+      "DB done": 0.54,
+      "render first batch": -0.53,
+      "first draw submitted": 0.41,
+      "presented": 7.01
+     },
+     "dbFirstBatchMs": 0.555
+    },
+    {
+     "headline": 8.77490234375,
+     "kind": "view",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 5.29,
+      "coordinator": 0.14,
+      "inference sent": 0,
+      "inference received": 0.07,
+      "SQL complete": 0,
+      "SQL received": 0.085,
+      "exec sent": 0,
+      "exec received": 0.075,
+      "DB first batch": 0.51,
+      "DB done": 2.795,
+      "render first batch": -2.79,
+      "first draw submitted": 2.6
+     },
+     "dbFirstBatchMs": 0.51
+    },
+    {
+     "headline": 52.71484375,
+     "kind": "split",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 3.015,
+      "coordinator": 0.4,
+      "inference sent": 0,
+      "inference received": 0.2,
+      "SQL complete": 0,
+      "SQL received": 0.04,
+      "exec sent": 0,
+      "exec received": 0.07,
+      "render first batch": 47.005,
+      "first draw submitted": 1.985
+     },
+     "dbFirstBatchMs": null
+    },
+    {
+     "headline": 3.77490234375,
+     "kind": "view",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 2.55,
+      "coordinator": 0.355,
+      "inference sent": 0,
+      "inference received": 0.065,
+      "SQL complete": 0,
+      "SQL received": 0.025,
+      "exec sent": 0,
+      "exec received": 0.09,
+      "DB first batch": 0.355,
+      "DB done": 0.43,
+      "render first batch": -0.425,
+      "first draw submitted": 0.33,
+      "presented": 9.005
+     },
+     "dbFirstBatchMs": 0.355
+    },
+    {
+     "headline": 37.594970703125,
+     "kind": "agg",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 8.455,
+      "coordinator": 0.125,
+      "inference sent": 0,
+      "inference received": 0.07,
+      "SQL complete": 0,
+      "SQL received": 0.03,
+      "exec sent": 0,
+      "exec received": 0.07,
+      "DB first batch": 25.095,
+      "DB done": 4.43,
+      "render first batch": -4.42,
+      "first draw submitted": 3.74
+     },
+     "dbFirstBatchMs": 25.095
+    },
+    {
+     "headline": 21.679931640625,
+     "kind": "agg",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 4.11,
+      "coordinator": 0.14,
+      "inference sent": 0,
+      "inference received": 0.065,
+      "SQL complete": 0,
+      "SQL received": 0.03,
+      "exec sent": 0,
+      "exec received": 0.09,
+      "DB first batch": 16.8,
+      "DB done": 0.795,
+      "render first batch": -0.785,
+      "first draw submitted": 0.435
+     },
+     "dbFirstBatchMs": 16.8
+    },
+    {
+     "headline": 2.715087890625,
+     "kind": "view",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 1.93,
+      "coordinator": 0.145,
+      "inference sent": 0,
+      "inference received": 0.065,
+      "SQL complete": 0,
+      "SQL received": 0.035,
+      "exec sent": 0,
+      "exec received": 0.075,
+      "DB first batch": 0.255,
+      "DB done": 0.375,
+      "render first batch": -0.375,
+      "first draw submitted": 0.21,
+      "presented": 1.08
+     },
+     "dbFirstBatchMs": 0.255
+    },
+    {
+     "headline": 60.635009765625,
+     "kind": "window",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 3.27,
+      "coordinator": 0.135,
+      "inference sent": 0,
+      "inference received": 0.065,
+      "SQL complete": 0,
+      "SQL received": 0.04,
+      "exec sent": 0,
+      "exec received": 0.23,
+      "DB first batch": 55.63,
+      "DB done": 1.9,
+      "render first batch": -1.89,
+      "first draw submitted": 1.255
+     },
+     "dbFirstBatchMs": 55.63
+    },
+    {
+     "headline": 27.565185546875,
+     "kind": "window",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 4.565,
+      "coordinator": 0.155,
+      "inference sent": 0,
+      "inference received": 0.095,
+      "SQL complete": 0,
+      "SQL received": 0.04,
+      "exec sent": 0,
+      "exec received": 0.14,
+      "DB first batch": 19.675,
+      "DB done": 3.425,
+      "render first batch": -3.415,
+      "first draw submitted": 2.885,
+      "presented": 28.85
+     },
+     "dbFirstBatchMs": 19.675
+    },
+    {
+     "headline": 3.150146484375,
+     "kind": "view",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 0,
+     "stages": {
+      "key": 0,
+      "draft sent": 2.09,
+      "coordinator": 0.15,
+      "inference sent": 0,
+      "inference received": 0.105,
+      "SQL complete": 0,
+      "SQL received": 0.04,
+      "exec sent": 0,
+      "exec received": 0.13,
+      "DB first batch": 0.35,
+      "DB done": 0.49,
+      "render first batch": -0.48,
+      "first draw submitted": 0.275,
+      "presented": 1.615
+     },
+     "dbFirstBatchMs": 0.35
+    }
+   ],
+   "inferCalls": 0,
+   "kinds": {
+    "bucket": 2,
+    "view": 5,
+    "split": 1,
+    "agg": 2,
+    "window": 2
+   },
+   "suggestStats": {
+    "results": 14,
+    "generated": 52,
+    "primed": 52,
+    "warmSent": 0,
+    "warmDone": 0,
+    "warmFailed": 0,
+    "warmEmpty": 0,
+    "warmCacheHits": 0,
+    "picks": 12
+   },
+   "warmMs": null,
+   "generateUs": {
+    "n": 14,
+    "median": 565.0,
+    "p95": 1890.0,
+    "min": 310.0,
+    "max": 4675.0
+   },
+   "headlineMs": {
+    "n": 12,
+    "median": 22.62,
+    "p95": 52.71,
+    "min": 2.72,
+    "max": 60.64
+   },
+   "dbFirstBatchMs": {
+    "n": 11,
+    "median": 16.8,
+    "p95": 55.63,
+    "min": 0.26,
+    "max": 55.63
+   }
+  },
+  "off": {
+   "clicks": [
+    {
+     "headline": 25.465087890625,
+     "kind": "bucket",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 1,
+     "stages": {
+      "key": 0,
+      "draft sent": 2.785,
+      "coordinator": 0.635,
+      "inference sent": 0,
+      "inference received": 1.823,
+      "first SQL delta": 0.022,
+      "SQL complete": 2.219,
+      "SQL received": 0.632,
+      "exec sent": 0,
+      "exec received": 0.25,
+      "DB first batch": 13.52,
+      "DB done": 10.585,
+      "render first batch": -10.575,
+      "first draw submitted": 3.57
+     },
+     "dbFirstBatchMs": 13.52
+    },
+    {
+     "headline": 93.4501953125,
+     "kind": "bucket",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 1,
+     "stages": {
+      "key": 0,
+      "draft sent": 12.765,
+      "coordinator": 0.135,
+      "inference sent": 0,
+      "inference received": 0.424,
+      "first SQL delta": 0.02,
+      "SQL complete": 0.063,
+      "SQL received": 6.202,
+      "exec sent": 0,
+      "exec received": 0.135,
+      "DB first batch": 73.205,
+      "DB done": 0.9,
+      "render first batch": -0.895,
+      "first draw submitted": 0.495
+     },
+     "dbFirstBatchMs": 73.205
+    },
+    {
+     "headline": 52.280029296875,
+     "kind": "view",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 1,
+     "stages": {
+      "key": 0,
+      "draft sent": 8.87,
+      "coordinator": 2.22,
+      "inference sent": 0,
+      "inference received": 0.748,
+      "first SQL delta": 0.021,
+      "SQL complete": 0.088,
+      "SQL received": 8.028,
+      "exec sent": 0,
+      "exec received": 0.2,
+      "DB first batch": 28.11,
+      "DB done": 9,
+      "render first batch": -8.995,
+      "first draw submitted": 3.99,
+      "presented": 17.695
+     },
+     "dbFirstBatchMs": 28.11
+    },
+    {
+     "headline": 33.615234375,
+     "kind": "view",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 1,
+     "stages": {
+      "key": 0,
+      "draft sent": 2.695,
+      "coordinator": 2.4,
+      "inference sent": 0,
+      "inference received": 1.228,
+      "first SQL delta": 0.021,
+      "SQL complete": 0.083,
+      "SQL received": 1.718,
+      "exec sent": 0,
+      "exec received": 0.095,
+      "DB first batch": 20.22,
+      "DB done": 5.865,
+      "render first batch": -5.86,
+      "first draw submitted": 5.15
+     },
+     "dbFirstBatchMs": 20.22
+    },
+    {
+     "headline": 49.64013671875,
+     "kind": "split",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 1,
+     "stages": {
+      "key": 0,
+      "draft sent": 3.53,
+      "coordinator": 0.12,
+      "inference sent": 0,
+      "inference received": 0.46,
+      "first SQL delta": 0.02,
+      "SQL complete": 0.068,
+      "SQL received": 2.271,
+      "exec sent": 0,
+      "exec received": 0.1,
+      "DB first batch": 42.63,
+      "DB done": 0.825,
+      "render first batch": -0.815,
+      "first draw submitted": 0.43
+     },
+     "dbFirstBatchMs": 42.63
+    },
+    {
+     "headline": 49.01513671875,
+     "kind": "view",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 1,
+     "stages": {
+      "key": 0,
+      "draft sent": 2.35,
+      "coordinator": 0.14,
+      "inference sent": 0,
+      "inference received": 0.475,
+      "first SQL delta": 0.021,
+      "SQL complete": 0.864,
+      "SQL received": 1.655,
+      "exec sent": 0,
+      "exec received": 0.09,
+      "DB first batch": 34.79,
+      "DB done": 9.915,
+      "render first batch": -9.91,
+      "first draw submitted": 8.625,
+      "presented": 23.695
+     },
+     "dbFirstBatchMs": 34.79
+    },
+    {
+     "headline": 67.7802734375,
+     "kind": "agg",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 1,
+     "stages": {
+      "key": 0,
+      "draft sent": 5.865,
+      "coordinator": 0.13,
+      "inference sent": 0,
+      "inference received": 2.671,
+      "first SQL delta": 0.021,
+      "SQL complete": 0.105,
+      "SQL received": 5.323,
+      "exec sent": 0,
+      "exec received": 0.1,
+      "DB first batch": 50.26,
+      "DB done": 9.62,
+      "render first batch": -9.615,
+      "first draw submitted": 3.3,
+      "presented": 21.05
+     },
+     "dbFirstBatchMs": 50.26
+    },
+    {
+     "headline": 69.18505859375,
+     "kind": "agg",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 1,
+     "stages": {
+      "key": 0,
+      "draft sent": 7.65,
+      "coordinator": 0.145,
+      "inference sent": 0,
+      "inference received": 0.462,
+      "first SQL delta": 0.021,
+      "SQL complete": 0.155,
+      "SQL received": 6.383,
+      "exec sent": 0,
+      "exec received": 0.12,
+      "DB first batch": 47.78,
+      "DB done": 7.085,
+      "render first batch": -7.075,
+      "first draw submitted": 6.46
+     },
+     "dbFirstBatchMs": 47.78
+    },
+    {
+     "headline": 49.7900390625,
+     "kind": "view",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 1,
+     "stages": {
+      "key": 0,
+      "draft sent": 3.05,
+      "coordinator": 0.13,
+      "inference sent": 0,
+      "inference received": 3.248,
+      "first SQL delta": 0.02,
+      "SQL complete": 0.657,
+      "SQL received": 1.27,
+      "exec sent": 0,
+      "exec received": 0.105,
+      "DB first batch": 33.945,
+      "DB done": 13.63,
+      "render first batch": -13.625,
+      "first draw submitted": 7.36
+     },
+     "dbFirstBatchMs": 33.945
+    },
+    {
+     "headline": 43.3701171875,
+     "kind": "window",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 1,
+     "stages": {
+      "key": 0,
+      "draft sent": 2.1,
+      "coordinator": 2.675,
+      "inference sent": 0,
+      "inference received": 1.108,
+      "first SQL delta": 0.017,
+      "SQL complete": 0.085,
+      "SQL received": 2.835,
+      "exec sent": 0,
+      "exec received": 0.11,
+      "DB first batch": 33.35,
+      "DB done": 1.575,
+      "render first batch": -1.57,
+      "first draw submitted": 1.085
+     },
+     "dbFirstBatchMs": 33.35
+    },
+    {
+     "headline": 81.7451171875,
+     "kind": "window",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 1,
+     "stages": {
+      "key": 0,
+      "draft sent": 4.94,
+      "coordinator": 0.705,
+      "inference sent": 0,
+      "inference received": 0.441,
+      "first SQL delta": 0.019,
+      "SQL complete": 0.354,
+      "SQL received": 1.855,
+      "exec sent": 0,
+      "exec received": 0.095,
+      "DB first batch": 72.3,
+      "DB done": 4.21,
+      "render first batch": -4.205,
+      "first draw submitted": 1.03
+     },
+     "dbFirstBatchMs": 72.3
+    },
+    {
+     "headline": 46.489990234375,
+     "kind": "view",
+     "warmSource": null,
+     "warmMs": null,
+     "inferCalls": 1,
+     "stages": {
+      "key": 0,
+      "draft sent": 6.605,
+      "coordinator": 0.155,
+      "inference sent": 0,
+      "inference received": 0.375,
+      "first SQL delta": 0.019,
+      "SQL complete": 0.072,
+      "SQL received": 0.444,
+      "exec sent": 0,
+      "exec received": 0.135,
+      "DB first batch": 38.305,
+      "DB done": 7.53,
+      "render first batch": -7.525,
+      "first draw submitted": 0.375,
+      "presented": 18.43
+     },
+     "dbFirstBatchMs": 38.305
+    }
+   ],
+   "inferCalls": 12,
+   "kinds": {
+    "bucket": 2,
+    "view": 5,
+    "split": 1,
+    "agg": 2,
+    "window": 2
+   },
+   "suggestStats": {
+    "results": 18,
+    "generated": 67,
+    "primed": 0,
+    "warmSent": 0,
+    "warmDone": 0,
+    "warmFailed": 0,
+    "warmEmpty": 0,
+    "warmCacheHits": 0,
+    "picks": 12
+   },
+   "warmMs": null,
+   "generateUs": {
+    "n": 18,
+    "median": 1435.0,
+    "p95": 5915.0,
+    "min": 280.0,
+    "max": 12550.0
+   },
+   "headlineMs": {
+    "n": 12,
+    "median": 49.72,
+    "p95": 81.75,
+    "min": 25.47,
+    "max": 93.45
+   },
+   "dbFirstBatchMs": {
+    "n": 12,
+    "median": 36.55,
+    "p95": 72.3,
+    "min": 13.52,
+    "max": 73.2
+   }
+  }
+ },
+ "typing": {
+  "suggestions-off": {
+   "headlineMs": {
+    "n": 12,
+    "median": 31.89,
+    "p95": 52.07,
+    "min": 9.27,
+    "max": 73.42
+   }
+  },
+  "suggestions-on": {
+   "headlineMs": {
+    "n": 12,
+    "median": 24.45,
+    "p95": 57.83,
+    "min": 16.68,
+    "max": 76.95
+   }
+  },
+  "suggestions-every-result": {
+   "headlineMs": {
+    "n": 12,
+    "median": 32.41,
+    "p95": 104.5,
+    "min": 11.64,
+    "max": 111.13
+   }
+  }
+ },
+ "voice": {
+  "unstubbed": {
+   "api": "function",
+   "button": "idle",
+   "label": ""
+  },
+  "stubbed": {
+   "revisions": 4,
+   "framesSent": 6,
+   "box": "max speed per vessel",
+   "keptCards": 1,
+   "finalWasAlreadyOnScreen": true,
+   "speechEventToFirstDrawMs": [
+    189,
+    189
+   ],
+   "state": "idle"
+  }
+ },
+ "browser": "145.0.7632.0"
+}

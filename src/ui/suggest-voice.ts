@@ -33,6 +33,7 @@ export function mountInteractions(root: HTMLElement, input: HTMLTextAreaElement,
     epoch: () => controller.drafts.epoch,
     context: () => controller.context,
     textOf: revision => controller.drafts.textOf(revision),
+    revision: () => controller.drafts.revision,
     now: () => performance.now(),
   }, view, suggestOptions());
   controller.observer = frame => suggestions.observe(frame);

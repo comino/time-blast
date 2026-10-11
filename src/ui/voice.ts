@@ -54,7 +54,12 @@ export interface VoiceSink {
   status(state: VoiceState, detail?: string): void;
 }
 
-export interface VoiceOptions { lang?: string }
+export interface VoiceOptions {
+  lang?: string;
+  /** No `start` event within this time: report an error (headless Chromium exposes the API but
+   * never starts). Default 5000 ms. */
+  startTimeoutMs?: number;
+}
 
 const ERRORS: Record<string, string> = {
   network: 'Speech service unreachable (Chrome sends audio to its speech service)',
@@ -74,6 +79,7 @@ export class VoiceInput {
   private finals = '';
   private sent = '';
   private committed = '';
+  private startTimer: ReturnType<typeof setTimeout> | undefined;
 
   constructor(private readonly factory: RecognitionFactory | null, private readonly sink: VoiceSink, private readonly options: VoiceOptions = {}) {
     this.state = factory ? 'idle' : 'unsupported';
@@ -90,7 +96,7 @@ export class VoiceInput {
     r.continuous = true;
     r.interimResults = true;
     r.lang = this.options.lang ?? (globalThis.navigator?.language || 'en-US');
-    r.onstart = () => { if (this.recognition === r) this.set('listening'); };
+    r.onstart = () => { if (this.recognition !== r) return; clearTimeout(this.startTimer); this.set('listening'); };
     r.onresult = event => { if (this.recognition === r) this.result(event); };
     r.onerror = event => {
       if (this.recognition !== r) return;
@@ -100,6 +106,7 @@ export class VoiceInput {
     };
     r.onend = event => {
       if (this.recognition !== r) return;
+      clearTimeout(this.startTimer);
       this.recognition = null;
       this.flush(event.timeStamp);
       if (this.state !== 'error') this.set('idle');
@@ -107,6 +114,13 @@ export class VoiceInput {
     this.recognition = r;
     this.finals = ''; this.sent = ''; this.committed = '';
     this.set('starting');
+    clearTimeout(this.startTimer);
+    this.startTimer = setTimeout(() => {
+      if (this.recognition !== r || this.state !== 'starting') return;
+      this.recognition = null;
+      try { r.abort(); } catch { /* already gone */ }
+      this.set('error', 'The speech service did not start (no speech backend in this browser?)');
+    }, this.options.startTimeoutMs ?? 5000);
     try { r.start(); } catch (error) { this.recognition = null; this.set('error', `Voice input failed to start: ${String(error)}`); }
   }
 
@@ -119,6 +133,7 @@ export class VoiceInput {
   abort(): void {
     const r = this.recognition;
     this.recognition = null;
+    clearTimeout(this.startTimer);
     r?.abort();
     if (r) this.set('idle');
   }
