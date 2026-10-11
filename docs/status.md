@@ -89,6 +89,13 @@ plan: [plan-batch-2.md](plan-batch-2.md).
 - **Steady charts while typing:** when a new result's data equals what is on screen, the renderer
   keeps the image (277 of 293 per-keystroke results with alias/case/layout variants of the SQL);
   about 1.3 GPU redraws per typed question instead of about 25.
+- **Next-question chips** ([batch-2/voice-anticipation.md](batch-2/voice-anticipation.md)): after
+  a result settles, up to 4 follow-ups are derived from its SQL without a model (split by a column,
+  bucket, window, aggregate, view) and pre-run in the background (`PRIME` + `EXEC` `WARM`). A chip
+  click draws in **9.8 ms p50** from the result cache. 2177/2177 generated follow-ups execute, at
+  $0 extra.
+- **Voice:** push-to-talk; interim transcripts drive DRAFT frames like typing, the final transcript
+  commits. It is not measured with a real microphone (headless Chromium has no speech service).
 
 The deployed demo is untouched. Its `/etc/time-blast/inference.env` pins
 `TIME_BLAST_MODEL=google/gemini-2.5-flash-lite`; remove that line when deploying to get the new
