@@ -92,6 +92,7 @@ export function systemPrompt(context: DatasetContext): string {
     'Output:\n' +
     '- Reply with the SQL only: one read-only SELECT statement. No prose, no markdown, no code fences, no trailing semicolon.\n' +
     '- Write compact SQL without indentation. Prefer the simplest query; use WITH only when it is needed.\n' +
+    '- Only when the question needs two levels of calculation (an aggregate of window results or of per-group results): compute the inner level in a subquery or CTE and aggregate it in the outer query, because an aggregate cannot contain a window function or another aggregate. Otherwise keep one SELECT.\n' +
     '- Use only the tables and columns listed below, spelled exactly as listed. Give every computed column a short alias that is not the name of a column.\n' +
     '- The question is typed live and may be unfinished. Answer the most plausible complete question. Never ask for clarification.\n' +
     '\n' +

@@ -1,43 +1,145 @@
-# Batch 1: remote database (ClickHouse over tb1)
+# Remote database (DuckDB or ClickHouse over tb1)
 
-Status: implemented and tested (2026-10-10). Owner: remote-database agent. Not deployed.
+Status: implemented and tested (ClickHouse 2026-10-10, DuckDB 2026-10-17). Not deployed; the
+deployment artefacts are ready (`deploy/time-blast-database.service`, `deploy/time-blast.Caddyfile`,
+deploy/README.md "Remote database").
 
-The database node runs on a server in front of ClickHouse and speaks `tb1` over WebSocket. The
-engine uses it through the **same host routing** as in-browser DuckDB: it is just another
-`DatabaseNode`, backed by a WebSocket `Link` instead of DuckDB-Wasm. Coordinator, renderer, UI
-and `src/engine/host.ts` are unchanged. The browser check runs identical queries through both
-placements in one engine worker and gets **identical results, cell for cell**.
+The database node runs on a server and speaks `tb1` over WebSocket. The engine uses it through
+the **same host routing** as in-browser DuckDB: it is just another `DatabaseNode`, backed by a
+WebSocket `Link` instead of DuckDB-Wasm (`src/engine/remote-database.ts`, unchanged by the DuckDB
+backend). Coordinator, renderer and UI are unchanged.
 
-## What exists
+**DuckDB is the default backend.** A server-side DuckDB v1.4.3 (the browser's DuckDB-Wasm
+version) serves one read-only database file, so model SQL has one dialect everywhere: the prompt
+and the evals apply unchanged (`dialect: "duckdb"`). ClickHouse stays available by config.
 
 | File | Role |
 |---|---|
-| `crates/database-server/` | Standalone Rust crate (own lockfile; axum + fastwebsockets + reqwest, no Arrow library) |
-| `…/src/ipc.rs` | Arrow IPC stream → encapsulated messages, parsing only the flatbuffer fields it needs |
-| `…/src/guard.rs` | Single-statement guard + `SELECT * FROM (<sql>\n)` wrapper (ClickHouse lexer) |
-| `…/src/clickhouse.rs` | HTTP client, query settings, error mapping, DatasetContext, DESCRIBE, KILL |
-| `…/src/exec.rs` | One EXEC: stream, split, frame, limits, type casts, send window |
-| `…/src/session.rs` | Per-socket state: HELLO/READY/CONTEXT, EXEC/CANCEL, epochs, fencing |
-| `src/engine/remote-database.ts` | `RemoteDatabaseNode` (link adapter, Arrow decode) and `createPlacedDatabase` |
-| `src/engine/engine.worker.ts` | One line: `createDatabase: createPlacedDatabase(createDatabase)` |
-| `scripts/clickhouse-vessels.{sh,sql}` | Loads the vessels fixture into ClickHouse |
-| `scripts/clickhouse-{first-byte,compression}.sh` | ClickHouse-side measurements |
-| `deploy/time-blast-database.service` | systemd draft (not deployed) |
-| `tests/remote-database.test.ts` | vitest: adapter, zero copy, fencing, reconnect, placement |
-| `tests/remote_database.py` + `remote-database.{html,worker.ts}`, `remote-database-page.ts` | Browser equivalence + latency |
+| `crates/database-server/` | Standalone Rust crate (own lockfile). Feature `duckdb` (default) links the official prebuilt `libduckdb.so` v1.4.3 via `libduckdb-sys` (C API only, no bundled C++ build) |
+| `…/fetch-libduckdb.sh` | Downloads the release zip into `.cache/libduckdb-v1.4.3/`, SHA-256 pinned (arm64 + amd64) |
+| `…/src/duck/mod.rs` | Open read-only + locked config, connection pool, guard (`Statement::prepare`), streaming, interrupt (`Control`) |
+| `…/src/duck/exec.rs` | One EXEC: blocking worker → Arrow IPC → RESULT_SCHEMA / BATCH / DONE, limits, cancel |
+| `…/src/duck/context.rs` | DatasetContext: prebuilt `__tb_rollup.__tb_meta`, else computed (port of `src/engine/dataset.ts`) |
+| `…/src/{ipc,guard,clickhouse,exec}.rs` | ClickHouse backend (below) |
+| `…/src/session.rs`, `service.rs` | Per-socket state, epochs, fencing; HTTP/WS surface (shared by both backends) |
+| `…/tests/duckdb.rs` | Guard, lockdown, limits, timeout/CANCEL/close → interrupt, fencing, framing, equality, contexts, `latency` (ignored) |
+| `tests/remote_duckdb.py` | Real app (production build, `vite preview`, headless Chromium) on the remote DuckDB, scripted inference |
 
 ```sh
-scripts/clickhouse-vessels.sh                        # once; CLICKHOUSE_URL, CLICKHOUSE_DATABASE
-cargo test --locked -j 2 --manifest-path crates/database-server/Cargo.toml   # unit + live ClickHouse (skips if unreachable)
-python3 tests/remote_database.py [--warm 20]         # builds release, starts server + Vite, headless Chromium
-TIME_BLAST_CLICKHOUSE_URL=http://127.0.0.1:18123 TIME_BLAST_CLICKHOUSE_DATABASE=time_blast_dev \
-  crates/database-server/target/release/time-blast-database   # ws://127.0.0.1:8788/session
+crates/database-server/fetch-libduckdb.sh            # once
+export DUCKDB_LIB_DIR=$PWD/.cache/libduckdb-v1.4.3 DUCKDB_INCLUDE_DIR=$PWD/.cache/libduckdb-v1.4.3
+cargo test --locked -j 2 --manifest-path crates/database-server/Cargo.toml   # DuckDB + ClickHouse (skips if unreachable)
+cargo build --release --locked --manifest-path crates/database-server/Cargo.toml
+TIME_BLAST_DUCKDB_PATH=../time-blast-data/nyc-taxi.duckdb TIME_BLAST_DUCKDB_THREADS=3 \
+  TIME_BLAST_ALLOWED_ORIGINS=http://127.0.0.1:4173 <target>/release/time-blast-database   # ws://127.0.0.1:8788/session
 ```
 
-Engine side: open a dataset with `{kind: 'remote', name, endpoint: 'ws://…/session'}` (boot or
-`dataset` message). Any other source opens DuckDB-Wasm, which now boots on the first local open.
+Engine side: `__timeBlastUi.controller.setDataset({kind: 'remote', name, endpoint: 'ws://…/session'})`
+(or a `remote` source in the canvas). The page's origin must be in `TIME_BLAST_ALLOWED_ORIGINS`.
 
-## Protocol behaviour
+## DuckDB backend
+
+Configuration (env): `TIME_BLAST_DB_BACKEND=duckdb|clickhouse` (default: `duckdb` when
+`TIME_BLAST_DUCKDB_PATH` is set), `TIME_BLAST_DUCKDB_PATH`, `…_THREADS` (default: cores),
+`…_MEMORY_LIMIT` (1GB), `…_TEMP_DIR` (`$TMPDIR/time-blast-duckdb`), `…_MAX_TEMP_SIZE` (4GB),
+`…_MAX_QUERIES` (4, process-wide), `…_BATCH_ROWS` (8192), `…_CONTEXT_TIMEOUT_MS` (120000);
+`TIME_BLAST_DB_NAME` (default: file stem), `TIME_BLAST_DB_DESCRIPTION`, and the shared limits
+(`TIME_BLAST_DB_MAX_ROWS` 250,000, `…_MAX_BYTES` 32 MiB, `…_TIMEOUT_MS` 15,000, `…_MAX_QUEUED`
+16, `…_SESSION_CONCURRENCY` 2).
+
+**Safety is the execution environment.** The file is opened with `access_mode=READ_ONLY`,
+`enable_external_access=false`, extension autoload/autoinstall off, community and unsigned
+extensions off, `lock_configuration=true`, and the configured `threads`, `memory_limit`,
+`temp_directory`, `max_temp_directory_size`. Each EXEC goes through DuckDB's own parser
+(`duckdb_extract_statements`): 0 statements or more than 1 → `sql_rejected`; the one statement is
+prepared and must have statement type SELECT (SELECT, WITH, VALUES, FROM-first, DESCRIBE,
+SUMMARIZE, PIVOT with `IN`, set operations; parameters are refused). No wrapper is needed, so error
+positions are the model's own. Verified in `tests/duckdb.rs`: DROP/CREATE/INSERT, SET (also
+`SET enable_external_access = true`), PRAGMA, ATTACH, COPY, INSTALL/LOAD, EXPLAIN, CALL,
+transactions, CHECKPOINT, `$1` → `sql_rejected`; `read_csv('/etc/passwd')`, `read_text(…)` →
+`sql_rejected` (Permission Error); `FROM '/etc/passwd'` → `sql_error` (replacement scans off);
+`PIVOT … ON x` without `IN` → `sql_rejected` (DuckDB expands it into CREATE TYPE + SELECT). duckdb-rs
+is not used: its `prepare` *executes* every statement of a script but the last.
+
+**Streaming.** The query runs on a blocking worker that owns a pooled connection
+(`duckdb_execute_prepared_streaming`, `duckdb_fetch_chunk`). DuckDB converts each chunk to the
+Arrow C data interface (`duckdb_data_chunk_to_arrow`, the same converter DuckDB-Wasm uses, so
+types match the browser: `TIMESTAMP` → `Timestamp<µs>`, `count(*)` → Int64); arrow-rs imports it
+without copying and writes an Arrow IPC encapsulated message (metadata V5, 8-byte alignment) behind
+the tb1 header reserved in the same buffer. The first non-empty chunk (≤ 2,048 rows) is sent
+alone; later chunks are coalesced to ≤ 8,192 rows / 2 MiB per BATCH. DuckDB `ENUM` (Arrow
+dictionary) is cast to Utf8, since BATCH frames carry record batches only. Frames pass through a
+2-slot channel and the session's 8 MiB send window, so a slow browser stops DuckDB's fetch loop.
+DONE carries `{rows, bytes}` (bytes = BATCH payloads); stamps as for ClickHouse.
+
+**Cancel, timeout, link close.** Each job has a `Control`: CANCEL (targeted or full), the
+15 s deadline and a closed link mark it cancelled and call `duckdb_interrupt` every 5 ms until the
+worker returns (DuckDB clears the interrupt flag when a query starts, so a single interrupt could
+be lost between prepare and execute). The connection pointer is only interrupted while the worker
+has it attached, never once it is back in the pool. A cancelled request gets no frame; a timeout
+gets `ERROR timeout`. Measured (debug build, fixture, Rust client): CANCEL → worker returned
+1.5 ms, link close → 1.7 ms, 400 ms timeout → stopped at 403 ms. The worker holds the
+process-wide query permit until DuckDB has actually stopped. Waiting EXECs of a session start in
+arrival order (each queues for its permit only after the one before it got one; before 2026-10-17
+spawned jobs raced, which reordered a waiting EXEC behind a later one).
+
+**DatasetContext.** A file with `__tb_rollup.__tb_meta` (`PrebuiltMeta` format 1, as written by
+`scripts/build-datasets.mjs` and `scripts/fetch-datasets.mjs nyc-taxi-server`) is used as is
+(nyc-taxi: 22 ms); `TIME_BLAST_DB_NAME`/`…_DESCRIPTION` override the stored ones. Otherwise the
+server computes it once at startup like the browser's `describe`: tables of schema `main`
+(alphabetical), types from `duckdb_columns()`, the same statistics SQL (count, min/max, approx
+distinct + `approx_top_k(…, 33)` → exact `values` when ≤ 32), 3 sample rows, numbers written as
+JavaScript would. Each statement is bounded by `…_CONTEXT_TIMEOUT_MS`; a table whose statistics time
+out keeps types and DuckDB's row count. The file is read-only, so the context is cached for the life
+of the process.
+
+Errors: `sql_rejected`, `sql_error` (DuckDB's message, e.g. `Binder Error: …`, as DuckDB-Wasm
+prints it), `timeout`, `result_limit` (rows, Arrow bytes, a single batch over the 16 MiB frame, or
+DuckDB out of memory), `queue_full`, `dataset`, `unavailable`. WARM EXECs are answered
+`unsupported` by the browser adapter and never reach the server (no result cache here yet).
+
+### Measurements (DuckDB)
+
+Host: the shared ARM64 box (4 cores, ~7.7 GB), **load average 6–10 from other agents**. Release
+build, `threads=3`, `memory_limit=2GB`. Data: `nyc-taxi.duckdb` (2.95 GB, `trips` 120,017,885 rows,
+`zones` 265), built minutes before, so the OS page cache was partly warm: "cold" = first run of
+the SQL after the server opened the file, not a cold disk. Server = `EXEC_RECEIVED → DB_FIRST_BATCH
+/ DB_DONE` stamps, Rust tb1 client on loopback, warm n = 10.
+
+| Query | Rows | Cold first / done | Warm first p50 / max | Warm done p50 | DuckDB CLI (same settings) |
+|---|---|---|---|---|---|
+| `count(*)` | 1 | 18.3 / 18.4 | 0.75 / 1.5 | 0.84 | — |
+| trips per day (`date_trunc`, full scan) | 1,096 | 2,583 / 2,583 | 1,409 / 1,949 | 1,409 | 0.78–1.30 s |
+| avg fare by borough (JOIN zones, full scan) | 8 | 4,655 / 4,655 | 3,108 / 3,559 | 3,108 | 2.02–2.13 s |
+| hourly by taxi type, January 2024 | 1,488 | 200 / 200 | 183 / 251 | 183 | 0.10–0.17 s |
+| one hour of trips, ordered (scan) | 4,881 | 7.2 / 8.2 | 7.8 / 9.2 | 8.4 | — |
+
+The server adds nothing measurable over the CLI beyond load noise; full scans of 120 M rows are
+DuckDB's own 1–3 s on 3 shared cores. Selective queries (zone-map pruning on the sorted
+`pickup_time`) are 7–200 ms.
+
+**In the browser** (`tests/remote_duckdb.py`; production build, `vite preview`, Chromium
+145.0.7632.0 headless with SwiftShader, scripted inference answering immediately; ms;
+key = the one input event that inserts the whole question; warm n = 5; same load):
+
+| Query (nyc-taxi) | Rows | Key → first draw cold / warm p50 / max | EXEC sent → server first batch (warm p50) | Server first (warm p50) |
+|---|---|---|---|---|
+| `count(*)` | 1 | 440* / 12.6 / 17.4 | 4.5 | 3.6 |
+| trips per day | 1,096 | 2,138 / 893 / 1,364 | 889 | 888 |
+| avg fare by borough | 8 | 1,789 / 2,272 / 2,522 | 2,256 | 2,255 |
+| hourly, January 2024 | 1,488 | 127 / 125 / 143 | 117 | 116 |
+| one hour of trips | 4,881 | 16.1 / 17.8 / 123 | 7.6 | 7.0 |
+
+\* first chart of the page (card and renderer set-up). Opening the remote dataset (setDataset →
+CONTEXT) took 646 ms (flights: 860 ms, computed context). Server first batch → renderer received
+it: 1.5–5 ms; renderer → draw submitted: 0.1–3.7 ms. Every result equals the same SQL in the
+DuckDB CLI (row count + 50-row table preview, all 5 taxi and 5 flights queries); the Rust test
+compares every cell of the decoded IPC stream with a direct DuckDB query. On the 611k-row flights
+file the same path draws in 25–100 ms warm (p50).
+
+## ClickHouse backend
+
+### Protocol behaviour
 
 - **HELLO → READY, then CONTEXT.** HELLO may carry `"context": <id>`; the server answers CONTEXT
   with that id (default 1). The engine passes the host's context id, so ids never collide with
@@ -74,7 +176,7 @@ Engine side: open a dataset with `{kind: 'remote', name, endpoint: 'ws://…/ses
 - **Backpressure:** each session has an 8 MiB send window of queued frames; a job waits for
   credit, so a slow browser stops the ClickHouse read instead of buffering whole results.
 
-## Safety
+### Safety
 
 `guard.rs` mirrors the browser guard: a lexer that knows ClickHouse strings (`\` escapes, `''`),
 quoted identifiers, heredocs and comments (`--`, `#!`, `# `, nested `/* */`) finds `;`; anything
@@ -95,7 +197,7 @@ The last row is the gap: database isolation needs a dedicated ClickHouse user (r
 `GRANT SELECT ON time_blast.*` only). The server takes `TIME_BLAST_CLICKHOUSE_USER/PASSWORD`; the
 dev runs used the shared server's `default` user, so no user was created there.
 
-## Result types
+### Result types
 
 ClickHouse's Arrow output differs from DuckDB's, and the renderer must not assume either:
 
@@ -119,7 +221,7 @@ repeat runs the cast query directly. Measured cold cost on `toStartOfInterval` (
 cold 227–242 ms vs warm 143–153 ms (includes the first-run analysis on ClickHouse, not only the
 restart).
 
-## Zero copy and alignment
+### Zero copy and alignment
 
 - Server: one copy per byte, HTTP chunk → frame buffer. The tb1 header is written into space
   reserved in front of the message (`seal`), with exactly one allocation per frame. No Arrow
@@ -132,7 +234,7 @@ restart).
 - Concatenating RESULT_SCHEMA + BATCH payloads + end marker reproduces ClickHouse's stream
   byte for byte (Rust test).
 
-## Measurements
+### Measurements
 
 Host: the shared ARM64 box (4 cores, ~8 GB), **load average 30–35 during the runs** (several
 agents building). ClickHouse 26.8.21.10 on the same host (HTTP, loopback). Chromium
@@ -142,7 +244,7 @@ DONE; "server" = `EXEC_RECEIVED → DB_FIRST_BATCH / DB_DONE` stamps (server clo
 run after open, warm = 20 repeats. Both placements ran in the same page minutes apart, so the
 comparison is fair even though absolute numbers are noisy.
 
-### 60,480-row aggregate (same SQL text on both)
+#### 60,480-row aggregate (same SQL text on both)
 
 `SELECT date_trunc('minute', ts) AS t, vessel, avg(speed) AS speed FROM telemetry WHERE ts <
 TIMESTAMP '2026-09-08' GROUP BY ALL ORDER BY 1, 2`
@@ -162,7 +264,7 @@ in-browser DuckDB (warm p50), because aggregation runs multi-threaded in ClickHo
 sharing the worker. Transfer adds: uplink (EXEC send → `EXEC_RECEIVED`, cross-process clocks on
 one host) p50 2.6 ms, downlink of the first 200 KB batch p50 10.6 ms.
 
-### Other queries (warm p50, run 2; run 1 in the same range)
+#### Other queries (warm p50, run 2; run 1 in the same range)
 
 | Query | Rows | DuckDB first / done | ClickHouse first / done | ClickHouse server first / done |
 |---|---|---|---|---|
@@ -172,7 +274,7 @@ one host) p50 2.6 ms, downlink of the first 200 KB batch p50 10.6 ms.
 | `toStartOfInterval` / `time_bucket` 6 h | 336 | 401 / 401 | 153 / 155 | 152 / 152 |
 | `SELECT 42` | 1 | 6.8 / 6.9 | 6.8 / 6.8 | 4.1 / 4.1 |
 
-### Where remote time goes
+#### Where remote time goes
 
 - **Chromium's WebSocket receive is the bottleneck for large results.** The 158,400-row scan is
   5.1 MB in 20 BATCH messages: the server finishes in 38 ms (a Rust tb1 client on loopback
@@ -184,7 +286,7 @@ one host) p50 2.6 ms, downlink of the first 200 KB batch p50 10.6 ms.
   statement: query + parallel DESCRIBE; one on repeats) and 6–7 ms in the browser (cross-process
   WebSocket hops on a loaded host). In-worker DuckDB's floor is 0.7–0.8 ms when the host is quiet.
 
-### `max_block_size` (Rust tb1 client on loopback, warm n = 20, p50 ms)
+#### `max_block_size` (Rust tb1 client on loopback, warm n = 20, p50 ms)
 
 | `max_block_size` | aggregate60k batches / first / done | scan158k batches / first / done | `SELECT 42` |
 |---|---|---|---|
@@ -197,7 +299,7 @@ size: 8,192 keeps the first message ~200 KB (≈ 10 ms in Chromium) instead of o
 (≈ 65 ms), while costing nothing at the server. Scans read whole 8,192-row granules, so smaller
 blocks do not make the first batch earlier.
 
-### First-byte settings (`scripts/clickhouse-first-byte.sh`, ClickHouse only, median of 9)
+#### First-byte settings (`scripts/clickhouse-first-byte.sh`, ClickHouse only, median of 9)
 
 `wait_end_of_query=1` delays the scan's first byte 14 → 58 ms (it buffers the whole result);
 the default 0 is what the server uses. `max_threads=1`, `output_format_arrow_record_batch_size`
@@ -205,7 +307,7 @@ and `max_block_size` changes moved first byte within noise (±5–40 ms at load 
 `send_progress_in_http_headers=1` makes curl's "first byte" earlier only because headers leave
 before data; it does not make data earlier, and the server keeps it off.
 
-### Compression (`scripts/clickhouse-compression.sh`, 60k aggregate, median of 9)
+#### Compression (`scripts/clickhouse-compression.sh`, 60k aggregate, median of 9)
 
 | Option | Bytes | Total |
 |---|---|---|
@@ -223,13 +325,13 @@ compressed body cannot be viewed in place and apache-arrow 17 cannot decode it. 
 matter are on the browser link (above); permessage-deflate is the candidate there (not supported
 by fastwebsockets; not measured).
 
-### Cancellation
+#### Cancellation
 
 CANCEL → the ClickHouse query gone from `system.processes`: 20 ms, measured by polling
 `system.processes` every 10 ms from the test (the poll itself is included). Closing the link stops
 running queries the same way.
 
-## Fixture equality
+### Fixture equality
 
 `scripts/clickhouse-vessels.sql` reproduces `VESSELS_SQL` in ClickHouse. DuckDB evaluates
 `12.8 + vessel * 0.7` in exact DECIMAL; the ClickHouse version writes those terms as
@@ -252,6 +354,19 @@ all 1,209,600 rows × 8 columns **bit-identical** (scratch comparison via DuckDB
    counts as `Uint64`, small literals as `Uint8`.
 
 ## Gaps and next steps
+
+DuckDB backend:
+
+- **Full scans are DuckDB's 1–3 s** on 3 shared cores for 120 M rows. Next: pre-aggregated
+  rollups in the server file (the browser's `__tb_rollup` rewrite, run server-side), or a result
+  cache + WARM support, which turns anticipation into instant answers.
+- Each BATCH costs two copies after DuckDB's own Arrow conversion (arrow-rs IPC body, then the
+  frame buffer). A direct IPC writer into the frame buffer would remove one; not measured yet.
+- `TIME_BLAST_DUCKDB_BATCH_ROWS` (8,192) is set by analogy with ClickHouse's measured block size,
+  not swept on DuckDB.
+- Not deployed; the Caddy route and the unit are drafts until the coordinating agent installs them.
+
+ClickHouse backend:
 
 - **Isolation:** needs a dedicated ClickHouse user per deployment (see Safety).
 - **Browser link throughput:** ~25 MB/s into Chromium on this host; try permessage-deflate or

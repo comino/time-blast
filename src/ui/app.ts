@@ -9,7 +9,7 @@ import { ResizeBatcher } from './controller';
 import { CanvasController } from '../canvas/controller';
 import { CanvasPanel } from './canvas-panel';
 import { installDropZone } from './dataset-drop';
-import { coordinatorDefaults, DEFAULT_DATASET, defaultInference, describePlacement, FIXTURES, loadSettings, saveSettings } from './defaults';
+import { coordinatorDefaults, datasetFromChoice, DEFAULT_DATASET, defaultInference, describePlacement, FIXTURES, loadSettings, saveSettings } from './defaults';
 import type { DatasetSource } from '../engine/contracts';
 import { appShell } from './app-shell';
 import { Board } from './board';
@@ -121,13 +121,18 @@ worker.addEventListener('messageerror', () => rail.error({ code: 'worker', messa
 // The last built-in or URL dataset chosen is the one a reload boots with; files cannot be reopened.
 const DATASET_KEY = 'time-blast.dataset.v1';
 const rememberDataset = (source: DatasetSource) => {
-  if (source.kind !== 'fixture' && source.kind !== 'url') return;
+  if (source.kind !== 'fixture' && source.kind !== 'url' && source.kind !== 'remote') return;
   try { localStorage.setItem(DATASET_KEY, JSON.stringify(source)); } catch { /* storage blocked */ }
 };
 const bootDataset = (): DatasetSource => {
   try {
     const raw = JSON.parse(localStorage.getItem(DATASET_KEY) ?? 'null') as DatasetSource | null;
     if (raw?.kind === 'fixture' && FIXTURES.some(f => f.name === raw.name)) return { kind: 'fixture', name: raw.name };
+    // A server dataset only while this build still points at the same database node.
+    if (raw?.kind === 'remote') {
+      const source = datasetFromChoice(`server:${raw.name}`, import.meta.env.VITE_DATABASE_ENDPOINT as string | undefined);
+      if (source && source.kind === 'remote' && source.endpoint === raw.endpoint) return source;
+    }
     if (raw?.kind === 'url' && typeof raw.url === 'string' && /^https?:/i.test(raw.url) && typeof raw.name === 'string') {
       return { kind: 'url', name: raw.name, url: raw.url, ...(typeof raw.table === 'string' ? { table: raw.table } : {}), ...(raw.format === 'csv' || raw.format === 'parquet' ? { format: raw.format } : {}) };
     }

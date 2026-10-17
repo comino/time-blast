@@ -161,6 +161,40 @@ export function rawRows(sql: string, large: Array<[string, number]>, time: strin
   return `it returns raw rows of ${table[0]} (${table[1]} rows) without GROUP BY, an aggregate or LIMIT; aggregate it, for example GROUP BY a time bucket, or add LIMIT`;
 }
 
+/**
+ * Pre-check twin of `nested_window` in sql.rs: a window function inside an aggregate or inside
+ * another OVER clause, or an aggregate inside an aggregate, which DuckDB and ClickHouse reject
+ * when binding. A subquery starts a fresh level. Returns the repair reason, or undefined.
+ */
+export function nestedWindow(sql: string): string | undefined {
+  type Level = 'aggregate' | 'over' | 'subquery' | 'other';
+  const tokens = tokenize(sql);
+  const stack: Level[] = [];
+  const enclosing = (): Level | undefined => {
+    for (let k = stack.length - 1; k >= 0; k--) if (stack[k] !== 'other') return stack[k] === 'subquery' ? undefined : stack[k];
+    return undefined;
+  };
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    const call = tokens[i + 1] === '(' && isAggregate(token) && !windowed(tokens, i + 1);
+    if (token === '(') {
+      const prev = i > 0 ? tokens[i - 1] : undefined;
+      stack.push(prev === 'over' ? 'over' : prev !== undefined && isAggregate(prev) && !windowed(tokens, i) ? 'aggregate' : 'other');
+    } else if (token === ')') {
+      stack.pop();
+    } else if (token === 'select') {
+      if (stack.length) stack[stack.length - 1] = 'subquery';
+    } else if (token === 'over') {
+      const level = enclosing();
+      if (level === 'aggregate') return 'it puts a window function (OVER) inside an aggregate; compute the window in a subquery or CTE and aggregate its result in the outer query';
+      if (level !== undefined) return 'it puts a window function inside an OVER clause; compute the inner window in a subquery or CTE first';
+    } else if (call && enclosing() === 'aggregate') {
+      return `it nests the aggregate ${token}() inside another aggregate; aggregate in a subquery or CTE first, then aggregate its result in the outer query`;
+    }
+  }
+  return undefined;
+}
+
 function windowed(tokens: string[], open: number): boolean {
   let depth = 0;
   for (let j = open; j < tokens.length; j++) {

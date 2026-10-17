@@ -4,7 +4,7 @@ import { decode, encode, header, json, Kind, Node, readJson, readText, Stage, te
 import { createInferenceNode, type ChatChunk, type EngineLike } from '../src/inference-node/node';
 import { editPrompt, editRepairMessage, repairMessage, systemPrompt, userMessage } from '../src/inference-node/prompt';
 import { editBaseJson, parseEditBase } from '../src/protocol/edit';
-import { check, keywordAlias, rawRows, rowCheckInputs, SqlStream } from '../src/inference-node/sql';
+import { check, keywordAlias, nestedWindow, rawRows, rowCheckInputs, SqlStream } from '../src/inference-node/sql';
 import { generationOptions, resolveModelId } from '../src/inference-node/models';
 import type { DatasetContext } from '../src/engine/contracts';
 
@@ -35,6 +35,7 @@ describe('SQL extraction twin of crates/inference-server/src/sql.rs', () => {
     check: Array<{ sql: string; error: string | null }>;
     rows: Array<{ sql: string; error: string | null }>;
     alias: Array<{ sql: string; error: string | null }>;
+    nested: Array<{ sql: string; error: string | null }>;
   };
   it.each(cases.stream)('streams $chunks', ({ chunks, deltas, sql }) => {
     const stream = new SqlStream();
@@ -56,6 +57,11 @@ describe('SQL extraction twin of crates/inference-server/src/sql.rs', () => {
   });
   it.each(cases.alias)('keyword alias $sql', ({ sql, error }) => {
     const reason = keywordAlias(sql);
+    if (error === null) expect(reason).toBeUndefined();
+    else expect(reason).toContain(error);
+  });
+  it.each(cases.nested)('nested window $sql', ({ sql, error }) => {
+    const reason = nestedWindow(sql);
     if (error === null) expect(reason).toBeUndefined();
     else expect(reason).toContain(error);
   });

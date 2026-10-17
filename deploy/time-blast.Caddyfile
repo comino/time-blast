@@ -1,10 +1,21 @@
 time-blast.46-224-133-201.sslip.io {
 	root * /srv/time-blast/current
 
-	# Inference control and validated plans only. DuckDB/Arrow remain in-browser.
+	# Inference node (tb1 over WebSocket).
 	handle_path /api/inference/* {
 		reverse_proxy 127.0.0.1:8787 {
 			flush_interval -1
+		}
+	}
+
+	# Remote database node (tb1 over WebSocket; deploy/time-blast-database.service).
+	# reverse_proxy upgrades WebSockets as is; flush_interval -1 writes every frame at once.
+	# The node checks Origin itself (TIME_BLAST_ALLOWED_ORIGINS).
+	handle_path /api/database/* {
+		reverse_proxy 127.0.0.1:8788 {
+			flush_interval -1
+			stream_timeout 24h
+			stream_close_delay 5s
 		}
 	}
 

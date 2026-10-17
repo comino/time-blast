@@ -1,6 +1,6 @@
 /** Static page markup. Same look as the prototype (classes from styles.css), new content:
  * status pills, the timing panel and the batch-1 runtime settings. */
-import { FIXTURES, MODEL_PROFILES } from './defaults';
+import { FIXTURES, MODEL_PROFILES, SERVER_DATASETS } from './defaults';
 import { icons } from './icons';
 import { VIEW_LABELS } from './slot-card';
 
@@ -56,7 +56,7 @@ export const appShell = `
     <input type="url" name="inferenceEndpoint" aria-label="Inference endpoint URL" placeholder="wss://your-service.example/tb1"/>
     <div class="optional-field" data-el="model-field"><label for="model-profile">Browser model</label><select id="model-profile" name="modelProfile">${MODEL_PROFILES.map(p => `<option value="${p.id}">${p.label}</option>`).join('')}</select><small data-el="model-detail"></small></div>
     <button type="button" class="small-button" data-action="apply-inference">Use this inference ${icons.arrow}</button></div>
-  <div class="runtime-section"><label for="dataset-fixture">Dataset <span>Loaded into DuckDB in the engine worker</span></label><select id="dataset-fixture" name="fixture">${FIXTURES.map(f => `<option value="${f.name}">${f.label}</option>`).join('')}</select><button type="button" class="small-button" data-action="load-fixture">Load fixture ${icons.arrow}</button>
+  <div class="runtime-section"><label for="dataset-fixture">Dataset <span>Loaded into DuckDB in the engine worker</span></label><select id="dataset-fixture" name="fixture">${FIXTURES.map(f => `<option value="${f.name}">${f.label}</option>`).join('')}${import.meta.env.VITE_DATABASE_ENDPOINT ? `<optgroup label="On the server">${SERVER_DATASETS.map(d => `<option value="server:${d.name}">${d.label}</option>`).join('')}</optgroup>` : ''}</select><button type="button" class="small-button" data-action="load-fixture">Load fixture ${icons.arrow}</button>
     <div class="optional-field"><label for="dataset-url">From a URL</label><input id="dataset-url" type="url" name="datasetUrl" placeholder="https://example.org/data.parquet"/><button type="button" class="small-button" data-action="load-url">Load URL ${icons.arrow}</button></div>
     <div class="optional-field"><label for="dataset-file">From a file</label><input id="dataset-file" type="file" name="datasetFile" accept=".parquet,.pq,.csv,.tsv,.gz"/><small>Or drop a Parquet/CSV file anywhere on the page.</small></div></div>
   <div class="runtime-section"><label>Coordinator <span>Runs in the engine worker; changes apply live</span></label>

@@ -12,6 +12,7 @@
 // this before `pnpm build` when deploying. Needs extensions.duckdb.org (json/parquet extensions)
 // and the CLI: on PATH, $DUCKDB_CLI, --duckdb, or --fetch-duckdb (official release, SHA-256 pinned,
 // cached in .cache/).
+import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runnerImport } from 'vite';
@@ -28,7 +29,16 @@ const log = (...a) => console.error(...a);
 
 const cli = await lib.duckdbCli(resolve(root, '.cache'), { explicit: option('--duckdb'), fetch: args.includes('--fetch-duckdb') });
 log(`DuckDB CLI: ${cli}`);
-const entries = lib.readManifest(publicDir).filter(e => e.prebuilt && (!only || e.name === only));
+// Large datasets (flights-2024, nyc-taxi) need `node scripts/fetch-datasets.mjs <name>` first: without
+// --only, an entry whose table files are missing is skipped (the browser then cannot open it);
+// with --only it is an error. Tables without files are generated (vessels).
+const missing = e => e.name !== 'vessels' && e.tables.some(t => !existsSync(resolve(publicDir, t.url)));
+const entries = lib.readManifest(publicDir).filter(e => e.prebuilt && (!only || e.name === only)).filter(e => {
+  if (!missing(e)) return true;
+  if (only) throw new Error(`${e.name}: table files missing; run node scripts/fetch-datasets.mjs ${e.name} first`);
+  log(`skipping ${e.name}: table files missing (node scripts/fetch-datasets.mjs ${e.name})`);
+  return false;
+});
 if (!entries.length) log('nothing to build (no manifest entry with `prebuilt`)');
 const results = [];
 for (const entry of entries) {

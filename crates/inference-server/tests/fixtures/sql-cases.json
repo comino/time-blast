@@ -60,5 +60,18 @@
     {"sql": "SELECT x \"day\", y FROM t", "error": null},
     {"sql": "SELECT 'a day, b' AS s FROM t", "error": null},
     {"sql": "-- view: line\nSELECT x day FROM t", "error": "the bare alias day"}
+  ],
+  "nested": [
+    {"sql": "SELECT hour, avg(avg(speed)) OVER (PARTITION BY vessel) AS m FROM t GROUP BY hour, vessel", "error": null},
+    {"sql": "SELECT origin, dest, row_number() OVER (PARTITION BY origin ORDER BY count(*) DESC) AS rn, sum(count(*)) OVER (PARTITION BY origin) AS total FROM f GROUP BY 1, 2", "error": null},
+    {"sql": "SELECT city, max(n) AS hours FROM (SELECT city, count(*) OVER (PARTITION BY city, grp) AS n FROM w) GROUP BY 1", "error": null},
+    {"sql": "SELECT max(population) FILTER (WHERE rn = 1) / max(population) FILTER (WHERE rn = 2) AS r FROM (SELECT population, row_number() OVER (ORDER BY population DESC) AS rn FROM cities)", "error": null},
+    {"sql": "SELECT count(*) FILTER (WHERE note = 'avg(x) over (y)') AS n FROM t", "error": null},
+    {"sql": "SELECT avg((SELECT max(x) FROM u)) AS m FROM t", "error": null},
+    {"sql": "SELECT quantile(0.9)(x) AS p FROM t", "error": null},
+    {"sql": "SELECT time_bucket(INTERVAL '1 hour', ts) AS hour, vessel, AVG((speed - AVG(speed) OVER (PARTITION BY vessel ORDER BY ts)) / STDDEV_POP(speed) OVER (PARTITION BY vessel)) AS z FROM telemetry GROUP BY hour, vessel", "error": "window function (OVER) inside an aggregate"},
+    {"sql": "SELECT country_code, MAX(CASE WHEN population < MAX(population) OVER (PARTITION BY country_code) THEN population END) AS second FROM cities GROUP BY 1", "error": "window function (OVER) inside an aggregate"},
+    {"sql": "SELECT city, COUNT(*) OVER (PARTITION BY city, SUM(is_new) OVER (PARTITION BY city ORDER BY time)) AS streak FROM w", "error": "inside an OVER clause"},
+    {"sql": "SELECT c, avg(max(x)) AS m FROM t GROUP BY c", "error": "nests the aggregate max()"}
   ]
 }

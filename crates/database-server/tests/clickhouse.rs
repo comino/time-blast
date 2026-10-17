@@ -11,7 +11,7 @@ use fastwebsockets::{Frame as WsFrame, OpCode, Payload, Role, WebSocket};
 use serde_json::{Value, json};
 use tb_protocol::{Frame, Header, Kind, decode, stage};
 use time_blast_database::{
-    config::{ClickHouseConfig, Config, Limits},
+    config::{BackendConfig, ClickHouseConfig, Config, Limits},
     ipc::{self, HeaderType, Splitter},
     service::{App, serve_on},
 };
@@ -53,14 +53,14 @@ async fn fixture_ready() -> bool {
 async fn start(limits: Limits) -> (String, Arc<App>) {
     let config = Config {
         bind: "127.0.0.1:0".parse().unwrap(),
-        clickhouse: ClickHouseConfig {
+        backend: BackendConfig::ClickHouse(ClickHouseConfig {
             url: clickhouse_url(),
             database: database(),
             user: None,
             password: None,
             max_block_size: 8192,
             extra_settings: Vec::new(),
-        },
+        }),
         dataset_name: "vessels".into(),
         dataset_description: Some("Synthetic vessel telemetry".into()),
         allowed_origins: vec!["http://127.0.0.1:5173".into()],
@@ -345,14 +345,14 @@ async fn latency_sweep() {
     for size in sizes {
         let config = Config {
             bind: "127.0.0.1:0".parse().unwrap(),
-            clickhouse: ClickHouseConfig {
+            backend: BackendConfig::ClickHouse(ClickHouseConfig {
                 url: clickhouse_url(),
                 database: database(),
                 user: None,
                 password: None,
                 max_block_size: size,
                 extra_settings: Vec::new(),
-            },
+            }),
             dataset_name: "vessels".into(),
             dataset_description: None,
             allowed_origins: vec!["http://127.0.0.1:5173".into()],

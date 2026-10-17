@@ -7,7 +7,8 @@
 //!   job produced before it was aborted are discarded here.
 //! - Up to `concurrency` EXECs run at once (FIFO beyond that, at most `max_queued` waiting;
 //!   more → ERROR `queue_full`). Every reply echoes the EXEC's epoch/request/revision/context.
-//! - Closing the link cancels everything it started (each job's ClickHouse query is killed).
+//! - Closing the link cancels everything it started (each job's ClickHouse query is killed,
+//!   each DuckDB query interrupted).
 //!
 //! Decisions live in [`Session`] (synchronous, IO-free); [`run`] wires it to the socket.
 use std::{
@@ -283,6 +284,10 @@ pub async fn run(app: Arc<App>, upgrade: upgrade::UpgradeFut) {
     let jobs_out = Outbox::new(jobs_tx);
     let mut jobs: JoinSet<()> = JoinSet::new();
     let mut handles: HashMap<u32, AbortHandle> = HashMap::new();
+    // FIFO beyond `concurrency`: each job queues for a permit only after the job before it got
+    // one (or went away), so the semaphore's fair queue sees EXECs in arrival order. Spawned
+    // tasks alone would race for the first poll.
+    let mut previous: Option<tokio::sync::oneshot::Receiver<()>> = None;
     let mut last_message = Instant::now();
     let mut heartbeat = tokio::time::interval(Duration::from_secs(25));
     heartbeat.tick().await;
@@ -332,7 +337,7 @@ pub async fn run(app: Arc<App>, upgrade: upgrade::UpgradeFut) {
                             break 'session;
                         }
                         Action::Greet(context) => {
-                            let ready = json!({"node": "database", "name": "time-blast-database", "version": 1, "dialect": "clickhouse"});
+                            let ready = json!({"node": "database", "name": "time-blast-database", "version": 1, "dialect": app.shared.backend.dialect()});
                             if !send(Frame::new(Header::new(Kind::Ready), ready.to_string()).encode()) { break 'session }
                             match app.context().await {
                                 Ok(mut value) => {
@@ -355,8 +360,26 @@ pub async fn run(app: Arc<App>, upgrade: upgrade::UpgradeFut) {
                             let shared = app.shared.clone();
                             let out = jobs_out.clone();
                             let permits = permits.clone();
+                            let (queued, next) = tokio::sync::oneshot::channel::<()>();
+                            let before = previous.replace(next);
                             let handle = jobs.spawn(async move {
-                                let Ok(_permit) = permits.acquire_owned().await else { return };
+                                if let Some(before) = before {
+                                    let _ = before.await; // Err: that job was aborted, which also frees the turn
+                                }
+                                let acquire = permits.acquire_owned();
+                                tokio::pin!(acquire);
+                                // Register in the semaphore's queue, then let the next job queue behind.
+                                let permit = match futures_poll_once(&mut acquire).await {
+                                    Some(permit) => {
+                                        let _ = queued.send(());
+                                        permit
+                                    }
+                                    None => {
+                                        let _ = queued.send(());
+                                        acquire.await
+                                    }
+                                };
+                                let Ok(_permit) = permit else { return };
                                 let stats = exec::run(shared.clone(), job, out).await;
                                 shared.record(&stats);
                             });
@@ -380,6 +403,15 @@ pub async fn run(app: Arc<App>, upgrade: upgrade::UpgradeFut) {
     let _ = reader_task.await;
     drop(output);
     let _ = tokio::time::timeout(Duration::from_secs(1), writer_task).await;
+}
+
+/// Poll a future once: `Some` if it completed. A pending semaphore acquire stays queued.
+async fn futures_poll_once<F: Future + Unpin>(future: &mut F) -> Option<F::Output> {
+    std::future::poll_fn(|cx| match std::pin::Pin::new(&mut *future).poll(cx) {
+        std::task::Poll::Ready(value) => std::task::Poll::Ready(Some(value)),
+        std::task::Poll::Pending => std::task::Poll::Ready(None),
+    })
+    .await
 }
 
 #[cfg(test)]

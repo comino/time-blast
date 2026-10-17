@@ -92,8 +92,29 @@ impl CastCache {
     }
 }
 
+/// Where model SQL runs.
+pub enum Backend {
+    ClickHouse(ClickHouse),
+    #[cfg(feature = "duckdb")]
+    DuckDb(Arc<crate::duck::DuckDb>),
+}
+
+impl Backend {
+    /// DatasetContext / READY dialect.
+    pub fn dialect(&self) -> &'static str {
+        match self {
+            Backend::ClickHouse(_) => "clickhouse",
+            #[cfg(feature = "duckdb")]
+            Backend::DuckDb(_) => "duckdb",
+        }
+    }
+    pub fn name(&self) -> &'static str {
+        self.dialect()
+    }
+}
+
 pub struct Shared {
-    pub clickhouse: ClickHouse,
+    pub backend: Backend,
     pub limits: Limits,
     pub casts: CastCache,
     pub totals: Mutex<Totals>,
@@ -160,11 +181,11 @@ impl Drop for KillOnDrop {
     }
 }
 
-const ONE_STAMP: usize = tb_protocol::HEADER_LEN + tb_protocol::STAMP_LEN;
-const NO_STAMP: usize = tb_protocol::HEADER_LEN;
+pub(crate) const ONE_STAMP: usize = tb_protocol::HEADER_LEN + tb_protocol::STAMP_LEN;
+pub(crate) const NO_STAMP: usize = tb_protocol::HEADER_LEN;
 
 /// Write the tb1 header and stamps into the reserved front of `buf` (payload follows).
-fn seal(buf: &mut [u8], header: &Header, stamps: &[Stamp]) {
+pub(crate) fn seal(buf: &mut [u8], header: &Header, stamps: &[Stamp]) {
     let prefix = tb_protocol::encoded_len(stamps.len(), 0);
     let mut head = Vec::with_capacity(prefix);
     encode_into(header, stamps, &[], &mut head);
@@ -173,13 +194,13 @@ fn seal(buf: &mut [u8], header: &Header, stamps: &[Stamp]) {
     buf[..prefix].copy_from_slice(&head);
 }
 
-fn frame(header: &Header, kind: Kind, stamps: &[Stamp], payload: &[u8]) -> Vec<u8> {
+pub(crate) fn frame(header: &Header, kind: Kind, stamps: &[Stamp], payload: &[u8]) -> Vec<u8> {
     let mut out = Vec::new();
     encode_into(&Header { kind, flags: 0, ..*header }, stamps, payload, &mut out);
     out
 }
 
-fn stamp(stage: u16, at: f64) -> Stamp {
+pub(crate) fn stamp(stage: u16, at: f64) -> Stamp {
     Stamp { stage, node: node::DATABASE, at }
 }
 
@@ -199,9 +220,14 @@ type Describe = Pin<Box<dyn Future<Output = Result<Vec<(String, String)>, Failur
 /// Run one EXEC to completion. Sends RESULT_SCHEMA, BATCH…, then DONE, or ERROR; the last
 /// frame is marked `last`. A cancelled job is simply dropped (no frame).
 pub async fn run(shared: Arc<Shared>, job: ExecJob, out: Outbox) -> Stats {
+    let ch = match &shared.backend {
+        Backend::ClickHouse(ch) => ch,
+        #[cfg(feature = "duckdb")]
+        Backend::DuckDb(duck) => return crate::duck::exec::run(duck.clone(), &shared.limits, job, out).await,
+    };
     let deadline = tokio::time::Instant::from_std(job.received + shared.limits.time);
     let mut stats = Stats::default();
-    let result = tokio::time::timeout_at(deadline, execute(&shared, &job, &out, &mut stats)).await;
+    let result = tokio::time::timeout_at(deadline, execute(&shared, ch, &job, &out, &mut stats)).await;
     let failure = match result {
         Ok(Ok(())) => None,
         Ok(Err(failure)) => Some(failure),
@@ -214,13 +240,12 @@ pub async fn run(shared: Arc<Shared>, job: ExecJob, out: Outbox) -> Stats {
     stats
 }
 
-async fn execute(shared: &Shared, job: &ExecJob, out: &Outbox, stats: &mut Stats) -> Result<(), Failure> {
+async fn execute(shared: &Shared, ch: &ClickHouse, job: &ExecJob, out: &Outbox, stats: &mut Stats) -> Result<(), Failure> {
     let wrapped = match guard::guard(&job.sql) {
         Guard::Ok(sql) => sql,
         Guard::Rejected { code, message } => return Err(Failure::new(code, message)),
     };
     let inner = guard::inner(&wrapped);
-    let ch = &shared.clickhouse;
     let mut sql = wrapped.clone();
     let mut describe: Option<Describe> = None;
     match shared.casts.get(&wrapped) {
@@ -235,7 +260,7 @@ async fn execute(shared: &Shared, job: &ExecJob, out: &Outbox, stats: &mut Stats
     }
     loop {
         stats.attempts += 1;
-        match attempt(shared, job, out, stats, &wrapped, &sql, &mut describe).await {
+        match attempt(shared, ch, job, out, stats, &wrapped, &sql, &mut describe).await {
             Step::Done => return Ok(()),
             Step::Fail(failure) => return Err(failure),
             Step::Restart(projection) => {
@@ -254,8 +279,10 @@ fn described(shared: &Shared, wrapped: &str, result: Result<Vec<(String, String)
     projection.filter(|_| can_restart)
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn attempt(
     shared: &Shared,
+    ch: &ClickHouse,
     job: &ExecJob,
     out: &Outbox,
     stats: &mut Stats,
@@ -265,12 +292,12 @@ async fn attempt(
 ) -> Step {
     let h = job.header;
     let query_id = format!("{}-{}", job.query_id, stats.attempts);
-    let settings = shared.clickhouse.query_settings(&shared.limits, &query_id);
-    let mut kill = KillOnDrop { clickhouse: shared.clickhouse.clone(), query_id: query_id.clone(), armed: true };
+    let settings = ch.query_settings(&shared.limits, &query_id);
+    let mut kill = KillOnDrop { clickhouse: ch.clone(), query_id: query_id.clone(), armed: true };
     // Restarting is only useful while nothing has been forwarded.
     let can_restart = stats.attempts == 1;
 
-    let start = shared.clickhouse.start(sql, &settings);
+    let start = ch.start(sql, &settings);
     tokio::pin!(start);
     let response = loop {
         tokio::select! { biased;

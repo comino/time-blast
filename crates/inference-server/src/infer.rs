@@ -247,6 +247,7 @@ pub fn cached_frames(job: &Job, sql: &str, model: &str) -> [Frame; 2] {
 ///
 /// With `row_check`, a first reply that would return raw rows of a large table
 /// ([`sql::raw_rows`]) gets the one repair turn too.
+/// So does a first reply that nests a window or aggregate in an aggregate ([`sql::nested_window`]).
 pub async fn run(
     provider: &Provider,
     cache: &SqlCache,
@@ -351,6 +352,10 @@ async fn translate(
             sql::check(&sql)
                 .and_then(|()| match attempt == 1 && job.prepared.context.dialect == "duckdb" {
                     true => sql::keyword_alias(&sql).map_or(Ok(()), Err),
+                    false => Ok(()),
+                })
+                .and_then(|()| match attempt == 1 {
+                    true => sql::nested_window(&sql).map_or(Ok(()), Err),
                     false => Ok(()),
                 })
                 .and_then(|()| match row_check && attempt == 1 {

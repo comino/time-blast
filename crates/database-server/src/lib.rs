@@ -1,11 +1,16 @@
 //! Remote database node for time-blast: protocol v1 (`tb1`) over WebSocket in front of
-//! ClickHouse. The browser engine reaches it through the same `Link`/host routing as the
-//! in-browser DuckDB node; only the transport differs (docs/batch-1/remote-database.md).
+//! DuckDB (in process, read-only file; the browser's dialect) or ClickHouse (HTTP). The browser
+//! engine reaches it through the same `Link`/host routing as the in-browser DuckDB node; only
+//! the transport differs (docs/batch-1/remote-database.md).
 //!
-//! EXEC → guard → ClickHouse HTTP `FORMAT ArrowStream` → split into encapsulated IPC
+//! DuckDB: EXEC → DuckDB's parser (one SELECT) → streaming chunks → Arrow C data → Arrow IPC
+//! encapsulated messages → RESULT_SCHEMA / BATCH frames → DONE.
+//! ClickHouse: EXEC → guard → HTTP `FORMAT ArrowStream` → split into encapsulated IPC
 //! messages (no re-encoding) → RESULT_SCHEMA / BATCH frames → DONE.
 pub mod clickhouse;
 pub mod config;
+#[cfg(feature = "duckdb")]
+pub mod duck;
 pub mod exec;
 pub mod guard;
 pub mod ipc;

@@ -27,15 +27,36 @@ describe('dataset manifest', () => {
     }
   });
 
-  it('points at Parquet files of at most 50 MB (the synthetic vessels fixtures belong to the cold-start workstream)', () => {
-    for (const entry of manifest.filter(e => !e.name.startsWith('vessels'))) {
+  // Committed datasets: small Parquet files in the repo. Large ones (a `prebuilt` file, gitignored)
+  // are fetched by scripts/fetch-datasets.mjs and built by scripts/build-datasets.mjs at deploy
+  // time; their files are checked when present. The synthetic vessels belong to cold start.
+  const large = (e: ManifestEntry) => !!e.prebuilt;
+  const isParquet = (file: string) => {
+    const bytes = readFileSync(file);
+    expect(bytes.subarray(0, 4).toString('latin1')).toBe('PAR1');
+    expect(bytes.subarray(bytes.length - 4).toString('latin1')).toBe('PAR1');
+  };
+
+  it('points committed datasets at Parquet files of at most 50 MB', () => {
+    for (const entry of manifest.filter(e => !e.name.startsWith('vessels') && !large(e))) {
       for (const table of entry.tables) {
         const file = `${root}public/${table.url}`;
         expect(existsSync(file), file).toBe(true);
         expect(statSync(file).size).toBeLessThan(50e6);
-        const bytes = readFileSync(file);
-        expect(bytes.subarray(0, 4).toString('latin1')).toBe('PAR1');
-        expect(bytes.subarray(bytes.length - 4).toString('latin1')).toBe('PAR1');
+        isParquet(file);
+      }
+    }
+  });
+
+  it('keeps large datasets out of git, with a prebuilt database next to their tables', () => {
+    for (const entry of manifest.filter(e => !e.name.startsWith('vessels') && large(e))) {
+      const dir = `public/data/${entry.name}/`;
+      expect(readFileSync(`${root}.gitignore`, 'utf8').split('\n'), entry.name).toContain(dir);
+      expect(entry.prebuilt).toBe(`data/${entry.name}/${entry.name}.duckdb`);
+      for (const table of entry.tables) {
+        expect(table.url.startsWith(`data/${entry.name}/`), table.url).toBe(true);
+        const file = `${root}public/${table.url}`;
+        if (existsSync(file)) isParquet(file);
       }
     }
   });

@@ -1,5 +1,11 @@
 # Standalone: own lockfile and release profile; deployed as a native binary.
-# Remote database node: tb1 over WebSocket in front of ClickHouse (docs/batch-1/remote-database.md).
+# Remote database node: tb1 over WebSocket in front of DuckDB (in process) or ClickHouse (HTTP)
+# (docs/batch-1/remote-database.md).
+#
+# The `duckdb` feature (default) links the official prebuilt libduckdb v1.4.3 (never the bundled
+# C++ build): run ./fetch-libduckdb.sh once, then build with
+#   DUCKDB_LIB_DIR=$PWD/../../.cache/libduckdb-v1.4.3 DUCKDB_INCLUDE_DIR=$PWD/../../.cache/libduckdb-v1.4.3
+# The binary looks for libduckdb.so next to itself ($ORIGIN rpath) and in DUCKDB_LIB_DIR.
 [workspace]
 
 [package]
@@ -19,6 +25,19 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 tokio = { version = "=1.53.1", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time", "io-util"] }
 tokio-util = "=0.7.19"
+# DuckDB backend. Only the C API (libduckdb-sys) is used: duckdb-rs' `prepare` executes every
+# statement but the last of a script, and its handles hide what interrupt/streaming need.
+libduckdb-sys = { version = "=1.4.3", default-features = false, optional = true }
+# DuckDB's Arrow C data interface → Arrow IPC encapsulated messages.
+arrow-array = { version = "=56.2.1", default-features = false, features = ["ffi"], optional = true }
+arrow-schema = { version = "=56.2.1", default-features = false, features = ["ffi"], optional = true }
+arrow-ipc = { version = "=56.2.1", default-features = false, optional = true }
+arrow-cast = { version = "=56.2.1", default-features = false, optional = true }
+arrow-select = { version = "=56.2.1", default-features = false, optional = true }
+
+[features]
+default = ["duckdb"]
+duckdb = ["dep:libduckdb-sys", "dep:arrow-array", "dep:arrow-schema", "dep:arrow-ipc", "dep:arrow-cast", "dep:arrow-select"]
 
 [profile.release]
 lto = "thin"

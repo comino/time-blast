@@ -21,8 +21,8 @@ use tokio_util::sync::CancellationToken;
 
 use crate::{
     clickhouse::{ClickHouse, Failure},
-    config::{Config, Limits},
-    exec::{CastCache, Shared},
+    config::{BackendConfig, Config, Limits},
+    exec::{Backend, CastCache, Shared},
     session,
 };
 
@@ -43,9 +43,15 @@ pub struct App {
 
 impl App {
     pub fn new(config: Config) -> Result<Arc<App>, String> {
-        let clickhouse = ClickHouse::new(config.clickhouse)?;
+        let backend = match config.backend {
+            BackendConfig::ClickHouse(c) => Backend::ClickHouse(ClickHouse::new(c)?),
+            #[cfg(feature = "duckdb")]
+            BackendConfig::DuckDb(c) => Backend::DuckDb(Arc::new(crate::duck::DuckDb::open(c)?)),
+            #[cfg(not(feature = "duckdb"))]
+            BackendConfig::DuckDb(_) => return Err("this build has no DuckDB backend (cargo feature `duckdb`)".into()),
+        };
         Ok(Arc::new(App {
-            shared: Arc::new(Shared { clickhouse, limits: config.limits.clone(), casts: CastCache::default(), totals: Default::default() }),
+            shared: Arc::new(Shared { backend, limits: config.limits.clone(), casts: CastCache::default(), totals: Default::default() }),
             limits: config.limits,
             origins: config.allowed_origins,
             sessions: Arc::new(Semaphore::new(MAX_SESSIONS)),
@@ -56,19 +62,25 @@ impl App {
         }))
     }
 
-    /// The DatasetContext (id 0; each session sets its own), cached for CONTEXT_TTL.
+    /// The DatasetContext (id 0; each session sets its own), cached for CONTEXT_TTL
+    /// (ClickHouse) or for the life of the process (DuckDB: the file is opened read-only).
     pub async fn context(&self) -> Result<Value, Failure> {
         let mut cached = self.context.lock().await;
         if let Some((at, value)) = cached.as_ref() {
-            if at.elapsed() < CONTEXT_TTL {
+            if at.elapsed() < CONTEXT_TTL || !matches!(self.shared.backend, Backend::ClickHouse(_)) {
                 return Ok(value.clone());
             }
         }
-        let value = self
-            .shared
-            .clickhouse
-            .context(&self.dataset_name, self.dataset_description.as_deref())
-            .await?;
+        let value = match &self.shared.backend {
+            Backend::ClickHouse(ch) => ch.context(&self.dataset_name, self.dataset_description.as_deref()).await?,
+            #[cfg(feature = "duckdb")]
+            Backend::DuckDb(duck) => {
+                let (duck, name, description) = (duck.clone(), self.dataset_name.clone(), self.dataset_description.clone());
+                tokio::task::spawn_blocking(move || crate::duck::context::context(&duck, &name, description.as_deref()))
+                    .await
+                    .map_err(|e| Failure::new("dataset", e.to_string()))??
+            }
+        };
         *cached = Some((Instant::now(), value.clone()));
         Ok(value)
     }
@@ -84,18 +96,28 @@ pub fn router(app: Arc<App>) -> Router {
 
 pub async fn serve(config: Config) -> Result<(), Box<dyn std::error::Error>> {
     let bind: SocketAddr = config.bind;
-    let database = config.clickhouse.database.clone();
     let app = App::new(config)?;
     let listener = tokio::net::TcpListener::bind(bind).await?;
     // Warm the pooled connection and the context before the first session.
-    match app.shared.clickhouse.version().await {
-        Ok(version) => eprintln!("ClickHouse {version}, database {database}"),
-        Err(failure) => eprintln!("ClickHouse not reachable yet: {}", failure.message),
+    match &app.shared.backend {
+        Backend::ClickHouse(ch) => match ch.version().await {
+            Ok(version) => eprintln!("ClickHouse {version}, database {}", ch.database()),
+            Err(failure) => eprintln!("ClickHouse not reachable yet: {}", failure.message),
+        },
+        #[cfg(feature = "duckdb")]
+        Backend::DuckDb(duck) => eprintln!(
+            "DuckDB {} read-only {} (threads {}, memory_limit {}, temp {})",
+            duck.version,
+            duck.config.path.display(),
+            duck.config.threads,
+            duck.config.memory_limit,
+            duck.config.temp_directory.display()
+        ),
     }
     if let Err(failure) = app.context().await {
         eprintln!("DatasetContext not available yet: {}", failure.message);
     }
-    eprintln!("time-blast database (tb1, ClickHouse) listening on {}", listener.local_addr()?);
+    eprintln!("time-blast database (tb1, {}) listening on {}", app.shared.backend.name(), listener.local_addr()?);
     Ok(serve_on(listener, app).await?)
 }
 
@@ -145,7 +167,17 @@ async fn health(State(app): State<Arc<App>>) -> Json<Value> {
     Json(json!({
         "status": "ready",
         "protocol": tb_protocol::SUBPROTOCOL,
-        "database": app.shared.clickhouse.database(),
+        "backend": app.shared.backend.name(),
+        "database": match &app.shared.backend {
+            Backend::ClickHouse(ch) => ch.database().to_string(),
+            #[cfg(feature = "duckdb")]
+            Backend::DuckDb(duck) => duck.file_name(),
+        },
+        "running": match &app.shared.backend {
+            Backend::ClickHouse(_) => Value::Null,
+            #[cfg(feature = "duckdb")]
+            Backend::DuckDb(duck) => json!(duck.running.load(std::sync::atomic::Ordering::Relaxed)),
+        },
         "maxSessions": MAX_SESSIONS,
         "activeSessions": MAX_SESSIONS - app.sessions.available_permits(),
         "totals": {

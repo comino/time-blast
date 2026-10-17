@@ -1,19 +1,26 @@
-# DRAFT, not deployed. Remote database node (tb1 over WebSocket in front of ClickHouse).
-# See docs/batch-1/remote-database.md. Caddy would proxy /api/database/* to 127.0.0.1:8788
-# (like /api/inference/*); the browser opens wss://<host>/api/database/session.
+# DRAFT, not deployed. Remote database node: tb1 over WebSocket in front of a read-only DuckDB
+# file (same dialect as the browser's DuckDB-Wasm). See docs/batch-1/remote-database.md and
+# deploy/README.md "Remote database". Caddy proxies /api/database/* to 127.0.0.1:8788; the
+# browser opens wss://<host>/api/database/session.
+#
+# Install layout: /srv/time-blast/backend/time-blast-database and, next to it,
+# /srv/time-blast/backend/libduckdb.so (official v1.4.3 build; the binary's rpath is $ORIGIN).
 #
 # /etc/time-blast/database.env:
 #   TIME_BLAST_DB_BIND=127.0.0.1:8788
-#   TIME_BLAST_CLICKHOUSE_URL=http://127.0.0.1:8123
-#   TIME_BLAST_CLICKHOUSE_DATABASE=time_blast
-#   TIME_BLAST_CLICKHOUSE_USER=time_blast_reader      # readonly profile, SELECT on time_blast.* only
-#   TIME_BLAST_CLICKHOUSE_PASSWORD=…
-#   TIME_BLAST_DB_NAME=vessels
-#   TIME_BLAST_DB_DESCRIPTION=Synthetic vessel telemetry: …
+#   TIME_BLAST_DB_BACKEND=duckdb
+#   TIME_BLAST_DUCKDB_PATH=/mnt/HC_Volume_105875173/home-offload-20261011/time-blast-data/nyc-taxi.duckdb
+#   TIME_BLAST_DUCKDB_THREADS=3
+#   TIME_BLAST_DUCKDB_MEMORY_LIMIT=2GB          # buffer manager; MemoryMax below leaves ~1 GB headroom
+#   TIME_BLAST_DUCKDB_TEMP_DIR=/var/cache/time-blast-database/spill
+#   TIME_BLAST_DUCKDB_MAX_TEMP_SIZE=8GB
+#   TIME_BLAST_DUCKDB_MAX_QUERIES=4
+#   TIME_BLAST_DB_NAME=nyc-taxi
 #   TIME_BLAST_ALLOWED_ORIGINS=https://time-blast.46-224-133-201.sslip.io
+# (ClickHouse instead: TIME_BLAST_DB_BACKEND=clickhouse, TIME_BLAST_CLICKHOUSE_URL/DATABASE/USER/PASSWORD.)
 [Unit]
-Description=time-blast database node (tb1 over WebSocket, ClickHouse)
-After=network-online.target clickhouse-server.service
+Description=time-blast database node (tb1 over WebSocket, DuckDB read-only)
+After=network-online.target
 Wants=network-online.target
 
 [Service]
@@ -29,10 +36,16 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
+# The data file is read-only for the service (DuckDB also opens it READ_ONLY); spills go to
+# the service's own cache directory.
+ReadOnlyPaths=/mnt/HC_Volume_105875173/home-offload-20261011/time-blast-data
+CacheDirectory=time-blast-database
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 LimitNOFILE=4096
-# Results stream through: at most a few in-flight Arrow messages (≤ 16 MiB each) per session.
-MemoryMax=512M
+# DuckDB memory_limit (2GB) + per-query/Arrow/IPC buffers outside the buffer manager + the
+# 8 MiB send window per session. MemoryHigh throttles before the hard limit kills the service.
+MemoryHigh=2800M
+MemoryMax=3G
 
 [Install]
 WantedBy=multi-user.target

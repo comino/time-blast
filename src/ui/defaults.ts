@@ -17,9 +17,26 @@ export const FIXTURES = [
   { name: 'vessels-small', label: 'Vessels · small (synthetic fixture)' },
   { name: 'weather', label: 'Weather · 12 European cities, hourly 2023–24 · 211 k rows' },
   { name: 'flights', label: 'Flights · US domestic, June 2024 · 3 tables · 611 k rows' },
+  { name: 'flights-2024', label: 'Flights · US domestic, all of 2024 · 3 tables · 7.1 M rows' },
   { name: 'cities', label: 'Cities · world cities over 15,000 people · 2 tables · 34 k rows' },
+  { name: 'nyc-taxi', label: 'NYC taxi · yellow cab trips, Jan–Mar 2024 · 2 tables · 9.4 M rows' },
 ] as const;
 export const DEFAULT_DATASET: DatasetSource = { kind: 'fixture', name: 'vessels' };
+
+/** Datasets served by the remote DuckDB node (crates/database-server) when the build sets
+ * `VITE_DATABASE_ENDPOINT`. The name matches the server's TIME_BLAST_DB_NAME. */
+export const SERVER_DATASETS = [
+  { name: 'nyc-taxi-big', label: 'NYC taxi · yellow + green cabs, 2022–2024 · 120 M rows · server DuckDB' },
+] as const;
+
+/** A dataset picker value: a fixture name, or `server:<name>` for a server dataset. */
+export function datasetFromChoice(value: string, databaseEndpoint: string | undefined): DatasetSource | null {
+  if (value.startsWith('server:')) {
+    const name = value.slice(7);
+    return databaseEndpoint && SERVER_DATASETS.some(d => d.name === name) ? { kind: 'remote', name, endpoint: databaseEndpoint } : null;
+  }
+  return FIXTURES.some(f => f.name === value) ? { kind: 'fixture', name: value } : null;
+}
 
 /** Remote endpoint from the build (`VITE_INFERENCE_ENDPOINT`) if set, else in-browser WebGPU. */
 export function defaultInference(endpoint: string | undefined): InferencePlacement {

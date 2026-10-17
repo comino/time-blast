@@ -13,4 +13,7 @@ __pycache__/
 
 # Built datasets (scripts/build-datasets.mjs): built during deployment, not committed
 public/data/vessels/
+# Large datasets (scripts/fetch-datasets.mjs flights-2024|nyc-taxi): fetched and built during deployment
+public/data/flights-2024/
+public/data/nyc-taxi/
 public/data/.build-*

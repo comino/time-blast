@@ -185,3 +185,42 @@ wave-2 work. Until then, check a new server with `node scripts/eval-sql.mjs --en
 ws://127.0.0.1:8787/session` (spends provider tokens; scores SQL by executed results).
 The prototype has origin checks, bounded sessions/concurrency and process-local
 generation budgets, but no user authentication or durable billing quota.
+
+## Remote database (DuckDB) — not yet deployed
+
+`time-blast-database.service` serves one read-only DuckDB file over tb1 on `127.0.0.1:8788`;
+Caddy's `handle_path /api/database/*` proxies it (WebSocket upgrade as is), so the browser opens
+`wss://time-blast.46-224-133-201.sslip.io/api/database/session`. Design and measurements:
+[remote-database.md](../docs/batch-1/remote-database.md).
+
+Build (links the official libduckdb v1.4.3, SHA-256 pinned; no C++ build):
+
+```sh
+export CARGO_HOME=/mnt/HC_Volume_105875173/hf-cache/time-blast-eval/rust-cargo
+export CARGO_TARGET_DIR=/mnt/HC_Volume_105875173/hf-cache/time-blast-eval/rust-target-db
+crates/database-server/fetch-libduckdb.sh           # → .cache/libduckdb-v1.4.3/{libduckdb.so,duckdb.h}
+export DUCKDB_LIB_DIR=$PWD/.cache/libduckdb-v1.4.3 DUCKDB_INCLUDE_DIR=$PWD/.cache/libduckdb-v1.4.3
+cargo test --locked -j 2 --manifest-path crates/database-server/Cargo.toml
+cargo build --release --locked -j 2 --manifest-path crates/database-server/Cargo.toml
+```
+
+Install (the binary's runpath is `$ORIGIN`, so `libduckdb.so` goes next to it):
+
+```sh
+sudo install -m 0755 $CARGO_TARGET_DIR/release/time-blast-database /srv/time-blast/backend/time-blast-database
+sudo install -m 0644 .cache/libduckdb-v1.4.3/libduckdb.so /srv/time-blast/backend/libduckdb.so
+sudo install -m 0644 deploy/time-blast-database.service /etc/systemd/system/time-blast-database.service
+sudoedit /etc/time-blast/database.env               # contents: comment block in the unit; root:root 0600
+sudo systemctl daemon-reload && sudo systemctl enable --now time-blast-database.service
+curl --fail --silent --show-error http://127.0.0.1:8788/health   # "backend":"duckdb", the file name
+```
+
+The data file (`../time-blast-data/nyc-taxi.duckdb`, from `node scripts/fetch-datasets.mjs
+nyc-taxi-server`) must exist before start; it carries its DatasetContext, so start-up takes
+well under a second. The unit makes the data directory read-only, spills to
+`/var/cache/time-blast-database/spill` (`CacheDirectory`), and caps memory at `MemoryMax=3G`
+above DuckDB's `memory_limit=2GB`. Then install the updated `time-blast.Caddyfile` site, validate
+(`sudo caddy validate --config /etc/caddy/Caddyfile`) and `sudo systemctl reload caddy`. Verify from a browser with
+`__timeBlastUi.controller.setDataset({kind: 'remote', name: 'nyc-taxi', endpoint:
+'wss://time-blast.46-224-133-201.sslip.io/api/database/session'})` and one question. Rollback:
+`sudo systemctl disable --now time-blast-database.service` (nothing else depends on it).

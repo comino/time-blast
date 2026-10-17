@@ -2,7 +2,7 @@
 import type { DatasetSource, InferencePlacement, WebGpuModel } from '../engine/contracts';
 import type { CoordinatorConfig } from './controller';
 import { datasetFromFiles, datasetFromUrl } from './dataset-drop';
-import { coordinatorDefaults, defaultInference, DEFAULT_MODEL_PROFILE, MODEL_PROFILES } from './defaults';
+import { coordinatorDefaults, datasetFromChoice, defaultInference, DEFAULT_MODEL_PROFILE, MODEL_PROFILES } from './defaults';
 import { defaultMotion, type MotionSettings } from './motion';
 
 export interface SettingsCallbacks {
@@ -25,7 +25,10 @@ export class SettingsPanel {
     act('settings', () => this.open());
     act('close-settings', () => this.dialog.close());
     act('apply-inference', () => this.applyInference());
-    act('load-fixture', () => callbacks.dataset({ kind: 'fixture', name: (f.fixture as HTMLSelectElement).value }));
+    act('load-fixture', () => {
+      const source = datasetFromChoice((f.fixture as HTMLSelectElement).value, import.meta.env.VITE_DATABASE_ENDPOINT as string | undefined);
+      if (source) { this.error(''); callbacks.dataset(source); } else this.error('This dataset is not available in this build.');
+    });
     act('load-url', () => {
       const source = datasetFromUrl((f.datasetUrl as HTMLInputElement).value);
       if (source) { this.error(''); callbacks.dataset(source); } else this.error('Enter an http(s) URL to a Parquet or CSV file.');

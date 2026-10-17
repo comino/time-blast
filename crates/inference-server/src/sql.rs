@@ -230,6 +230,49 @@ fn is_aggregate(word: &str) -> bool {
             .is_some_and(|base| AGGREGATES.contains(&base))
 }
 
+/// A window function inside an aggregate or inside another OVER clause, or an aggregate inside an
+/// aggregate: DuckDB and ClickHouse reject all three when binding ("aggregate function calls
+/// cannot contain window function calls", "window functions are not allowed in window
+/// definitions"). A subquery starts a fresh level. Returns the repair reason.
+pub fn nested_window(sql: &str) -> Option<String> {
+    #[derive(Clone, Copy, PartialEq)]
+    enum Level { Aggregate, Over, Subquery, Other }
+    let tokens = tokens(sql);
+    let mut stack: Vec<Level> = Vec::new();
+    // The innermost aggregate or OVER enclosing the current token, up to the nearest subquery.
+    let enclosing = |stack: &[Level]| {
+        stack.iter().rev().copied().find(|l| *l != Level::Other).filter(|l| *l != Level::Subquery)
+    };
+    for (i, token) in tokens.iter().enumerate() {
+        let call = tokens.get(i + 1).is_some_and(|t| t == "(") && is_aggregate(token) && !windowed(&tokens, i + 1);
+        match token.as_str() {
+            "(" => stack.push(match i.checked_sub(1).map(|p| tokens[p].as_str()) {
+                Some("over") => Level::Over,
+                Some(word) if is_aggregate(word) && !windowed(&tokens, i) => Level::Aggregate,
+                _ => Level::Other,
+            }),
+            ")" => {
+                stack.pop();
+            }
+            "select" => {
+                if let Some(top) = stack.last_mut() {
+                    *top = Level::Subquery;
+                }
+            }
+            "over" => match enclosing(&stack) {
+                Some(Level::Aggregate) => return Some("it puts a window function (OVER) inside an aggregate; compute the window in a subquery or CTE and aggregate its result in the outer query".into()),
+                Some(_) => return Some("it puts a window function inside an OVER clause; compute the inner window in a subquery or CTE first".into()),
+                None => {}
+            },
+            _ if call && enclosing(&stack) == Some(Level::Aggregate) => {
+                return Some(format!("it nests the aggregate {token}() inside another aggregate; aggregate in a subquery or CTE first, then aggregate its result in the outer query"));
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
 /// Whether the call whose `(` is at `open` is followed by OVER (a window, not an aggregate).
 fn windowed(tokens: &[String], open: usize) -> bool {
     let mut depth = 0usize;
@@ -460,6 +503,17 @@ mod tests {
         for case in cases["alias"].as_array().unwrap() {
             let sql = case["sql"].as_str().unwrap();
             let got = keyword_alias(sql);
+            match case["error"].as_str() {
+                None => assert_eq!(got, None, "{sql}"),
+                Some(expected) => assert!(
+                    got.as_deref().is_some_and(|g| g.contains(expected)),
+                    "{sql}: {got:?}"
+                ),
+            }
+        }
+        for case in cases["nested"].as_array().unwrap() {
+            let sql = case["sql"].as_str().unwrap();
+            let got = nested_window(sql);
             match case["error"].as_str() {
                 None => assert_eq!(got, None, "{sql}"),
                 Some(expected) => assert!(
