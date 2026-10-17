@@ -1,8 +1,8 @@
 # Remote database (DuckDB or ClickHouse over tb1)
 
-Status: implemented and tested (ClickHouse 2026-10-10, DuckDB 2026-10-17). Not deployed; the
-deployment artefacts are ready (`deploy/time-blast-database.service`, `deploy/time-blast.Caddyfile`,
-deploy/README.md "Remote database").
+Status: implemented and tested (ClickHouse 2026-10-10, DuckDB 2026-10-17). The DuckDB backend is
+deployed since 2026-10-17 (`nyc-taxi-big`, 120 M trips, behind `/api/database/`; deploy/README.md
+"Remote database"); ClickHouse is not deployed.
 
 The database node runs on a server and speaks `tb1` over WebSocket. The engine uses it through
 the **same host routing** as in-browser DuckDB: it is just another `DatabaseNode`, backed by a
@@ -364,7 +364,6 @@ DuckDB backend:
   frame buffer). A direct IPC writer into the frame buffer would remove one; not measured yet.
 - `TIME_BLAST_DUCKDB_BATCH_ROWS` (8,192) is set by analogy with ClickHouse's measured block size,
   not swept on DuckDB.
-- Not deployed; the Caddy route and the unit are drafts until the coordinating agent installs them.
 
 ClickHouse backend:
 
@@ -376,4 +375,4 @@ ClickHouse backend:
 - The UI has no control to pick `{kind: 'remote'}` yet (UI owner; needs contract change 1).
 - No remote coordinator yet, so EXEC still travels browser → server; with a remote coordinator
   and remote inference, SQL would go server → server directly.
-- Measured only on a loaded shared host; rerun on a quiet one for absolute numbers. Not deployed.
+- Measured only on a loaded shared host; rerun on a quiet one for absolute numbers.

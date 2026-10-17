@@ -1,4 +1,4 @@
-# DRAFT, not deployed. Remote database node: tb1 over WebSocket in front of a read-only DuckDB
+# Deployed 2026-10-17 (deploy/README.md). Remote database node: tb1 over WebSocket in front of a read-only DuckDB
 # file (same dialect as the browser's DuckDB-Wasm). See docs/batch-1/remote-database.md and
 # deploy/README.md "Remote database". Caddy proxies /api/database/* to 127.0.0.1:8788; the
 # browser opens wss://<host>/api/database/session.

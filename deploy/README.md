@@ -7,22 +7,24 @@ The GitHub repository remains private. Caddy exposes the Rust tb1 inference serv
 (engine worker). The server's default profile is `openai/gpt-oss-120b` on Groq, reasoning low
 ([batch-2/inference.md](../docs/batch-2/inference.md)).
 
-## Verified deployment — 2026-10-17 (persistent canvas)
+## Verified deployment — 2026-10-17 (big data: server DuckDB, flights 2024, NYC taxi)
 
 | Component | Live state |
 | --- | --- |
-| Source | `main` at `8cebe29` (persistent canvas + review fixes + motion + fullscreen focus mode + advanced suggested prompts, on top of batches 1–3) |
-| Static release | `/srv/time-blast/releases/20261017T200424Z-c2da546a`; index SHA-256 `61cfd1529d49fd76062edea2e756841f0b17910f5372fc44cbcc780e648e2223` (previous: `20261017T195414Z-68d9bbce`) |
-| Rust service | binary SHA-256 prefix `a7d27c12fec8a93c` (adds `edit-context-v1`; base prompt unchanged, v6), model `openai/gpt-oss-120b` |
-| Rollback copies | binary `/srv/time-blast/backend/time-blast-inference.bak-4efbf437` (batches 1–3 server); previous release `20261011T130843Z-27f6869e` |
+| Source | `main` at `8e78830` (persistent canvas, motion, focus mode, per-dataset suggested prompts, numeric heatmaps, server DuckDB, layered-SQL prompt rule) |
+| Static release | `/srv/time-blast/releases/20261017T212357Z-cf30d40f`; index SHA-256 `6afb12f4c77c5aa75faa79c119fc0227fda7ae972c34e49408e4a81ed2e38280`; built with `VITE_INFERENCE_ENDPOINT` and `VITE_DATABASE_ENDPOINT=wss://time-blast.46-224-133-201.sslip.io/api/database/session`; includes prebuilt `flights-2024.duckdb` (166 MiB) and `nyc-taxi.duckdb` (220 MiB), not their Parquet inputs |
+| Inference service | binary SHA-256 prefix `5c90b051f87f5c73` (layered-SQL rule + nested-window pre-check), model `openai/gpt-oss-120b` |
+| Database service | `time-blast-database.service` (DuckDB 1.4.3 backend), `/srv/time-blast/backend/time-blast-database` + `libduckdb.so`, `127.0.0.1:8788`; `/etc/time-blast/database.env` (root, 0600, no secrets): `nyc-taxi.duckdb` (120 M trips, 2022–2024) as `nyc-taxi-big`, 3 threads, `memory_limit=2GB`, `MemoryMax=3G` |
+| Caddy | `/etc/caddy/sites/time-blast.caddy` from `deploy/time-blast.Caddyfile` (adds `/api/database/*`); backup `time-blast.caddy.bak-20261017` |
+| Rollback copies | inference `time-blast-inference.bak-a7d27c12` (canvas server, prompt v6) and `.bak-4efbf437` (batches 1–3); database: `sudo systemctl disable --now time-blast-database.service` and restore the Caddy backup; previous static releases `20261017T205127Z-f0df679c`, `20261017T200424Z-c2da546a` |
 
-Public check (headless Chromium, software GPU, real inference over HTTPS, fresh profile):
-cross-origin isolated, no console errors, boot 2.6 s. "average wind speed per vessel by hour"
-drew and checkpointed; after a reload the chart came back with the same revision and SQL without
-inference; refining it with "only the last 24 hours" added the time filter as a new revision.
-The first check found a bug (Edit clicked during boot started a new chart), fixed in `69c107e`.
-Motion (`b7dcd6a`) checked live the same way: the first chart seeded, grew on its first result
-(seed → grow 1.6 s while typing with real inference) and finished; no console errors.
+Public check (headless Chromium 145, software GPU, real inference over HTTPS): every suggested
+prompt of all seven datasets (23) was clicked in the UI and drew a correct chart, including the
+server dataset chosen from the picker. Those runs replayed the server's SQL cache (validation
+had already translated each text), so key → first draw there is database + transport + draw:
+120 M-row full scans 2.1–2.2 s, the 2024 zone map 0.74 s; in-browser 9.4 M taxi 0.6–2.0 s.
+Earlier releases today: persistent canvas `b3dc456`/`69c107e`, motion `b7dcd6a`, focus
+`9835191`/`8e4fdc5`, prompts `8cebe29`, heatmaps `4ff5c61`, dataset persistence `2509367`.
 
 ## Previous deployment — 2026-10-11 (batches 1–3)
 
@@ -186,7 +188,7 @@ ws://127.0.0.1:8787/session` (spends provider tokens; scores SQL by executed res
 The prototype has origin checks, bounded sessions/concurrency and process-local
 generation budgets, but no user authentication or durable billing quota.
 
-## Remote database (DuckDB) — not yet deployed
+## Remote database (DuckDB) — deployed 2026-10-17
 
 `time-blast-database.service` serves one read-only DuckDB file over tb1 on `127.0.0.1:8788`;
 Caddy's `handle_path /api/database/*` proxies it (WebSocket upgrade as is), so the browser opens
