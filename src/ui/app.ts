@@ -133,13 +133,26 @@ const persist = () => { const { freeSlots: _, ...coordinator } = controller.conf
 let focus = stored.focus ?? false;
 const applyFocus = (value: boolean) => {
   focus = value; root.dataset.focus = String(value);
-  const toggle = q('focus-toggle'), label = value ? 'Leave focus' : 'Focus: only canvas and chat';
+  const toggle = q('focus-toggle'), label = value ? 'Leave focus' : 'Focus: fullscreen, only canvas and chat';
   toggle.setAttribute('aria-pressed', String(value)); toggle.setAttribute('aria-label', label); toggle.title = label;
   // The board's ResizeObserver reports the new size after this frame's layout: fit one frame later.
   requestAnimationFrame(() => requestAnimationFrame(() => board.fit()));
 };
 applyFocus(focus);
-action('focus', () => { applyFocus(!focus); persist(); });
+// Focus also takes the browser fullscreen (a click may request it). Leaving fullscreen with
+// Esc leaves focus too; a reload restores focus mode only, since fullscreen needs a gesture.
+let fullscreenByFocus = false;
+action('focus', () => {
+  applyFocus(!focus); persist();
+  if (focus && !document.fullscreenElement && document.documentElement.requestFullscreen) {
+    document.documentElement.requestFullscreen({ navigationUI: 'hide' }).then(() => { fullscreenByFocus = true; }, () => { /* refused: focus mode alone */ });
+  } else if (!focus && fullscreenByFocus && document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+});
+document.addEventListener('fullscreenchange', () => {
+  if (document.fullscreenElement || !fullscreenByFocus) return;
+  fullscreenByFocus = false;
+  if (focus) { applyFocus(false); persist(); }
+});
 const toggles = root.querySelectorAll<HTMLButtonElement>('[data-toggle]');
 const syncToggles = (config: CoordinatorConfig) => toggles.forEach(t => {
   const value = config[t.dataset.toggle as 'live' | 'speculate'];

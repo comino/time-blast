@@ -53,7 +53,7 @@ export const appShell = `
       </div></details>
   </aside>
 </div>
-<button type="button" class="icon-button focus-toggle" data-action="focus" data-el="focus-toggle" aria-pressed="false" aria-label="Focus: only canvas and chat" title="Focus: only canvas and chat"><span class="focus-on">${icons.focus}</span><span class="focus-off">${icons.unfocus}</span></button>
+<button type="button" class="icon-button focus-toggle" data-action="focus" data-el="focus-toggle" aria-pressed="false" aria-label="Focus: fullscreen, only canvas and chat" title="Focus: fullscreen, only canvas and chat"><span class="focus-on">${icons.focus}</span><span class="focus-off">${icons.unfocus}</span></button>
 <div class="drop-hint" data-el="drop-hint" hidden><div>${icons.file}<strong>Drop a Parquet or CSV file</strong><span>It loads into the in-browser database as a new dataset.</span></div></div>
 <dialog class="runtime-dialog" data-el="settings-dialog"><form data-el="settings-form" method="dialog"><div class="dialog-heading"><div><span class="eyebrow">RUNTIME</span><h2>Choose where work happens.</h2></div><button type="button" class="icon-button" data-action="close-settings" aria-label="Close runtime settings">${icons.close}</button></div><p class="dialog-intro">Same frames, any placement. Coordinator settings apply immediately.</p>
   <div class="runtime-section"><label for="inference-kind">Inference <span>Turns your question into SQL</span></label><select id="inference-kind" name="inferenceKind"><option value="remote">Remote endpoint (tb1 WebSocket)</option><option value="webgpu">In this browser · WebGPU</option></select>
