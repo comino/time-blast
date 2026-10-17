@@ -97,6 +97,14 @@
 .focus-toggle .focus-off,#app[data-focus=true] .focus-toggle .focus-on{display:none}
 #app[data-focus=true] .focus-toggle .focus-off{display:contents}
 .header-actions{margin-right:38px}
-#app[data-focus=true] :is(.app-header,.canvas-toolbar,.canvas-document,.canvas-bottom,.conversation-heading,.dataset-chip,.status-pills,.timing-card,.chat-scroll>.intro){display:none}
+#app[data-focus=true] :is(.app-header,.canvas-toolbar,.canvas-document,.canvas-bottom,.explore-card,.timing-card,.chat-scroll>.intro){display:none}
 @media(min-width:651px){#app[data-focus=true] .workspace{height:100dvh}}
 #app[data-focus=true] .conversation{padding-top:44px}
+/* EXPLORE header: one line by default (dataset title + settings); opens to description and status. */
+.explore-card{flex:none}
+.explore-card>summary{list-style:none;cursor:pointer}.explore-card>summary::-webkit-details-marker{display:none}
+.explore-actions{display:flex;align-items:center;gap:6px}
+.explore-card .pipeline-chevron{transition:transform .15s;color:#6e98a3}.explore-card[open] .pipeline-chevron{transform:rotate(180deg)}
+.explore-card:not([open])>summary{padding-bottom:12px}
+/* Suggested prompts for a dataset that is still loading: visible, not yet clickable. */
+.examples[data-pending=true] button[data-prompt]{opacity:.45;pointer-events:none}

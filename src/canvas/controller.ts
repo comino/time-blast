@@ -44,7 +44,7 @@ interface Entry {
 }
 /** A job runs until its work is submitted, not until it completes. `sourceId`
  * groups queued hydration by source; priority jobs (interactive edits) go first. */
-interface Job { entry?: Entry; ticket?: number; sourceId?: Id; priority?: boolean; run(): Promise<void> }
+interface Job { entry?: Entry; ticket?: number; sourceId?: Id; priority?: boolean; run(): Promise<void>; /** Dropped before it ran. */ cancelled?(): void }
 const RESIDENT_LIMIT = 8;
 const errorText = (e: unknown): string => e instanceof Error ? e.message : String(e);
 const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
@@ -398,6 +398,7 @@ export class CanvasController extends UiController {
    * chose keeps loading. The edit stays the editor's, so typing on resumes it. */
   override cancel(): void {
     const dropped = this.jobs.splice(0);
+    for (const job of dropped) job.cancelled?.();
     if (!this.initializing && this.activation && this.activeJob?.entry) { this.activation.resolve(null); this.activation = undefined; }
     for (const entry of this.entries.values()) {
       const draft = entry.draftId ? this.model?.drafts.get(entry.draftId) : undefined;
@@ -713,18 +714,26 @@ export class CanvasController extends UiController {
       this.activation = { token, resolve }; this.sendControl({ type: 'dataset', source: dataset, token });
     });
   }
-  override setDataset(source: DatasetSource): void {
+  /** Resolves true once `source` is the new-chart source, false if it did not become it
+   * (load failure, a canvas switch, or the job was cancelled). */
+  override setDataset(source: DatasetSource): Promise<boolean> {
     this.finishEditor();
     const owner = this.model?.header.id;
-    this.enqueue({ priority: true, run: async () => {
-      if (owner !== this.model?.header.id) return;
-      await this.quiesce();
-      if (owner !== this.model?.header.id) return;
-      const context = await this.load(source);
-      if (owner !== this.model?.header.id) return;
-      if (context) await this.rememberSource(source, context);
-      else throw new Error(`Could not load ${source.name}`);
+    let settle!: (ok: boolean) => void;
+    const result = new Promise<boolean>(resolve => { settle = resolve; });
+    this.enqueue({ priority: true, cancelled: () => settle(false), run: async () => {
+      try {
+        if (owner !== this.model?.header.id) return settle(false);
+        await this.quiesce();
+        if (owner !== this.model?.header.id) return settle(false);
+        const context = await this.load(source);
+        if (owner !== this.model?.header.id) return settle(false);
+        if (!context) throw new Error(`Could not load ${source.name}`);
+        await this.rememberSource(source, context);
+        settle(owner === this.model?.header.id);
+      } catch (e) { settle(false); throw e; }
     } });
+    return result;
   }
   async reattach(sourceId: Id, file: File): Promise<void> {
     const source = this.model?.sources.get(sourceId); if (!source) throw new Error('Source not found');

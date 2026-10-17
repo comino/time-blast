@@ -118,6 +118,14 @@ worker.addEventListener('error', event => { event.preventDefault(); rail.error({
 worker.addEventListener('messageerror', () => rail.error({ code: 'worker', message: 'A message from the engine could not be read' }, 0));
 
 // ───────────── dataset choice (per browser) ─────────────
+// The chosen dataset's prompts appear at once (greyed) and become clickable when it is the
+// new-chart source; a first visit to a big prebuilt file downloads ~100 MB before that.
+const chooseDataset = (source: DatasetSource) => {
+  rail.examplesLoading(source.name);
+  rememberDataset(source);
+  notice(`Loading ${source.name}…`);
+  void controller.setDataset(source).then(ok => { if (!ok) rail.examplesFailed(newChartSource()); });
+};
 // The last built-in or URL dataset chosen is the one a reload boots with; files cannot be reopened.
 const DATASET_KEY = 'time-blast.dataset.v1';
 const rememberDataset = (source: DatasetSource) => {
@@ -186,7 +194,7 @@ const syncToggles = (config: CoordinatorConfig) => toggles.forEach(t => {
 const applyConfig = (patch: CoordinatorConfig) => { controller.setConfig(patch); settings.sync(patch); syncToggles(controller.config); persist(); };
 const settings = new SettingsPanel(root, inference, initialConfig, {
   inference: placement => { inference = placement; q('placement-label').textContent = describePlacement(placement); controller.setInference(placement); persist(); notice(`Inference: ${describePlacement(placement).toLowerCase()}`); },
-  dataset: source => { controller.setDataset(source); rememberDataset(source); notice(`Loading ${source.name}…`); },
+  dataset: source => chooseDataset(source),
   config: patch => applyConfig(patch),
   motion: value => { motionChanged = true; applyMotion(value); persist(); },
 }, envEndpoint);
@@ -196,7 +204,7 @@ syncToggles(initialConfig);
 q('placement-label').textContent = describePlacement(inference);
 q('dataset-badge').textContent = bootDataset().name.toUpperCase();
 
-installDropZone(window, source => { controller.setDataset(source); notice(`Loading ${source.name}…`); },
+installDropZone(window, source => chooseDataset(source),
   active => { q('drop-hint').hidden = !active; },
   names => notice(`Not a Parquet or CSV file: ${names}`));
 

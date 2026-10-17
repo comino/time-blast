@@ -44,9 +44,23 @@ export class Rail implements RailView {
   }
 
   private examplesShown?: string;
+  private examplesPending?: string;
   /** Suggested prompts for the dataset new charts use (built-in only; none for user data).
-   * Not the engine's active context: restoring older charts activates their sources too. */
+   * Not the engine's active context: restoring older charts activates their sources too.
+   * While a newly chosen dataset loads, its prompts show greyed out (see `examplesLoading`). */
   examples(dataset: string): void {
+    if (this.examplesPending && dataset !== this.examplesPending) return;
+    this.examplesPending = undefined;
+    this.q('examples').dataset.pending = 'false';
+    this.renderExamples(dataset);
+  }
+  /** A dataset was chosen: show its prompts now, clickable once it is the new-chart source.
+   * `failed` restores the prompts of `current` (the dataset that stayed active). */
+  examplesLoading(dataset: string): void { this.examplesPending = dataset; this.q('examples').dataset.pending = 'true'; this.renderExamples(dataset); }
+  examplesFailed(current: string | undefined): void { this.examplesPending = undefined; this.q('examples').dataset.pending = 'false'; if (current) this.renderExamples(current); }
+  private renderExamples(dataset: string): void {
+    const heading = this.q('examples').querySelector('.eyebrow');
+    if (heading) heading.textContent = this.examplesPending ? `LOADING ${dataset.toUpperCase()}…` : 'A FEW PLACES TO START';
     if (dataset === this.examplesShown) return;
     this.examplesShown = dataset;
     const box = this.q('examples'), list = examplesFor(dataset);

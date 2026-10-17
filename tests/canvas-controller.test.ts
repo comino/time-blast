@@ -605,6 +605,19 @@ describe('canvas editing semantics (review 2026-10-17)', () => {
     expect(engine.frames.filter(f => f.kind === Kind.COMMIT).map(requestText)).toEqual(['Average temperature']);
   });
 
+  it('reports whether a chosen dataset became the new-chart source', async () => {
+    const h = await boot();
+    const loaded = h.ui.setDataset({ kind: 'fixture', name: 'flights' }); await flush(); await activate(h, 12, 'flights');
+    await expect(loaded).resolves.toBe(true);
+    expect(h.ui.model!.sources.get(h.ui.defaultSourceId!)?.name).toBe('flights');
+    // A queued choice that never runs (dropped behind a busy queue by Escape) settles as false.
+    await create(h);
+    const first = h.ui.setDataset({ kind: 'fixture', name: 'cities' }), dropped = h.ui.setDataset({ kind: 'fixture', name: 'weather' });
+    h.ui.cancel(); await flush();
+    await expect(dropped).resolves.toBe(false);
+    void first;
+  });
+
   it('keeps a refinement started while a reloaded canvas is still booting', async () => {
     const h = await boot(), first = await create(h);
     const engine = new FakeEngine(), host = new FakeHost(), rail = new FakeRail();
