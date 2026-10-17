@@ -41,11 +41,14 @@ export class Rail implements RailView {
     this.q('dataset-sub').textContent = `${integer.format(rows)} rows · ${c.tables.length} ${c.tables.length === 1 ? 'table' : 'tables'} · ${columns} columns · ${c.dialect}`;
     this.q('dataset-badge').textContent = c.name.toUpperCase();
     this.q('dataset-dot').dataset.state = 'ready';
-    this.examples(c.name);
   }
 
-  /** Suggested prompts for the active built-in dataset; none for user data. */
-  private examples(dataset: string): void {
+  private examplesShown?: string;
+  /** Suggested prompts for the dataset new charts use (built-in only; none for user data).
+   * Not the engine's active context: restoring older charts activates their sources too. */
+  examples(dataset: string): void {
+    if (dataset === this.examplesShown) return;
+    this.examplesShown = dataset;
     const box = this.q('examples'), list = examplesFor(dataset);
     box.hidden = list.length === 0;
     for (const old of box.querySelectorAll('button[data-prompt]')) old.remove();

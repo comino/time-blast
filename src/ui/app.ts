@@ -9,7 +9,8 @@ import { ResizeBatcher } from './controller';
 import { CanvasController } from '../canvas/controller';
 import { CanvasPanel } from './canvas-panel';
 import { installDropZone } from './dataset-drop';
-import { coordinatorDefaults, DEFAULT_DATASET, defaultInference, describePlacement, loadSettings, saveSettings } from './defaults';
+import { coordinatorDefaults, DEFAULT_DATASET, defaultInference, describePlacement, FIXTURES, loadSettings, saveSettings } from './defaults';
+import type { DatasetSource } from '../engine/contracts';
 import { appShell } from './app-shell';
 import { Board } from './board';
 import { Rail } from './rail';
@@ -84,8 +85,9 @@ const host: SlotHost = {
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
   },
 };
+const newChartSource = () => controller.defaultSourceId ? controller.model?.sources.get(controller.defaultSourceId)?.name : undefined;
 controller = new CanvasController(worker, host, rail, {
-  changed: () => canvasPanel?.update(),
+  changed: () => { canvasPanel?.update(); const name = newChartSource(); if (name) rail.examples(name); },
   editor: (value, label, mode, focus) => {
     const editor = q<HTMLTextAreaElement>('input'); editor.value = value;
     editor.dataset.mode = mode; editor.placeholder = mode === 'sql' ? 'SELECT …' : mode === 'regenerate' ? 'Describe how to regenerate this chart…' : 'Describe the change you want…';
@@ -114,6 +116,24 @@ canvasPanel = new CanvasPanel(root, () => controller.session, {
 worker.addEventListener('message', (event: MessageEvent) => controller.receive(event.data));
 worker.addEventListener('error', event => { event.preventDefault(); rail.error({ code: 'worker', message: 'The engine worker failed to start', detail: event.message }, 0); });
 worker.addEventListener('messageerror', () => rail.error({ code: 'worker', message: 'A message from the engine could not be read' }, 0));
+
+// ───────────── dataset choice (per browser) ─────────────
+// The last built-in or URL dataset chosen is the one a reload boots with; files cannot be reopened.
+const DATASET_KEY = 'time-blast.dataset.v1';
+const rememberDataset = (source: DatasetSource) => {
+  if (source.kind !== 'fixture' && source.kind !== 'url') return;
+  try { localStorage.setItem(DATASET_KEY, JSON.stringify(source)); } catch { /* storage blocked */ }
+};
+const bootDataset = (): DatasetSource => {
+  try {
+    const raw = JSON.parse(localStorage.getItem(DATASET_KEY) ?? 'null') as DatasetSource | null;
+    if (raw?.kind === 'fixture' && FIXTURES.some(f => f.name === raw.name)) return { kind: 'fixture', name: raw.name };
+    if (raw?.kind === 'url' && typeof raw.url === 'string' && /^https?:/i.test(raw.url) && typeof raw.name === 'string') {
+      return { kind: 'url', name: raw.name, url: raw.url, ...(typeof raw.table === 'string' ? { table: raw.table } : {}), ...(raw.format === 'csv' || raw.format === 'parquet' ? { format: raw.format } : {}) };
+    }
+  } catch { /* storage blocked or malformed */ }
+  return DEFAULT_DATASET;
+};
 
 // ───────────── settings ─────────────
 const envEndpoint = import.meta.env.VITE_INFERENCE_ENDPOINT as string | undefined;
@@ -161,7 +181,7 @@ const syncToggles = (config: CoordinatorConfig) => toggles.forEach(t => {
 const applyConfig = (patch: CoordinatorConfig) => { controller.setConfig(patch); settings.sync(patch); syncToggles(controller.config); persist(); };
 const settings = new SettingsPanel(root, inference, initialConfig, {
   inference: placement => { inference = placement; q('placement-label').textContent = describePlacement(placement); controller.setInference(placement); persist(); notice(`Inference: ${describePlacement(placement).toLowerCase()}`); },
-  dataset: source => { controller.setDataset(source); notice(`Loading ${source.name}…`); },
+  dataset: source => { controller.setDataset(source); rememberDataset(source); notice(`Loading ${source.name}…`); },
   config: patch => applyConfig(patch),
   motion: value => { motionChanged = true; applyMotion(value); persist(); },
 }, envEndpoint);
@@ -169,7 +189,7 @@ settings.syncMotion(motion);
 toggles.forEach(t => t.addEventListener('click', () => { const key = t.dataset.toggle as 'live' | 'speculate'; applyConfig({ [key]: !controller.config[key] }); }));
 syncToggles(initialConfig);
 q('placement-label').textContent = describePlacement(inference);
-q('dataset-badge').textContent = DEFAULT_DATASET.name.toUpperCase();
+q('dataset-badge').textContent = bootDataset().name.toUpperCase();
 
 installDropZone(window, source => { controller.setDataset(source); notice(`Loading ${source.name}…`); },
   active => { q('drop-hint').hidden = !active; },
@@ -241,7 +261,7 @@ q('examples').addEventListener('click', event => {
 const interactions = mountInteractions(root, input, controller, scheduleChrome);
 
 // ───────────── boot ─────────────
-void controller.initialize(inference, DEFAULT_DATASET, initialConfig).catch(e => notice(`Canvas startup: ${String(e.message ?? e)}`));
+void controller.initialize(inference, bootDataset(), initialConfig).catch(e => notice(`Canvas startup: ${String(e.message ?? e)}`));
 bootMark('page.boot');
 input.focus();
 
