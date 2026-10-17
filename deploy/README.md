@@ -7,7 +7,23 @@ The GitHub repository remains private. Caddy exposes the Rust tb1 inference serv
 (engine worker). The server's default profile is `openai/gpt-oss-120b` on Groq, reasoning low
 ([batch-2/inference.md](../docs/batch-2/inference.md)).
 
-## Verified deployment — 2026-10-11 (batches 1–3)
+## Verified deployment — 2026-10-17 (persistent canvas)
+
+| Component | Live state |
+| --- | --- |
+| Source | `main` at `69c107e` (persistent canvas + review fixes, on top of batches 1–3) |
+| Static release | `/srv/time-blast/releases/20261017T174659Z-67394fbb`; index SHA-256 `501c20cd1a1f98ddbd2b8c2b550253da28ba76115247b723efa6e404b2fad19f` |
+| Rust service | binary SHA-256 prefix `a7d27c12fec8a93c` (adds `edit-context-v1`; base prompt unchanged, v6), model `openai/gpt-oss-120b` |
+| Rollback copies | binary `/srv/time-blast/backend/time-blast-inference.bak-4efbf437` (batches 1–3 server); previous release `20261011T130843Z-27f6869e` |
+
+Public check (headless Chromium, software GPU, real inference over HTTPS, fresh profile):
+cross-origin isolated, no console errors, boot 2.6 s. "average wind speed per vessel by hour"
+drew and checkpointed; after a reload the chart came back with the same revision and SQL without
+inference; refining it with "only the last 24 hours" added the time filter as a new revision.
+The first check found a bug (Edit clicked during boot started a new chart), fixed in `69c107e`.
+
+## Previous deployment — 2026-10-11 (batches 1–3)
+
 
 | Component | Live state |
 | --- | --- |
