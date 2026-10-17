@@ -11,8 +11,8 @@ The GitHub repository remains private. Caddy exposes the Rust tb1 inference serv
 
 | Component | Live state |
 | --- | --- |
-| Source | `main` at `69c107e` (persistent canvas + review fixes, on top of batches 1–3) |
-| Static release | `/srv/time-blast/releases/20261017T174659Z-67394fbb`; index SHA-256 `501c20cd1a1f98ddbd2b8c2b550253da28ba76115247b723efa6e404b2fad19f` |
+| Source | `main` at `b7dcd6a` (persistent canvas + review fixes + motion, on top of batches 1–3) |
+| Static release | `/srv/time-blast/releases/20261017T182939Z-05fff1ab`; index SHA-256 `97f21bc495d9d5454b8d75e108508dc5583cb96ab8de2c914f36347ba5e73135` (previous: `20261017T174659Z-67394fbb`) |
 | Rust service | binary SHA-256 prefix `a7d27c12fec8a93c` (adds `edit-context-v1`; base prompt unchanged, v6), model `openai/gpt-oss-120b` |
 | Rollback copies | binary `/srv/time-blast/backend/time-blast-inference.bak-4efbf437` (batches 1–3 server); previous release `20261011T130843Z-27f6869e` |
 
@@ -21,6 +21,8 @@ cross-origin isolated, no console errors, boot 2.6 s. "average wind speed per ve
 drew and checkpointed; after a reload the chart came back with the same revision and SQL without
 inference; refining it with "only the last 24 hours" added the time filter as a new revision.
 The first check found a bug (Edit clicked during boot started a new chart), fixed in `69c107e`.
+Motion (`b7dcd6a`) checked live the same way: the first chart seeded, grew on its first result
+(seed → grow 1.6 s while typing with real inference) and finished; no console errors.
 
 ## Previous deployment — 2026-10-11 (batches 1–3)
 
