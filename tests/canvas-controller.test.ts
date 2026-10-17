@@ -605,6 +605,23 @@ describe('canvas editing semantics (review 2026-10-17)', () => {
     expect(engine.frames.filter(f => f.kind === Kind.COMMIT).map(requestText)).toEqual(['Average temperature']);
   });
 
+  it('keeps a refinement started while a reloaded canvas is still booting', async () => {
+    const h = await boot(), first = await create(h);
+    const engine = new FakeEngine(), host = new FakeHost(), rail = new FakeRail();
+    const ui = new CanvasController(engine, host, rail, { changed() {}, editor() {}, history() {}, reattach() {}, notice() {} });
+    const initialized = ui.initialize(inference, weather, {}, h.storage); await flush();
+    ui.editChart(first.chartId); ui.input('Use maximum', false, 3); ui.commit('Use maximum', 4);
+    ui.receive(frame(Kind.READY, {}, json({ capabilities: [CANVAS_CAPABILITY] })));
+    ui.receive({ type: 'capabilities', component: 'inference', capabilities: [EDIT_CAPABILITY] });
+    ui.receive({ type: 'context', context: context() });
+    ui.receive({ type: 'activation', token: engine.messages('boot')[0].token!, context: context() });
+    await initialized; await flush();
+    expect(ui.model!.state.charts).toHaveLength(1);
+    expect(ui.editing).toMatchObject({ chartId: first.chartId, text: 'Use maximum' });
+    expect(engine.frames.filter(f => f.kind === Kind.DRAFT).map(requestText)).toEqual(['Use maximum']);
+    expect(engine.frames.some(f => f.kind === Kind.EDIT_CONTEXT)).toBe(true);
+  });
+
   it('resumes the same refinement when typing continues after Escape', async () => {
     const h = await boot(), first = await create(h);
     h.ui.editChart(first.chartId); h.ui.input('Use max', false, 3); await flush();

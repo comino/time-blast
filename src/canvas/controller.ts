@@ -160,7 +160,12 @@ export class CanvasController extends UiController {
     this.hydrated = true;
     this.initializing = false;
     this.sync();
-    for (const entry of [...this.entries.values()].slice(0, RESIDENT_LIMIT)) if (entry.revisionId) this.hydrate(entry);
+    // A chart opened for editing during boot already has its edit job queued;
+    // hydrating it would move that edit to Drafts and the replayed text would
+    // start a new chart.
+    for (const entry of [...this.entries.values()].slice(0, RESIDENT_LIMIT)) {
+      if (entry.revisionId && !(this.editing?.state === 'open' && this.editing.chartId === entry.chartId)) this.hydrate(entry);
+    }
     void this.pumpJobs();
     this.replayInput();
     this.hooks.changed();
