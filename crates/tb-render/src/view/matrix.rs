@@ -1,5 +1,10 @@
 //! Heatmap and surface: x × series × value, sharing one geometry.
 //!
+//! Rows come from the series column (text: first-seen order, i.e. the SQL's ORDER BY), or,
+//! without one, from `roles.grid_rows`: a numeric column keyed by value and ordered
+//! numerically (`hour, dow, avg` → one row per dow, 0 at the top). Row order is a uniform
+//! (`pos`), so a row first seen in a later batch re-ranks without re-uploading anything.
+//!
 //! Both views draw from per-series point buffers `[x, value]` (f32, relative to per-result
 //! origins, like `xy`), so switching heatmap ↔ surface never rebuilds or re-uploads, and a
 //! streamed batch uploads only each series' new tail. Everything that depends on the whole
@@ -26,35 +31,219 @@ use crate::store::{Store, XValues, NULL_TIME};
 pub const MISSING: f32 = f32::MAX;
 /// More distinct series than this make the heatmap the automatic choice over lines/bars.
 pub const MANY_SERIES: usize = 12;
+/// A grid dimension with more distinct values than this is not "low-cardinality": no
+/// automatic heatmap from numeric rows, and numeric rows that never repeat are no grid.
+pub const GRID_MAX_LEVELS: usize = 100;
 /// Default surface rotation in degrees (high x nearer: no reversed buffers needed).
 pub const DEFAULT_ROTATION: f64 = -30.0;
 
 pub static DEF: FamilyDef = FamilyDef { name: "matrix", applicable, create, pipelines: &[&CELL, &RIBBON] };
 
-/// x (any kind) × series × value. Ranks sit after xy's (10–12): line/bar stay the automatic
-/// choice at schema time; `refine` promotes the heatmap once many series show up; the
-/// surface is offered but never automatic.
+/// x (any kind) × rows × value, rows = the series column or `grid_rows`. Ranks sit after
+/// xy's (10–12): line/bar/scatter stay the automatic choice at schema time; `refine` promotes
+/// the heatmap once many series or a numeric grid show up; the surface is offered but never
+/// automatic. A hint (`-- view: heatmap`) picks them from the schema alone.
 fn applicable(roles: &Roles, out: &mut Vec<(View, u8)>) {
-    if roles.x.is_none() || roles.series.is_none() || roles.value.is_none() {
+    if roles.x.is_none() || roles.value.is_none() || (roles.series.is_none() && roles.grid_rows.is_none()) {
         return;
     }
     out.push((View::Heatmap, 20));
     out.push((View::Surface, 40));
 }
 
-/// Data-aware preference (see `view::REFINE`): with more than [`MANY_SERIES`] series on a
-/// time or category x, lines and grouped bars are unreadable; prefer the heatmap.
+/// Data-aware preference (see `view::REFINE`, consulted only without a view hint).
+///
+/// - Text series: with more than [`MANY_SERIES`] on a time or category x, lines and grouped
+///   bars are unreadable; prefer the heatmap.
+/// - Numeric rows (`grid_rows`): rows that are not integer-valued or have more than
+///   [`GRID_MAX_LEVELS`] values, or an x that never repeats (`hour, n, avg`: one row per x),
+///   are no grid: drop heatmap/surface from the menu. When the rows are clearly a grid (see
+///   [`is_grid`]) prefer the heatmap. A hint skips all of this and draws what was asked.
 pub fn refine(store: &Store, views: &mut Vec<View>) {
+    if store.roles.series.is_none() {
+        match grid_rows(store).map(|rows| (integer_levels(rows), rows)) {
+            None => {}
+            Some((Some(_), rows)) if is_grid(store, rows) => promote(views, View::Heatmap),
+            Some((Some(_), _)) if x_repeats(store) => {}
+            Some(_) => views.retain(|&v| !matches!(v, View::Heatmap | View::Surface)),
+        }
+        return;
+    }
     if matches!(store.roles.x, Some((_, XKind::Numeric { integer: false })) | None) {
         return;
     }
-    if store.series_labels.len() <= MANY_SERIES || views.first() == Some(&View::Heatmap) {
-        return;
+    if store.series_labels.len() > MANY_SERIES {
+        promote(views, View::Heatmap);
     }
-    if let Some(i) = views.iter().position(|&v| v == View::Heatmap) {
+}
+
+fn promote(views: &mut Vec<View>, view: View) {
+    if let Some(i) = views.iter().position(|&v| v == view) {
         let v = views.remove(i);
         views.insert(0, v);
     }
+}
+
+/// The `grid_rows` column's values in the store.
+fn grid_rows(store: &Store) -> Option<&[f64]> {
+    let col = store.roles.grid_rows?;
+    let k = store.roles.measures.iter().position(|&m| m == col)?;
+    store.measures.get(k).map(|v| &v[..])
+}
+
+/// u64 keys (f64 bits, ids) → dense index in first-insert order. Open addressing, linear
+/// probing, fmix64 slot index. Why not `store::FxMap`: FxHash keeps the all-zero low bits of
+/// integer-valued doubles (1.0 = 0x3ff0…0), so they all hit one slot and probing goes linear
+/// (`refine` over 2048 non-grid integer rows: 0.86 ms; 35 µs with this, native release p50).
+/// Why not std `HashMap` with a better hasher: its instantiations cost 3.8 KB of Wasm.
+struct KeyIndex {
+    /// (key, index + 1); index 0 = empty slot.
+    slots: Vec<(u64, u32)>,
+    len: u32,
+}
+
+impl KeyIndex {
+    fn with_capacity(n: usize) -> KeyIndex {
+        KeyIndex { slots: vec![(0, 0); (n * 2).next_power_of_two().max(16)], len: 0 }
+    }
+    fn len(&self) -> usize {
+        self.len as usize
+    }
+    #[inline]
+    fn mix(mut k: u64) -> u64 {
+        k ^= k >> 33;
+        k = k.wrapping_mul(0xff51_afd7_ed55_8ccd);
+        k ^= k >> 33;
+        k = k.wrapping_mul(0xc4ce_b9fe_1a85_ec53);
+        k ^ (k >> 33)
+    }
+    /// The key's index, and whether it was new.
+    #[inline]
+    fn insert(&mut self, k: u64) -> (u32, bool) {
+        if (self.len as usize + 1) * 2 > self.slots.len() {
+            let grown = vec![(0, 0); self.slots.len() * 2];
+            let old = std::mem::replace(&mut self.slots, grown);
+            for (key, id) in old {
+                if id != 0 {
+                    self.place(key, id);
+                }
+            }
+        }
+        let mask = self.slots.len() - 1;
+        let mut i = Self::mix(k) as usize & mask;
+        loop {
+            let (key, id) = self.slots[i];
+            if id == 0 {
+                self.len += 1;
+                self.slots[i] = (k, self.len);
+                return (self.len - 1, true);
+            }
+            if key == k {
+                return (id - 1, false);
+            }
+            i = (i + 1) & mask;
+        }
+    }
+    fn place(&mut self, k: u64, id: u32) {
+        let mask = self.slots.len() - 1;
+        let mut i = Self::mix(k) as usize & mask;
+        while self.slots[i].1 != 0 {
+            i = (i + 1) & mask;
+        }
+        self.slots[i] = (k, id);
+    }
+}
+
+#[inline]
+fn integer_valued(v: f64) -> bool {
+    v.is_finite() && v == v.trunc()
+}
+
+/// Normalised hash key of a number (-0 = 0, one NaN).
+#[inline]
+fn key(v: f64) -> u64 {
+    if v.is_nan() {
+        f64::NAN.to_bits()
+    } else {
+        (v + 0.0).to_bits()
+    }
+}
+
+/// Distinct non-null values when every one is integer-valued and there are at most
+/// [`GRID_MAX_LEVELS`]; `None` otherwise (stops at the first offending value).
+fn integer_levels(values: &[f64]) -> Option<usize> {
+    let mut seen = KeyIndex::with_capacity(GRID_MAX_LEVELS);
+    for &v in values {
+        if v.is_nan() {
+            continue;
+        }
+        if !integer_valued(v) {
+            return None;
+        }
+        seen.insert(key(v));
+        if seen.len() > GRID_MAX_LEVELS {
+            return None;
+        }
+    }
+    Some(seen.len())
+}
+
+/// Does any x value occur twice? Checks at most `GRID_MAX_LEVELS²` rows: an x without a
+/// repeat by then has too many levels for a grid anyway.
+fn x_repeats(store: &Store) -> bool {
+    let n = store.rows.min(GRID_MAX_LEVELS * GRID_MAX_LEVELS);
+    let mut seen = KeyIndex::with_capacity(n);
+    for i in 0..n {
+        let k = match &store.x {
+            Some(XValues::Time(v)) => v[i] as u64,
+            Some(XValues::Num(v)) => key(v[i]),
+            Some(XValues::Cat(v)) => v[i] as u64,
+            None => return false,
+        };
+        if !seen.insert(k).1 {
+            return true;
+        }
+    }
+    false
+}
+
+/// Is x × `rows` → value clearly a grid? Both dimensions are low-cardinality and discrete
+/// (integer-valued numbers, or text x), both repeat (≥ 2 levels, each seen more than once),
+/// every (x, row) cell occurs at most once and at least half the cells are filled. A per-x
+/// result with an extra count (`hour, n, avg`) fails: its x never repeats. Time x never
+/// qualifies (calendar/seasons views own that). Cost: one pass over at most
+/// `GRID_MAX_LEVELS²` rows (more rows cannot have unique cells).
+pub fn is_grid(store: &Store, rows: &[f64]) -> bool {
+    let n = store.rows.min(rows.len());
+    if n > GRID_MAX_LEVELS * GRID_MAX_LEVELS {
+        return false;
+    }
+    let x_key = |i: usize| -> Option<u64> {
+        match &store.x {
+            Some(XValues::Num(v)) if v[i].is_nan() || integer_valued(v[i]) => Some(key(v[i])),
+            Some(XValues::Cat(v)) => Some(v[i] as u64),
+            _ => None,
+        }
+    };
+    // Level → dense index; cells as a GRID_MAX_LEVELS² bitset.
+    let (mut xs, mut rs) = (KeyIndex::with_capacity(GRID_MAX_LEVELS), KeyIndex::with_capacity(GRID_MAX_LEVELS));
+    let mut cells = vec![0u64; (GRID_MAX_LEVELS * GRID_MAX_LEVELS).div_ceil(64)];
+    for i in 0..n {
+        let Some(x) = x_key(i) else { return false };
+        let xi = xs.insert(x).0 as usize;
+        let ri = rs.insert(key(rows[i])).0 as usize;
+        if xs.len() > GRID_MAX_LEVELS || rs.len() > GRID_MAX_LEVELS {
+            return false;
+        }
+        let c = xi * GRID_MAX_LEVELS + ri;
+        let (w, bit) = (c / 64, 1u64 << (c % 64));
+        if cells[w] & bit != 0 {
+            return false;
+        }
+        cells[w] |= bit;
+    }
+    let (nx, nr) = (xs.len(), rs.len());
+    nx >= 2 && nr >= 2 && n > nx && n > nr && 2 * n >= nx * nr
 }
 
 fn create(roles: &Roles, _view: View, pipes: &PipelineTable) -> Box<dyn Family> {
@@ -85,6 +274,18 @@ struct Series {
 
 pub struct Matrix {
     mode: XMode,
+    /// Rows from `store.measures[k]` (numeric, ordered by value) instead of the series column.
+    rows_from: Option<usize>,
+    /// Numeric rows: value key → local series index.
+    /// The index is the local series index (rows are created in insertion order).
+    row_map: KeyIndex,
+    /// Numeric rows: each local series' value (NaN = the NULL row, last).
+    row_keys: Vec<f64>,
+    /// Numeric rows: local series indices in ascending value order.
+    row_order: Vec<u32>,
+    /// Display position of each local series: row from the top (heatmap), lane from the back
+    /// (surface), palette and legend index. Identity for text series (first-seen order).
+    pos: Vec<usize>,
     series_map: Vec<u32>,
     series: Vec<Series>,
     labels: Vec<String>,
@@ -193,8 +394,14 @@ impl Matrix {
             Some((_, XKind::Category)) => XMode::Cat,
             _ => XMode::Num,
         };
+        let rows_from = if roles.series.is_some() { None } else { roles.grid_rows.and_then(|c| roles.measures.iter().position(|&m| m == c)) };
         Matrix {
             mode,
+            rows_from,
+            row_map: KeyIndex::with_capacity(16),
+            row_keys: Vec::new(),
+            row_order: Vec::new(),
+            pos: Vec::new(),
             series_map: Vec::new(),
             series: Vec::new(),
             labels: Vec::new(),
@@ -219,10 +426,45 @@ impl Matrix {
         }
         if self.series_map[i] == u32::MAX {
             self.series_map[i] = self.series.len() as u32;
+            self.pos.push(self.series.len());
             self.series.push(Series { sorted: true, ..Default::default() });
             self.labels.push(store.series_labels.labels.get(i).cloned().unwrap_or_default());
         }
         self.series_map[i] as usize
+    }
+
+    /// Local series for a numeric row value (`true` when new; positions are updated).
+    fn local_row(&mut self, v: f64) -> (usize, bool) {
+        let (s, new) = self.row_map.insert(key(v));
+        let s = s as usize;
+        if !new {
+            return (s, false);
+        }
+        debug_assert_eq!(s, self.series.len());
+        self.series.push(Series { sorted: true, ..Default::default() });
+        self.labels.push(if v.is_nan() { String::from("NULL") } else { crate::scale::format_value(v, 12) });
+        let v = if v.is_nan() { f64::NAN } else { v + 0.0 };
+        self.row_keys.push(v);
+        // Insert into ascending value order (NULL = NaN sorts last); positions from there on
+        // shift by one. A binary search + memmove instead of a sort: no new sort
+        // monomorphization (a `sort_by` here added 7.7 KB to the Wasm).
+        let keys = &self.row_keys;
+        let at = self.row_order.partition_point(|&o| keys[o as usize].total_cmp(&v).is_lt());
+        self.row_order.insert(at, s as u32);
+        self.pos.push(0);
+        for (p, &o) in self.row_order.iter().enumerate().skip(at) {
+            self.pos[o as usize] = p;
+        }
+        (s, true)
+    }
+
+    /// Labels in display order (position 0 first).
+    fn ordered_labels(&self) -> Vec<String> {
+        let mut out = vec![String::new(); self.labels.len()];
+        for (i, l) in self.labels.iter().enumerate() {
+            out[self.pos[i]] = l.clone();
+        }
+        out
     }
 
     #[inline]
@@ -324,10 +566,10 @@ impl Matrix {
         }
     }
 
-    /// Lane centre (model Y) of series `i`: series 0 at the back.
+    /// Lane centre (model Y) of local series `i`: position 0 at the back.
     fn lane(&self, i: usize) -> f64 {
         let n = self.series.len().max(1) as f64;
-        0.5 - (i as f64 + 0.5) / n
+        0.5 - (self.pos[i] as f64 + 0.5) / n
     }
 
     /// Ribbons draw from their reversed copy when high x is farther from the viewer.
@@ -394,7 +636,15 @@ impl Family for Matrix {
 
     fn ingest(&mut self, store: &Store, from: usize, to: usize) {
         self.cats = store.x_labels.len();
-        let (Some(value), Some(ids)) = (store.value.as_deref(), store.series.as_deref()) else { return };
+        let Some(value) = store.value.as_deref() else { return };
+        let rows = match self.rows_from {
+            Some(k) => store.measures.get(k).map(|v| &v[..]),
+            None => None,
+        };
+        let ids = store.series.as_deref();
+        if rows.is_none() && ids.is_none() {
+            return;
+        }
         for i in from..to {
             let x = match &store.x {
                 Some(XValues::Time(v)) if v[i] == NULL_TIME => continue,
@@ -404,7 +654,11 @@ impl Family for Matrix {
                 Some(XValues::Cat(v)) => v[i] as f64,
                 None => continue,
             };
-            let s = self.local_series(ids[i], store);
+            let s = match (rows, ids) {
+                (Some(r), _) => self.local_row(r[i]).0,
+                (None, Some(ids)) => self.local_series(ids[i], store),
+                (None, None) => unreachable!(),
+            };
             self.push(s, x, value[i]);
         }
     }
@@ -447,8 +701,8 @@ impl Family for Matrix {
         let vd = self.v_display(view);
         match view {
             View::Heatmap => {
-                // Rows top to bottom in first-seen order: label j sits at row position j.
-                let labels: Vec<String> = self.labels.iter().rev().cloned().collect();
+                // Rows top to bottom in display order: the label at position j sits on row j.
+                let labels: Vec<String> = self.ordered_labels().into_iter().rev().collect();
                 let n = labels.len().max(1) as f64;
                 let (ticks, step) = linear_ticks(vd, 5);
                 let legend = ticks
@@ -463,7 +717,7 @@ impl Family for Matrix {
             _ => AxisModel {
                 x: self.x_scale(xd, store),
                 y: AxisScale::Linear(vd),
-                legend: self.labels.iter().enumerate().map(|(i, l)| (l.clone(), i)).collect(),
+                legend: self.ordered_labels().into_iter().enumerate().map(|(i, l)| (l, i)).collect(),
             },
         }
     }
@@ -532,7 +786,7 @@ impl Family for Matrix {
                     }
                     f.pass.pipeline(cell);
                     f.pass.vertex_buffer(0, s.gpu.id, 0);
-                    f.pass.uniform(&Uniform { a: [(n - 1 - i) as f32, offset, width, gap], ..base });
+                    f.pass.uniform(&Uniform { a: [(n - 1 - self.pos[i]) as f32, offset, width, gap], ..base });
                     f.pass.draw(4, s.pts.len() as u32);
                 }
             }
@@ -583,7 +837,7 @@ impl Family for Matrix {
                     let (id, at) = if reversed { (s.rev_gpu.id, s.rev_start as u32 * 8) } else { (s.gpu.id, 0) };
                     f.pass.vertex_buffer(0, id, at);
                     f.pass.vertex_buffer(1, id, at + 8);
-                    f.pass.uniform(&Uniform { color: palette_rgba(i, 1.0), a: [base.a[0], base.a[1], self.lane(i) as f32, half], ..base });
+                    f.pass.uniform(&Uniform { color: palette_rgba(self.pos[i], 1.0), a: [base.a[0], base.a[1], self.lane(i) as f32, half], ..base });
                     f.pass.draw(4, s.pts.len() as u32 - 1);
                 }
                 // Value axis at the leftmost floor corner, drawn last so it stays visible.
@@ -1028,6 +1282,186 @@ mod tests {
         assert_eq!(m.series[1].pts, vec![[0.0, 1.0], [2.0, 3.0]]);
         match m.axes(View::Heatmap, &store).x {
             AxisScale::Category { labels, .. } => assert_eq!(labels, ["mon", "tue", "wed"]),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    fn num_columns(code: TypeCode) -> Vec<ColumnInfo> {
+        ["hour", "dow", "avg_delay"].iter().map(|n| ColumnInfo { name: n.to_string(), ty: ColumnType { code, param: 0 } }).collect()
+    }
+
+    /// Raw columns for numeric rows (x, row, value), all of `code` (I64 or F64).
+    fn raw_num(code: TypeCode, rows: &[(f64, f64, f64)]) -> Vec<RawColumn<'static>> {
+        let col = |index: usize, f: &dyn Fn(&(f64, f64, f64)) -> f64| {
+            let data: Vec<u8> = match code {
+                TypeCode::I64 => rows.iter().flat_map(|r| (f(r) as i64).to_le_bytes()).collect(),
+                _ => rows.iter().flat_map(|r| f(r).to_le_bytes()).collect(),
+            };
+            RawColumn { index, code, param: 0, rows: rows.len(), data: leak(data), validity: None, bit_offset: 0, offsets: &[], dict: None }
+        };
+        vec![col(0, &|r| r.0), col(1, &|r| r.1), col(2, &|r| r.2)]
+    }
+
+    fn num_store(code: TypeCode, rows: &[(f64, f64, f64)]) -> Store {
+        let cols = num_columns(code);
+        let mut store = Store::new(cols.clone(), infer_roles(&cols));
+        store.append(rows.len(), &raw_num(code, rows));
+        store
+    }
+
+    /// hour × dow → value, in `ORDER BY` value: rows (dow) arrive out of numeric order.
+    fn week_rows() -> Vec<(f64, f64, f64)> {
+        let mut rows = Vec::new();
+        for h in 0..24 {
+            for d in [3, 6, 0, 5, 1, 4, 2] {
+                rows.push((h as f64, d as f64, (h * 7 + d) as f64 * 0.5));
+            }
+        }
+        rows
+    }
+
+    #[test]
+    fn numeric_grid_is_recognised_from_the_rows() {
+        // hour × dow, integer typed: heatmap becomes the automatic choice.
+        let store = num_store(TypeCode::I64, &week_rows());
+        let mut v = available_views(&store.roles);
+        assert_eq!(v[0], View::Bar);
+        refine(&store, &mut v);
+        assert_eq!(v[..2], [View::Heatmap, View::Bar]);
+        // The same grid as doubles (engines whose EXTRACT returns DOUBLE): scatter at schema
+        // time, heatmap once the values are seen to be integers.
+        let store = num_store(TypeCode::F64, &week_rows());
+        let mut v = available_views(&store.roles);
+        assert_eq!(v[0], View::Scatter);
+        refine(&store, &mut v);
+        assert_eq!(v[0], View::Heatmap);
+        // Per-hour count + average (`hour, n, avg`): x never repeats, so no grid; bars stay and
+        // the matrix views leave the menu.
+        let per_hour: Vec<(f64, f64, f64)> = (0..24).map(|h| (h as f64, (100 + h % 5) as f64, h as f64)).collect();
+        let store = num_store(TypeCode::I64, &per_hour);
+        let mut v = available_views(&store.roles);
+        refine(&store, &mut v);
+        assert_eq!(v, [View::Bar, View::Line, View::Scatter, View::Table]);
+        // Non-integer middle values are no row dimension: matrix views are dropped.
+        let wind: Vec<(f64, f64, f64)> = (0..24).flat_map(|h| [(h as f64, 3.25, 1.0), (h as f64, 7.5, 2.0)]).collect();
+        let store = num_store(TypeCode::F64, &wind);
+        let mut v = available_views(&store.roles);
+        refine(&store, &mut v);
+        assert!(!v.contains(&View::Heatmap) && !v.contains(&View::Surface), "{v:?}");
+        // Too many row levels: no matrix views either.
+        let wide: Vec<(f64, f64, f64)> = (0..2).flat_map(|h| (0..(GRID_MAX_LEVELS + 1)).map(move |d| (h as f64, d as f64, 1.0))).collect();
+        let store = num_store(TypeCode::I64, &wide);
+        let mut v = available_views(&store.roles);
+        refine(&store, &mut v);
+        assert!(!v.contains(&View::Heatmap));
+        // A duplicated cell is no grid (but still a valid row dimension).
+        let mut dup = week_rows();
+        dup.push(dup[0]);
+        let store = num_store(TypeCode::I64, &dup);
+        let mut v = available_views(&store.roles);
+        refine(&store, &mut v);
+        assert_eq!(v[0], View::Bar);
+        assert!(v.contains(&View::Heatmap));
+    }
+
+    #[test]
+    fn numeric_rows_are_ordered_by_value_while_streaming() {
+        let rows = week_rows();
+        // First batch: hour 0 without dow 2 (it arrives later), in ORDER BY value order.
+        let first: Vec<(f64, f64, f64)> = rows[..7].iter().copied().filter(|r| r.1 != 2.0).collect();
+        let mut store = num_store(TypeCode::I64, &first);
+        let pipes = pipeline_table();
+        let mut m = Matrix::new(&store.roles, &pipes);
+        m.ingest(&store, 0, store.rows);
+        let ys = |m: &Matrix, store: &Store| match m.axes(View::Heatmap, store).y {
+            AxisScale::Category { labels, .. } => labels,
+            other => panic!("{other:?}"),
+        };
+        // y labels run bottom → top: largest dow at the bottom, 0 on the top row.
+        assert_eq!(ys(&m, &store), ["6", "5", "4", "3", "1", "0"]);
+        assert_eq!(m.labels, ["3", "6", "0", "5", "1", "4"], "local series stay in first-seen order");
+        // The rest, including dow 2: re-ranked (uniforms only), not re-uploaded.
+        upload(&mut m, View::Heatmap, 0);
+        let rest: Vec<(f64, f64, f64)> = rows.iter().copied().filter(|r| !(r.0 == 0.0 && r.1 != 2.0)).collect();
+        store.append(rest.len(), &raw_num(TypeCode::I64, &rest));
+        m.ingest(&store, first.len(), store.rows);
+        assert_eq!(ys(&m, &store), ["6", "5", "4", "3", "2", "1", "0"]);
+        assert_eq!(m.points(), 168);
+        assert!(m.series.iter().all(|s| s.pts.len() == 24));
+        upload(&mut m, View::Heatmap, 100);
+        let pass = draw(&mut m, View::Heatmap, [10.0, 10.0, 336.0, 140.0]);
+        let u = uniforms(&pass);
+        assert_eq!(u.len(), 7, "one draw per row");
+        // Row position from the top = numeric order: draw i belongs to local series i.
+        for (i, s) in m.labels.iter().enumerate() {
+            let dow: f64 = s.parse().unwrap();
+            assert_eq!(u[i].a[0], (6.0 - dow) as f32, "dow {dow} at row {} from the bottom", 6.0 - dow);
+        }
+        assert_eq!(u[0].a[1..3], [-0.5, 1.0], "integer x: centred one-hour cells");
+        assert_eq!(u[0].domain[..2], [-0.5, 23.5]);
+        // Surface lanes and legend follow the same order (dow 0 at the back, palette 0).
+        let model = m.axes(View::Surface, &store);
+        assert_eq!(model.legend[0], ("0".to_string(), 0));
+        assert_eq!(model.legend[6], ("6".to_string(), 6));
+        let lane0 = m.labels.iter().position(|l| l == "0").unwrap();
+        assert_eq!(m.lane(lane0), 0.5 - 0.5 / 7.0);
+    }
+
+    #[test]
+    fn hinted_and_automatic_numeric_heatmap_in_the_renderer() {
+        use crate::hit::Query;
+        use crate::renderer::{Binding, Renderer};
+        let mut r = Renderer::new();
+        r.attach(1, 400.0, 240.0, 1.0);
+        r.frame(false);
+        r.frame_done();
+        let run = |r: &mut Renderer, request: u32, hint: Option<View>, rows: &[(f64, f64, f64)]| -> View {
+            r.bind(1, Binding { request, revision: request, epoch: 0 });
+            r.bind_view(1, hint);
+            r.schema(request, 0, num_columns(TypeCode::I64));
+            r.batch(request, 0, rows.len(), &raw_num(TypeCode::I64, rows));
+            r.done(request, 0);
+            let words = r.frame(true).to_vec();
+            r.frame_done();
+            assert!(words.iter().any(|&w| w == op::DRAW));
+            r.slots[0].shown.as_ref().unwrap().view
+        };
+        assert_eq!(run(&mut r, 1, None, &week_rows()), View::Heatmap, "a clear grid without a hint");
+        let per_hour: Vec<(f64, f64, f64)> = (0..24).map(|h| (h as f64, (100 + h % 5) as f64, h as f64)).collect();
+        assert_eq!(run(&mut r, 2, None, &per_hour), View::Bar);
+        assert_eq!(run(&mut r, 3, Some(View::Heatmap), &per_hour), View::Heatmap, "hinted: drawn from the schema alone");
+        assert_eq!(run(&mut r, 4, Some(View::Heatmap), &week_rows()), View::Heatmap);
+        // A click on the top row picks dow 0 and the hour under the pointer.
+        r.frame(false);
+        r.frame_done();
+        let sc = r.slots[0].scales.clone().unwrap();
+        let px = crate::hit::x_to_px(&sc, 5.0).unwrap() as f32;
+        let py = crate::hit::y_to_px(&sc, 6.0).unwrap() as f32;
+        let j = r.hit(1, 4, Query::Point { x: px, y: py }).unwrap();
+        assert!(j.contains("\"x\":{\"column\":0,\"name\":\"hour\",\"type\":\"integer\",\"value\":5}"), "{j}");
+        assert!(j.contains("\"series\":{\"column\":1,\"name\":\"dow\",\"type\":\"integer\",\"value\":0}"), "{j}");
+    }
+
+    #[test]
+    fn text_rows_keep_result_order() {
+        // ORDER BY month number: rows keep that order, not alphabetical.
+        let cols = vec![
+            ColumnInfo { name: "hour".into(), ty: ColumnType { code: TypeCode::F64, param: 0 } },
+            ColumnInfo { name: "month".into(), ty: ColumnType { code: TypeCode::Utf8, param: 0 } },
+            ColumnInfo { name: "v".into(), ty: ColumnType { code: TypeCode::F64, param: 0 } },
+        ];
+        let months = ["January", "February", "March", "April"];
+        let mut store = Store::new(cols.clone(), infer_roles(&cols));
+        let names: Vec<&str> = (0..8).map(|i| months[i % 4]).collect();
+        let (o, d) = utf8(&names);
+        let hours: Vec<Option<f64>> = (0..8).map(|i| Some((i / 4) as f64)).collect();
+        let vals: Vec<Option<f64>> = (0..8).map(|i| Some(i as f64)).collect();
+        store.append(8, &[values(0, &hours), text(1, 8, &o, &d), values(2, &vals)]);
+        let pipes = pipeline_table();
+        let mut m = Matrix::new(&store.roles, &pipes);
+        m.ingest(&store, 0, 8);
+        match m.axes(View::Heatmap, &store).y {
+            AxisScale::Category { labels, .. } => assert_eq!(labels, ["April", "March", "February", "January"], "bottom → top"),
             other => panic!("{other:?}"),
         }
     }

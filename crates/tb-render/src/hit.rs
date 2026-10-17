@@ -266,9 +266,15 @@ pub fn hit(store: &Store, family: Option<&dyn Family>, s: &Scales, query: Query)
                 View::Heatmap => {
                     let i = nearest_x(store, s, px)?;
                     x = x_value_json(store, s.view, i);
-                    if let (Some(col), Some((_, label))) = (store.roles.series, category_index(&s.model.y, px_to_y(s, py)?)) {
-                        let (id, _) = store.series_labels.find(&label)?;
+                    let row = category_index(&s.model.y, px_to_y(s, py)?);
+                    if let (Some(col), Some((_, label))) = (store.roles.series, &row) {
+                        let (id, _) = store.series_labels.find(label)?;
                         series = Some(format!("{{{},{}}}", column_head(store, col), label_json(&store.series_labels, id)));
+                    } else if let (Some(col), Some((_, label))) = (store.roles.grid_rows, &row) {
+                        // Numeric rows (`grid_rows`): the row's value, found by its drawn label.
+                        let k = store.roles.measures.iter().position(|&m| m == col)?;
+                        let v = store.measures[k].iter().copied().find(|v| if v.is_nan() { label == "NULL" } else { crate::scale::format_value(*v, 12) == *label })?;
+                        series = Some(format!("{{{},\"value\":{}}}", column_head(store, col), number(v)));
                     }
                 }
                 View::Map | View::Tracks | View::Density => {

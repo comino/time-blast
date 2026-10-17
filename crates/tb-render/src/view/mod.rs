@@ -174,6 +174,24 @@ mod tests {
     }
 
     #[test]
+    fn numeric_grid_offers_heatmap_without_changing_the_default() {
+        // hour × dow → value: the heatmap is available (a hint picks it) but bars stay automatic
+        // at schema time; `matrix::refine` promotes the heatmap once the rows show a grid.
+        let grid = roles(&[("hour", TypeCode::I64), ("dow", TypeCode::I64), ("avg_delay", TypeCode::F64)]);
+        let a = available_views(&grid);
+        assert_eq!(a, [View::Bar, View::Line, View::Scatter, View::Heatmap, View::Surface, View::Table]);
+        assert_eq!(choose_view(&a, None), View::Bar);
+        assert_eq!(choose_view(&a, Some(View::Heatmap)), View::Heatmap);
+        assert_eq!(choose_view(&a, Some(View::Surface)), View::Surface);
+        // hour → value alone: no matrix views, bars as before.
+        let hv = roles(&[("hour", TypeCode::I64), ("avg_delay", TypeCode::F64)]);
+        assert_eq!(available_views(&hv), [View::Bar, View::Line, View::Scatter, View::Table]);
+        // Float x with a float measure: scatter stays the automatic choice.
+        let num = roles(&[("wind", TypeCode::F64), ("gust", TypeCode::F64), ("speed", TypeCode::F64)]);
+        assert_eq!(choose_view(&available_views(&num), None), View::Scatter);
+    }
+
+    #[test]
     fn pipelines_are_unique() {
         let t = pipeline_table();
         for (i, p) in t.list.iter().enumerate() {

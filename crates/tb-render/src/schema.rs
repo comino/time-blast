@@ -150,6 +150,10 @@ pub struct Roles {
     pub value: Option<usize>,
     /// Extra numeric columns between x and value, in column order.
     pub measures: Vec<usize>,
+    /// Row dimension for heatmap/surface when there is no series: the single numeric column
+    /// between x and value (`hour, dow, avg_delay`). It stays a measure for the xy views; the
+    /// matrix family keys its rows by this column's values and orders them numerically.
+    pub grid_rows: Option<usize>,
     pub lat: Option<usize>,
     pub lon: Option<usize>,
 }
@@ -194,6 +198,7 @@ pub fn infer_roles(columns: &[ColumnInfo]) -> Roles {
         series: None,
         value: None,
         measures: Vec::new(),
+        grid_rows: None,
         lat: None,
         lon: None,
     };
@@ -266,6 +271,11 @@ pub fn infer_roles(columns: &[ColumnInfo]) -> Roles {
             roles.measures.push(i);
             roles.per_column[i] = Role::Measure;
         }
+    }
+    // A lone numeric middle column can be a grid's second dimension (x × it → value). Whether
+    // the data actually is a grid is decided later, from the rows (`matrix::refine`).
+    if roles.x.is_some() && roles.series.is_none() && roles.value.is_some() && roles.measures.len() == 1 {
+        roles.grid_rows = Some(roles.measures[0]);
     }
     roles
 }
@@ -359,6 +369,26 @@ mod tests {
         assert_eq!(r.per_column[0], Role::Measure);
         let r = infer_roles(&[col("hour", TypeCode::I32), col("speed", TypeCode::F64)]);
         assert_eq!(r.per_column[0], Role::Category);
+    }
+
+    #[test]
+    fn lone_numeric_middle_column_is_a_grid_row_candidate() {
+        // hour × weekday → avg: dow stays a measure (xy) and becomes the matrix row dimension.
+        let r = infer_roles(&[col("hour", TypeCode::I64), col("dow", TypeCode::I64), col("avg_delay", TypeCode::F64)]);
+        assert_eq!(r.x, Some((0, XKind::Numeric { integer: true })));
+        assert_eq!((r.series, r.value, r.grid_rows), (None, Some(2), Some(1)));
+        assert_eq!(r.measures, [1]);
+        assert_eq!(r.per_column, [Role::Category, Role::Measure, Role::Value]);
+        // Candidate only; the data decides (a per-day count is no grid, see matrix::refine).
+        let r = infer_roles(&[col("day", TypeCode::Date32), col("n", TypeCode::I64), col("avg_speed", TypeCode::F64)]);
+        assert_eq!(r.grid_rows, Some(1));
+        // Not with a series, with two measures, or without a middle column.
+        let r = infer_roles(&[col("ts", TypeCode::Timestamp), col("vessel", TypeCode::Utf8), col("speed", TypeCode::F64)]);
+        assert_eq!(r.grid_rows, None);
+        let r = infer_roles(&[col("hour", TypeCode::I32), col("a", TypeCode::F64), col("b", TypeCode::F64), col("v", TypeCode::F64)]);
+        assert_eq!(r.grid_rows, None);
+        let r = infer_roles(&[col("hour", TypeCode::I32), col("speed", TypeCode::F64)]);
+        assert_eq!(r.grid_rows, None);
     }
 
     #[test]
