@@ -1,6 +1,7 @@
 # Current status and handoff
 
-Updated **2026-10-11** (batches 1–3 merged; see Deployed for what runs live). Direction: [vision.md](vision.md). The source repository is
+Persistent-canvas source updated **2026-10-15**; earlier implementation measurements **2026-10-11**
+(batches 1–3 merged; see Deployed for what runs live). Direction: [vision.md](vision.md). The source repository is
 private; the [live synthetic-data demo](https://time-blast.46-224-133-201.sslip.io) is public and,
 since 2026-10-11, **runs batch 1 + batch 2** ([deploy/README.md](../deploy/README.md)): public
 check, real inference, last keystroke → first draw 547 ms.
@@ -146,12 +147,23 @@ hosted-inference latency.**
 - **Cleanup and fixes:** the legacy Canvas2D chart is deleted; a disposed database node could
   cancel another connection's query through a reused connection id (flaky test, fixed).
 
+## Persistent canvases (implemented locally)
+
+**Owner direction, 2026-10-15:** make the canvas a persistent document containing each chart's
+question, SQL and history. Reload rehydrates charts from their definitions; editing sends the
+base question and SQL with the change request; earlier chart/canvas versions can be restored.
+The working tree implements browser-local IndexedDB, exact-SQL hydration, contextual
+edits, chart/canvas history and branch-preserving export/import. Independent storage,
+runtime and controller reviews have closed their reported defects; final browser
+and larger-canvas checks are recorded in [canvas-implementation.md](canvas-implementation.md).
+This work has **not been deployed**. Contextual editing needs the updated inference
+backend (`edit-context-v1`); older endpoints still support new questions and saved-SQL loading.
+
 ## Next
 
-Owner: open `/measure.html` on real hardware and ingest its JSON (`pnpm perf --ingest`). Then
-polish: self-host the DuckDB extensions (one unexplained failed dataset load after deploy), repair
-on database errors (the error goes back to the model for one retry), and renderer robustness (one
-GPU device for all cards, device-loss recovery, line thinning).
+The previous polish backlog is deferred: deploy the measurement page's hidden-tab fix and rerun
+the foreground hardware measurement; self-host DuckDB extensions; repair on database execution
+errors; add device-loss recovery and line thinning. WebGPU already shares one device across cards.
 
 ## Deployed
 

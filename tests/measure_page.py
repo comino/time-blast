@@ -75,6 +75,9 @@ def main():
     for a, b in [("hw.vary.keystroke_to_draw", "hw.vary.keystroke_to_gpu_done"), ("hw.vary.keystroke_to_gpu_done", "hw.vary.keystroke_to_frame")]:
         xs, ys = sorted(m[a]["samples"]), sorted(m[b]["samples"])
         check(xs[len(xs) // 2] <= ys[len(ys) // 2], f"median {a} ≤ {b} ({xs[len(xs) // 2]:.1f} ≤ {ys[len(ys) // 2]:.1f} ms)")
+    check(report["settings"].get("controller") == "canvas" and "IndexedDB" in str(report["settings"].get("storage")),
+          f"drives the app's CanvasController with IndexedDB ({report['settings'].get('controller')}, {report['settings'].get('storage')})")
+    check(len(m.get("hw.echo.input_handler", {}).get("samples", [])) >= reps3 * 10, "per-keystroke input handler cost recorded (µs)")
     gpu = report["hardware"]["gpu"]
     check(gpu.get("software") is True, f"SwiftShader is labelled a software GPU ({gpu.get('engineRenderer')}; {gpu.get('description') or gpu.get('architecture')})")
     check(report["hardware"].get("refreshHz") is not None, f"refresh rate measured ({report['hardware'].get('refreshHz')} Hz)")

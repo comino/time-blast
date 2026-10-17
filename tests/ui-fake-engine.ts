@@ -42,7 +42,9 @@ export class FakeCard implements SlotCard {
   lastTiming?: TimingBreakdown;
   lastStats?: InferStats;
   errors: ErrorInfo[] = [];
+  statusText = '';
   constructor(readonly slot: number, readonly handlers: CardHandlers) {}
+  status(text: string): void { this.statusText = text; }
   showLive(): void { this.visible = true; }
   hide(): void { this.visible = false; }
   keep(): void { this.kept = true; this.visible = true; }

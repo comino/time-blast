@@ -66,8 +66,8 @@ export type StatusComponent = 'database' | 'inference' | 'renderer' | 'coordinat
 export type DatasetSource =
   /** Any entry of public/data/datasets.json (docs/plan-batch-3.md), e.g. 'vessels'. */
   | { kind: 'fixture'; name: string }
-  | { kind: 'file'; name: string; file: File }
-  | { kind: 'url'; name: string; url: string }
+  | { kind: 'file'; name: string; file: File; table?: string; format?: 'csv' | 'parquet' }
+  | { kind: 'url'; name: string; url: string; table?: string; format?: 'csv' | 'parquet' }
   /** Remote database node over a tb1 WebSocket (e.g. crates/database-server → ClickHouse). */
   | { kind: 'remote'; name: string; endpoint: string };
 
@@ -101,7 +101,7 @@ export type ColumnRole = 'time' | 'category' | 'series' | 'value' | 'measure' | 
 /** JS face of the Rust/Wasm renderer (crates/tb-render) plus its WebGPU/WebGL2 shim. */
 export interface RendererNode {
   /** Register a render target ahead of any result. */
-  attach(slot: number, canvas: OffscreenCanvas, size: SlotSize): void;
+  attach(slot: number, canvas: OffscreenCanvas, size: SlotSize, dormant?: boolean): void;
   resize(slot: number, size: SlotSize): void;
   detach(slot: number): void;
   /** null = automatic choice from column roles. */
@@ -109,6 +109,7 @@ export interface RendererNode {
   /** View-specific interaction. Names: `rotation` (surface, degrees −180..180),
    * `playback` (tracks, 0..1 of the time range). */
   setParam(slot: number, name: string, value: number): void;
+  setPresentation(slot: number, presentation: { view: ViewName | null; params: Record<string, number> }): void;
   /** BIND/UNBIND, RESULT_SCHEMA, BATCH, DONE frames. Emits DRAWN to the coordinator. */
   handle(frame: LocalFrame): void;
   /** Build an export of the slot's current result and post `{type:'export'}` to the UI. */
@@ -162,19 +163,20 @@ export type CreateDatabase = (emit: Emit) => Promise<DatabaseNode>;
  * (`{frame}`); everything else is UI control that never leaves the page. */
 export type UiToEngine =
   | { type: 'frame'; bytes: ArrayBuffer }
-  | { type: 'boot'; inference: InferencePlacement; dataset: DatasetSource }
-  | { type: 'dataset'; source: DatasetSource }
+  | { type: 'boot'; inference: InferencePlacement; dataset: DatasetSource; token?: string }
+  | { type: 'dataset'; source: DatasetSource; token?: string }
   | { type: 'inference'; placement: InferencePlacement }
-  | { type: 'attach'; slot: number; canvas: OffscreenCanvas; size: SlotSize }
+  | { type: 'attach'; slot: number; canvas: OffscreenCanvas; size: SlotSize; dormant?: boolean }
   | { type: 'resize'; slot: number; size: SlotSize }
-  | { type: 'detach'; slot: number }
-  | { type: 'view'; slot: number; view: ViewName | null }
-  | { type: 'param'; slot: number; name: string; value: number }
-  | { type: 'export'; slot: number; format: 'csv' }
+  | { type: 'detach'; slot: number; generation?: number }
+  | { type: 'view'; slot: number; view: ViewName | null; generation?: number; request?: number }
+  | { type: 'param'; slot: number; name: string; value: number; generation?: number; request?: number }
+  | { type: 'presentation'; slot: number; generation: number; presentation: { view: ViewName | null; params: Record<string, number> }; manualViewRevision?: number }
+  | { type: 'export'; slot: number; format: 'csv'; generation?: number; request?: number }
   /** Chart-as-query: the engine hit-tests, rewrites `sql` (the card's SQL for `request`) and
    * sends a QUERY frame to the coordinator. `keyAt`/`sentAt`: Unix ms of the pointer event and
    * of posting (stamped KEY_INPUT and DRAFT_SENT). */
-  | { type: 'manipulate'; slot: number; request: number; revision: number; epoch: number; context: number; sql: string; gesture: Gesture; keyAt: number; sentAt: number };
+  | { type: 'manipulate'; slot: number; request: number; revision: number; epoch: number; context: number; sql: string; gesture: Gesture; keyAt: number; sentAt: number; generation?: number; prepareOnly?: boolean };
 
 export type InferencePlacement =
   | { kind: 'remote'; endpoint: string }
@@ -186,12 +188,14 @@ export type WebGpuModel = 'qwen-0.5b' | 'qwen-1.5b' | 'qwen3-4b';
 export type EngineToUi =
   | { type: 'frame'; bytes: ArrayBuffer }
   | { type: 'context'; context: DatasetContext }
-  | { type: 'views'; slot: number; available: ViewName[]; chosen: ViewName; columns?: Array<{ name: string; role: ColumnRole | '' }> }
-  | { type: 'table'; slot: number; columns: string[]; rows: string[][]; total: number }
-  | { type: 'axes'; slot: number; ticks: AxisTicks }
-  | { type: 'export'; slot: number; blob: Blob; filename: string }
+  | { type: 'activation'; token: string; context: DatasetContext | null }
+  | { type: 'views'; slot: number; request?: number; generation?: number; available: ViewName[]; chosen: ViewName; columns?: Array<{ name: string; role: ColumnRole | '' }> }
+  | { type: 'table'; slot: number; request?: number; generation?: number; columns: string[]; rows: string[][]; total: number }
+  | { type: 'axes'; slot: number; request?: number; generation?: number; ticks: AxisTicks }
+  | { type: 'export'; slot: number; request?: number; generation?: number; blob: Blob; filename: string }
   /** Outcome of a `manipulate`: the SQL sent as QUERY (null: nothing to do, see `reason`). */
-  | { type: 'manipulated'; slot: number; from: string; sql: string | null; method: 'rewrite' | 'wrap' | 'as-is' | 'none'; reason: string; ms: number }
+  | { type: 'manipulated'; slot: number; request?: number; generation?: number; from: string; sql: string | null; method: 'rewrite' | 'wrap' | 'as-is' | 'none'; reason: string; ms: number }
+  | { type: 'capabilities'; component: 'inference'; capabilities: string[] }
   /** Boot-trace marks from the engine worker (src/engine/boot-trace.ts, docs/batch-3/cold-start.md). */
   | { type: 'trace'; marks: BootMark[] };
 

@@ -10,6 +10,9 @@ background, and where it conflicts with the vision, the vision wins.
 |---|---|
 | [vision.md](vision.md) | Purpose, metric, architecture principles, what to unlearn. **Canonical.** |
 | [status.md](status.md) | What is deployed and running right now, and the next steps |
+| [canvas-implementation.md](canvas-implementation.md) | Persistent canvas implementation, verification, operational limits and acceptance evidence (2026-10-15; not deployed) |
+| [persistent-canvas.md](persistent-canvas.md) | Original design for durable canvas documents, SQL hydration, contextual editing and revision history; implemented contract is linked above |
+| [Persistent canvas critical review](reviews/persistent-canvas-2026-10-15.md) | Three independent reviews, required design corrections and the first complete implementation path |
 | [plan-batch-3.md](plan-batch-3.md) | Batch 3 (done): cold start, generality, perf harness, real-hardware page |
 | [batch-3/](batch-3/) | Batch 3 per area: [cold-start.md](batch-3/cold-start.md), [generality.md](batch-3/generality.md) (real datasets, per-dataset evals), [measurement.md](batch-3/measurement.md) |
 | [perf/README.md](perf/README.md) | `pnpm perf`: regression harness, history, budgets, dashboard (`perf/index.html`); `/measure.html` for real hardware |
@@ -45,7 +48,7 @@ working on the relevant layer.
 | [inference.md](inference.md) | Built around the typed plan and Enter; speculation ideas remain relevant |
 | [roadmap.md](roadmap.md) | Prototype milestones; the priorities in status.md replace its "next" sections |
 | [canvas-reference.md](canvas-reference.md) | Notes on the Data Canvas reference; already absorbed into the UI |
-| [reviews/](reviews/) | Reviews of the prototype, including its 7-field plan |
+| [Prototype reviews](reviews/README.md#historical-prototype-reviews) | Historical reviews of the prototype, including its 7-field plan |
 | [prototype.md](prototype.md) | The prototype's browser implementation (adapters, plan compiler, Canvas2D); code deleted in batch 1 |
 | [backend-prototype.md](backend-prototype.md) | The prototype's JSON-plan inference service; replaced by the tb1 server ([batch-1/inference.md](batch-1/inference.md)) |
 | [verification.md](verification.md), [benchmark-browser.json](benchmark-browser.json) | Test and benchmark records of the prototype; their commands refer to deleted scripts |

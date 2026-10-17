@@ -1,0 +1,145 @@
+{
+  "kind": "timeblast.canvas-metadata-benchmark",
+  "at": "2026-10-15T21:48:52.710Z",
+  "browser": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/145.0.7632.0 Safari/537.36",
+  "hardwareConcurrency": 4,
+  "notes": "Main-thread document/IndexedDB only; no inference, GPU, network or query data. Five revisions per chart; all canvas membership snapshots retained. Warm repeats share the browser process. Not thought-to-result or photon latency.",
+  "cases": [
+    {
+      "charts": 1,
+      "revisions": 5,
+      "commits": 6,
+      "bytes": 8842,
+      "initialSaveMs": 8.734999656677246,
+      "coldLoadMs": 3.0199999809265137,
+      "warmLoadMs": {
+        "n": 5,
+        "p50": 2.059999942779541,
+        "p95": 3.7749996185302734,
+        "max": 3.7749996185302734
+      },
+      "forkMs": {
+        "n": 5,
+        "p50": 0.6749997138977051,
+        "p95": 1.255000114440918,
+        "max": 1.255000114440918
+      },
+      "exportMs": {
+        "n": 5,
+        "p50": 0.2650003433227539,
+        "p95": 0.5,
+        "max": 0.5
+      },
+      "authoringWithPersistenceUs": {
+        "n": 100,
+        "p50": 190.00005722045898,
+        "p95": 794.9995994567871,
+        "max": 2090.0001525878906
+      },
+      "authoringModelOnlyUs": {
+        "n": 100,
+        "p50": 25.00009536743164,
+        "p95": 45.00007629394531,
+        "max": 260.00022888183594
+      },
+      "acknowledgementMs": {
+        "n": 100,
+        "p50": 1.265000343322754,
+        "p95": 2.315000057220459,
+        "max": 5.049999713897705
+      },
+      "saveState": "saved"
+    },
+    {
+      "charts": 10,
+      "revisions": 50,
+      "commits": 51,
+      "bytes": 115640,
+      "initialSaveMs": 39.355000019073486,
+      "coldLoadMs": 7.529999732971191,
+      "warmLoadMs": {
+        "n": 5,
+        "p50": 9.339999675750732,
+        "p95": 11.934999942779541,
+        "max": 11.934999942779541
+      },
+      "forkMs": {
+        "n": 5,
+        "p50": 4.755000114440918,
+        "p95": 7.960000038146973,
+        "max": 7.960000038146973
+      },
+      "exportMs": {
+        "n": 5,
+        "p50": 1.7549996376037598,
+        "p95": 2.440000057220459,
+        "max": 2.440000057220459
+      },
+      "authoringWithPersistenceUs": {
+        "n": 100,
+        "p50": 205.0004005432129,
+        "p95": 525.0000953674316,
+        "max": 769.9999809265137
+      },
+      "authoringModelOnlyUs": {
+        "n": 100,
+        "p50": 25.00009536743164,
+        "p95": 65.00005722045898,
+        "max": 190.00005722045898
+      },
+      "acknowledgementMs": {
+        "n": 100,
+        "p50": 1.1649999618530273,
+        "p95": 2.429999828338623,
+        "max": 5.159999847412109
+      },
+      "saveState": "saved"
+    },
+    {
+      "charts": 100,
+      "revisions": 500,
+      "commits": 501,
+      "bytes": 4547934,
+      "initialSaveMs": 597.4900002479553,
+      "coldLoadMs": 125.05499982833862,
+      "warmLoadMs": {
+        "n": 5,
+        "p50": 129.95499992370605,
+        "p95": 137.25999975204468,
+        "max": 137.25999975204468
+      },
+      "forkMs": {
+        "n": 5,
+        "p50": 133.50500011444092,
+        "p95": 144.28999996185303,
+        "max": 144.28999996185303
+      },
+      "exportMs": {
+        "n": 5,
+        "p50": 51.855000019073486,
+        "p95": 58.67500019073486,
+        "max": 58.67500019073486
+      },
+      "authoringWithPersistenceUs": {
+        "n": 100,
+        "p50": 175.00019073486328,
+        "p95": 625,
+        "max": 2875
+      },
+      "authoringModelOnlyUs": {
+        "n": 100,
+        "p50": 24.999618530273438,
+        "p95": 70.00017166137695,
+        "max": 519.9999809265137
+      },
+      "acknowledgementMs": {
+        "n": 100,
+        "p50": 1.4650001525878906,
+        "p95": 4.289999961853027,
+        "max": 9.190000057220459
+      },
+      "saveState": "saved"
+    }
+  ],
+  "browserVersion": "145.0.7632.0"
+}

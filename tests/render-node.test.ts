@@ -3,7 +3,7 @@ import { Dictionary, Float64, Int32, makeData, makeVector, Table, TimestampMicro
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { EngineToUi, LocalFrame } from '../src/engine/contracts';
 import { createRenderer, type Renderer } from '../src/engine/render';
-import type { NullBackend } from '../src/engine/render/backend';
+import type { GpuBackend, NullBackend } from '../src/engine/render/backend';
 import { formatMicros } from '../src/engine/render/table';
 import { header, Kind, readJson, Stage, type Frame } from '../src/protocol/frame';
 
@@ -52,6 +52,65 @@ const drawn = (frames: Frame[]) => frames.filter(f => f.kind === Kind.DRAWN);
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 
 describe('tb-render RendererNode (null GPU backend, real Wasm core)', () => {
+  it('keeps dormant canvas shells out of GPU/Wasm residency and rehydrates released targets', async () => {
+    const r = await createRenderer(() => {}, () => {}, { wasm, backend: 'null' });
+    const backend = r.backend as NullBackend, surfaces = new Set<number>();
+    (backend as GpuBackend).attach = (slot: number) => { surfaces.add(slot); };
+    (backend as GpuBackend).detach = (slot: number) => { surfaces.delete(slot); };
+    const words = (...values: number[]) => new Uint8Array(new Uint32Array(values).buffer);
+    const target = (kind: Kind, slot: number, generation: number) => r.handle({ ...header(kind), stamps: [], payload: words(slot, generation) });
+    const targetBind = (request: number, generation: number) => r.handle({ ...header(Kind.BIND, { request, revision: 1 }), stamps: [], payload: words(1, 256, generation) });
+    for (let slot = 1; slot <= 100; slot++) r.attach(slot, canvas, size, true);
+    r.resize(100, { ...size, width: 900 });
+    r.frame(false);
+    expect(surfaces.size).toBe(0);
+    expect(backend.live.size).toBe(0);
+    for (let slot = 1; slot <= 8; slot++) target(Kind.REGISTER_TARGET, slot, 1);
+    expect(surfaces.size).toBe(8);
+    targetBind(50, 1);
+    const b = timestampSchema();
+    r.handle(schemaFrame(50, b)); r.handle(batchFrame(50, b)); r.handle(doneFrame(50));
+    expect(backend.live.size).toBeGreaterThan(0);
+    const liveBeforeRelease = backend.live.size;
+    target(Kind.RELEASE_TARGET, 1, 1);
+    expect(surfaces.size).toBe(7);
+    expect(backend.live.size).toBeLessThan(liveBeforeRelease);
+    expect(r.views(1)).toEqual([]);
+    const draws = backend.draws;
+    target(Kind.REGISTER_TARGET, 1, 1); targetBind(51, 1);
+    r.handle(batchFrame(50, b)); r.handle(batchFrame(51, b)); r.frame(false);
+    expect(surfaces.size).toBe(7);
+    expect(backend.draws).toBe(draws);
+    target(Kind.REGISTER_TARGET, 1, 2); targetBind(52, 2);
+    r.handle(schemaFrame(52, b)); r.handle(batchFrame(52, b)); r.handle(doneFrame(52));
+    expect(surfaces.size).toBe(8);
+    expect(backend.draws).toBeGreaterThan(draws);
+    for (let slot = 1; slot <= 100; slot++) r.detach(slot);
+    expect(surfaces.size).toBe(0);
+    expect(backend.live.size).toBe(0);
+  });
+  it('rejects old BINDs and streams across target generations while retaining the displayed image', async () => {
+    const h = await harness(), b = timestampSchema();
+    const words = (...values: number[]) => new Uint8Array(new Uint32Array(values).buffer);
+    const register = (generation: number) => h.r.handle({ ...header(Kind.REGISTER_TARGET), stamps: [], payload: words(1, generation) });
+    const targetBind = (request: number, generation: number) => h.r.handle({ ...header(Kind.BIND, { request, revision: 1 }), stamps: [], payload: words(1, 256, generation) });
+    register(1); targetBind(100, 1);
+    h.r.handle(schemaFrame(100, b)); h.r.handle(batchFrame(100, b)); h.r.handle(doneFrame(100));
+    const passes = h.backend.passes;
+    register(2);
+    targetBind(101, 1); h.r.handle(bind(1, 102));
+    h.r.handle(batchFrame(100, b)); h.r.handle(batchFrame(101, b)); h.r.frame(false);
+    expect(h.backend.passes).toBe(passes);
+    expect(h.r.core.x.tb_accepts(100, 0)).toBeLessThan(0);
+    h.r.setPresentation(1, { view: 'scatter', params: {} });
+    targetBind(103, 2); h.r.handle(schemaFrame(103, b)); h.r.handle(batchFrame(103, b));
+    expect(h.ui.filter(m => m.type === 'views').at(-1)).toMatchObject({ request: 103, chosen: 'scatter' });
+    h.r.setPresentation(1, { view: null, params: {} });
+    expect(h.ui.filter(m => m.type === 'views').at(-1)).toMatchObject({ request: 103, chosen: 'line' });
+    h.r.handle({ ...header(Kind.RELEASE_TARGET), stamps: [], payload: words(1, 2) });
+    targetBind(104, 2);
+    expect(h.r.core.x.tb_accepts(104, 0)).toBeLessThan(0);
+  });
   let h: Harness;
   beforeAll(async () => { h = await harness(); });
 

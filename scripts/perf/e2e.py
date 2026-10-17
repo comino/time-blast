@@ -34,7 +34,7 @@ from fake_inference import FakeInference  # noqa: E402
 SOFTWARE = ["--enable-unsafe-webgpu", "--use-angle=swiftshader", "--enable-features=Vulkan", "--use-vulkan=swiftshader"]
 QUESTIONS = ["average speed per hour by vessel", "wind every ten minutes", "max speed per vessel"]
 HOURLY = "average speed per hour by vessel"
-LIVE = 'article.slot-card[data-live="true"]'
+LIVE_SLOT = "() => globalThis.__timeBlastUi.controller.liveSlot"  # the card the editor drives (both controllers)
 LETTERS = "abcdefghijklmnopqrstuvwxyz"
 
 # Runs before any page script: timestamps engine messages from the first Worker on.
@@ -94,7 +94,11 @@ def wait_for(fn, timeout, what, interval=0.03):
 
 
 def revision(page):
-    return page.evaluate("() => globalThis.__timeBlastUi.controller.drafts.revision")
+    """Wire revision of the text just typed. The canvas controller (the app since the persistent
+    canvas) numbers each draft session: wire revision = draft sequence + 1. The transient
+    UiController of batches 1-3 has one editor-wide DraftEncoder."""
+    return page.evaluate("""() => { const c = globalThis.__timeBlastUi.controller;
+      return 'editing' in c ? (c.editing ? c.editing.sequence + 1 : 0) : c.drafts.revision; }""")
 
 
 def type_question(page, text, delay):
@@ -104,10 +108,20 @@ def type_question(page, text, delay):
     page.keyboard.type(text, delay=delay)
 
 
+UNSTAMPED = ("drawn without a KEY_INPUT stamp: the request carries no input timestamp "
+             "(canvas saved-SQL QUERY frames have no stamps), so input -> draw is not measurable")
+
+
 def drawn_timing(page, rev, since=0):
-    """Newest TIMING with a first draw for revision `rev` (after index `since`)."""
-    return page.evaluate("""([rev, since]) => { const t = window.__e2e.timings.slice(since)
-      .filter(t => t.revision === rev && t.headline !== null); return t.length ? t[t.length - 1] : null; }""", [rev, since])
+    """Newest TIMING with a first draw for revision `rev` (after index `since`). Raises when the
+    revision was drawn but its frames carry no keystroke stamp (no headline can ever arrive)."""
+    t = page.evaluate("""([rev, since]) => { const t = window.__e2e.timings.slice(since).filter(t => t.revision === rev);
+      const drawn = t.filter(t => t.headline !== null);
+      if (drawn.length) return drawn[drawn.length - 1];
+      return t.some(t => t.stages.includes(16) && !t.stages.includes(1)) ? 'unstamped' : null; }""", [rev, since])
+    if t == "unstamped":
+        raise AssertionError(UNSTAMPED)
+    return t
 
 
 def settled(page, rev, since=0):
@@ -173,6 +187,7 @@ def main():
     p.add_argument("--boots", type=int, default=2)
     p.add_argument("--delay", type=int, default=70, help="ms between keystrokes")
     p.add_argument("--boot-timeout", type=float, default=240)
+    p.add_argument("--parts", default="typing,chips,gestures", help="which interleaved round parts to run")
     p.add_argument("--json")
     args = p.parse_args()
     fake = FakeInference().start()
@@ -248,12 +263,23 @@ def main():
                 m = page.evaluate(f"() => window.__e2e.manipulated.slice({m0})")
                 if m and m[-1]["sql"] is None:
                     raise AssertionError(f"{name}: engine did nothing ({m[-1]['reason']})")
-                ts = page.evaluate(f"() => window.__e2e.timings.filter(t => t.request > {r0} && t.headline !== null && !t.stages.includes(4))")
-                return ts[-1] if m and ts else None
-            t = wait_for(found, 30, name)
+                ts = page.evaluate(f"() => window.__e2e.timings.filter(t => t.request > {r0} && !t.stages.includes(4))")
+                drawn = [t for t in ts if t["headline"] is not None]
+                if m and not drawn and any(16 in t["stages"] and 1 not in t["stages"] for t in ts):
+                    raise AssertionError(f"{name}: {UNSTAMPED}")
+                return drawn[-1] if m and drawn else None
+            try:
+                t = wait_for(found, 30, name)
+            except AssertionError as e:
+                if "timed out" not in str(e):
+                    raise
+                m = page.evaluate(f"() => window.__e2e.manipulated.slice({m0}).map(x => [x.method, x.reason, !!x.sql])")
+                ts = page.evaluate(f"() => window.__e2e.timings.filter(t => t.request > {r0}).map(t => [t.request, t.revision, t.headline, t.stages.join(',')])")
+                raise AssertionError(f"{e} (manipulated {m[-3:]}, later TIMINGs {ts[-3:]})") from None
             time.sleep(0.2)
             return t
 
+        parts = set(args.parts.split(","))
         for k in range(args.rounds):
             letter = LETTERS[k % 26]
             # a. typing → first draw
@@ -277,56 +303,57 @@ def main():
             except AssertionError as e:
                 fail(str(e))
                 continue
-            # b. chip click → first draw
-            try:
-                cs = wait_for(lambda: (lambda cs: cs if cs and cs[0]["from"] == drawn_request and all(c["status"] == "ready" for c in cs) else None)(chips(page)),
-                              20, f"round {k}: chips")
-                chip = cs[k % len(cs)]
+            if "chips" in parts:
+                # b. chip click → first draw
+                try:
+                    cs = wait_for(lambda: (lambda cs: cs if cs and cs[0]["from"] == drawn_request and all(c["status"] == "ready" for c in cs) else None)(chips(page)),
+                                  20, f"round {k}: chips")
+                    chip = cs[k % len(cs)]
+                    since = page.evaluate("() => window.__e2e.timings.length")
+                    page.locator(f'[data-el="suggest-chips"] button[data-chip="{chip["id"]}"]').click()
+                    rev = revision(page)
+                    t = wait_for(lambda: drawn_timing(page, rev, since), 60, f"round {k}: chip draw")
+                    add("e2e.chip_to_draw", t["headline"], t["rows"])
+                except AssertionError as e:
+                    fail(str(e))
+            if "gestures" in parts:
+                # c. chart as query on the hourly per-vessel line
                 since = page.evaluate("() => window.__e2e.timings.length")
-                page.locator(f'[data-el="suggest-chips"] button[data-chip="{chip["id"]}"]').click()
+                type_question(page, HOURLY + " " + LETTERS[25 - k % 26], args.delay)
                 rev = revision(page)
-                t = wait_for(lambda: drawn_timing(page, rev, since), 60, f"round {k}: chip draw")
-                add("e2e.chip_to_draw", t["headline"], t["rows"])
-            except AssertionError as e:
-                fail(str(e))
-            # c. chart as query on the hourly per-vessel line
-            since = page.evaluate("() => window.__e2e.timings.length")
-            type_question(page, HOURLY + " " + LETTERS[25 - k % 26], args.delay)
-            rev = revision(page)
-            try:
-                wait_for(lambda: settled(page, rev, since), 60, f"round {k}: hourly question")
-                wait_for(lambda: page.locator(LIVE).count() == 1, 10, "live card")
-                card = page.locator(LIVE)
-                slot = card.get_attribute("data-slot")
-                wait_for(lambda: page.evaluate(f"() => !!window.__e2e.axes[{slot}]"), 10, "axes")
-                time.sleep(0.3)
-                box, scale, plot = card_geometry(page, card)
-                y = plot["top"] + plot["height"] * 0.5
-                a = plot["left"] + plot["width"] * (0.1 + 0.07 * (k % 10))
-                b = a + plot["width"] * 0.02
+                try:
+                    wait_for(lambda: settled(page, rev, since), 60, f"round {k}: hourly question")
+                    slot = wait_for(lambda: page.evaluate(LIVE_SLOT), 10, "live card")
+                    card = page.locator(f'article.slot-card[data-slot="{slot}"]')
+                    wait_for(lambda: page.evaluate(f"() => !!window.__e2e.axes[{slot}]"), 10, "axes")
+                    time.sleep(0.3)
+                    box, scale, plot = card_geometry(page, card)
+                    y = plot["top"] + plot["height"] * 0.5
+                    a = plot["left"] + plot["width"] * (0.1 + 0.07 * (k % 10))
+                    b = a + plot["width"] * 0.02
 
-                def at(x):
-                    return box["x"] + x * scale, box["y"] + y * scale
+                    def at(x):
+                        return box["x"] + x * scale, box["y"] + y * scale
 
-                def brush():
-                    page.mouse.move(*at(a))
-                    page.mouse.down()
-                    page.mouse.move(*at((a + b) / 2), steps=3)
-                    page.mouse.move(*at(b), steps=3)
-                    page.mouse.up()
+                    def brush():
+                        page.mouse.move(*at(a))
+                        page.mouse.down()
+                        page.mouse.move(*at((a + b) / 2), steps=3)
+                        page.mouse.move(*at(b), steps=3)
+                        page.mouse.up()
 
-                def back():
-                    card.locator('[data-c="plot"]').focus()
-                    page.keyboard.press("Escape")
-                t = gesture(f"round {k}: brush", brush)
-                add("e2e.gesture_brush_to_draw", t["headline"], t["rows"])
-                t = gesture(f"round {k}: legend", lambda: card.locator(f'.legend span[data-i="{k % 6}"]').click())
-                add("e2e.gesture_legend_to_draw", t["headline"], t["rows"])
-                for _ in range(2):
-                    t = gesture(f"round {k}: back", back)
-                    add("e2e.gesture_back_to_draw", t["headline"], t["rows"])
-            except AssertionError as e:
-                fail(str(e))
+                    def back():
+                        card.locator('[data-c="plot"]').focus()
+                        page.keyboard.press("Escape")
+                    t = gesture(f"round {k}: brush", brush)
+                    add("e2e.gesture_brush_to_draw", t["headline"], t["rows"])
+                    t = gesture(f"round {k}: legend", lambda: card.locator(f'.legend span[data-i="{k % 6}"]').click())
+                    add("e2e.gesture_legend_to_draw", t["headline"], t["rows"])
+                    for _ in range(2):
+                        t = gesture(f"round {k}: back", back)
+                        add("e2e.gesture_back_to_draw", t["headline"], t["rows"])
+                except AssertionError as e:
+                    fail(str(e))
             print(f"round {k + 1}/{args.rounds}: " + ", ".join(f"{m.split('.', 1)[1]} {v[-1]}" for m, v in samples.items() if m.startswith("e2e.") and v), flush=True)
         errors = page.evaluate("() => window.__e2e.errors")
         # Refused warm-ups of superseded suggestions are expected; they never reach a card.

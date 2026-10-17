@@ -1,0 +1,98 @@
+{
+  "kind": "timeblast.canvas-edit-eval",
+  "version": 1,
+  "date": "2026-10-15T21:48:44.760Z",
+  "endpoint": "ws://127.0.0.1:8793/session",
+  "models": [
+    "openai/gpt-oss-120b"
+  ],
+  "environment": {
+    "node": "v23.11.1",
+    "platform": "linux",
+    "arch": "arm64",
+    "cpus": 4,
+    "loadAtStart": [
+      2.91,
+      2.73,
+      1.9
+    ],
+    "duckdbWasm": "1.32.0",
+    "browser": null
+  },
+  "sources": {
+    "src/protocol/edit.ts": "7fd469f947b7c871c12d1c6f678a30f935af3556d564fc533a76d8e04f629b5d",
+    "src/canvas/protocol.ts": "24de95d64f7a9aa28c7522ff0435a9035fba6f9899dd9ac59ef5d5264a304c1d",
+    "crates/inference-server/src/prompt.rs": "27601ece442fae51aea0d0ead8a3f16998992d37015a9a3bba05c24e1b056ef6",
+    "crates/inference-server/src/session.rs": "5424f91cd1589d806a05546880cac981324c1e811279af1ad2ff11f2590ce5f9",
+    "crates/inference-server/src/infer.rs": "0661e1a992a438fd42182d70faa970755031f821a88d68ae24beb87c82216e89"
+  },
+  "measurement": "One sequential pass. First request per dataset opens a new inference connection; provider warmth is unknown. Timings are client EDIT_INFER to SQL and SQL execution, not rendering or photons. Database result cache, rollups and compression disabled. No speculative requests.",
+  "datasets": [
+    {
+      "dataset": "weather",
+      "loadMs": 4529.437405,
+      "tables": [
+        {
+          "name": "weather",
+          "rows": 210528
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "n": 1,
+    "correct": 1,
+    "costUsd": 0.00043830000000000003,
+    "unknownCost": false,
+    "automaticRepairCases": 1,
+    "sqlMs": {
+      "p50": 1108.821739,
+      "p95": 1108.821739,
+      "p99": 1108.821739
+    }
+  },
+  "cases": [
+    {
+      "id": "guard_repair_alias",
+      "dataset": "weather",
+      "base": {
+        "mode": "refine",
+        "originalQuestion": "Daily average temperature in Berlin during 2024",
+        "sql": "SELECT date_trunc('day', time) AS day, avg(temperature) AS temperature FROM weather WHERE city = 'Berlin' AND time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' GROUP BY 1 ORDER BY 1",
+        "history": [
+          {
+            "kind": "create",
+            "text": "Daily average temperature in Berlin during 2024"
+          }
+        ],
+        "presentation": {
+          "view": "line",
+          "params": {}
+        }
+      },
+      "request": "Use the maximum instead of the average. For the time bucket, use day as a bare alias, without AS and without quotes: date_trunc('day', time) day.",
+      "reference": "SELECT date_trunc('day', time) AS day, max(temperature) AS temperature FROM weather WHERE city = 'Berlin' AND time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' GROUP BY 1 ORDER BY 1",
+      "firstDeltaMs": 778.0270780000001,
+      "sql": "SELECT date_trunc('day', time) AS day, max(temperature) temperature FROM weather WHERE city = 'Berlin' AND time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' GROUP BY 1 ORDER BY 1",
+      "sqlMs": 1108.821739,
+      "cached": false,
+      "providerFirstTokenMs": 773.26220703125,
+      "stats": {
+        "attempts": 2,
+        "cachedTokens": 1280,
+        "completionTokens": 201,
+        "costUsd": 0.00043830000000000003,
+        "model": "openai/gpt-oss-120b",
+        "promptTokens": 2758,
+        "reasoningTokens": 66
+      },
+      "category": "exact",
+      "reason": "",
+      "correct": true,
+      "expectedRows": 366,
+      "resultRows": 366,
+      "executionMs": 12.830343999999968,
+      "automaticRepairObserved": true
+    }
+  ]
+}

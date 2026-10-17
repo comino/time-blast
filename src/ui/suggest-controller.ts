@@ -39,7 +39,7 @@ export interface SuggestPorts {
   send(bytes: ArrayBuffer): void;
   epoch(): number;
   context(): DatasetContext | null;
-  textOf(revision: number): string | undefined;
+  textOf(revision: number, request?: number): string | undefined;
   /** The editor's newest revision (a newer one means the user is still typing). */
   revision(): number;
   now(): number;
@@ -108,7 +108,7 @@ export class SuggestController {
 
   /** Prepare follow-ups for `request` once the editor has been quiet for `delay` ms. */
   private schedule(request: number, revision: number, delay: number): void {
-    const sql = this.sql.get(request), question = this.ports.textOf(revision);
+    const sql = this.sql.get(request), question = this.ports.textOf(revision, request);
     if (sql === undefined || !question || request < this.lastSuggested) return;
     if (this.pending) clearTimeout(this.pending.timer);
     const typed = this.ports.revision();
@@ -116,6 +116,7 @@ export class SuggestController {
       this.pending = undefined;
       // Still typing: the next result will schedule again. A KEEP (delay 0) always prepares.
       if (delay > 0 && this.ports.revision() !== typed) return;
+      if (this.ports.textOf(revision, request) !== question) return;
       if (request < this.lastSuggested || (request === this.lastSuggested && this.chips.length && this.chips[0].from === request)) return;
       this.lastSuggested = request;
       this.propose(request, question, sql);

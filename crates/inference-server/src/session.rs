@@ -28,7 +28,7 @@ use crate::{
 
 /// Largest accepted WebSocket message (a CONTEXT with samples is the biggest frame).
 pub const MESSAGE_LIMIT: usize = 1 << 20;
-pub const MAX_QUESTION_CHARS: usize = 4096;
+pub const MAX_QUESTION_CHARS: usize = 16384;
 pub const MAX_CONTEXTS: usize = 4;
 
 /// What the socket loop must do after the session handled an input.
@@ -46,10 +46,13 @@ struct Active {
     epoch: u32,
 }
 
+struct PreparedEdit { slot: u32, generation: u32, context: u32, raw: String, prepared: Arc<Prepared> }
+
 pub struct Session {
     pub greeted: bool,
     pub epoch: u32,
     contexts: VecDeque<(u32, Arc<Prepared>)>,
+    edits: VecDeque<PreparedEdit>,
     active: HashMap<u32, Active>,
     concurrency: usize,
     model: String,
@@ -61,6 +64,7 @@ impl Session {
             greeted: false,
             epoch: 0,
             contexts: VecDeque::new(),
+            edits: VecDeque::new(),
             active: HashMap::new(),
             concurrency,
             model,
@@ -84,7 +88,7 @@ impl Session {
                 )))];
             }
             self.greeted = true;
-            let ready = json!({"node":"inference","name":"time-blast-inference","version":1,"model":self.model});
+            let ready = json!({"node":"inference","name":"time-blast-inference","version":1,"model":self.model,"capabilities":[crate::prompt::EDIT_CAPABILITY]});
             return vec![Action::Send(Frame::new(
                 Header::new(Kind::Ready),
                 ready.to_string(),
@@ -97,10 +101,35 @@ impl Session {
             )))],
             Kind::Context => self.context(frame),
             Kind::Cancel => self.cancel(h.epoch, h.request),
-            Kind::Infer => self.infer(frame, received_at, &mut admit),
+            Kind::Infer | Kind::EditInfer => self.infer(frame, received_at, &mut admit),
+            Kind::EditContext => self.edit_context(frame),
             // Frames meant for other nodes are ignored, not fatal.
             _ => Vec::new(),
         }
+    }
+
+    fn edit_context(&mut self, frame: &Frame) -> Vec<Action> {
+        let h = frame.header;
+        let parse = || -> Result<PreparedEdit, String> {
+            let context = self.contexts.iter().find(|(id, _)| *id == h.context).map(|(_, p)| p)
+                .ok_or("Unknown context or invalid edit handle")?;
+            if h.request == 0 || h.revision == 0 { return Err("Unknown context or invalid edit handle".into()); }
+            let raw = std::str::from_utf8(&frame.payload).map_err(|_| "Invalid UTF-8 edit context")?;
+            crate::prompt::validate_edit(raw)?;
+            Ok(PreparedEdit { slot: h.request, generation: h.revision, context: h.context, raw: raw.into(), prepared: Arc::new(context.for_edit(raw)) })
+        };
+        let error = |message: &str| vec![Action::Send(error_frame(&Header { request: 0, revision: 0, ..h }, "bad_edit_context", message))];
+        let edit = match parse() { Ok(v) => v, Err(e) => return error(&e) };
+        if let Some(old) = self.edits.iter().find(|e| e.slot == edit.slot) {
+            if old.generation >= edit.generation {
+                return if old.generation == edit.generation && old.context == edit.context && old.raw == edit.raw { Vec::new() }
+                    else { error("Edit handles are immutable") };
+            }
+        }
+        self.edits.retain(|e| e.slot != edit.slot);
+        self.edits.push_back(edit);
+        while self.edits.len() > 64 { self.edits.pop_front(); }
+        Vec::new()
     }
 
     fn context(&mut self, frame: &Frame) -> Vec<Action> {
@@ -169,7 +198,7 @@ impl Session {
                 "Request id is already active.",
             ))];
         }
-        let Some(prepared) = self
+        let Some(mut prepared) = self
             .contexts
             .iter()
             .find(|(id, _)| *id == h.context)
@@ -181,7 +210,18 @@ impl Session {
                 "No CONTEXT with this id.",
             ))];
         };
-        let question = match std::str::from_utf8(&frame.payload) {
+        let mut payload = frame.payload.as_slice();
+        if h.kind == Kind::EditInfer {
+            if payload.len() < 8 { return vec![Action::Send(error_frame(&h, "bad_request", "EDIT_INFER needs an edit handle"))]; }
+            let slot = u32::from_le_bytes(payload[..4].try_into().unwrap());
+            let generation = u32::from_le_bytes(payload[4..8].try_into().unwrap());
+            let Some(edit) = self.edits.iter().find(|e| e.slot == slot && e.generation == generation && e.context == h.context) else {
+                return vec![Action::Send(error_frame(&h, "unknown_edit_context", "No EDIT_CONTEXT with this handle."))];
+            };
+            prepared = edit.prepared.clone();
+            payload = &payload[8..];
+        }
+        let question = match std::str::from_utf8(payload) {
             Ok(q) if !q.trim().is_empty() && q.chars().count() <= MAX_QUESTION_CHARS => {
                 q.to_string()
             }
@@ -189,7 +229,7 @@ impl Session {
                 return vec![Action::Send(error_frame(
                     &h,
                     "bad_request",
-                    "The question must be non-empty UTF-8 of at most 4096 characters.",
+                    "The question must be non-empty UTF-8 of at most 16384 characters.",
                 ))];
             }
         };

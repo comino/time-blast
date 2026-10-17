@@ -44,6 +44,7 @@ class RecordingRenderer implements RendererNode {
   detach(): void {}
   setView(): void {}
   setParam(): void {}
+  setPresentation(): void {}
   export(): void {}
   views(): never[] { return []; }
   hit(): null { return null; }

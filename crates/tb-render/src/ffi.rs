@@ -91,6 +91,12 @@ pub extern "C" fn tb_set_param(slot: u32, name_len: u32, value: f64) {
 }
 
 #[no_mangle]
+pub extern "C" fn tb_reset_params(slot: u32) { r().reset_params(slot); }
+
+#[no_mangle]
+pub extern "C" fn tb_invalidate(slot: u32) { r().invalidate(slot); }
+
+#[no_mangle]
 pub extern "C" fn tb_bind(slot: u32, request: u32, revision: u32, epoch: u32) -> u32 {
     r().bind(slot, Binding { request, revision, epoch }) as u32
 }

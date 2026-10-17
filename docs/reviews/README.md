@@ -1,4 +1,41 @@
-# Performance and correctness review
+# Reviews
+
+## Persistent canvas design — 2026-10-15
+
+Start with the [consolidated critical review](persistent-canvas-2026-10-15.md).
+Three independent reviewers examined the proposed durable canvas and its fit with
+the code before implementation. These are design findings; current implementation
+and evidence are in [the implementation record](../canvas-implementation.md).
+
+- [Architecture](persistent-canvas-architecture-2026-10-15.md): coordinator,
+  rendering, inference, protocol and source scheduling.
+- [Persistence and recovery](persistent-canvas-persistence-2026-10-15.md): drafts,
+  transactions, history branches, export and source identity.
+- [Product semantics](persistent-canvas-semantics-2026-10-15.md): edit completion,
+  gestures on previews, failed-query durability and regeneration.
+
+## Persistent canvas implementation — 2026-10-15
+
+- [Storage](canvas-storage-implementation-2026-10-15.md): validation, atomic writes,
+  immutable records, closure fencing and recovery after storage failures.
+- [Session and recovery](canvas-session-implementation-2026-10-15.md): save queue,
+  acknowledgement boundary, failed imports and portable recovery files.
+- [Runtime](canvas-runtime-implementation-2026-10-15.md): late frames, renderer
+  startup, target lifetimes, cancellations and cache adoption.
+- [Controller semantics](canvas-controller-semantics-2026-10-15.md): edit timing,
+  captured gestures, source queues, restoration, capabilities and presentation.
+- [Live contextual inference](canvas-edit-evaluation-2026-10-15.md): executed
+  weather/cities results, selected branches, regeneration and automatic repair.
+- [Browser verification](canvas-browser-verification-2026-10-15.md): real
+  application flows, file reattachment, layout reload and bounded result residency.
+- [Hydration measurements](canvas-hydration-2026-10-15.json): production bundle
+  and Wasm hashes, metadata visibility and SQL execution at 1/10/100 charts.
+- [Final browser ledger](canvas-final-browser-2026-10-15.json): final build,
+  source-refresh regression and complete bounded hydration of all 100 definitions.
+- [Metadata measurements](canvas-metadata-measurements-2026-10-15.json): actual
+  Chromium IndexedDB save/load/export and authoring costs at 1/10/100 charts.
+
+## Historical prototype reviews
 
 For the final prototype, hosted inference and deployment state, start with
 [the handoff](../status.md) and [verification record](../verification.md).

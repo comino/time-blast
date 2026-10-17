@@ -110,7 +110,7 @@ describe('tb-coordinator wasm', () => {
 
     expect(() => c.input('ui', frame(Kind.CONFIG, { payload: text('{') }), 8)).toThrow(/CONFIG payload/);
     expect(() => c.inputEncoded('ui', new Uint8Array(10), 8)).toThrow(/truncated frame/);
-    expect(() => c.input('ui', frame(Kind.DRAFT, { revision: 9, payload: new Uint8Array([0xff]) }), 8)).toThrow(/UTF-8/);
+    expect(() => c.input('ui', frame(Kind.DRAFT, { revision: 9, epoch: 1, payload: new Uint8Array([0xff]) }), 8)).toThrow(/UTF-8/);
   });
 
   it('survives memory growth with large frames and returns independent buffers', async () => {

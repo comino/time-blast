@@ -26,15 +26,21 @@ pub fn now_ms() -> f64 {
         .map_or(0.0, |d| d.as_secs_f64() * 1000.0)
 }
 
-/// A stored CONTEXT with its prebuilt, stable system prompt.
+/// A stored CONTEXT with its prebuilt, stable system prompt. Edit handles share the
+/// context and base prompt (`Arc`) and own only their edit suffix: a session may hold 64
+/// handles over a context of up to 1 MiB.
+#[derive(Clone)]
 pub struct Prepared {
-    pub context: DatasetContext,
-    pub system: String,
+    pub context: Arc<DatasetContext>,
+    /// The base system prompt; `system_prompt()` appends the edit suffix.
+    pub system: Arc<str>,
+    pub edit_suffix: Option<Arc<str>>,
     pub prefix_hash: u64,
     /// Lower-case names of tables above the row rule, with their row counts (raw-row pre-check).
-    pub large_tables: Vec<(String, f64)>,
+    pub large_tables: Arc<[(String, f64)]>,
     /// Lower-case names of TIMESTAMP/DATE columns (an equality filter on one is selective).
-    pub time_columns: Vec<String>,
+    pub time_columns: Arc<[String]>,
+    pub edit: bool,
 }
 
 impl Prepared {
@@ -59,11 +65,31 @@ impl Prepared {
             .map(|c| c.name.to_lowercase())
             .collect();
         Prepared {
-            context,
+            context: Arc::new(context),
             prefix_hash: hasher.finish(),
-            system,
+            system: system.into(),
+            edit_suffix: None,
             large_tables,
             time_columns,
+            edit: false,
+        }
+    }
+
+    pub fn for_edit(&self, raw: &str) -> Self {
+        let suffix = prompt::edit_prompt(raw);
+        // Same hash as hashing the concatenated prompt (`str` hashes bytes, then 0xff).
+        let mut hasher = DefaultHasher::new();
+        hasher.write(self.system.as_bytes());
+        hasher.write(suffix.as_bytes());
+        hasher.write_u8(0xff);
+        Prepared { edit_suffix: Some(suffix.into()), prefix_hash: hasher.finish(), edit: true, ..self.clone() }
+    }
+
+    /// The exact system message: base prompt plus the edit suffix, if any.
+    pub fn system_prompt(&self) -> std::borrow::Cow<'_, str> {
+        match &self.edit_suffix {
+            None => std::borrow::Cow::Borrowed(&self.system),
+            Some(suffix) => std::borrow::Cow::Owned([&*self.system, &**suffix].concat()),
         }
     }
 }
@@ -269,7 +295,7 @@ async fn translate(
     let _slot = provider.slot()?;
     let request = job.header.request;
     let mut messages = vec![
-        json!({"role": "system", "content": job.prepared.system}),
+        json!({"role": "system", "content": job.prepared.system_prompt()}),
         json!({"role": "user", "content": prompt::user_message(&job.question)}),
     ];
     let mut ledger = vec![(stage::INFER_RECEIVED, node::INFERENCE, job.received_at)];
@@ -357,7 +383,9 @@ async fn translate(
             }
             Err(reason) if attempt == 1 => {
                 messages.push(json!({"role": "assistant", "content": completion.content}));
-                messages.push(json!({"role": "user", "content": prompt::repair_message(&job.prepared.context, &reason)}));
+                let repair = if job.prepared.edit { prompt::edit_repair_message(&job.prepared.context, &reason) }
+                    else { prompt::repair_message(&job.prepared.context, &reason) };
+                messages.push(json!({"role": "user", "content": repair}));
             }
             Err(reason) => {
                 return Err(error(
@@ -368,4 +396,31 @@ async fn translate(
         }
     }
     unreachable!("at most two attempts")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fixture(name: &str) -> String {
+        std::fs::read_to_string(format!("{}/tests/fixtures/{name}", env!("CARGO_MANIFEST_DIR"))).unwrap()
+    }
+
+    #[test]
+    fn edit_handles_share_the_context_and_base_prompt() {
+        let context: DatasetContext = serde_json::from_str(&fixture("vessels-context.json")).unwrap();
+        let base = Prepared::new(context);
+        let raw = fixture("edit-base.json").trim().to_string();
+        let edit = base.for_edit(&raw);
+        // A handle costs its edit suffix, not another DatasetContext and system prompt.
+        assert!(Arc::ptr_eq(&base.context, &edit.context));
+        assert!(Arc::ptr_eq(&base.system, &edit.system));
+        let full = fixture("vessels-prompt.txt") + &prompt::edit_prompt(&raw);
+        assert_eq!(edit.system_prompt(), full);
+        assert_eq!(base.system_prompt(), fixture("vessels-prompt.txt"));
+        let mut hasher = DefaultHasher::new();
+        full.hash(&mut hasher);
+        assert_eq!(edit.prefix_hash, hasher.finish());
+        assert!(edit.edit && !base.edit);
+    }
 }

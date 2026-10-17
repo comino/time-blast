@@ -12,6 +12,8 @@ const GAP = 24;
 
 export class Board {
   readonly items = new Set<BoardItem>();
+  /** One authoring change after a completed drag/resize or Arrange, never per frame. */
+  onLayout?: (items: BoardItem[]) => void;
   private x = 0; private y = 0; private scale = 1;
   private width = 1; private height = 1;
   private selected?: BoardItem;
@@ -30,7 +32,7 @@ export class Board {
     const signal = this.controller.signal;
     viewport.addEventListener('pointerdown', e => this.pointerDown(e), { signal });
     viewport.addEventListener('pointermove', e => this.pointerMove(e), { signal });
-    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) viewport.addEventListener(type, () => { this.gesture = undefined; viewport.classList.remove('is-panning'); }, { signal });
+    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) viewport.addEventListener(type, e => this.pointerEnd(e as PointerEvent), { signal });
     viewport.addEventListener('wheel', e => {
       if ((e.target as HTMLElement).closest('.data-table-wrap,.card-sql,select,input')) return;
       e.preventDefault();
@@ -48,6 +50,7 @@ export class Board {
 
   add(item: BoardItem): void { this.items.add(item); this.world.append(item.element); this.layout(item); }
   remove(item: BoardItem): void {
+    this.cancelGesture(item);
     this.items.delete(item); item.element.remove();
     if (this.selected === item) this.selected = undefined;
     this.count();
@@ -100,13 +103,28 @@ export class Board {
     this.y = (this.height - (bottom - top) * this.scale) / 2 - top * this.scale; this.paintCamera();
   }
   arrange(): void {
+    this.cancelGesture();
     const columns = this.width >= 900 ? 2 : 1, shown = [...this.items].filter(i => i.shown);
     const w = Math.max(0, ...shown.map(c => c.width)), h = Math.max(0, ...shown.map(c => c.height));
-    shown.forEach((item, i) => { item.x = GAP + i % columns * (w + GAP); item.y = GAP + Math.floor(i / columns) * (h + GAP); this.layout(item); });
+    const changed: BoardItem[] = [];
+    shown.forEach((item, i) => {
+      const x = GAP + i % columns * (w + GAP), y = GAP + Math.floor(i / columns) * (h + GAP);
+      if (item.x !== x || item.y !== y) changed.push(item);
+      item.x = x; item.y = y; this.layout(item);
+    });
     this.fit();
+    if (changed.length) this.onLayout?.(changed);
   }
   resetCamera(): void { this.x = this.y = 0; this.scale = 1; this.paintCamera(); }
-  destroy(): void { this.controller.abort(); this.observer.disconnect(); }
+  /** A restored definition must not be overwritten by the end of an old gesture. */
+  cancelGesture(item?: BoardItem): void {
+    const g = this.gesture;
+    if (!g || item && g.item !== item) return;
+    this.gesture = undefined;
+    this.viewport.classList.remove('is-panning');
+    if (this.viewport.hasPointerCapture(g.pointer)) this.viewport.releasePointerCapture(g.pointer);
+  }
+  destroy(): void { this.cancelGesture(); this.controller.abort(); this.observer.disconnect(); }
 
   private count(): void { let n = 0; for (const i of this.items) if (i.shown) n++; this.changed(n); }
   private paintCamera(): void {
@@ -119,7 +137,7 @@ export class Board {
     return undefined;
   }
   private pointerDown(e: PointerEvent): void {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || this.gesture) return;
     const target = e.target as HTMLElement, item = this.itemFor(target.closest('.result-card'));
     if (item) this.select(item);
     const resize = !!target.closest('.card-resize-handle');
@@ -136,5 +154,15 @@ export class Board {
       else { g.item.x = g.x + dx / this.scale; g.item.y = g.y + dy / this.scale; }
       this.layout(g.item);
     } else { this.x = g.x + dx; this.y = g.y + dy; this.paintCamera(); }
+  }
+  private pointerEnd(e: PointerEvent): void {
+    const g = this.gesture;
+    if (!g || g.pointer !== e.pointerId) return;
+    this.gesture = undefined;
+    this.viewport.classList.remove('is-panning');
+    const item = g.item;
+    if (!item || !this.items.has(item)) return;
+    const changed = g.resize ? item.width !== g.x || item.height !== g.y : item.x !== g.x || item.y !== g.y;
+    if (changed) this.onLayout?.([item]);
   }
 }

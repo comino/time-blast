@@ -1,0 +1,218 @@
+{
+  "kind": "timeblast.canvas-edit-eval",
+  "version": 1,
+  "date": "2026-10-15T22:07:14.694Z",
+  "endpoint": "ws://127.0.0.1:8793/session",
+  "models": [
+    "openai/gpt-oss-120b"
+  ],
+  "environment": {
+    "node": "v23.11.1",
+    "platform": "linux",
+    "arch": "arm64",
+    "cpus": 4,
+    "loadAtStart": [
+      2.38,
+      1.28,
+      1.52
+    ],
+    "duckdbWasm": "1.32.0",
+    "browser": null
+  },
+  "sources": {
+    "src/protocol/edit.ts": "7fd469f947b7c871c12d1c6f678a30f935af3556d564fc533a76d8e04f629b5d",
+    "src/canvas/protocol.ts": "24de95d64f7a9aa28c7522ff0435a9035fba6f9899dd9ac59ef5d5264a304c1d",
+    "crates/inference-server/src/prompt.rs": "088b0b05c74bf8958bd92421e27586b26b235e36024dccb4c0e711141436df63",
+    "crates/inference-server/src/session.rs": "5424f91cd1589d806a05546880cac981324c1e811279af1ad2ff11f2590ce5f9",
+    "crates/inference-server/src/infer.rs": "0661e1a992a438fd42182d70faa970755031f821a88d68ae24beb87c82216e89"
+  },
+  "measurement": "One sequential pass. First request per dataset opens a new inference connection; provider warmth is unknown. Timings are client EDIT_INFER to SQL and SQL execution, not rendering or photons. Database result cache, rollups and compression disabled. No speculative requests.",
+  "datasets": [
+    {
+      "dataset": "vessels",
+      "loadMs": 4693.263477,
+      "tables": [
+        {
+          "name": "telemetry",
+          "rows": 1209600
+        }
+      ]
+    },
+    {
+      "dataset": "flights",
+      "loadMs": 3360.719155999999,
+      "tables": [
+        {
+          "name": "flights",
+          "rows": 611132
+        },
+        {
+          "name": "carriers",
+          "rows": 15
+        },
+        {
+          "name": "airports",
+          "rows": 340
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "n": 3,
+    "correct": 3,
+    "costUsd": 0.00102915,
+    "unknownCost": false,
+    "automaticRepairCases": 0,
+    "sqlMs": {
+      "p50": 875.1560100000006,
+      "p95": 1404.4724969999988,
+      "p99": 1404.4724969999988
+    }
+  },
+  "cases": [
+    {
+      "id": "vessels_captured_gesture_regroup",
+      "dataset": "vessels",
+      "base": {
+        "mode": "refine",
+        "originalQuestion": "Hourly average wind for each vessel",
+        "sql": "SELECT time_bucket(INTERVAL '60 minutes', ts) AS bucket, vessel, avg(wind) AS wind FROM telemetry WHERE vessel = 'Aurora' AND ts >= TIMESTAMP '2026-09-10 06:00:00' AND ts < TIMESTAMP '2026-09-10 12:00:00' GROUP BY 1, 2 ORDER BY 1, 2",
+        "history": [
+          {
+            "kind": "create",
+            "text": "Hourly average wind for each vessel"
+          },
+          {
+            "kind": "gesture",
+            "text": "Keep Aurora in the brushed time interval.",
+            "details": "vessel = 'Aurora' AND ts >= TIMESTAMP '2026-09-10 06:00:00' AND ts < TIMESTAMP '2026-09-10 12:00:00'"
+          }
+        ],
+        "presentation": {
+          "view": "line",
+          "params": {}
+        }
+      },
+      "request": "Use 30-minute buckets instead of hourly buckets.",
+      "reference": "SELECT time_bucket(INTERVAL '30 minutes', ts) AS bucket, vessel, avg(wind) AS wind FROM telemetry WHERE vessel = 'Aurora' AND ts >= TIMESTAMP '2026-09-10 06:00:00' AND ts < TIMESTAMP '2026-09-10 12:00:00' GROUP BY 1, 2 ORDER BY 1, 2",
+      "firstDeltaMs": 469.8580090000005,
+      "sql": "SELECT time_bucket(INTERVAL '30 minutes', ts) AS bucket, vessel, avg(wind) AS wind FROM telemetry WHERE vessel = 'Aurora' AND ts >= TIMESTAMP '2026-09-10 06:00:00' AND ts < TIMESTAMP '2026-09-10 12:00:00' GROUP BY 1, 2 ORDER BY 1, 2",
+      "sqlMs": 645.5330389999999,
+      "cached": false,
+      "providerFirstTokenMs": 467.151123046875,
+      "stats": {
+        "attempts": 1,
+        "cachedTokens": 0,
+        "completionTokens": 167,
+        "costUsd": 0.0002955,
+        "model": "openai/gpt-oss-120b",
+        "promptTokens": 1302,
+        "reasoningTokens": 74
+      },
+      "category": "exact",
+      "reason": "",
+      "correct": true,
+      "expectedRows": 12,
+      "resultRows": 12,
+      "executionMs": 13.317151999999624,
+      "automaticRepairObserved": false
+    },
+    {
+      "id": "flights_regroup_preserves_gesture",
+      "dataset": "flights",
+      "base": {
+        "mode": "refine",
+        "originalQuestion": "Average departure delay by airline for non-cancelled flights from JFK since June 24, 2024",
+        "sql": "SELECT c.name AS airline, avg(f.dep_delay) AS delay FROM flights f JOIN carriers c ON f.carrier = c.code WHERE f.origin = 'JFK' AND f.flight_date >= DATE '2024-06-24' AND NOT f.cancelled AND f.dep_delay > 0 GROUP BY c.name ORDER BY c.name",
+        "history": [
+          {
+            "kind": "create",
+            "text": "Average departure delay by airline for non-cancelled flights from JFK since June 24, 2024"
+          },
+          {
+            "kind": "gesture",
+            "text": "Keep only departures delayed more than zero minutes.",
+            "details": "f.dep_delay > 0"
+          }
+        ],
+        "presentation": {
+          "view": "line",
+          "params": {}
+        }
+      },
+      "request": "Group by destination airport name instead of airline name.",
+      "reference": "SELECT a.name AS airport, avg(f.dep_delay) AS delay FROM flights f JOIN airports a ON f.dest = a.code WHERE f.origin = 'JFK' AND f.flight_date >= DATE '2024-06-24' AND NOT f.cancelled AND f.dep_delay > 0 GROUP BY a.name ORDER BY a.name",
+      "firstDeltaMs": 1033.379014,
+      "sql": "SELECT a.name AS dest, avg(f.dep_delay) AS delay FROM flights f JOIN airports a ON f.dest = a.code WHERE f.origin = 'JFK' AND f.flight_date >= DATE '2024-06-24' AND NOT f.cancelled AND f.dep_delay > 0 GROUP BY a.name ORDER BY a.name",
+      "sqlMs": 1404.4724969999988,
+      "cached": false,
+      "providerFirstTokenMs": 1030.9736328125,
+      "stats": {
+        "attempts": 1,
+        "cachedTokens": 256,
+        "completionTokens": 198,
+        "costUsd": 0.00039285,
+        "model": "openai/gpt-oss-120b",
+        "promptTokens": 1955,
+        "reasoningTokens": 122
+      },
+      "category": "equivalent",
+      "reason": "different column names",
+      "rounded": false,
+      "correct": true,
+      "expectedRows": 66,
+      "resultRows": 66,
+      "executionMs": 22.343910999999935,
+      "automaticRepairObserved": false
+    },
+    {
+      "id": "flights_explicit_bar_preserves_definition",
+      "dataset": "flights",
+      "base": {
+        "mode": "refine",
+        "originalQuestion": "Average departure delay by airline for non-cancelled flights from JFK since June 24, 2024",
+        "sql": "SELECT c.name AS airline, avg(f.dep_delay) AS delay FROM flights f JOIN carriers c ON f.carrier = c.code WHERE f.origin = 'JFK' AND f.flight_date >= DATE '2024-06-24' AND NOT f.cancelled AND f.dep_delay > 0 GROUP BY c.name ORDER BY c.name",
+        "history": [
+          {
+            "kind": "create",
+            "text": "Average departure delay by airline for non-cancelled flights from JFK since June 24, 2024"
+          },
+          {
+            "kind": "gesture",
+            "text": "Keep only departures delayed more than zero minutes.",
+            "details": "f.dep_delay > 0"
+          }
+        ],
+        "presentation": {
+          "view": "line",
+          "params": {}
+        }
+      },
+      "request": "Show this as a bar chart without changing the data.",
+      "reference": "-- view: bar\nSELECT c.name AS airline, avg(f.dep_delay) AS delay FROM flights f JOIN carriers c ON f.carrier = c.code WHERE f.origin = 'JFK' AND f.flight_date >= DATE '2024-06-24' AND NOT f.cancelled AND f.dep_delay > 0 GROUP BY c.name ORDER BY c.name",
+      "firstDeltaMs": 738.9957110000014,
+      "sql": "-- view: bar\nSELECT c.name AS airline, avg(f.dep_delay) AS delay FROM flights f JOIN carriers c ON f.carrier = c.code WHERE f.origin = 'JFK' AND f.flight_date >= DATE '2024-06-24' AND NOT f.cancelled AND f.dep_delay > 0 GROUP BY c.name ORDER BY c.name",
+      "sqlMs": 875.1560100000006,
+      "cached": false,
+      "providerFirstTokenMs": 714.5068359375,
+      "stats": {
+        "attempts": 1,
+        "cachedTokens": 256,
+        "completionTokens": 111,
+        "costUsd": 0.0003408,
+        "model": "openai/gpt-oss-120b",
+        "promptTokens": 1956,
+        "reasoningTokens": 29
+      },
+      "category": "exact",
+      "reason": "",
+      "correct": true,
+      "expectedRows": 9,
+      "expectedView": "bar",
+      "returnedView": "bar",
+      "resultRows": 9,
+      "executionMs": 15.389948000000004,
+      "automaticRepairObserved": false
+    }
+  ]
+}

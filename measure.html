@@ -43,7 +43,7 @@
   <body>
     <main>
       <h1>Time Blast · hardware measurement</h1>
-      <p class="muted">Runs the real pipeline on this machine: engine worker (Wasm coordinator, DuckDB-Wasm, Wasm renderer on your GPU) and the app's UI controller.
+      <p class="muted">Runs the real pipeline on this machine: engine worker (Wasm coordinator, DuckDB-Wasm, Wasm renderer on your GPU) and the app's own controller (the persistent-canvas controller with a real IndexedDB store; <code>?controller=legacy</code> runs the old transient one).
         Inference is an in-page fake that answers canned SQL after the delay below, so the numbers isolate our pipeline. Nothing is sent anywhere except the optional RTT probe and live pass.</p>
       <section>
         <form onsubmit="return false">

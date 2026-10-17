@@ -1,0 +1,442 @@
+{
+  "kind": "timeblast.canvas-edit-eval",
+  "version": 1,
+  "date": "2026-10-15T21:47:34.678Z",
+  "endpoint": "ws://127.0.0.1:8793/session",
+  "models": [
+    "openai/gpt-oss-120b"
+  ],
+  "environment": {
+    "node": "v23.11.1",
+    "platform": "linux",
+    "arch": "arm64",
+    "cpus": 4,
+    "loadAtStart": [
+      4.04,
+      2.73,
+      1.83
+    ],
+    "duckdbWasm": "1.32.0",
+    "browser": null
+  },
+  "sources": {
+    "src/protocol/edit.ts": "7fd469f947b7c871c12d1c6f678a30f935af3556d564fc533a76d8e04f629b5d",
+    "src/canvas/protocol.ts": "24de95d64f7a9aa28c7522ff0435a9035fba6f9899dd9ac59ef5d5264a304c1d",
+    "crates/inference-server/src/prompt.rs": "27601ece442fae51aea0d0ead8a3f16998992d37015a9a3bba05c24e1b056ef6",
+    "crates/inference-server/src/session.rs": "5424f91cd1589d806a05546880cac981324c1e811279af1ad2ff11f2590ce5f9",
+    "crates/inference-server/src/infer.rs": "0661e1a992a438fd42182d70faa970755031f821a88d68ae24beb87c82216e89"
+  },
+  "measurement": "One sequential pass. First request per dataset opens a new inference connection; provider warmth is unknown. Timings are client EDIT_INFER to SQL and SQL execution, not rendering or photons. Database result cache, rollups and compression disabled. No speculative requests.",
+  "datasets": [
+    {
+      "dataset": "weather",
+      "loadMs": 3959.921257,
+      "tables": [
+        {
+          "name": "weather",
+          "rows": 210528
+        }
+      ]
+    },
+    {
+      "dataset": "cities",
+      "loadMs": 2091.603679,
+      "tables": [
+        {
+          "name": "cities",
+          "rows": 34159
+        },
+        {
+          "name": "countries",
+          "rows": 252
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "n": 8,
+    "correct": 8,
+    "costUsd": 0.0020874,
+    "unknownCost": false,
+    "automaticRepairCases": 0,
+    "sqlMs": {
+      "p50": 456.4934200000007,
+      "p95": 1007.9556579999999,
+      "p99": 1007.9556579999999
+    }
+  },
+  "cases": [
+    {
+      "id": "preserve_sql_filter_and_bucket",
+      "dataset": "weather",
+      "base": {
+        "mode": "refine",
+        "originalQuestion": "Daily average temperature in Berlin during 2024",
+        "sql": "SELECT date_trunc('day', time) AS day, avg(temperature) AS temperature FROM weather WHERE city = 'Berlin' AND time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' AND temperature < 0 GROUP BY 1 ORDER BY 1",
+        "history": [
+          {
+            "kind": "create",
+            "text": "Daily average temperature in Berlin during 2024"
+          },
+          {
+            "kind": "refine",
+            "text": "Only include below-freezing hours."
+          }
+        ],
+        "presentation": {
+          "view": "line",
+          "params": {}
+        }
+      },
+      "request": "Use the maximum instead of the average.",
+      "reference": "SELECT date_trunc('day', time) AS day, max(temperature) AS temperature FROM weather WHERE city = 'Berlin' AND time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' AND temperature < 0 GROUP BY 1 ORDER BY 1",
+      "firstDeltaMs": 802.4417059999996,
+      "sql": "SELECT date_trunc('day', time) AS day, max(temperature) AS temperature FROM weather WHERE city = 'Berlin' AND time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' AND temperature < 0 GROUP BY 1 ORDER BY 1",
+      "sqlMs": 940.345636,
+      "cached": false,
+      "providerFirstTokenMs": 791.160888671875,
+      "stats": {
+        "attempts": 1,
+        "cachedTokens": 0,
+        "completionTokens": 171,
+        "costUsd": 0.0002997,
+        "model": "openai/gpt-oss-120b",
+        "promptTokens": 1314,
+        "reasoningTokens": 97
+      },
+      "category": "exact",
+      "reason": "",
+      "correct": true,
+      "expectedRows": 43,
+      "resultRows": 43,
+      "executionMs": 8.138342000000193,
+      "automaticRepairObserved": false
+    },
+    {
+      "id": "selected_branch_removal",
+      "dataset": "weather",
+      "base": {
+        "mode": "refine",
+        "originalQuestion": "Daily average temperature in Berlin during 2024",
+        "sql": "SELECT date_trunc('day', time) AS day, avg(temperature) AS temperature FROM weather WHERE city = 'Berlin' AND time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' GROUP BY 1 ORDER BY 1",
+        "history": [
+          {
+            "kind": "create",
+            "text": "Daily average temperature in Berlin during 2024"
+          },
+          {
+            "kind": "refine",
+            "text": "Only include hours above freezing."
+          },
+          {
+            "kind": "refine",
+            "text": "Remove the above-freezing restriction; include all temperatures again."
+          }
+        ],
+        "presentation": {
+          "view": null,
+          "params": {}
+        }
+      },
+      "request": "Use monthly buckets instead of daily buckets.",
+      "reference": "SELECT date_trunc('month', time) AS month, avg(temperature) AS temperature FROM weather WHERE city = 'Berlin' AND time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' GROUP BY 1 ORDER BY 1",
+      "firstDeltaMs": 294.3799049999998,
+      "sql": "SELECT date_trunc('month', time) AS month, avg(temperature) AS temperature FROM weather WHERE city = 'Berlin' AND time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' GROUP BY 1 ORDER BY 1",
+      "sqlMs": 430.49828499999967,
+      "cached": false,
+      "providerFirstTokenMs": 292.931884765625,
+      "stats": {
+        "attempts": 1,
+        "cachedTokens": 0,
+        "completionTokens": 101,
+        "costUsd": 0.0002598,
+        "model": "openai/gpt-oss-120b",
+        "promptTokens": 1328,
+        "reasoningTokens": 32
+      },
+      "category": "exact",
+      "reason": "",
+      "correct": true,
+      "expectedRows": 12,
+      "resultRows": 12,
+      "executionMs": 26.608624999999847,
+      "automaticRepairObserved": false
+    },
+    {
+      "id": "regenerate_from_question_and_lineage",
+      "dataset": "weather",
+      "base": {
+        "mode": "regenerate",
+        "originalQuestion": "Daily average temperature in Berlin during 2024",
+        "sql": "SELECT city, max(humidity) AS humidity FROM weather WHERE city = 'Madrid' GROUP BY city ORDER BY city",
+        "history": [
+          {
+            "kind": "create",
+            "text": "Daily average temperature in Berlin during 2024"
+          },
+          {
+            "kind": "refine",
+            "text": "Restrict the time range to July 2024."
+          }
+        ],
+        "presentation": {
+          "view": "line",
+          "params": {}
+        }
+      },
+      "request": "Regenerate from the original question and selected revision history.",
+      "reference": "SELECT date_trunc('day', time) AS day, avg(temperature) AS temperature FROM weather WHERE city = 'Berlin' AND time >= TIMESTAMP '2024-07-01' AND time < TIMESTAMP '2024-08-01' GROUP BY 1 ORDER BY 1",
+      "firstDeltaMs": 832.8305970000001,
+      "sql": "SELECT time_bucket(INTERVAL '1 day', time) AS day, AVG(temperature) AS avg_temp FROM weather WHERE city = 'Berlin' AND time >= TIMESTAMP '2024-07-01 00:00:00' AND time < TIMESTAMP '2024-08-01 00:00:00' GROUP BY day ORDER BY day",
+      "sqlMs": 1007.9556579999999,
+      "cached": false,
+      "providerFirstTokenMs": 831.45361328125,
+      "stats": {
+        "attempts": 1,
+        "cachedTokens": 1024,
+        "completionTokens": 243,
+        "costUsd": 0.00026085,
+        "model": "openai/gpt-oss-120b",
+        "promptTokens": 1279,
+        "reasoningTokens": 160
+      },
+      "category": "equivalent",
+      "reason": "different column names",
+      "rounded": false,
+      "correct": true,
+      "expectedRows": 31,
+      "resultRows": 31,
+      "executionMs": 50.46316300000035,
+      "automaticRepairObserved": false
+    },
+    {
+      "id": "database_error_repair_keeps_context",
+      "dataset": "weather",
+      "base": {
+        "mode": "refine",
+        "originalQuestion": "Daily average temperature in Berlin during 2024",
+        "sql": "SELECT date_trunc('day', time) AS day, avg(temperature) AS temperature FROM weather WHERE city = 'Berlin' AND time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' AND temperature < 0 GROUP BY 1 ORDER BY 1",
+        "history": [
+          {
+            "kind": "create",
+            "text": "Daily average temperature in Berlin during 2024"
+          },
+          {
+            "kind": "refine",
+            "text": "Only include below-freezing hours."
+          }
+        ],
+        "presentation": {
+          "view": "line",
+          "params": {}
+        }
+      },
+      "request": "Use the maximum instead of the average.\nAn attempted edit failed. Fix the SQL for this change, preserving the selected chart context.\nFailed SQL:\nSELECT date_trunc('day', time) AS day, max(temperature_celsius) AS temperature FROM weather WHERE city = 'Berlin' AND time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' AND temperature < 0 GROUP BY 1 ORDER BY 1\nDatabase error:\nBinder Error: Referenced column \"temperature_celsius\" not found in FROM clause!\nCandidate bindings: \"temperature\", \"pressure\", \"precipitation\", \"time\"\n\nLINE 1: SELECT date_trunc('day', time) AS day, max(temperature_celsius) AS temperature FROM weather WHERE city...\n                                                   ^",
+      "reference": "SELECT date_trunc('day', time) AS day, max(temperature) AS temperature FROM weather WHERE city = 'Berlin' AND time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' AND temperature < 0 GROUP BY 1 ORDER BY 1",
+      "repairError": "Binder Error: Referenced column \"temperature_celsius\" not found in FROM clause!\nCandidate bindings: \"temperature\", \"pressure\", \"precipitation\", \"time\"\n\nLINE 1: SELECT date_trunc('day', time) AS day, max(temperature_celsius) AS temperature FROM weather WHERE city...\n                                                   ^",
+      "firstDeltaMs": 300.31833000000006,
+      "sql": "SELECT date_trunc('day', time) AS day, max(temperature) AS temperature FROM weather WHERE city = 'Berlin' AND time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' AND temperature < 0 GROUP BY 1 ORDER BY 1",
+      "sqlMs": 456.4934200000007,
+      "cached": false,
+      "providerFirstTokenMs": 294.373779296875,
+      "stats": {
+        "attempts": 1,
+        "cachedTokens": 0,
+        "completionTokens": 108,
+        "costUsd": 0.00028545,
+        "model": "openai/gpt-oss-120b",
+        "promptTokens": 1471,
+        "reasoningTokens": 34
+      },
+      "category": "exact",
+      "reason": "",
+      "correct": true,
+      "expectedRows": 43,
+      "resultRows": 43,
+      "executionMs": 22.93080100000043,
+      "automaticRepairObserved": false
+    },
+    {
+      "id": "guard_repair_alias",
+      "dataset": "weather",
+      "base": {
+        "mode": "refine",
+        "originalQuestion": "Daily average temperature in Berlin during 2024",
+        "sql": "SELECT date_trunc('day', time) AS day, avg(temperature) AS temperature FROM weather WHERE city = 'Berlin' AND time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' GROUP BY 1 ORDER BY 1",
+        "history": [
+          {
+            "kind": "create",
+            "text": "Daily average temperature in Berlin during 2024"
+          }
+        ],
+        "presentation": {
+          "view": "line",
+          "params": {}
+        }
+      },
+      "request": "Use the maximum instead of the average, and name its result column order without quoting the alias.",
+      "reference": "SELECT date_trunc('day', time) AS day, max(temperature) AS temperature FROM weather WHERE city = 'Berlin' AND time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' GROUP BY 1 ORDER BY 1",
+      "firstDeltaMs": 553.0760269999992,
+      "sql": "SELECT date_trunc('day', time) AS day, max(temperature) AS order FROM weather WHERE city = 'Berlin' AND time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' GROUP BY 1 ORDER BY 1",
+      "sqlMs": 668.4028830000007,
+      "cached": false,
+      "providerFirstTokenMs": 549.307373046875,
+      "stats": {
+        "attempts": 1,
+        "cachedTokens": 0,
+        "completionTokens": 115,
+        "costUsd": 0.00026475,
+        "model": "openai/gpt-oss-120b",
+        "promptTokens": 1305,
+        "reasoningTokens": 46
+      },
+      "category": "equivalent",
+      "reason": "different column names",
+      "rounded": false,
+      "correct": true,
+      "expectedRows": 366,
+      "resultRows": 366,
+      "executionMs": 18.4884030000012,
+      "automaticRepairObserved": false
+    },
+    {
+      "id": "preserve_join_filter_grouping",
+      "dataset": "cities",
+      "base": {
+        "mode": "refine",
+        "originalQuestion": "Total city population per country in Europe",
+        "sql": "SELECT k.name AS country, sum(c.population) AS population FROM cities c JOIN countries k ON c.country_code = k.code WHERE k.continent = 'Europe' AND c.population > 100000 GROUP BY k.name ORDER BY k.name",
+        "history": [
+          {
+            "kind": "create",
+            "text": "Total city population per country in Europe"
+          },
+          {
+            "kind": "refine",
+            "text": "Only include cities with more than 100,000 people."
+          }
+        ],
+        "presentation": {
+          "view": "line",
+          "params": {}
+        }
+      },
+      "request": "Change the total to an average.",
+      "reference": "SELECT k.name AS country, avg(c.population) AS population FROM cities c JOIN countries k ON c.country_code = k.code WHERE k.continent = 'Europe' AND c.population > 100000 GROUP BY k.name ORDER BY k.name",
+      "firstDeltaMs": 501.6074470000003,
+      "sql": "SELECT k.name AS country, avg(c.population) AS avg_pop FROM cities c JOIN countries k ON c.country_code = k.code WHERE k.continent = 'Europe' AND c.population > 100000 GROUP BY k.name ORDER BY k.name",
+      "sqlMs": 614.2782969999989,
+      "cached": false,
+      "providerFirstTokenMs": 491.939697265625,
+      "stats": {
+        "attempts": 1,
+        "cachedTokens": 0,
+        "completionTokens": 119,
+        "costUsd": 0.00026835,
+        "model": "openai/gpt-oss-120b",
+        "promptTokens": 1313,
+        "reasoningTokens": 61
+      },
+      "category": "equivalent",
+      "reason": "different column names",
+      "rounded": false,
+      "correct": true,
+      "expectedRows": 39,
+      "resultRows": 39,
+      "executionMs": 18.066834999999628,
+      "automaticRepairObserved": false
+    },
+    {
+      "id": "europe_limit_refinement",
+      "dataset": "cities",
+      "base": {
+        "mode": "refine",
+        "originalQuestion": "Largest cities by population",
+        "sql": "SELECT c.name, c.population FROM cities c JOIN countries k ON c.country_code = k.code WHERE k.continent = 'Europe' ORDER BY c.population DESC, c.name LIMIT 10",
+        "history": [
+          {
+            "kind": "create",
+            "text": "Largest cities by population"
+          },
+          {
+            "kind": "refine",
+            "text": "Only Europe."
+          }
+        ],
+        "presentation": {
+          "view": "line",
+          "params": {}
+        }
+      },
+      "request": "Only show five.",
+      "reference": "SELECT c.name, c.population FROM cities c JOIN countries k ON c.country_code = k.code WHERE k.continent = 'Europe' ORDER BY c.population DESC, c.name LIMIT 5",
+      "firstDeltaMs": 252.163767,
+      "sql": "SELECT c.name,c.population FROM cities c JOIN countries k ON c.country_code=k.code WHERE k.continent='Europe' ORDER BY c.population DESC,c.name LIMIT 5",
+      "sqlMs": 341.9888169999995,
+      "cached": false,
+      "providerFirstTokenMs": 250.646484375,
+      "stats": {
+        "attempts": 1,
+        "cachedTokens": 0,
+        "completionTokens": 73,
+        "costUsd": 0.00023655,
+        "model": "openai/gpt-oss-120b",
+        "promptTokens": 1285,
+        "reasoningTokens": 30
+      },
+      "category": "exact",
+      "reason": "",
+      "correct": true,
+      "expectedRows": 5,
+      "resultRows": 5,
+      "executionMs": 16.575730000000476,
+      "automaticRepairObserved": false
+    },
+    {
+      "id": "asia_same_request_cache_isolation",
+      "dataset": "cities",
+      "base": {
+        "mode": "refine",
+        "originalQuestion": "Largest cities by population",
+        "sql": "SELECT c.name, c.population FROM cities c JOIN countries k ON c.country_code = k.code WHERE k.continent = 'Asia' ORDER BY c.population DESC, c.name LIMIT 10",
+        "history": [
+          {
+            "kind": "create",
+            "text": "Largest cities by population"
+          },
+          {
+            "kind": "refine",
+            "text": "Only Asia."
+          }
+        ],
+        "presentation": {
+          "view": "line",
+          "params": {}
+        }
+      },
+      "request": "Only show five.",
+      "reference": "SELECT c.name, c.population FROM cities c JOIN countries k ON c.country_code = k.code WHERE k.continent = 'Asia' ORDER BY c.population DESC, c.name LIMIT 5",
+      "firstDeltaMs": 253.48335000000043,
+      "sql": "SELECT c.name,c.population FROM cities c JOIN countries k ON c.country_code=k.code WHERE k.continent='Asia' ORDER BY c.population DESC,c.name LIMIT 5",
+      "sqlMs": 326.5413870000011,
+      "cached": false,
+      "providerFirstTokenMs": 238.96435546875,
+      "stats": {
+        "attempts": 1,
+        "cachedTokens": 256,
+        "completionTokens": 64,
+        "costUsd": 0.00021195,
+        "model": "openai/gpt-oss-120b",
+        "promptTokens": 1285,
+        "reasoningTokens": 21
+      },
+      "category": "exact",
+      "reason": "",
+      "correct": true,
+      "expectedRows": 5,
+      "resultRows": 5,
+      "executionMs": 14.429051999999501,
+      "automaticRepairObserved": false
+    }
+  ]
+}

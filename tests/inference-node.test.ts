@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { decode, encode, header, json, Kind, Node, readJson, readText, Stage, text, type Frame } from '../src/protocol/frame';
 import { createInferenceNode, type ChatChunk, type EngineLike } from '../src/inference-node/node';
-import { repairMessage, systemPrompt, userMessage } from '../src/inference-node/prompt';
+import { editPrompt, editRepairMessage, repairMessage, systemPrompt, userMessage } from '../src/inference-node/prompt';
+import { editBaseJson, parseEditBase } from '../src/protocol/edit';
 import { check, keywordAlias, rawRows, rowCheckInputs, SqlStream } from '../src/inference-node/sql';
 import { generationOptions, resolveModelId } from '../src/inference-node/models';
 import type { DatasetContext } from '../src/engine/contracts';
@@ -11,6 +12,11 @@ const fixture = (name: string) => readFileSync(new URL(`../crates/inference-serv
 const vessels = JSON.parse(fixture('vessels-context.json')) as DatasetContext;
 
 describe('prompt builder twin of crates/inference-server/src/prompt.rs', () => {
+  it.each(['refine', 'regenerate'])('shares the exact %s edit prefix, including SQL, lineage, presentation and Unicode', mode => {
+    const raw = fixture('edit-base.json').trim().replace('"mode":"refine"', `"mode":"${mode}"`);
+    expect(editBaseJson(parseEditBase(raw))).toBe(raw);
+    expect(editPrompt(raw)).toBe(fixture(`edit-${mode}-prompt.txt`));
+  });
   it.each(['vessels', 'edge', 'weather', 'flights', 'cities'].map(name => [`${name}-context.json`, `${name}-prompt.txt`]))(
     '%s renders the shared golden prompt byte for byte', (context, golden) => {
       expect(systemPrompt(JSON.parse(fixture(context)))).toBe(fixture(golden));
@@ -135,6 +141,29 @@ const kinds = (frames: Frame[]) => frames.map((f) => f.kind);
 const has = (h: ReturnType<typeof harness>, request: number, kind: Kind) => () => h.frames(request).some((f) => f.kind === kind);
 
 describe('WebLLM inference node over tb1', () => {
+  it('keeps the selected SQL and lineage in a prepared edit base through repair, and rejects stale handles', async () => {
+    const h = harness([['Here is a query: SELECT 1'], ['SELECT 2']]);
+    h.hello(); h.context();
+    const raw = fixture('edit-base.json').trim();
+    h.send(Kind.EDIT_CONTEXT, { request: 90, revision: 3, context: 1 }, text(raw));
+    const payload = new Uint8Array(8 + text('weekly instead').length);
+    new DataView(payload.buffer).setUint32(0, 90, true); new DataView(payload.buffer).setUint32(4, 3, true); payload.set(text('weekly instead'), 8);
+    h.send(Kind.EDIT_INFER, { request: 5, revision: 7, context: 1 }, payload);
+    await h.waitFor(has(h, 5, Kind.INFER_STATS));
+    const requests = h.requests.filter(r => r.stream === true);
+    expect(requests).toHaveLength(2);
+    const messages = requests[1].messages as Array<{ role: string; content: string }>;
+    expect(messages[0].content).toBe(systemPrompt(vessels) + editPrompt(raw));
+    expect(messages[1].content).toBe('weekly instead');
+    expect(messages[3].content).toContain('preserving the chart definition and revision mode above');
+    expect(readText(h.frames(5).find(f => f.kind === Kind.SQL)!.payload)).toBe('SELECT 2');
+    h.send(Kind.EDIT_CONTEXT, { request: 90, revision: 3, context: 1 }, text(raw.replace("Aurora", "Calypso")));
+    expect(readJson(h.out.at(-1)!.payload)).toMatchObject({ code: 'bad_edit_context' });
+    expect(h.out.at(-1)!.request).toBe(0);
+    new DataView(payload.buffer).setUint32(4, 2, true);
+    h.send(Kind.EDIT_INFER, { request: 6, revision: 8, context: 1 }, payload);
+    expect(readJson(h.frames(6)[0].payload)).toMatchObject({ code: 'unknown_edit_context' });
+  });
   it('loads with STATUS frames, warms up, then answers READY with the concrete model', async () => {
     const h = harness([]);
     h.hello('qwen3-4b');
@@ -143,7 +172,7 @@ describe('WebLLM inference node over tb1', () => {
     expect(statuses[0]).toMatchObject({ state: 'loading', progress: 0 });
     expect(statuses).toContainEqual(expect.objectContaining({ state: 'loading', progress: 0.5, detail: 'half' }));
     expect(statuses.at(-1)).toMatchObject({ state: 'ready', progress: 1 });
-    expect(readJson(h.out.at(-1)!.payload)).toEqual({ node: 'inference', name: 'webllm', version: 1, model: 'Qwen3-4B-q4f16_1-MLC' });
+    expect(readJson(h.out.at(-1)!.payload)).toEqual({ node: 'inference', name: 'webllm', version: 1, model: 'Qwen3-4B-q4f16_1-MLC', capabilities: ['edit-context-v1'] });
     expect(h.requests[0]).toMatchObject({ stream: false, max_tokens: 1, extra_body: { enable_thinking: false } });
   });
 

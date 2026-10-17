@@ -1,0 +1,48 @@
+/* Saved-document controls are outside the board transform and independent of chart rendering. */
+.canvas-document{flex:none;min-width:0;padding:10px 22px;border-bottom:1px solid #29414d;background:#0d1d28;color:#b8d2d3}
+.canvas-document-line,.canvas-document-tools{display:flex;align-items:center;gap:9px;min-width:0}
+.canvas-document-tools{margin-top:7px;flex-wrap:wrap;gap:5px 9px}
+.canvas-title-form{flex:1;min-width:80px}
+.canvas-document-title{width:100%;max-width:540px;border:1px solid transparent;background:transparent;border-radius:4px;padding:3px 5px;margin-left:-5px;color:#d5eae5;font-size:13px;font-weight:550;text-overflow:ellipsis}
+.canvas-document-title:hover{border-color:#2a4d56}.canvas-document-title:focus{background:#102a33;border-color:#569c89;outline:none}
+.canvas-save-status{flex:none;max-width:42%;font:8px/1.5 var(--mono);color:#79baa5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.canvas-save-status[data-state=saving]{color:#d4c591}.canvas-save-status[data-state=error],.canvas-save-status[data-state=conflict]{color:#ffb19e}
+.canvas-document-button{display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid #34535f;border-radius:5px;padding:5px 8px;background:#142a35;color:#a9cbc8;font-size:10px;line-height:1.35;white-space:nowrap}
+.canvas-document-button:hover:not(:disabled){background:#1a3b40;border-color:#4c8b7b;color:#d0f7e8}.canvas-document-button:disabled{opacity:.4;cursor:not-allowed}
+.canvas-document-button[data-canvas-action=export],.canvas-document-button[data-canvas-action=save-copy]{border-color:#38665c;color:#9dd7c1}
+.canvas-document-button[data-canvas-action=discard-draft]{color:#e7a796}
+.canvas-branch-select,.canvas-chart-picker{border:1px solid #34535f;border-radius:5px;background:#102632;color:#b5d3d2;padding:5px 8px;font-size:10px;min-width:0;max-width:100%}
+.canvas-branch-select{max-width:220px}.canvas-default-source{margin-left:auto;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:9px;color:#779fa7}
+.canvas-save-warning,.canvas-action-error{font-size:10px;line-height:1.6;overflow-wrap:anywhere}
+.canvas-save-warning{margin-top:8px;border-left:2px solid #d6aa73;padding-left:9px;color:#e0c49b}
+.canvas-action-error{margin:8px 0 0;color:#ffb19e}
+.canvas-dialog-save{flex:none;font-size:10px;line-height:1.6;color:#d4c591;margin:0 0 12px;overflow-wrap:anywhere}.canvas-dialog-save[data-state=error],.canvas-dialog-save[data-state=conflict]{color:#ffb19e;border-left:2px solid #d6aa73;padding-left:9px}
+.canvas-document-dialog{width:min(860px,calc(100% - 32px));max-height:calc(100dvh - 40px);padding:22px;overflow:hidden}
+.canvas-document-dialog[open]{display:flex;flex-direction:column}
+.canvas-dialog-heading{display:flex;justify-content:space-between;align-items:center;gap:14px;flex:none}
+.canvas-dialog-heading h2{margin:0;color:#d7eae4;font-size:21px;line-height:1.2;font-weight:500;letter-spacing:-.4px}
+.canvas-dialog-close{flex:none}.canvas-dialog-tabs{display:flex;gap:5px;flex-wrap:wrap;margin:18px 0 12px;padding-bottom:12px;border-bottom:1px solid #2b4955;flex:none}
+.canvas-dialog-tabs .canvas-document-button{background:transparent;border-color:transparent;color:#87aeb3}
+.canvas-dialog-tabs .canvas-document-button[data-selected=true]{border-color:#43816e;background:#1a3a37;color:#b9ead5}
+.canvas-dialog-content{min-height:0;overflow:auto;overscroll-behavior:contain;padding-right:4px}
+.canvas-dialog-content>.canvas-dialog-note{margin:0 0 14px}
+.canvas-dialog-note{color:#8baeb5;font-size:11px;line-height:1.65;overflow-wrap:anywhere}
+.canvas-library-actions{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.canvas-record{margin:9px 0;padding:12px 13px;border:1px solid #2e4c58;border-left:3px solid #365561;border-radius:7px;background:#102530;min-width:0;margin-left:calc(var(--history-depth,0)*7px)}
+.canvas-record[data-selected=true]{border-color:#4b8e7b;border-left-color:#72d0ac;background:#14312f}
+.canvas-record-heading{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;min-width:0}
+.canvas-record-heading h3{min-width:0;margin:0;font-size:12px;font-weight:550;line-height:1.5;color:#c8e1db;overflow-wrap:anywhere}
+.canvas-record-actions{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:6px;flex:none;max-width:55%}
+.canvas-record>.canvas-dialog-note{font:8px/1.7 var(--mono);color:#7dabae;margin-top:5px}
+.canvas-record-field{margin:9px 0;min-width:0}.canvas-record-field>strong{display:block;font:8px/1.5 var(--mono);text-transform:uppercase;letter-spacing:.06em;color:#7eaaa8;margin-bottom:4px}
+.canvas-record-field>p{white-space:pre-wrap;font-size:11px;line-height:1.65;overflow-wrap:anywhere;color:#c0dad6}
+.canvas-record-details{margin-top:10px;border-top:1px solid #2d4a52;padding-top:8px;min-width:0}
+.canvas-record-details>summary{font-size:10px;line-height:1.6;color:#9cc6be;cursor:pointer;overflow-wrap:anywhere}
+.canvas-record-details>summary:focus-visible{outline:2px solid var(--teal);outline-offset:3px}
+.canvas-exact-sql{max-height:290px;overflow:auto;margin:10px 0;padding:12px;border:1px solid #28464e;border-radius:5px;background:#091a24;color:#b5d8c9;white-space:pre;font:10px/1.7 var(--mono);tab-size:2}
+.canvas-exact-sql code{font:inherit}.canvas-history-members{margin:10px 0 0;padding-left:19px;color:#a9c8c2;font-size:10px;line-height:1.8;overflow-wrap:anywhere}
+.canvas-chart-picker{width:100%;padding:8px 10px;margin:0 0 12px;font-size:11px}
+.canvas-rebind{display:flex;align-items:center;gap:14px;justify-content:space-between;border:1px solid #31515c;border-radius:6px;padding:10px 12px;margin-bottom:12px}
+.canvas-rebind>.canvas-dialog-note{font-size:10px}.canvas-rebind>.canvas-document-button{flex:none}
+@media(max-width:850px){.canvas-document{padding:8px 13px}.canvas-document-tools{gap:5px}.canvas-document-button{font-size:9px;padding:5px 7px}.canvas-default-source{max-width:170px}.canvas-save-status{font-size:7px}}
+@media(max-width:650px){.canvas-document{padding:8px 12px}.canvas-document-title{font-size:12px}.canvas-save-status{max-width:38%}.canvas-default-source{width:100%;max-width:none;order:2;margin:1px 0 0}.canvas-document-dialog{width:calc(100% - 20px);max-height:calc(100dvh - 20px);padding:15px}.canvas-dialog-heading h2{font-size:18px}.canvas-dialog-tabs{margin-top:14px;gap:3px}.canvas-record{padding:10px;margin-left:0}.canvas-record-heading{flex-direction:column;gap:7px}.canvas-record-actions{max-width:100%;justify-content:flex-start}.canvas-rebind{align-items:flex-start;flex-direction:column;gap:8px}}

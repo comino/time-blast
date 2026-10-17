@@ -5,6 +5,7 @@ import { decode, Kind, readJson, readText, type Frame } from '../protocol/frame'
 import type { AxisTicks, ColumnRole, DatasetContext, DatasetSource, EngineToUi, InferencePlacement, PointerGesture, SlotSize, UiToEngine, ViewName } from '../engine/contracts';
 import { DraftEncoder, type Clock } from './draft-encoder';
 import { breakdown, RollingStats, type InferStats, type RollingSummary, type TimingBreakdown } from './timing';
+import type { Layout, Presentation } from '../canvas/model';
 
 import type { CoordinatorConfig } from '../engine/contracts';
 export type { CoordinatorConfig };
@@ -22,6 +23,11 @@ export interface StatusInfo { component: string; state: 'cold' | 'loading' | 're
 export interface ErrorInfo { code: string; message: string; detail?: string }
 
 export interface CardHandlers {
+  edit?(slot: number, mode: 'question' | 'sql' | 'regenerate'): void;
+  history?(slot: number): void;
+  refresh?(slot: number): void;
+  reattach?(slot: number): void;
+  paramEnd?(slot: number): void;
   view(slot: number, view: ViewName | null): void;
   param(slot: number, name: string, value: number): void;
   exportCsv(slot: number): void;
@@ -35,6 +41,9 @@ export interface CardHandlers {
 }
 /** One card's chrome. Pool cards start hidden. */
 export interface SlotCard {
+  document?(info: { layout: Layout; presentation: Presentation; originalQuestion: string; sql: string; status: string; editing?: boolean }): void;
+  status?(text: string): void;
+  presentation?(value: Presentation): void;
   showLive(): void;
   hide(): void;
   keep(): void;
@@ -65,6 +74,8 @@ export interface RailView {
   live(slot: number | null, revision: number): void;
   /** A result was kept (KEEP): add it to the conversation history. */
   kept(slot: number, title: string): void;
+  /** The canvas changed: its kept-question history no longer applies. */
+  clearKept?(): void;
 }
 
 /** One step back: the SQL shown before a manipulation, and the gesture that left it. */
@@ -194,6 +205,13 @@ export class UiController {
   }
 
   /** Live slot currently shown, for tests and the app shell. */
+  get inputSequence(): number { return this.drafts.revision; }
+  get sentFrames(): number { return this.drafts.sent; }
+  get primeSuggestions(): boolean { return true; }
+  questionFor(request: number, revision: number): string | undefined { void request; return this.drafts.textOf(revision); }
+  suggested(question: string, request: number, timeStamp: number, sql?: string, view?: ViewName): boolean {
+    void request; void sql; void view; this.commit(question, timeStamp); return true;
+  }
   get liveSlot(): number | null { return this.live; }
   get freeSlots(): number[] { return [...this.pool]; }
   get keptSlots(): number[] { return [...this.slots].filter(([, e]) => e.kept).map(([slot]) => slot); }
@@ -242,7 +260,7 @@ export class UiController {
     }
   }
 
-  private frame(frame: Frame): void {
+  protected frame(frame: Frame): void {
     if (this.observer?.(frame)) return;
     switch (frame.kind) {
       case Kind.BIND: return this.bind(u32(frame.payload), frame.request, frame.revision);

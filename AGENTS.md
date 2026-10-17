@@ -58,8 +58,10 @@ node scripts/eval-sql.mjs --self-test
 node scripts/eval-sql.mjs --endpoint ws://127.0.0.1:8787/session
 ```
 
-Browser smokes (`tests/engine_smoke.py`, `tests/ui_smoke.py`) need a running dev server and
-Python Playwright. Prompt changes go into both `crates/inference-server/src/prompt.rs` and
+Browser smokes need Python Playwright. `tests/engine_smoke.py` needs a running dev
+server; `tests/ui_smoke.py` runs the persistent-canvas application smoke against a
+production preview (also requires `aiohttp`). `tests/canvas_card_smoke.py` tests
+isolated controls against a dev server. Prompt changes go into both `crates/inference-server/src/prompt.rs` and
 `src/inference-node/prompt.ts` (byte-identical, golden files in
 `crates/inference-server/tests/fixtures/`; regenerate with `UPDATE_GOLDEN=1`) and get an eval run.
 Deployment: [deploy/README.md](deploy/README.md). Provider keys live only in

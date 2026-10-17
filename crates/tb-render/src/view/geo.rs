@@ -591,6 +591,8 @@ impl Family for Geo {
         true
     }
 
+    fn reset_params(&mut self) -> bool { self.set_param("playback", 1.0) }
+
     fn release(&mut self, gpu: &mut Gpu) {
         for s in &mut self.series {
             s.gpu.release(gpu);

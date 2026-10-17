@@ -609,6 +609,8 @@ impl Family for Matrix {
         changed
     }
 
+    fn reset_params(&mut self) -> bool { self.set_param("rotation", DEFAULT_ROTATION) }
+
     fn release(&mut self, gpu: &mut Gpu) {
         for s in &mut self.series {
             s.gpu.release(gpu);
@@ -1186,5 +1188,12 @@ mod tests {
         assert_eq!(view, View::Surface);
         let fam = r.slots[0].shown.as_mut().unwrap().family.as_mut().unwrap();
         assert!(!fam.set_param("rotation", 45.0), "replayed into the new family");
+        r.reset_params(1);
+        let fam = r.slots[0].shown.as_mut().unwrap().family.as_mut().unwrap();
+        assert!(!fam.set_param("rotation", DEFAULT_ROTATION), "reset updates an existing family");
+        assert!(r.slots[0].params.is_empty());
+        run(&mut r, 4, 5);
+        let fam = r.slots[0].shown.as_mut().unwrap().family.as_mut().unwrap();
+        assert!(!fam.set_param("rotation", DEFAULT_ROTATION), "deleted params stay absent on a fresh result");
     }
 }

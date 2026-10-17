@@ -43,12 +43,13 @@ class FakeCoordinator implements CoordinatorCore {
 class FakeRenderer implements RendererNode {
   frames: LocalFrame[] = [];
   calls: string[] = [];
-  constructor(private readonly emit: Emit) {}
+  constructor(private readonly emit: Emit, readonly ui: PostToUi) {}
   attach(slot: number) { this.calls.push(`attach ${slot}`); }
   resize(slot: number) { this.calls.push(`resize ${slot}`); }
   detach(slot: number) { this.calls.push(`detach ${slot}`); }
   setView(slot: number, view: string | null) { this.calls.push(`view ${slot} ${view}`); }
   setParam(slot: number, name: string, value: number) { this.calls.push(`param ${slot} ${name}=${value}`); }
+  setPresentation(slot: number) { this.calls.push(`presentation ${slot}`); }
   views() { return []; }
   export(slot: number) { this.calls.push(`export ${slot}`); }
   hitResult: Hit | null = null;
@@ -66,7 +67,7 @@ class FakeDatabase implements DatabaseNode {
   frames: Frame[] = [];
   opened: Array<[string, number]> = [];
   openGate?: Promise<void>;
-  constructor(private readonly emit: Emit) {}
+  constructor(readonly emit: Emit) {}
   async open(source: { name: string }, id: number) {
     this.opened.push([source.name, id]);
     await this.openGate;
@@ -103,10 +104,10 @@ function setup(options: { gated?: boolean; failRenderer?: boolean } = {}) {
   let clock = 1000;
   const deps: HostDeps = {
     createCoordinator: async () => { await gates.coordinator.promise; return coordinator; },
-    createRenderer: async (emit) => {
+    createRenderer: async (emit, ui) => {
       await gates.renderer.promise;
       if (options.failRenderer) throw new Error('no GPU');
-      return renderer = new FakeRenderer(emit);
+      return renderer = new FakeRenderer(emit, ui);
     },
     createDatabase: async emit => { await gates.database.promise; return database = new FakeDatabase(emit); },
     postToUi: ((message, transfer) => posted.push([message, transfer])) as PostToUi,
@@ -128,6 +129,60 @@ function setup(options: { gated?: boolean; failRenderer?: boolean } = {}) {
 }
 
 describe('engine host', () => {
+  it('fences renderer controls and UI messages by generation and execution, and prepares gestures without querying', async () => {
+    const t = setup(); await t.host.ready;
+    await t.host.openDataset({ kind: 'fixture', name: 'vessels' });
+    const words = (...values: number[]) => new Uint8Array(new Uint32Array(values).buffer);
+    t.coordinator.react = (link, f) => link === 'ui' ? [
+      ['renderer', frame(Kind.REGISTER_TARGET, {}, words(2, 4))],
+      ['renderer', frame(Kind.BIND, { request: 50 }, words(2, 256, 4))],
+    ] : [];
+    t.host.onMessage(uiFrame(frame(Kind.CONFIG)));
+    t.coordinator.react = () => [];
+    t.renderer.calls.length = 0;
+    t.host.onMessage({ type: 'view', slot: 2, generation: 3, request: 49, view: 'table' });
+    t.host.onMessage({ type: 'param', slot: 2, generation: 4, request: 49, name: 'rotation', value: 90 });
+    t.host.onMessage({ type: 'view', slot: 2, view: 'table' });
+    expect(t.renderer.calls).toEqual([]);
+    t.host.onMessage({ type: 'presentation', slot: 2, generation: 4, presentation: { view: null, params: {} } });
+    expect(t.renderer.calls).toEqual(['presentation 2']);
+    const count = t.posted.length;
+    t.renderer.ui({ type: 'table', slot: 2, request: 49, columns: [], rows: [], total: 1 });
+    expect(t.posted).toHaveLength(count);
+    t.renderer.ui({ type: 'table', slot: 2, request: 50, columns: [], rows: [], total: 2 });
+    expect(t.posted.at(-1)![0]).toMatchObject({ generation: 4, request: 50, total: 2 });
+    t.coordinator.inputs.length = 0;
+    t.host.onMessage({ type: 'manipulate', slot: 2, generation: 4, request: 50, revision: 2, epoch: 0, context: 1,
+      sql: 'SELECT 1', gesture: { kind: 'sql', sql: 'SELECT 2' }, keyAt: 1, sentAt: 2, prepareOnly: true });
+    expect(t.posted.at(-1)![0]).toMatchObject({ type: 'manipulated', sql: 'SELECT 2', request: 50, generation: 4 });
+    expect(t.coordinator.inputs).toEqual([]);
+  });
+
+  it('rejects database frames after cancellation or terminal completion before they reach rendering', async () => {
+    const t = setup(); await t.host.ready;
+    t.coordinator.react = (link) => link === 'ui' ? [['database', frame(Kind.EXEC, { request: 5, epoch: 2, context: 1 }, text('SELECT 1'))]] : [];
+    t.host.onMessage(uiFrame(frame(Kind.CONFIG)));
+    const count = t.renderer.frames.length;
+    t.database.emit({ ...frame(Kind.BATCH, { request: 5, epoch: 2, context: 1 }), payload: { batch: 'late' } } as unknown as LocalFrame);
+    expect(t.renderer.frames).toHaveLength(count);
+    t.database.handle = f => { t.database.frames.push(f); };
+    t.host.onMessage(uiFrame(frame(Kind.CONFIG)));
+    t.coordinator.react = () => [['database', frame(Kind.CANCEL, { request: 5 })]];
+    t.host.onMessage(uiFrame(frame(Kind.CONFIG)));
+    t.database.emit(frame(Kind.DONE, { request: 5, epoch: 2, context: 1 }, new Uint8Array(16)));
+    expect(t.renderer.frames).toHaveLength(count);
+  });
+
+  it('suspends the prior source before opening a new one, including a failed open', async () => {
+    const t = setup(); await t.host.ready;
+    await t.host.openDataset({ kind: 'fixture', name: 'vessels' });
+    t.database.open = async () => {
+      expect(t.coordinator.inputs.at(-1)![1]).toMatchObject({ kind: Kind.CONTEXT, context: 0 });
+      throw new Error('offline');
+    };
+    expect(await t.host.openDataset({ kind: 'fixture', name: 'weather' })).toBeUndefined();
+    expect(t.coordinator.inputs.at(-1)![1]).toMatchObject({ kind: Kind.ERROR });
+  });
   it('turns a chart gesture into a QUERY frame on the UI link (hit-test, wrap without a parser, stamps)', async () => {
     const t = setup();
     await t.host.ready;
@@ -173,9 +228,9 @@ describe('engine host', () => {
     expect(t.database.opened).toEqual([['vessels', 1]]);
     t.gates.coordinator.resolve(); await flush();
     expect(t.coordinator.inputs.map(([link, f]) => [link, f.kind])).toEqual([
-      ['ui', Kind.CONFIG], ['ui', Kind.DRAFT], ['database', Kind.STATUS], ['database', Kind.CONTEXT],
-    ].filter(([, kind]) => kind !== Kind.STATUS));
-    const context = t.coordinator.inputs.find(([, f]) => f.kind === Kind.CONTEXT)![1];
+      ['ui', Kind.CONFIG], ['ui', Kind.DRAFT], ['database', Kind.CONTEXT], ['database', Kind.CONTEXT],
+    ]);
+    const context = t.coordinator.inputs.find(([, f]) => f.kind === Kind.CONTEXT && f.context !== 0)![1];
     expect(context.context).toBe(1);
     expect(readJson<DatasetContext>(context.payload)).toMatchObject({ id: 1, name: 'vessels' });
     expect(t.posted.find(([m]) => m.type === 'context')![0]).toMatchObject({ type: 'context', context: { id: 1 } });
@@ -305,6 +360,28 @@ describe('engine host', () => {
     expect(await second).toMatchObject({ id: 2, name: 'vessels-small' });
     expect(t.database.opened).toEqual([['vessels-small', 2]]);
     expect(t.posted.filter(([m]) => m.type === 'context')).toHaveLength(1);
+  });
+});
+
+describe('engine host: persistent presentation ordering', () => {
+  for (const startup of [false, true]) it(`keeps a newer picker choice over a late hint${startup ? ' during renderer startup' : ''}`, async () => {
+    const t = setup({ gated: startup });
+    if (startup) { t.gates.coordinator.resolve(); t.gates.database.resolve(); await flush(); }
+    else await t.host.ready;
+    const target = new Uint8Array(new Uint32Array([2, 4]).buffer);
+    t.coordinator.react = (_link, f) => f.kind === Kind.REGISTER_TARGET ? [['renderer', f]] :
+      f.kind === Kind.QUERY ? [['renderer', frame(Kind.BIND, { request: f.request, revision: f.revision }, new Uint8Array(new Uint32Array([2, 4, 4]).buffer))]] : [];
+    t.host.onMessage(uiFrame(frame(Kind.REGISTER_TARGET, {}, target)));
+    t.host.onMessage({ type: 'presentation', slot: 2, generation: 4, presentation: { view: 'bar', params: {} }, manualViewRevision: 7 });
+    t.host.onMessage(uiFrame(frame(Kind.QUERY, { request: 80, revision: 7 })));
+    if (startup) { t.gates.renderer.resolve(); await t.host.ready; }
+    const binds = () => t.renderer.frames.filter(f => f.kind === Kind.BIND);
+    expect(new DataView((binds()[0].payload as Uint8Array).buffer, (binds()[0].payload as Uint8Array).byteOffset).getUint32(4, true)).toBe(256);
+    // A later question explicitly asks for heatmap and may change the old picker intent.
+    t.host.onMessage(uiFrame(frame(Kind.QUERY, { request: 81, revision: 8 })));
+    const last = binds().at(-1)!.payload as Uint8Array;
+    expect(new DataView(last.buffer, last.byteOffset).getUint32(4, true)).toBe(4);
+    t.host.dispose();
   });
 });
 

@@ -247,6 +247,43 @@ pub(crate) fn push_u32(out: &mut Vec<u8>, mut value: u32) {
     out.extend(digits[..n].iter().rev());
 }
 
+pub(crate) fn valid_object(input: &[u8]) -> bool {
+    let mut p = Parser { s: input, i: 0 };
+    p.peek() == Some(b'{') && p.skip(0).is_ok() && p.peek().is_none()
+}
+
+pub(crate) fn has_capability(input: &[u8], capability: &[u8]) -> bool {
+    fn check(input: &[u8], capability: &[u8]) -> Result<bool, Bad> {
+        let mut p = Parser { s: input, i: 0 }; let mut found = false;
+        p.eat(b'{')?;
+        while p.peek() != Some(b'}') {
+            let key = p.string()?; p.eat(b':')?;
+            if key == b"capabilities" {
+                p.eat(b'[')?;
+                while p.peek() != Some(b']') {
+                    found |= p.string()? == capability;
+                    if p.peek() != Some(b']') { p.eat(b',')?; }
+                }
+                p.eat(b']')?;
+            } else { p.skip(0)?; }
+            if p.peek() != Some(b'}') { p.eat(b',')?; }
+        }
+        p.eat(b'}')?; if p.peek().is_some() { return Err(Bad); } Ok(found)
+    }
+    check(input, capability).unwrap_or(false)
+}
+
+fn target_payload(slot: u32, generation: u32) -> Vec<u8> {
+    let mut out = b"{\"slot\":".to_vec(); push_u32(&mut out, slot);
+    out.extend_from_slice(b",\"generation\":"); push_u32(&mut out, generation); out
+}
+pub(crate) fn candidate_payload(slot: u32, generation: u32, sql: &[u8]) -> Vec<u8> {
+    let mut out = target_payload(slot, generation); out.extend_from_slice(b",\"sql\":"); push_string(&mut out, sql); out.push(b'}'); out
+}
+pub(crate) fn execution_payload(slot: u32, generation: u32, status: &[u8]) -> Vec<u8> {
+    let mut out = target_payload(slot, generation); out.extend_from_slice(b",\"status\":"); push_string(&mut out, status); out.push(b'}'); out
+}
+
 /// Append `bytes` (UTF-8) as a JSON string literal.
 pub(crate) fn push_string(out: &mut Vec<u8>, bytes: &[u8]) {
     const HEX: &[u8; 16] = b"0123456789abcdef";

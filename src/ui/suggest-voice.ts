@@ -23,8 +23,10 @@ export function mountInteractions(root: HTMLElement, input: HTMLTextAreaElement,
   const commit = (text: string, timeStamp: number) => { put(text); controller.commit(text, timeStamp); input.select(); afterInput(); };
 
   const pick = (chip: Chip, event: MouseEvent) => {
+    if (!controller.suggested(chip.suggestion.question, chip.from, event.timeStamp, chip.suggestion.sql, chip.suggestion.view)) return;
     suggestions.picked(chip);
-    commit(chip.suggestion.question, event.timeStamp);
+    put(chip.suggestion.question);
+    input.select(); afterInput();
     input.focus();
   };
   const view = new SuggestChipsView(composer, pick);
@@ -32,10 +34,10 @@ export function mountInteractions(root: HTMLElement, input: HTMLTextAreaElement,
     send: bytes => controller.sendFrame(bytes),
     epoch: () => controller.drafts.epoch,
     context: () => controller.context,
-    textOf: revision => controller.drafts.textOf(revision),
-    revision: () => controller.drafts.revision,
+    textOf: (revision, request) => controller.questionFor(request ?? 0, revision),
+    revision: () => controller.inputSequence,
     now: () => performance.now(),
-  }, view, suggestOptions());
+  }, view, { ...suggestOptions(), ...(controller.primeSuggestions ? {} : { prime: false }) });
   controller.observer = frame => suggestions.observe(frame);
 
   const voice = mountVoice(footer, browserRecognition(), {

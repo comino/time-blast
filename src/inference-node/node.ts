@@ -9,7 +9,8 @@
  */
 import type { DatasetContext } from '../engine/contracts';
 import { decode, encode, header, json, Kind, Node, readJson, readText, Stage, text, type Frame, type Header, type Stamp } from '../protocol/frame';
-import { repairMessage, systemPrompt, userMessage } from './prompt';
+import { editPrompt, editRepairMessage, repairMessage, systemPrompt, userMessage } from './prompt';
+import { EDIT_CAPABILITY, parseEditBase } from '../protocol/edit';
 import { check, keywordAlias, rawRows, rowCheckInputs, SqlStream } from './sql';
 
 export interface ChatChunk {
@@ -42,10 +43,10 @@ interface Job {
   receivedAt: number;
   cancelled: boolean;
 }
-interface Prepared { context: DatasetContext; system: string; rows: ReturnType<typeof rowCheckInputs> }
+interface Prepared { context: DatasetContext; system: string; rows: ReturnType<typeof rowCheckInputs>; edit?: boolean }
 
 const MAX_CONTEXTS = 4;
-const MAX_QUESTION_CHARS = 4096;
+const MAX_QUESTION_CHARS = 16384;
 
 export function createInferenceNode(deps: InferenceNodeDeps) {
   let greeted = false;
@@ -54,6 +55,7 @@ export function createInferenceNode(deps: InferenceNodeDeps) {
   let engine: EngineLike | undefined;
   let epoch = 0;
   const contexts = new Map<number, Prepared>();
+  const edits = new Map<number, { generation: number; context: number; raw: string; prepared: Prepared }>();
   let running: Job | undefined;
   let waiting: Job | undefined;
 
@@ -82,7 +84,7 @@ export function createInferenceNode(deps: InferenceNodeDeps) {
       engine = created;
       ready = true;
       status('ready', 'Browser model ready', { progress: 1, detail: model });
-      send({ ...header(Kind.READY), stamps: [], payload: json({ node: 'inference', name: 'webllm', version: 1, model }) });
+      send({ ...header(Kind.READY), stamps: [], payload: json({ node: 'inference', name: 'webllm', version: 1, model, capabilities: [EDIT_CAPABILITY] }) });
       pump();
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : String(cause);
@@ -112,7 +114,30 @@ export function createInferenceNode(deps: InferenceNodeDeps) {
       case Kind.CONTEXT: return onContext(frame);
       case Kind.CANCEL: return onCancel(frame);
       case Kind.INFER: return onInfer(frame, receivedAt);
+      case Kind.EDIT_CONTEXT: return onEditContext(frame);
+      case Kind.EDIT_INFER: return onInfer(frame, receivedAt);
       default: return; // frames for other nodes are ignored
+    }
+  }
+
+  function onEditContext(frame: Frame) {
+    try {
+      const context = contexts.get(frame.context);
+      if (!context || !frame.request || !frame.revision) throw new Error('Unknown context or invalid edit handle');
+      const raw = readText(frame.payload);
+      parseEditBase(raw);
+      const old = edits.get(frame.request);
+      if (old && old.generation >= frame.revision) {
+        if (old.generation === frame.revision && old.context === frame.context && old.raw === raw) return;
+        throw new Error('Edit handles are immutable');
+      }
+      edits.delete(frame.request);
+      edits.set(frame.request, { generation: frame.revision, context: frame.context, raw,
+        prepared: { ...context, system: context.system + editPrompt(raw), edit: true } });
+      while (edits.size > 64) edits.delete(edits.keys().next().value!);
+    } catch (cause) {
+      // EDIT_CONTEXT's request field is a target handle, not an execution id.
+      error({ ...frame, request: 0, revision: 0 }, 'bad_edit_context', cause instanceof Error ? cause.message : String(cause));
     }
   }
 
@@ -142,12 +167,22 @@ export function createInferenceNode(deps: InferenceNodeDeps) {
 
   function onInfer(frame: Frame, receivedAt: number) {
     if (frame.epoch < epoch) return; // stale
-    const context = contexts.get(frame.context);
+    let context = contexts.get(frame.context);
     if (!context) { error(frame, 'unknown_context', 'No CONTEXT with this id.'); return; }
+    let payload = frame.payload;
+    if (frame.kind === Kind.EDIT_INFER) {
+      if (payload.byteLength < 8) { error(frame, 'bad_request', 'EDIT_INFER needs an edit handle'); return; }
+      const p = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+      const edit = edits.get(p.getUint32(0, true));
+      if (!edit || edit.context !== frame.context || edit.generation !== p.getUint32(4, true)) {
+        error(frame, 'unknown_edit_context', 'No EDIT_CONTEXT with this handle.'); return;
+      }
+      context = edit.prepared; payload = payload.subarray(8);
+    }
     let question = '';
-    try { question = readText(frame.payload); } catch { /* rejected below */ }
+    try { question = readText(payload); } catch { /* rejected below */ }
     if (question.trim() === '' || Array.from(question).length > MAX_QUESTION_CHARS) {
-      error(frame, 'bad_request', 'The question must be non-empty UTF-8 of at most 4096 characters.');
+      error(frame, 'bad_request', 'The question must be non-empty UTF-8 of at most 16384 characters.');
       return;
     }
     const { stamps: _s, payload: _p, ...rest } = frame;
@@ -238,7 +273,7 @@ export function createInferenceNode(deps: InferenceNodeDeps) {
           stats();
           return;
         }
-        messages.push({ role: 'assistant', content: raw }, { role: 'user', content: repairMessage(job.context.context, reason) });
+        messages.push({ role: 'assistant', content: raw }, { role: 'user', content: (job.context.edit ? editRepairMessage : repairMessage)(job.context.context, reason) });
       }
     } catch (cause) {
       if (!live()) {

@@ -16,11 +16,14 @@
 //!   cancelled or superseded request is dropped.
 
 mod json;
+mod targets;
 pub mod abi;
 #[cfg(test)]
 mod tests;
 
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
+use std::rc::Rc;
+use targets::{Target, TargetKey};
 
 pub use tb_protocol::{Frame, FrameRef, Header, Kind, Stamp};
 use tb_protocol::{flags, node, stage};
@@ -118,7 +121,7 @@ pub const REQUEST_CAPACITY: usize = 64;
 /// Stamps kept per request ledger (one per stage; 18 stages are defined).
 const LEDGER_CAPACITY: usize = 32;
 
-static READY_PAYLOAD: &[u8] = br#"{"node":"coordinator","name":"tb-coordinator","version":1}"#;
+static READY_PAYLOAD: &[u8] = br#"{"node":"coordinator","name":"tb-coordinator","version":1,"capabilities":["canvas-targets-v1"]}"#;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Phase {
@@ -158,15 +161,19 @@ struct Request {
     result_sent: bool,
     drawn: bool,
     ledger: Vec<Stamp>,
+    target: Option<TargetKey>,
+    base: Option<Rc<[u8]>>,
+    /// Terminal notification belongs to the served candidate, not just the execution.
+    notified_revision: Option<u32>,
 }
 
 impl Request {
     fn usable(&self) -> bool {
-        !matches!(self.phase, Phase::Failed | Phase::Cancelled) && self.exec != Exec::Failed
+        !matches!(self.phase, Phase::Failed | Phase::Cancelled) && !matches!(self.exec, Exec::Failed | Exec::Cancelled)
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 struct Draft {
     revision: u32,
     context: u32,
@@ -176,6 +183,8 @@ struct Draft {
     /// Set by a UI CANCEL: this revision must not be translated again.
     cancelled: bool,
     stamps: Vec<Stamp>,
+    target: Option<TargetKey>,
+    base: Option<Rc<[u8]>>,
 }
 
 struct CacheEntry {
@@ -184,6 +193,7 @@ struct CacheEntry {
     text: Box<str>,
     sql: Box<[u8]>,
     used: u64,
+    base: Option<Rc<[u8]>>,
 }
 
 #[derive(Default)]
@@ -201,23 +211,23 @@ fn fnv1a(context: u32, text: &str) -> u64 {
 }
 
 impl Cache {
-    fn get(&mut self, context: u32, text: &str) -> Option<&[u8]> {
+    fn get(&mut self, context: u32, text: &str, base: &Option<Rc<[u8]>>) -> Option<&[u8]> {
         let hash = fnv1a(context, text);
         self.clock += 1;
         let clock = self.clock;
-        let entry = self.entries.iter_mut().find(|e| e.hash == hash && e.context == context && &*e.text == text)?;
+        let entry = self.entries.iter_mut().find(|e| e.hash == hash && e.context == context && &*e.text == text && &e.base == base)?;
         entry.used = clock;
         Some(&entry.sql)
     }
-    fn put(&mut self, context: u32, text: &str, sql: &[u8]) {
+    fn put(&mut self, context: u32, text: &str, sql: &[u8], base: &Option<Rc<[u8]>>) {
         let hash = fnv1a(context, text);
         self.clock += 1;
-        if let Some(entry) = self.entries.iter_mut().find(|e| e.hash == hash && e.context == context && &*e.text == text) {
+        if let Some(entry) = self.entries.iter_mut().find(|e| e.hash == hash && e.context == context && &*e.text == text && &e.base == base) {
             entry.sql = sql.into();
             entry.used = self.clock;
             return;
         }
-        let entry = CacheEntry { hash, context, text: text.into(), sql: sql.into(), used: self.clock };
+        let entry = CacheEntry { hash, context, text: text.into(), sql: sql.into(), used: self.clock, base: base.clone() };
         if self.entries.len() < CACHE_CAPACITY {
             self.entries.push(entry);
         } else if let Some(oldest) = self.entries.iter_mut().min_by_key(|e| e.used) {
@@ -260,6 +270,13 @@ pub struct Coordinator {
     cache: Cache,
     outbox: Vec<(LinkId, Frame)>,
     stats: Stats,
+    /// Persistent runtime slots, including released-generation tombstones.
+    targets: BTreeMap<u32, Target>,
+    edit_supported: bool,
+    active_target: Option<TargetKey>,
+    pending_targets: VecDeque<TargetKey>,
+    /// Absent target slots below this were released and evicted (see `make_room`).
+    released_floor: u32,
 }
 
 impl Default for Coordinator {
@@ -288,6 +305,11 @@ impl Coordinator {
             cache: Cache::default(),
             outbox: Vec::new(),
             stats: Stats::default(),
+            targets: BTreeMap::new(),
+            edit_supported: false,
+            active_target: None,
+            pending_targets: VecDeque::new(),
+            released_floor: 0,
         }
     }
 
@@ -348,6 +370,9 @@ impl Coordinator {
             (Ui, Kind::Commit) => self.on_draft(frame, now, true),
             (Ui, Kind::Config) => self.on_config(frame.payload, now),
             (Ui, Kind::Query) => self.on_query(frame, now),
+            (Ui, Kind::RegisterTarget) => self.register_target(frame, now),
+            (Ui, Kind::ReleaseTarget) => self.release_target(frame, now),
+            (Ui, Kind::EditContext) => self.prepare_edit(frame),
             (Ui, Kind::Cancel) => {
                 self.on_cancel(frame.header.epoch);
                 Ok(())
@@ -357,6 +382,7 @@ impl Coordinator {
                 Ok(())
             }
             (Inference, Kind::Ready) => {
+                self.edit_supported = json::has_capability(frame.payload, b"edit-context-v1");
                 self.on_inference_ready(now);
                 Ok(())
             }
@@ -409,18 +435,25 @@ impl Coordinator {
     }
 
     fn emit_slot(&mut self, link: LinkId, kind: Kind, request: u32, revision: u32, slot: u32) {
-        let header = self.header(kind, request, revision, 0);
-        self.emit(link, header, Vec::new(), slot.to_le_bytes().to_vec());
+        let r = self.find(request).map(|i| &self.requests[i]);
+        let header = self.header(kind, request, revision, r.map_or(0, |r| r.context));
+        let mut payload = slot.to_le_bytes().to_vec();
+        if let Some(key) = r.and_then(|r| r.target) {
+            payload.extend_from_slice(&targets::PRESERVE_VIEW.to_le_bytes());
+            payload.extend_from_slice(&key.generation.to_le_bytes());
+        }
+        self.emit(link, header, Vec::new(), payload);
     }
 
     /// BIND payload: `u32 slot, u32 view` (view = index into the protocol's view list when the
     /// question asked for the SQL's hinted presentation, else AUTO_VIEW).
     fn emit_bind(&mut self, link: LinkId, i: usize, slot: u32) {
         let r = &self.requests[i];
-        let view = json::requested_view(&r.text, &r.sql).unwrap_or(json::AUTO_VIEW);
-        let header = self.header(Kind::Bind, r.id, r.revision, 0);
+        let view = json::requested_view(&r.text, &r.sql).unwrap_or(if r.target.is_some() { targets::PRESERVE_VIEW } else { json::AUTO_VIEW });
+        let header = self.header(Kind::Bind, r.id, r.revision, r.context);
         let mut payload = slot.to_le_bytes().to_vec();
         payload.extend_from_slice(&view.to_le_bytes());
+        if let Some(key) = r.target { payload.extend_from_slice(&key.generation.to_le_bytes()); }
         self.emit(link, header, Vec::new(), payload);
     }
 
@@ -448,6 +481,11 @@ impl Coordinator {
             return None;
         }
         let found = if header.request == 0 { None } else { self.find(header.request) };
+        if let Some(i) = found {
+            if let Some(key) = self.requests[i].target {
+                if !self.target_valid(key, self.requests[i].context) { self.stats.dropped_request += 1; return None; }
+            }
+        }
         if found.is_none() {
             self.stats.dropped_request += 1;
         }
@@ -462,9 +500,21 @@ impl Coordinator {
 
     fn on_draft(&mut self, frame: FrameRef<'_>, now: f64, commit: bool) -> Result<(), InputError> {
         let header = frame.header;
-        let text = frame.text().map_err(|_| InputError::InvalidUtf8)?;
+        if header.epoch < self.epoch { self.stats.dropped_epoch += 1; return Ok(()); }
+        let target = if header.request == 0 { None } else {
+            if frame.payload.len() < 4 { return Err(InputError::InvalidPayload); }
+            let key = TargetKey { slot: header.request, generation: u32::from_le_bytes(frame.payload[..4].try_into().unwrap()) };
+            if !self.target_valid(key, header.context) { self.stats.dropped_request += 1; return Ok(()); }
+            Some(key)
+        };
+        let text = std::str::from_utf8(if target.is_some() { &frame.payload[4..] } else { frame.payload }).map_err(|_| InputError::InvalidUtf8)?;
+        let base = target.and_then(|key| self.targets[&key.slot].base.clone());
         let composing = !commit && header.has(flags::COMPOSING);
-        if let Some(draft) = &self.draft {
+        let previous = target.and_then(|key| self.targets[&key.slot].draft.as_ref()).or_else(|| self.draft.as_ref().filter(|d| d.target == target));
+        if let Some(draft) = previous {
+            if target.is_some() && header.revision == draft.revision && text != draft.text {
+                return Err(InputError::InvalidPayload);
+            }
             let older = header.revision < draft.revision
                 // Same revision: a COMMIT (Enter) or the end of an IME composition.
                 || header.revision == draft.revision && !commit && !(draft.composing && !composing);
@@ -474,6 +524,8 @@ impl Coordinator {
             }
         }
         let draft = self.draft.get_or_insert_with(Draft::default);
+        draft.target = target;
+        draft.base = base;
         draft.revision = header.revision;
         draft.context = header.context;
         draft.composing = composing;
@@ -484,12 +536,20 @@ impl Coordinator {
         draft.stamps.clear();
         draft.stamps.extend(frame.stamps().take(LEDGER_CAPACITY - 4));
         draft.stamps.push(coord(stage::COORD_RECEIVED, now));
+        self.active_target = target;
+        if let Some(key) = target {
+            self.targets.get_mut(&key.slot).unwrap().draft = Some(draft.clone());
+            if commit && !self.pending_targets.contains(&key) { self.pending_targets.push_back(key); }
+        }
         if composing {
             return Ok(());
         }
         if !commit && self.is_short(text) {
-            self.cancel_speculative();
-            self.unbind_live(true);
+            if let Some(key) = target {
+                for i in 0..self.requests.len() {
+                    if self.requests[i].target == Some(key) && !self.requests[i].committed { self.cancel_request(i); }
+                }
+            } else { self.cancel_speculative(); self.unbind_live(true); }
             return Ok(());
         }
         self.pump(now);
@@ -509,6 +569,18 @@ impl Coordinator {
         let sql = std::str::from_utf8(&frame.payload[4..]).map_err(|_| InputError::InvalidUtf8)?;
         if sql.trim().is_empty() {
             return Err(InputError::InvalidPayload);
+        }
+        let target = if header.request == 0 { None } else {
+            let key = TargetKey { slot, generation: header.request };
+            if !self.target_valid(key, header.context) { self.stats.dropped_request += 1; return Ok(()); }
+            Some(key)
+        };
+        if target.is_none() && self.targets.contains_key(&slot) { self.stats.dropped_request += 1; return Ok(()); }
+        if let Some(key) = target {
+            let t = &self.targets[&key.slot];
+            if header.revision <= t.shown_revision || t.draft.as_ref().is_some_and(|d| header.revision < d.revision) {
+                self.stats.dropped_request += 1; return Ok(());
+            }
         }
         let live = self.pool.front() == Some(&slot);
         // A free slot that is not live shows nothing; a stale context answers old data.
@@ -545,7 +617,17 @@ impl Coordinator {
             result_sent: false,
             drawn: false,
             ledger,
+            target,
+            base: None,
+            notified_revision: None,
         });
+        if let Some(key) = target {
+            let target = self.targets.get_mut(&key.slot).unwrap(); target.bound = Some(id); target.shown_revision = revision;
+            // The query is now this target's newest answer: a later COMMIT compares against
+            // it, never against the translation it replaced on screen.
+            if self.head.and_then(|h| self.find(h)).is_none_or(|h| self.requests[h].target == Some(key)) { self.head = Some(id); }
+            self.emit_candidate(self.requests.len() - 1);
+        }
         if live {
             self.live_bound = Some(id);
             if self.head.is_none() || self.head == old {
@@ -590,7 +672,7 @@ impl Coordinator {
             self.cancel_speculative();
         }
         for slot in patch.free_slots {
-            let in_use = self.pool.contains(&slot) || self.requests.iter().any(|r| r.slot == Some(slot) && r.committed);
+            let in_use = self.targets.contains_key(&slot) || self.pool.contains(&slot) || self.requests.iter().any(|r| r.slot == Some(slot) && r.committed);
             if !in_use {
                 self.pool.push_back(slot);
             }
@@ -601,7 +683,14 @@ impl Coordinator {
     }
 
     fn on_cancel(&mut self, epoch: u32) {
+        // Outcomes below are reported under the new (current) epoch.
         self.epoch = self.epoch.saturating_add(1).max(epoch);
+        for i in 0..self.requests.len() {
+            let r = &mut self.requests[i];
+            if matches!(r.phase, Phase::Translating | Phase::Delayed) { r.phase = Phase::Cancelled; }
+            if r.exec == Exec::Running || (r.target.is_some() && r.exec == Exec::Idle && r.phase == Phase::Translated) { r.exec = Exec::Cancelled; }
+            self.emit_outcome(i);
+        }
         self.emit_cancel(LinkId::Inference, 0);
         self.emit_cancel(LinkId::Database, 0);
         self.unbind_live(false);
@@ -610,6 +699,8 @@ impl Coordinator {
         self.in_flight = None;
         self.waiting.clear();
         self.pending_spec = None;
+        self.pending_targets.clear();
+        for target in self.targets.values_mut() { if let Some(draft) = &mut target.draft { draft.cancelled = true; } }
         if let Some(draft) = &mut self.draft {
             draft.cancelled = true;
         }
@@ -621,17 +712,18 @@ impl Coordinator {
         let id = frame.header.context;
         if id != self.context && self.context != 0 {
             // New data: everything in flight answers a question about the old dataset.
-            if let Some(i) = self.in_flight.and_then(|id| self.find(id)) {
-                self.cancel_translation(i);
-            }
+            for i in 0..self.requests.len() { self.cancel_request(i); }
             self.unbind_live(true);
             self.waiting.clear();
             self.pending_spec = None;
+            self.pending_targets.clear();
         }
         self.context = id;
         self.context_payload.clear();
         self.context_payload.extend_from_slice(frame.payload);
         self.forward_context();
+        let targets: Vec<_> = self.targets.iter().filter(|(_, t)| t.active && t.context == self.context).map(|(&slot, t)| TargetKey { slot, generation: t.generation }).collect();
+        for target in targets { self.forward_edit(target); }
         self.pump(now);
     }
 
@@ -648,10 +740,13 @@ impl Coordinator {
         if let Some(i) = self.in_flight.and_then(|id| self.find(id)) {
             if self.requests[i].phase == Phase::Translating {
                 self.requests[i].phase = Phase::Cancelled;
+                self.emit_outcome(i);
                 self.in_flight = None;
             }
         }
         self.forward_context();
+        let targets: Vec<_> = self.targets.iter().filter(|(_, t)| t.active && t.context == self.context).map(|(&slot, t)| TargetKey { slot, generation: t.generation }).collect();
+        for target in targets { self.forward_edit(target); }
         self.pump(now);
     }
 
@@ -673,9 +768,16 @@ impl Coordinator {
                     self.in_flight = None;
                 }
                 self.outbox.push((LinkId::Ui, frame.to_owned()));
+                self.emit_outcome(i);
                 self.pump(now);
             }
-            _ => {
+            LinkId::Renderer if self.requests[i].target.is_some() => {
+                // A target's drawing failure is not SQL execution failure.
+                self.outbox.push((LinkId::Ui, frame.to_owned()));
+            }
+            LinkId::Renderer => {
+                // Legacy live slot: the result is unusable (never deduplicated or kept), and
+                // the slot falls back to its last complete picture.
                 let r = &mut self.requests[i];
                 if r.exec == Exec::Cancelled {
                     self.stats.dropped_request += 1;
@@ -683,6 +785,19 @@ impl Coordinator {
                 }
                 r.exec = Exec::Failed;
                 self.outbox.push((LinkId::Ui, frame.to_owned()));
+                if self.live_bound == Some(id) {
+                    self.fall_back(i);
+                }
+            }
+            _ => {
+                let r = &mut self.requests[i];
+                if r.exec != Exec::Running {
+                    self.stats.dropped_request += 1;
+                    return;
+                }
+                r.exec = Exec::Failed;
+                self.outbox.push((LinkId::Ui, frame.to_owned()));
+                self.emit_outcome(i);
                 if self.live_bound == Some(id) {
                     self.fall_back(i);
                 }
@@ -743,7 +858,7 @@ impl Coordinator {
         r.sql.extend_from_slice(frame.payload);
         r.cached = frame.header.has(flags::CACHED);
         if self.config.translation_cache && !r.sql.is_empty() {
-            self.cache.put(r.context, &r.text, &r.sql);
+            self.cache.put(r.context, &r.text, &r.sql, &r.base);
         }
         let id = r.id;
         self.release(id, now);
@@ -752,7 +867,7 @@ impl Coordinator {
     fn on_database(&mut self, frame: FrameRef<'_>) {
         let Some(i) = self.admit(&frame.header) else { return };
         let r = &mut self.requests[i];
-        if matches!(r.exec, Exec::Cancelled | Exec::Idle) {
+        if r.exec != Exec::Running {
             self.stats.dropped_request += 1;
             return;
         }
@@ -769,12 +884,11 @@ impl Coordinator {
                 }
             }
             Kind::Done => {
-                if r.exec == Exec::Running {
-                    r.exec = Exec::Done;
-                }
+                r.exec = Exec::Done;
                 if r.slot.is_some() {
                     self.emit_timing(i);
                 }
+                self.emit_outcome(i);
             }
             _ => {}
         }
@@ -806,6 +920,24 @@ impl Coordinator {
 
     /// Decide whether the newest draft needs a translation, and start it if allowed.
     fn pump(&mut self, now: f64) {
+        // Committed target drafts survive selection of another chart. Only one
+        // translation runs, while executions for other targets may keep streaming.
+        let busy_commit = self.in_flight.and_then(|id| self.find(id)).is_some_and(|i| self.requests[i].committed);
+        if !busy_commit {
+            let mut queued = None;
+            while let Some(key) = self.pending_targets.pop_front() {
+                if self.targets.get(&key.slot).is_some_and(|t| t.active && t.generation == key.generation && t.context == self.context) {
+                    queued = self.targets[&key.slot].draft.clone();
+                    if queued.is_some() { break; }
+                }
+            }
+            if let Some(draft) = queued { self.draft = Some(draft); }
+            else if let Some(key) = self.active_target {
+                if let Some(target) = self.targets.get(&key.slot).filter(|t| t.active && t.generation == key.generation) {
+                    self.draft = target.draft.clone();
+                }
+            }
+        }
         let Some(d) = &self.draft else { return };
         if d.composing || d.cancelled || d.context == 0 || d.context != self.context {
             return;
@@ -820,9 +952,10 @@ impl Coordinator {
         let (revision, committed) = (d.revision, d.committed);
         if let Some(h) = self.head.and_then(|id| self.find(id)) {
             let r = &self.requests[h];
-            let covers = r.revision >= revision;
-            let same_text = r.context == self.context && *r.text == *d.text;
-            if r.usable() && (covers || same_text) {
+            let same_scope = r.target == d.target && r.base == d.base && r.context == d.context;
+            let covers = same_scope && r.revision >= revision;
+            let same_text = same_scope && *r.text == *d.text;
+            if r.usable() && self.displayable(h) && (covers || same_text) {
                 if !covers {
                     self.adopt(h, revision);
                 }
@@ -838,9 +971,10 @@ impl Coordinator {
             }
         }
         // The live slot already shows exactly this text (typed back after a detour).
-        if let Some(b) = self.live_bound.and_then(|id| self.find(id)) {
+        let bound = d.target.and_then(|key| self.targets[&key.slot].bound).or_else(|| if d.target.is_none() { self.live_bound } else { None });
+        if let Some(b) = bound.and_then(|id| self.find(id)) {
             let r = &self.requests[b];
-            if r.usable() && r.context == self.context && *r.text == *self.draft.as_ref().unwrap().text {
+            if r.usable() && r.context == self.context && r.target == d.target && r.base == d.base && *r.text == *d.text {
                 if let Some(f) = self.in_flight.and_then(|id| self.find(id)) {
                     // Its answer could only be older than what is shown.
                     if self.config.policy == Policy::Restart && !self.requests[f].committed {
@@ -869,15 +1003,32 @@ impl Coordinator {
         self.start(now);
     }
 
+    /// A target request that has executed may serve a new revision only while it is the
+    /// target's bound (displayed) result; otherwise a COMMIT would report foreign SQL.
+    fn displayable(&self, i: usize) -> bool {
+        let r = &self.requests[i];
+        match r.target {
+            Some(key) if r.exec != Exec::Idle => self.targets.get(&key.slot).is_some_and(|t| t.bound == Some(r.id)),
+            _ => true,
+        }
+    }
+
     /// The head request already translates exactly this text: let it serve `revision`.
     fn adopt(&mut self, i: usize, revision: u32) {
         self.stats.text_adoptions += 1;
         let r = &mut self.requests[i];
         r.revision = revision;
         let (id, slot) = (r.id, r.slot);
-        if let (Some(slot), true) = (slot, self.live_bound == Some(id)) {
+        if let Some(key) = r.target {
+            if let Some(t) = self.targets.get_mut(&key.slot) {
+                if t.bound == Some(id) { t.shown_revision = t.shown_revision.max(revision); }
+            }
+        }
+        if let (Some(slot), true) = (slot, self.live_bound == Some(id) || r.target.is_some()) {
             self.emit_slot(LinkId::Ui, Kind::Bind, id, revision, slot);
         }
+        self.emit_candidate(i);
+        self.emit_outcome(i);
     }
 
     /// Enter on text the head request already covers.
@@ -886,6 +1037,10 @@ impl Coordinator {
         let id = self.requests[i].id;
         if self.requests[i].phase != Phase::Translated {
             return; // shown and kept when its SQL arrives
+        }
+        if self.requests[i].target.is_some() {
+            if self.requests[i].exec == Exec::Idle { self.show_target(i, now); }
+            return;
         }
         if self.live_bound == Some(id) {
             self.keep(i);
@@ -916,8 +1071,11 @@ impl Coordinator {
             result_sent: false,
             drawn: false,
             ledger: d.stamps.clone(),
+            target: d.target,
+            base: d.base.clone(),
+            notified_revision: None,
         };
-        let hit = if self.config.translation_cache { self.cache.get(d.context, &d.text) } else { None };
+        let hit = if self.config.translation_cache { self.cache.get(d.context, &d.text, &d.base) } else { None };
         self.head = Some(id);
         self.in_flight = Some(id);
         if let Some(sql) = hit {
@@ -937,11 +1095,23 @@ impl Coordinator {
         } else {
             self.stats.infer_sent += 1;
             request.ledger.push(coord(stage::INFER_SENT, now));
-            let header = Header { kind: Kind::Infer, flags: 0, epoch: self.epoch, request: id, revision: request.revision, context: request.context };
+            let is_edit = request.base.is_some();
+            let header = Header { kind: if is_edit { Kind::EditInfer } else { Kind::Infer }, flags: 0, epoch: self.epoch, request: id, revision: request.revision, context: request.context };
             let stamps = request.ledger.clone();
-            let payload = request.text.as_bytes().to_vec();
+            let mut payload = Vec::new();
+            if is_edit {
+                let key = request.target.expect("edit base requires registered target");
+                payload.extend_from_slice(&key.slot.to_le_bytes()); payload.extend_from_slice(&key.generation.to_le_bytes());
+            }
+            payload.extend_from_slice(request.text.as_bytes());
             self.requests.push(request);
-            self.emit(LinkId::Inference, header, stamps, payload);
+            if is_edit && !self.edit_supported {
+                let i = self.requests.len() - 1;
+                self.requests[i].phase = Phase::Failed; self.in_flight = None;
+                let mut error = header; error.kind = Kind::Error;
+                self.emit(LinkId::Ui, error, Vec::new(), br#"{"code":"edit-unsupported","message":"This inference endpoint does not support chart editing"}"#.to_vec());
+                self.emit_outcome(i);
+            } else { self.emit(LinkId::Inference, header, stamps, payload); }
         }
     }
 
@@ -955,6 +1125,7 @@ impl Coordinator {
         if phase == Phase::Translating {
             self.emit_cancel(LinkId::Inference, id);
         }
+        self.emit_outcome(i);
     }
 
     /// Cancel speculative (uncommitted) translation and pending speculative display.
@@ -976,12 +1147,17 @@ impl Coordinator {
         if self.in_flight == Some(id) {
             self.in_flight = None;
         }
+        self.emit_candidate(i);
         // Start the next translation before EXEC: the in-process database may block the
         // worker, and inference is the longer pole.
         self.pump(now);
         let Some(i) = self.find(id) else { return };
         let r = &self.requests[i];
         if r.phase != Phase::Translated || r.context != self.context || r.slot.is_some() {
+            return;
+        }
+        if r.target.is_some() {
+            if r.committed || self.config.speculate { self.show_target(i, now); }
             return;
         }
         // Speculative results are shown only if nothing newer is shown (or waiting to be).
@@ -1066,6 +1242,7 @@ impl Coordinator {
             let id = r.id;
             self.emit_cancel(LinkId::Database, id);
         }
+        self.emit_outcome(i);
     }
 
     /// Committed result keeps the live slot; the next pool slot becomes live.
@@ -1117,9 +1294,12 @@ impl Coordinator {
     fn gc(&mut self) {
         let pinned = [self.head, self.in_flight, self.live_bound, self.live_drawn, self.pending_spec];
         let waiting = &self.waiting;
+        let targets = &self.targets;
         let hard = |r: &Request| pinned.contains(&Some(r.id)) || waiting.contains(&r.id);
+        // A released or replaced target generation never draws again (admit drops its DRAWN).
+        let live_target = |r: &Request| r.target.is_none_or(|k| targets.get(&k.slot).is_some_and(|t| t.active && t.generation == k.generation));
         // A request in a kept slot stays until it has both finished and drawn.
-        let soft = |r: &Request| r.slot.is_some() && !(r.drawn && matches!(r.exec, Exec::Done | Exec::Failed | Exec::Cancelled));
+        let soft = |r: &Request| r.slot.is_some() && live_target(r) && !(r.drawn && matches!(r.exec, Exec::Done | Exec::Failed | Exec::Cancelled));
         self.requests.retain(|r| hard(r) || soft(r));
         while self.requests.len() > REQUEST_CAPACITY {
             match self.requests.iter().position(|r| !hard(r)) {

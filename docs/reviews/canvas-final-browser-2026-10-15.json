@@ -1,0 +1,689 @@
+{
+  "baseGitCommit": "c4341b1b9f94b58180f061a82a85f0d493b522d5",
+  "workingTree": "final persistent canvas integration, uncommitted at verification time",
+  "buildSha256": {
+    "index.html": "c4ebd24caa76041e25ef882117741709042a69fb66f7e2065af58a8b5a2eb298",
+    "wasm/tb-coordinator.wasm": "e23988fb7f9d18eabd7b9e332f528eded38699c18267a3febf40238966881275",
+    "wasm/tb-render.wasm": "15560405760ce8ef6578fc127699db7dd33147ef75cbf75fc46d7f0b1b87b586",
+    "assets/main-Dx2oGuz0.js": "f32f8c38eec21158739a003e8a56b7b32dd7df79bc8891661b8d3a47ce2f3fc0",
+    "assets/defaults-f7S0-52F.js": "0824531d4458e1e5b31f2f1d4f63ddd149e7f2c74906ba944e3effeee2b23b61",
+    "assets/main-CaZ7dnWF.css": "cbcf6d6fcfa2b78556b9efcaf990799ea06e0d8fd6bdb73b44d6610aa76df631"
+  },
+  "commands": [
+    "pnpm build",
+    "pnpm exec vite preview --host 127.0.0.1 --port 5395 --strictPort",
+    "python3 tests/ui_smoke.py http://127.0.0.1:5395",
+    "python3 tests/canvas_hydration_measure.py http://127.0.0.1:5395"
+  ],
+  "smoke": {
+    "createCheckpoint": true,
+    "reloadSqlWithoutInference": true,
+    "layoutReload": true,
+    "refineContext": true,
+    "presentationUndoRedoRestore": true,
+    "exportImportBranches": true,
+    "draftRecoveryResume": true,
+    "directSqlAndInferredView": true,
+    "mixedSourceReattachment": true,
+    "suggestedExactSqlSourceReload": true,
+    "browser": "145.0.7632.0",
+    "inferenceCalls": 7,
+    "realDuckDB": true,
+    "pageErrors": [],
+    "consoleErrors": []
+  },
+  "sourceReopenRegression": {
+    "failedWithApplicationDefaults": {
+      "completed": [
+        {
+          "charts": 1,
+          "revisionsPerChart": 5,
+          "metadataVisibleMs": 145.7350001335144,
+          "serializedBytes": 9867,
+          "revisions": 5,
+          "commits": 6,
+          "readyDefinitions": 1,
+          "resident": 1,
+          "activeRequests": 1,
+          "completedSlots": 1,
+          "firstExecutionTerminalMs": 2490.005000114441,
+          "allInitialExecutionTerminalsMs": 2490.005000114441,
+          "firstTargetRegistrationMs": 2369.1799998283386,
+          "hydrateExecutionSpanMs": 120.8250002861023,
+          "firstTimingFrameMs": 2483.614999771118,
+          "hydratedTableCount": 1,
+          "firstDrawTimingFrameMs": 2483.614999771118,
+          "firstDrawSubmittedMs": 2476.77001953125,
+          "tablesWithRows": 1,
+          "renderer": "webgl2",
+          "allDefinitionCycle": {
+            "refreshedDefinitions": 0,
+            "maxResidentDuringCycle": 1,
+            "allDefinitionsExecuted": 1,
+            "distinctSelectedSqlExecuted": 1,
+            "allDefinitionsHydratedMs": 2490.005000114441,
+            "cycleStartMs": 2520.1349997520447,
+            "remainingDefinitionsCycleMs": 0,
+            "finalResident": 1,
+            "method": "DOM Refresh buttons; sequential source reload + saved SQL; bounded residency"
+          }
+        }
+      ],
+      "errors": [],
+      "workerErrors": [],
+      "wire": [
+        {
+          "at": 4096.974999904633,
+          "kind": 51,
+          "request": 7,
+          "revision": 1,
+          "context": 1,
+          "stamps": [],
+          "value": {
+            "slot": 7,
+            "sql": "SELECT date_trunc('day', ts) AS day, vessel, AVG(speed) + 6 AS speed FROM telemetry GROUP BY day, vessel ORDER BY day, vessel",
+            "columns": [],
+            "view": null,
+            "cached": false
+          }
+        },
+        {
+          "at": 4111.1050000190735,
+          "kind": 52,
+          "request": 7,
+          "revision": 1,
+          "context": 1,
+          "stamps": [
+            {
+              "stage": 3,
+              "at": 1792102081210.04
+            },
+            {
+              "stage": 11,
+              "at": 1792102081210.04
+            },
+            {
+              "stage": 12,
+              "at": 1792102081210.17
+            },
+            {
+              "stage": 15,
+              "at": 1792102081246.67
+            },
+            {
+              "stage": 16,
+              "at": 1792102081249.895
+            }
+          ],
+          "value": ""
+        },
+        {
+          "at": 4471.599999904633,
+          "kind": 52,
+          "request": 7,
+          "revision": 1,
+          "context": 1,
+          "stamps": [
+            {
+              "stage": 3,
+              "at": 1792102081210.04
+            },
+            {
+              "stage": 11,
+              "at": 1792102081210.04
+            },
+            {
+              "stage": 12,
+              "at": 1792102081210.17
+            },
+            {
+              "stage": 15,
+              "at": 1792102081246.67
+            },
+            {
+              "stage": 16,
+              "at": 1792102081249.895
+            },
+            {
+              "stage": 13,
+              "at": 1792102081246.65
+            },
+            {
+              "stage": 14,
+              "at": 1792102081616.81
+            }
+          ],
+          "value": ""
+        },
+        {
+          "at": 4472.465000152588,
+          "kind": 54,
+          "request": 7,
+          "revision": 1,
+          "context": 1,
+          "stamps": [],
+          "value": {
+            "slot": 7,
+            "generation": 1,
+            "status": "succeeded"
+          }
+        },
+        {
+          "at": 4491.710000038147,
+          "kind": 5,
+          "request": 2147483653,
+          "revision": 0,
+          "context": 1,
+          "stamps": [
+            {
+              "stage": 12,
+              "at": 1792102080670.8499
+            }
+          ],
+          "value": {
+            "code": "queue_full",
+            "message": "Too many warm-ups waiting"
+          }
+        },
+        {
+          "at": 4615.860000133514,
+          "kind": 20,
+          "request": 8,
+          "revision": 1,
+          "context": 1,
+          "stamps": [],
+          "value": "\b\u0000\u0000\u0000\u0001\u0000\u0000\u0000"
+        },
+        {
+          "at": 4615.9349999427795,
+          "kind": 55,
+          "request": 8,
+          "revision": 1,
+          "context": 1,
+          "stamps": [],
+          "value": {
+            "slot": 8,
+            "generation": 1,
+            "sql": "SELECT date_trunc('day', ts) AS day, vessel, AVG(speed) + 7 AS speed FROM telemetry GROUP BY day, vessel ORDER BY day, vessel"
+          }
+        },
+        {
+          "at": 4616.005000114441,
+          "kind": 48,
+          "request": 8,
+          "revision": 1,
+          "context": 1,
+          "stamps": [],
+          "value": "\b\u0000\u0000\u0000\u0000\u0001\u0000\u0000\u0001\u0000\u0000\u0000"
+        },
+        {
+          "at": 4626.3150000572205,
+          "kind": 51,
+          "request": 8,
+          "revision": 1,
+          "context": 1,
+          "stamps": [],
+          "value": {
+            "slot": 8,
+            "sql": "SELECT date_trunc('day', ts) AS day, vessel, AVG(speed) + 7 AS speed FROM telemetry GROUP BY day, vessel ORDER BY day, vessel",
+            "columns": [],
+            "view": null,
+            "cached": false
+          }
+        },
+        {
+          "at": 4631.170000076294,
+          "kind": 52,
+          "request": 8,
+          "revision": 1,
+          "context": 1,
+          "stamps": [
+            {
+              "stage": 3,
+              "at": 1792102081759.49
+            },
+            {
+              "stage": 11,
+              "at": 1792102081759.49
+            },
+            {
+              "stage": 12,
+              "at": 1792102081759.615
+            },
+            {
+              "stage": 15,
+              "at": 1792102081771.67
+            },
+            {
+              "stage": 16,
+              "at": 1792102081776.04
+            }
+          ],
+          "value": ""
+        },
+        {
+          "at": 4635.179999828339,
+          "kind": 52,
+          "request": 8,
+          "revision": 1,
+          "context": 1,
+          "stamps": [
+            {
+              "stage": 3,
+              "at": 1792102081759.49
+            },
+            {
+              "stage": 11,
+              "at": 1792102081759.49
+            },
+            {
+              "stage": 12,
+              "at": 1792102081759.615
+            },
+            {
+              "stage": 15,
+              "at": 1792102081771.67
+            },
+            {
+              "stage": 16,
+              "at": 1792102081776.04
+            },
+            {
+              "stage": 13,
+              "at": 1792102081771.65
+            },
+            {
+              "stage": 14,
+              "at": 1792102081778.71
+            }
+          ],
+          "value": ""
+        },
+        {
+          "at": 4636.074999809265,
+          "kind": 54,
+          "request": 8,
+          "revision": 1,
+          "context": 1,
+          "stamps": [],
+          "value": {
+            "slot": 8,
+            "generation": 1,
+            "status": "succeeded"
+          }
+        },
+        {
+          "at": 5032.1449999809265,
+          "kind": 4,
+          "request": 0,
+          "revision": 0,
+          "context": 0,
+          "stamps": [],
+          "value": {
+            "component": "database",
+            "state": "loading",
+            "label": "Loading vessels",
+            "progress": 0.1
+          }
+        },
+        {
+          "at": 5044.695000171661,
+          "kind": 4,
+          "request": 0,
+          "revision": 0,
+          "context": 0,
+          "stamps": [],
+          "value": {
+            "component": "database",
+            "state": "error",
+            "label": "Could not load vessels",
+            "detail": "query was canceled"
+          }
+        },
+        {
+          "at": 5045.25,
+          "kind": 5,
+          "request": 0,
+          "revision": 0,
+          "context": 0,
+          "stamps": [],
+          "value": {
+            "code": "dataset",
+            "message": "query was canceled"
+          }
+        }
+      ],
+      "entries": [
+        {
+          "slot": 1,
+          "resident": true,
+          "ready": true,
+          "status": "Ready \u00b7 current data",
+          "request": 1
+        },
+        {
+          "slot": 2,
+          "resident": true,
+          "ready": true,
+          "status": "Ready \u00b7 current data",
+          "request": 2
+        },
+        {
+          "slot": 3,
+          "resident": true,
+          "ready": true,
+          "status": "Ready \u00b7 current data",
+          "request": 3
+        },
+        {
+          "slot": 4,
+          "resident": true,
+          "ready": true,
+          "status": "Ready \u00b7 current data",
+          "request": 4
+        },
+        {
+          "slot": 5,
+          "resident": true,
+          "ready": true,
+          "status": "Ready \u00b7 current data",
+          "request": 5
+        },
+        {
+          "slot": 6,
+          "resident": true,
+          "ready": true,
+          "status": "Ready \u00b7 current data",
+          "request": 6
+        },
+        {
+          "slot": 7,
+          "resident": true,
+          "ready": true,
+          "status": "Ready \u00b7 current data",
+          "request": 7
+        },
+        {
+          "slot": 8,
+          "resident": true,
+          "ready": true,
+          "status": "Ready \u00b7 current data",
+          "request": 8
+        },
+        {
+          "slot": 9,
+          "resident": false,
+          "ready": false,
+          "status": "Could not load vessels. Its definition and SQL are retained.",
+          "request": 0
+        },
+        {
+          "slot": 10,
+          "resident": false,
+          "ready": false,
+          "status": "Definition \u00b7 load current data",
+          "request": 0
+        }
+      ]
+    },
+    "passedWithSuggestionWarmDisabled": {
+      "at": "2026-10-15T22:10:48.248069+00:00",
+      "browser": "145.0.7632.0",
+      "url": "http://127.0.0.1:5395",
+      "environment": "Chromium headless; software GPU; warm page cache; fresh engine workers and fixture each reload",
+      "suggestionOptions": {
+        "warm": false
+      },
+      "inferenceCalls": 0,
+      "costUsd": 0,
+      "observations": [
+        {
+          "charts": 10,
+          "revisionsPerChart": 5,
+          "metadataVisibleMs": 185.96999979019165,
+          "serializedBytes": 123755,
+          "revisions": 50,
+          "commits": 51,
+          "readyDefinitions": 10,
+          "resident": 8,
+          "activeRequests": 8,
+          "completedSlots": 8,
+          "firstExecutionTerminalMs": 2324.119999885559,
+          "allInitialExecutionTerminalsMs": 4547.840000152588,
+          "firstTargetRegistrationMs": 2217.3499999046326,
+          "hydrateExecutionSpanMs": 2330.4900002479553,
+          "firstTimingFrameMs": 2320.0700001716614,
+          "hydratedTableCount": 10,
+          "firstDrawTimingFrameMs": 2320.0700001716614,
+          "firstDrawSubmittedMs": 2315.884765625,
+          "tablesWithRows": 8,
+          "renderer": "webgl2",
+          "allDefinitionCycle": {
+            "refreshedDefinitions": 2,
+            "maxResidentDuringCycle": 8,
+            "allDefinitionsExecuted": 10,
+            "distinctSelectedSqlExecuted": 10,
+            "allDefinitionsHydratedMs": 5282.6849999427795,
+            "cycleStartMs": 4571.1050000190735,
+            "remainingDefinitionsCycleMs": 711.579999923706,
+            "finalResident": 8,
+            "method": "DOM Refresh buttons; sequential source reload + saved SQL; bounded residency"
+          }
+        }
+      ]
+    },
+    "buildSha256": {
+      "index.html": "59c28b2923624e29a40085bfd95d6d311904343dbdad05ca79cfce875b570e14",
+      "wasm/tb-coordinator.wasm": "e23988fb7f9d18eabd7b9e332f528eded38699c18267a3febf40238966881275",
+      "wasm/tb-render.wasm": "15560405760ce8ef6578fc127699db7dd33147ef75cbf75fc46d7f0b1b87b586",
+      "assets/main-BXERhPo6.js": "7a8efcdcb45bddcc6aa5ec7870ac9d8505d5173df921de46bf0febf9b3f11108",
+      "assets/defaults-f7S0-52F.js": "0824531d4458e1e5b31f2f1d4f63ddd149e7f2c74906ba944e3effeee2b23b61",
+      "assets/main-CaZ7dnWF.css": "cbcf6d6fcfa2b78556b9efcaf990799ea06e0d8fd6bdb73b44d6610aa76df631"
+    },
+    "phase": "Before source lifecycle fix; default WARM failure and disabled-WARM diagnostic control."
+  },
+  "verifiedDefaultWarmTenCharts": {
+    "at": "2026-10-15T22:16:46.153541+00:00",
+    "browser": "145.0.7632.0",
+    "url": "http://127.0.0.1:5395",
+    "environment": "Chromium headless; software GPU; warm page cache; fresh engine workers and fixture each reload",
+    "suggestionOptions": "application defaults",
+    "inferenceCalls": 0,
+    "costUsd": 0,
+    "observations": [
+      {
+        "charts": 10,
+        "revisionsPerChart": 5,
+        "metadataVisibleMs": 187.65000009536743,
+        "serializedBytes": 123755,
+        "revisions": 50,
+        "commits": 51,
+        "readyDefinitions": 10,
+        "resident": 8,
+        "activeRequests": 8,
+        "completedSlots": 8,
+        "firstExecutionTerminalMs": 2407.760000228882,
+        "allInitialExecutionTerminalsMs": 4790.849999904633,
+        "firstTargetRegistrationMs": 2297.8499999046326,
+        "hydrateExecutionSpanMs": 2493,
+        "firstTimingFrameMs": 2401.0599999427795,
+        "hydratedTableCount": 10,
+        "firstDrawTimingFrameMs": 2401.0599999427795,
+        "firstDrawSubmittedMs": 2398.525146484375,
+        "tablesWithRows": 8,
+        "renderer": "webgl2",
+        "allDefinitionCycle": {
+          "refreshedDefinitions": 2,
+          "maxResidentDuringCycle": 8,
+          "allDefinitionsExecuted": 10,
+          "distinctSelectedSqlExecuted": 10,
+          "allDefinitionsHydratedMs": 5517.375,
+          "cycleStartMs": 4816.735000133514,
+          "remainingDefinitionsCycleMs": 700.6399998664856,
+          "finalResident": 8,
+          "method": "DOM Refresh buttons; sequential source reload + saved SQL; bounded residency"
+        }
+      }
+    ],
+    "buildSha256": {
+      "index.html": "c4ebd24caa76041e25ef882117741709042a69fb66f7e2065af58a8b5a2eb298",
+      "wasm/tb-coordinator.wasm": "e23988fb7f9d18eabd7b9e332f528eded38699c18267a3febf40238966881275",
+      "wasm/tb-render.wasm": "15560405760ce8ef6578fc127699db7dd33147ef75cbf75fc46d7f0b1b87b586",
+      "assets/main-Dx2oGuz0.js": "f32f8c38eec21158739a003e8a56b7b32dd7df79bc8891661b8d3a47ce2f3fc0",
+      "assets/defaults-f7S0-52F.js": "0824531d4458e1e5b31f2f1d4f63ddd149e7f2c74906ba944e3effeee2b23b61",
+      "assets/main-CaZ7dnWF.css": "cbcf6d6fcfa2b78556b9efcaf990799ea06e0d8fd6bdb73b44d6610aa76df631"
+    }
+  },
+  "verifiedAllDefinitionsHydration": {
+    "at": "2026-10-15T22:17:49.531233+00:00",
+    "browser": "145.0.7632.0",
+    "url": "http://127.0.0.1:5395",
+    "environment": "Chromium headless; software GPU; warm page cache; fresh engine workers and fixture each reload",
+    "suggestionOptions": "application defaults",
+    "inferenceCalls": 0,
+    "costUsd": 0,
+    "observations": [
+      {
+        "charts": 1,
+        "revisionsPerChart": 5,
+        "metadataVisibleMs": 136.1050000190735,
+        "serializedBytes": 9867,
+        "revisions": 5,
+        "commits": 6,
+        "readyDefinitions": 1,
+        "resident": 1,
+        "activeRequests": 1,
+        "completedSlots": 1,
+        "firstExecutionTerminalMs": 2357.6100001335144,
+        "allInitialExecutionTerminalsMs": 2357.6100001335144,
+        "firstTargetRegistrationMs": 2249.2300000190735,
+        "hydrateExecutionSpanMs": 108.38000011444092,
+        "firstTimingFrameMs": 2352.055000305176,
+        "hydratedTableCount": 1,
+        "firstDrawTimingFrameMs": 2352.055000305176,
+        "firstDrawSubmittedMs": 2350.47998046875,
+        "tablesWithRows": 1,
+        "renderer": "webgl2",
+        "allDefinitionCycle": {
+          "refreshedDefinitions": 0,
+          "maxResidentDuringCycle": 1,
+          "allDefinitionsExecuted": 1,
+          "distinctSelectedSqlExecuted": 1,
+          "allDefinitionsHydratedMs": 2357.6100001335144,
+          "cycleStartMs": 2379.4450001716614,
+          "remainingDefinitionsCycleMs": 0,
+          "finalResident": 1,
+          "method": "DOM Refresh buttons; sequential source reload + saved SQL; bounded residency"
+        }
+      },
+      {
+        "charts": 10,
+        "revisionsPerChart": 5,
+        "metadataVisibleMs": 126.03999996185303,
+        "serializedBytes": 123755,
+        "revisions": 50,
+        "commits": 51,
+        "readyDefinitions": 10,
+        "resident": 8,
+        "activeRequests": 8,
+        "completedSlots": 8,
+        "firstExecutionTerminalMs": 2564.9000000953674,
+        "allInitialExecutionTerminalsMs": 4524.550000190735,
+        "firstTargetRegistrationMs": 2206.010000228882,
+        "hydrateExecutionSpanMs": 2318.539999961853,
+        "firstTimingFrameMs": 2294.635000228882,
+        "hydratedTableCount": 10,
+        "firstDrawTimingFrameMs": 2294.635000228882,
+        "firstDrawSubmittedMs": 2293.63525390625,
+        "tablesWithRows": 8,
+        "renderer": "webgl2",
+        "allDefinitionCycle": {
+          "refreshedDefinitions": 2,
+          "maxResidentDuringCycle": 8,
+          "allDefinitionsExecuted": 10,
+          "distinctSelectedSqlExecuted": 10,
+          "allDefinitionsHydratedMs": 5329.340000152588,
+          "cycleStartMs": 4597.4800000190735,
+          "remainingDefinitionsCycleMs": 731.8600001335144,
+          "finalResident": 8,
+          "method": "DOM Refresh buttons; sequential source reload + saved SQL; bounded residency"
+        }
+      },
+      {
+        "charts": 100,
+        "revisionsPerChart": 5,
+        "metadataVisibleMs": 995.2350001335144,
+        "serializedBytes": 4626184,
+        "revisions": 500,
+        "commits": 501,
+        "readyDefinitions": 100,
+        "resident": 8,
+        "activeRequests": 8,
+        "completedSlots": 8,
+        "firstExecutionTerminalMs": 2861.7249999046326,
+        "allInitialExecutionTerminalsMs": 5126.385000228882,
+        "firstTargetRegistrationMs": 2766.204999923706,
+        "hydrateExecutionSpanMs": 2360.180000305176,
+        "firstTimingFrameMs": 2854.994999885559,
+        "hydratedTableCount": 100,
+        "firstDrawTimingFrameMs": 2854.994999885559,
+        "firstDrawSubmittedMs": 2853.8349609375,
+        "tablesWithRows": 8,
+        "renderer": "webgl2",
+        "allDefinitionCycle": {
+          "refreshedDefinitions": 92,
+          "maxResidentDuringCycle": 8,
+          "allDefinitionsExecuted": 100,
+          "distinctSelectedSqlExecuted": 100,
+          "allDefinitionsHydratedMs": 36693.59999990463,
+          "cycleStartMs": 5154.670000076294,
+          "remainingDefinitionsCycleMs": 31538.92999982834,
+          "finalResident": 8,
+          "method": "DOM Refresh buttons; sequential source reload + saved SQL; bounded residency"
+        }
+      }
+    ],
+    "buildSha256": {
+      "index.html": "c4ebd24caa76041e25ef882117741709042a69fb66f7e2065af58a8b5a2eb298",
+      "wasm/tb-coordinator.wasm": "e23988fb7f9d18eabd7b9e332f528eded38699c18267a3febf40238966881275",
+      "wasm/tb-render.wasm": "15560405760ce8ef6578fc127699db7dd33147ef75cbf75fc46d7f0b1b87b586",
+      "assets/main-Dx2oGuz0.js": "f32f8c38eec21158739a003e8a56b7b32dd7df79bc8891661b8d3a47ce2f3fc0",
+      "assets/defaults-f7S0-52F.js": "0824531d4458e1e5b31f2f1d4f63ddd149e7f2c74906ba944e3effeee2b23b61",
+      "assets/main-CaZ7dnWF.css": "cbcf6d6fcfa2b78556b9efcaf990799ea06e0d8fd6bdb73b44d6610aa76df631"
+    }
+  },
+  "buildNotes": {
+    "buildSha256": "Final build with joined warmUp lifecycle and cleared old source context: wrapper smoke plus default-WARM 1/10/100 complete definition cycles passed.",
+    "timingMethod": "Navigation-based performance.now; firstDrawSubmittedMs comes from the real FIRST_DRAW_SUBMITTED protocol stamp adjusted by page timeOrigin. GPU submission is not a hardware scanout timestamp.",
+    "residencyMethod": "Initial automatic hydration admits at most eight. Remaining definitions use actual Refresh buttons sequentially, including their forced source-reopen cost. Residency is sampled throughout each cycle; distinct selected SQL and successful terminal outcomes are both asserted.",
+    "earlierSmokeAndSourceReopenRegression": "Both explicitly carry the pre-fix main-BXERhPo6 build hashes. The original initial-eight-only ledger remains separate in canvas-hydration-2026-10-15.json."
+  },
+  "earlierSmoke": {
+    "buildSha256": {
+      "index.html": "59c28b2923624e29a40085bfd95d6d311904343dbdad05ca79cfce875b570e14",
+      "wasm/tb-coordinator.wasm": "e23988fb7f9d18eabd7b9e332f528eded38699c18267a3febf40238966881275",
+      "wasm/tb-render.wasm": "15560405760ce8ef6578fc127699db7dd33147ef75cbf75fc46d7f0b1b87b586",
+      "assets/main-BXERhPo6.js": "7a8efcdcb45bddcc6aa5ec7870ac9d8505d5173df921de46bf0febf9b3f11108",
+      "assets/defaults-f7S0-52F.js": "0824531d4458e1e5b31f2f1d4f63ddd149e7f2c74906ba944e3effeee2b23b61",
+      "assets/main-CaZ7dnWF.css": "cbcf6d6fcfa2b78556b9efcaf990799ea06e0d8fd6bdb73b44d6610aa76df631"
+    },
+    "result": {
+      "createCheckpoint": true,
+      "reloadSqlWithoutInference": true,
+      "layoutReload": true,
+      "refineContext": true,
+      "presentationUndoRedoRestore": true,
+      "exportImportBranches": true,
+      "draftRecoveryResume": true,
+      "directSqlAndInferredView": true,
+      "mixedSourceReattachment": true,
+      "suggestedExactSqlSourceReload": true,
+      "browser": "145.0.7632.0",
+      "inferenceCalls": 7,
+      "realDuckDB": true,
+      "pageErrors": [],
+      "consoleErrors": []
+    },
+    "phase": "Before source lifecycle fix; suggestion compatibility smoke passed."
+  }
+}

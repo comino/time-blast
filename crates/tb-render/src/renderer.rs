@@ -354,6 +354,28 @@ impl Renderer {
         }
     }
 
+    pub fn reset_params(&mut self, slot: u32) {
+        let Some(i) = self.slot_index(slot) else { return };
+        let s = &mut self.slots[i];
+        s.params.clear();
+        for r in [s.pending.as_mut(), s.shown.as_mut()].into_iter().flatten() {
+            if let Some(f) = &mut r.family { if f.reset_params() { s.dirty = true; } }
+        }
+        s.axes_json.clear();
+    }
+
+    /// Invalidate the stream binding while keeping the last completed picture.
+    /// Late batches cannot be accepted during a new target generation's inference.
+    pub fn invalidate(&mut self, slot: u32) {
+        let Some(i) = self.slot_index(slot) else { return };
+        let s = &mut self.slots[i];
+        s.bound = None;
+        if let Some(mut pending) = s.pending.take() {
+            let mut gpu = Gpu { words: &mut self.words, next_id: &mut self.next_id, pool: &mut s.pool };
+            pending.release(&mut gpu);
+        }
+    }
+
     /// BIND: subsequent data for `request` goes to `slot`. The shown image stays until the
     /// new request draws its first point.
     pub fn bind(&mut self, slot: u32, binding: Binding) -> bool {

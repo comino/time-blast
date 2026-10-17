@@ -51,8 +51,9 @@ function batchBytes(batch: RecordBatch): number {
 type RafLike = (cb: (t: number) => void) => number;
 
 export class Renderer implements RendererNode {
-  private readonly slots = new Map<number, { canvas: OffscreenCanvas; size: SlotSize; request?: number }>();
+  private readonly slots = new Map<number, { canvas: OffscreenCanvas; size: SlotSize; request?: number; resident: boolean }>();
   private readonly requests = new Map<number, Bound>();
+  private readonly targets = new Map<number, { generation: number; active: boolean }>();
   private scheduled = false;
   /** Results adopted by an identical image (steady charts). */
   steadyCount = 0;
@@ -69,8 +70,16 @@ export class Renderer implements RendererNode {
     this.scheduler = raf ? 'requestAnimationFrame' : 'setTimeout';
   }
 
-  attach(slot: number, canvas: OffscreenCanvas, size: SlotSize): void {
-    this.slots.set(slot, { canvas, size });
+  attach(slot: number, canvas: OffscreenCanvas, size: SlotSize, dormant = false): void {
+    this.slots.set(slot, { canvas, size, resident: false });
+    if (!dormant) this.activate(slot);
+  }
+
+  private activate(slot: number): void {
+    const s = this.slots.get(slot);
+    if (!s || s.resident) return;
+    const { canvas, size } = s;
+    s.resident = true;
     this.backend.attach(slot, canvas, size.width * size.devicePixelRatio, size.height * size.devicePixelRatio);
     this.core.x.tb_attach(slot, size.width, size.height, size.devicePixelRatio);
     this.schedule();
@@ -80,6 +89,7 @@ export class Renderer implements RendererNode {
     const s = this.slots.get(slot);
     if (!s) return;
     s.size = size;
+    if (!s.resident) return;
     this.backend.resize(slot, size.width * size.devicePixelRatio, size.height * size.devicePixelRatio);
     this.core.x.tb_resize(slot, size.width, size.height, size.devicePixelRatio);
     // Resizing clears the canvas: redraw now rather than leave a blank frame.
@@ -90,7 +100,7 @@ export class Renderer implements RendererNode {
     const s = this.slots.get(slot);
     if (s?.request !== undefined) this.requests.delete(s.request);
     this.core.x.tb_detach(slot);
-    this.slots.delete(slot);
+    this.slots.delete(slot); this.targets.delete(slot); // slots are never reused
     this.frame(false);
     this.backend.detach(slot);
   }
@@ -107,11 +117,19 @@ export class Renderer implements RendererNode {
     this.schedule();
   }
 
+  setPresentation(slot: number, presentation: { view: ViewName | null; params: Record<string, number> }): void {
+    this.core.x.tb_reset_params(slot);
+    for (const [name, value] of Object.entries(presentation.params)) this.core.setParam(slot, name, value);
+    this.setView(slot, presentation.view);
+  }
+
   views(slot: number): ViewName[] { return this.core.viewsOf(this.core.x.tb_views(slot)); }
 
   handle(frame: LocalFrame): void {
     if (frame.flags & Flag.HEADER_ONLY) return;
     switch (frame.kind) {
+      case Kind.REGISTER_TARGET:
+      case Kind.RELEASE_TARGET: return this.target(frame as Frame<Uint8Array>);
       case Kind.BIND: return this.bind(frame as Frame<Uint8Array>);
       case Kind.UNBIND: return this.unbind(frame as Frame<Uint8Array>);
       case Kind.RESULT_SCHEMA: { this.schema(frame.request, frame.epoch, (frame as Frame<Schema>).payload); return; }
@@ -126,16 +144,47 @@ export class Renderer implements RendererNode {
     const b = request === undefined ? undefined : this.requests.get(request);
     if (!b?.schema || format !== 'csv') return;
     const blob = toCsv(b.schema, b.batches);
-    this.ui({ type: 'export', slot, blob, filename: `result-${b.request}${b.truncated ? '-truncated' : ''}.csv` });
+    this.ui({ type: 'export', slot, request: b.request, blob, filename: `result-${b.request}${b.truncated ? '-truncated' : ''}.csv` });
+  }
+
+  private target(frame: Frame<Uint8Array>): void {
+    if (frame.payload.byteLength !== 8) return;
+    const p = new DataView(frame.payload.buffer, frame.payload.byteOffset, 8);
+    const slot = p.getUint32(0, true), generation = p.getUint32(4, true);
+    const old = this.targets.get(slot);
+    if (frame.kind === Kind.REGISTER_TARGET) {
+      if (old && old.generation >= generation) return;
+      this.targets.set(slot, { generation, active: true });
+    } else {
+      if (old && old.generation > generation) return;
+      this.targets.set(slot, { generation, active: false });
+    }
+    const s = this.slots.get(slot);
+    if (s?.request !== undefined) this.requests.delete(s.request);
+    if (s) s.request = undefined;
+    this.core.x.tb_invalidate(slot);
+    if (frame.kind === Kind.REGISTER_TARGET) this.activate(slot);
+    else if (s?.resident) {
+      // Keep the transferable canvas shell, release Arrow batches, Wasm stores,
+      // GPU buffers and the backend surface. A later generation can hydrate it.
+      this.core.x.tb_detach(slot); this.frame(false); this.backend.detach(slot); s.resident = false;
+    }
+  }
+
+  private admits(slot: number, payload: DataView): boolean {
+    const target = this.targets.get(slot);
+    return target ? target.active && payload.byteLength >= 12 && payload.getUint32(8, true) === target.generation
+      : payload.byteLength < 12;
   }
 
   private bind(frame: Frame<Uint8Array>): void {
+    if (frame.payload.byteLength < 4) return;
     const payload = new DataView(frame.payload.buffer, frame.payload.byteOffset, frame.payload.byteLength);
     const slot = payload.getUint32(0, true);
     const s = this.slots.get(slot);
-    if (!s || !this.core.x.tb_bind(slot, frame.request, frame.revision, frame.epoch)) return;
+    if (!s || !this.admits(slot, payload) || !this.core.x.tb_bind(slot, frame.request, frame.revision, frame.epoch)) return;
     // A BIND with a view field sets the view for its result: the requested one, or automatic.
-    if (frame.payload.byteLength >= 8) this.core.x.tb_bind_view(slot, payload.getUint32(4, true));
+    if (frame.payload.byteLength >= 8 && payload.getUint32(4, true) !== 256) this.core.x.tb_bind_view(slot, payload.getUint32(4, true));
     if (s.request !== undefined && s.request !== frame.request) this.requests.delete(s.request);
     s.request = frame.request;
     const existing = this.requests.get(frame.request);
@@ -145,7 +194,10 @@ export class Renderer implements RendererNode {
   }
 
   private unbind(frame: Frame<Uint8Array>): void {
-    const slot = new DataView(frame.payload.buffer, frame.payload.byteOffset, 4).getUint32(0, true);
+    if (frame.payload.byteLength < 4) return;
+    const payload = new DataView(frame.payload.buffer, frame.payload.byteOffset, frame.payload.byteLength);
+    const slot = payload.getUint32(0, true);
+    if (!this.admits(slot, payload)) return;
     if (!this.core.x.tb_unbind(slot, frame.request)) return;
     const s = this.slots.get(slot);
     if (s) s.request = undefined;
@@ -215,7 +267,7 @@ export class Renderer implements RendererNode {
 
   private postTable(b: Bound): void {
     if (!b.preview) return;
-    this.ui({ type: 'table', slot: b.slot, columns: b.preview.columns, rows: b.preview.rows, total: b.preview.total });
+    this.ui({ type: 'table', slot: b.slot, request: b.request, columns: b.preview.columns, rows: b.preview.rows, total: b.preview.total });
   }
 
   private schedule(): void {
@@ -254,9 +306,9 @@ export class Renderer implements RendererNode {
     for (const e of this.core.events()) {
       if (e.kind === Ev.VIEWS) {
         const parsed = JSON.parse(e.text) as { available: ViewName[]; chosen: ViewName; columns?: Array<{ name: string; role: ColumnRole | '' }> };
-        this.ui({ type: 'views', slot: e.slot, available: parsed.available, chosen: parsed.chosen, columns: parsed.columns });
+        this.ui({ type: 'views', slot: e.slot, request: e.request, available: parsed.available, chosen: parsed.chosen, columns: parsed.columns });
       } else if (e.kind === Ev.AXES) {
-        this.ui({ type: 'axes', slot: e.slot, ticks: JSON.parse(e.text) });
+        this.ui({ type: 'axes', slot: e.slot, request: e.request, ticks: JSON.parse(e.text) });
       } else if (e.kind === Ev.STEADY) {
         // Steady chart: the image on screen already shows this result. Its first draw is the
         // moment that was proven (DONE of an identical result); it is already presented, so

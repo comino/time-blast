@@ -37,6 +37,12 @@ Needs Python Playwright with Chromium (as the other browser tests). The harness 
 | `micro.frame_encode_*`, `micro.frame_decode_timing` | tb1 codec on a 17-stamp TIMING and a SQL frame, µs | same |
 | `eval.*` (optional) | first SQL delta and complete SQL per question against a live server; correctness is stored in `record.eval`, not budget-checked | `scripts/eval-sql.mjs` |
 
+`e2e.py` drives whatever controller the app mounts (the persistent-canvas `CanvasController` since
+2026-10-17; revisions are per draft session there). `--parts typing,chips,gestures` selects the
+round parts. On the canvas app, chip clicks and gestures run saved SQL as `QUERY` frames without a
+`KEY_INPUT` stamp, so their input → draw is reported as an explicit failure ("drawn without a
+KEY_INPUT stamp") instead of a number until the controller stamps them.
+
 All browser numbers are software timestamps of a production bundle on this host's GPU path
 (SwiftShader here, labelled in every record): draw **submission**, not photons.
 

@@ -5,7 +5,9 @@ import { engineWorker } from './boot';
 import './styles.css';
 import './app.css';
 import type { CoordinatorConfig, SlotCard, SlotHost } from './controller';
-import { ResizeBatcher, UiController } from './controller';
+import { ResizeBatcher } from './controller';
+import { CanvasController } from '../canvas/controller';
+import { CanvasPanel } from './canvas-panel';
 import { installDropZone } from './dataset-drop';
 import { coordinatorDefaults, DEFAULT_DATASET, defaultInference, describePlacement, loadSettings, saveSettings } from './defaults';
 import { appShell } from './app-shell';
@@ -46,8 +48,9 @@ const rail = new Rail(root, {
 const worker = engineWorker;
 installBootTrace(worker);
 const sizes = new Map<number, SlotSize>();
-let controller!: UiController;
-const resizes = new ResizeBatcher((slot, size) => { sizes.set(slot, size); controller.resize(slot, size); });
+let controller!: CanvasController;
+let canvasPanel: CanvasPanel | undefined;
+const resizes = new ResizeBatcher((slot, size) => { if (!cards.has(slot)) return; sizes.set(slot, size); controller.resize(slot, size); });
 const canvasObserver = new ResizeObserver(entries => {
   const dpr = devicePixelRatio || 1;
   for (const entry of entries) {
@@ -80,7 +83,33 @@ const host: SlotHost = {
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
   },
 };
-controller = new UiController(worker, host, rail);
+controller = new CanvasController(worker, host, rail, {
+  changed: () => canvasPanel?.update(),
+  editor: (value, label, mode, focus) => {
+    const editor = q<HTMLTextAreaElement>('input'); editor.value = value;
+    editor.dataset.mode = mode; editor.placeholder = mode === 'sql' ? 'SELECT …' : mode === 'regenerate' ? 'Describe how to regenerate this chart…' : 'Describe the change you want…';
+    q('composer').querySelector('.composer-caption span')!.textContent = label;
+    if (focus) { editor.focus(); editor.setSelectionRange(value.length, value.length); }
+  },
+  history: chartId => canvasPanel?.showHistory(chartId),
+  reattach: source => {
+    if (source.locator.kind !== 'file') { notice('This source loads from its saved location. Choose a current source in settings, then use “Use current source” in chart history to rebind it.'); return; }
+    const file = document.createElement('input'); file.type = 'file'; file.accept = '.csv,.parquet,.pq,.tsv,.gz';
+    file.addEventListener('change', () => { const chosen = file.files?.[0]; if (chosen) void controller.reattach(source.id, chosen).catch(e => notice(String(e.message ?? e))); });
+    file.click();
+  }, notice,
+});
+board.onLayout = items => controller.layouts(items.map(item => ({ slot: (item as SlotCardView).slot,
+  layout: { x: item.x, y: item.y, width: item.width, height: item.height } })));
+canvasPanel = new CanvasPanel(root, () => controller.session, {
+  listCanvases: () => controller.listCanvases(), newCanvas: () => controller.newCanvas(), openCanvas: id => controller.openCanvas(id),
+  importCanvas: raw => controller.importCanvas(raw), saveCopy: () => controller.saveCopy(), rename: title => controller.rename(title),
+  undo: () => controller.undo(), redo: id => controller.redo(id), restoreCanvas: id => controller.restoreCanvas(id),
+  restoreChart: (chart, revision) => controller.restoreChart(chart, revision), resumeDraft: id => controller.resumeDraft(id),
+  discardDraft: id => controller.discardDraft(id), rebindChart: id => controller.rebindChart(id),
+  sourceInfo: () => ({ name: controller.defaultSourceId ? controller.model?.sources.get(controller.defaultSourceId)?.name ?? 'Choose a source' : 'Choose a source', detail: 'Used for new charts; existing charts keep their own source.' }),
+  chooseSource: () => q<HTMLDialogElement>('settings-dialog').showModal(),
+});
 worker.addEventListener('message', (event: MessageEvent) => controller.receive(event.data));
 worker.addEventListener('error', event => { event.preventDefault(); rail.error({ code: 'worker', message: 'The engine worker failed to start', detail: event.message }, 0); });
 worker.addEventListener('messageerror', () => rail.error({ code: 'worker', message: 'A message from the engine could not be read' }, 0));
@@ -113,13 +142,26 @@ installDropZone(window, source => { controller.setDataset(source); notice(`Loadi
 
 // ───────────── input: the hot path ─────────────
 const input = q<HTMLTextAreaElement>('input');
+const newChart = document.createElement('button'); newChart.type = 'button'; newChart.className = 'text-button'; newChart.textContent = '+ New chart';
+newChart.addEventListener('click', () => controller.newQuestion());
+q('composer').querySelector('.composer-caption')!.append(newChart);
+root.querySelector('.composer-area')!.addEventListener('focusout', event => {
+  const area = event.currentTarget as HTMLElement, next = (event as FocusEvent).relatedTarget as Node | null;
+  if (next && area.contains(next)) return;
+  // Wait until a click has chosen its destination, while treating all editor
+  // controls as one semantic edit session.
+  queueMicrotask(() => { if (!area.contains(document.activeElement)) controller.finishEditor(); });
+});
+// Main-thread cost of our input handler per keystroke (ms): `costs` is controller.input itself
+// (document update, synchronous part of the canvas save, DRAFT encode + post); `costsFull` also
+// includes the microtasks queued during it, where deferred save work runs.
 const COST_RING = 256;
-const costs = new Float64Array(COST_RING);
+const costs = new Float64Array(COST_RING), costsFull = new Float64Array(COST_RING);
 let costCount = 0, composing = false, chromeFrame = 0, costShownAt = 0;
 
 const updateChrome = () => {
   chromeFrame = 0;
-  q('revision').textContent = `r.${controller.drafts.revision}`;
+  q('revision').textContent = `r.${controller.inputSequence}`;
   const now = performance.now();
   if (now - costShownAt > 500 && costCount) {
     costShownAt = now;
@@ -132,7 +174,9 @@ const scheduleChrome = () => { if (!chromeFrame) chromeFrame = requestAnimationF
 input.addEventListener('input', event => {
   const start = performance.now();
   controller.input(input.value, composing || (event as InputEvent).isComposing, event.timeStamp);
-  costs[costCount++ % COST_RING] = performance.now() - start;
+  const at = costCount++ % COST_RING;
+  costs[at] = performance.now() - start; costsFull[at] = NaN;
+  queueMicrotask(() => { costsFull[at] = performance.now() - start; });
   scheduleChrome();
 });
 input.addEventListener('compositionstart', event => { composing = true; controller.input(input.value, true, event.timeStamp); });
@@ -160,14 +204,15 @@ root.querySelectorAll<HTMLButtonElement>('[data-prompt]').forEach(button => butt
 const interactions = mountInteractions(root, input, controller, scheduleChrome);
 
 // ───────────── boot ─────────────
-controller.boot(inference, DEFAULT_DATASET, initialConfig);
+void controller.initialize(inference, DEFAULT_DATASET, initialConfig).catch(e => notice(`Canvas startup: ${String(e.message ?? e)}`));
 bootMark('page.boot');
 input.focus();
 
 /** Diagnostics for smoke tests and manual measurement (cheap; read on demand). */
+const ring = (a: Float64Array) => Array.from({ length: Math.min(costCount, COST_RING) }, (_, i) => a[(Math.max(0, costCount - COST_RING) + i) % COST_RING]);
 (globalThis as unknown as { __timeBlastUi: unknown }).__timeBlastUi = {
   controller,
-  costs: () => Array.from(costs.subarray(0, Math.min(costCount, COST_RING))),
-  framesSent: () => controller.drafts.sent,
+  costs: () => ring(costs), costsFull: () => ring(costsFull),
+  framesSent: () => controller.sentFrames,
   interactions,
 };

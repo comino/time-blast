@@ -17,7 +17,7 @@
  * else (WITH, set operations, unknown shapes) yields fewer or no variants rather than a guess.
  * Generic: columns come from the DatasetContext, nothing assumes a schema.
  */
-import type { DatasetContext } from '../engine/contracts';
+import type { DatasetContext, ViewName } from '../engine/contracts';
 
 export type SuggestionKind = 'split' | 'bucket' | 'window' | 'agg' | 'view';
 export interface Suggestion {
@@ -27,6 +27,8 @@ export interface Suggestion {
   /** The full follow-up question (what the input shows and the coordinator translates). */
   question: string;
   sql: string;
+  /** Explicit presentation intent; exact SQL execution preserves this choice. */
+  view?: ViewName;
 }
 
 // ───────────────────────── tokenizer ─────────────────────────
@@ -416,9 +418,9 @@ function viewVariant(st: Statement, sql: string, base: string, table: Table | un
   const hasSeries = table?.columns.some(c => isText(c) && refs.has(c.name.toLowerCase())) ?? false;
   const timeSeries = bucket(st) !== null;
   if (timeSeries && hasSeries && sel.length >= 3) {
-    return { kind: 'view', label: 'as heatmap', question: `${base}, as a heatmap`, sql: `-- view: heatmap\n${body}` };
+    return { kind: 'view', label: 'as heatmap', question: `${base}, as a heatmap`, sql: `-- view: heatmap\n${body}`, view: 'heatmap' };
   }
-  return { kind: 'view', label: 'as table', question: `${base}, as a table`, sql: `-- view: table\n${body}` };
+  return { kind: 'view', label: 'as table', question: `${base}, as a table`, sql: `-- view: table\n${body}`, view: 'table' };
 }
 
 /** Up to `max` follow-ups for the result of `question` → `sql`. */

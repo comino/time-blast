@@ -9,9 +9,14 @@
  *
  * URL parameters: auto=1 (run without a click), reps=4, cadence=70 (ms between keys),
  * latency=0 (fake inference delay, ms), passes=echo,vary[,live], endpoint=wss://… (RTT and the
- * optional live pass; default: the build's VITE_INFERENCE_ENDPOINT), rtt=5 (connections).
+ * optional live pass; default: the build's VITE_INFERENCE_ENDPOINT), rtt=5 (connections),
+ * controller=canvas|legacy (canvas, the default, is the app's CanvasController with a real
+ * IndexedDB canvas store; legacy is the transient UiController of batches 1–3, kept so old numbers
+ * stay comparable), storage=idb|none (canvas only: `none` runs without a store, so no save work).
  */
 import { UiController, type RailView, type SlotCard, type SlotHost, type StatusInfo } from '../ui/controller';
+import { CanvasController } from '../canvas/controller';
+import { IndexedCanvasStore } from '../canvas/store';
 import { coordinatorDefaults, DEFAULT_DATASET } from '../ui/defaults';
 import type { TimingBreakdown } from '../ui/timing';
 import type { InferencePlacement, SlotSize } from '../engine/contracts';
@@ -76,16 +81,51 @@ const rail: RailView = {
 };
 
 const fakeEndpoint = (mode: AnswerMode) => `fake:?latency=${num('latency', 0)}&mode=${mode}`;
+const CONTROLLER = params.get('controller') === 'legacy' ? 'legacy' : 'canvas';
+const STORAGE = CONTROLLER === 'canvas' ? (params.get('storage') === 'none' ? 'none' : 'idb') : 'n/a';
+/** Its own database, emptied on every load: the run never touches the app's canvases, and every
+ * load starts from an empty canvas (first save of a fresh database, like a first visit). */
+const MEASURE_DB = 'timeblast-measure-canvases';
+const notices: string[] = [];
 const worker = new Worker(new URL('./engine.worker.ts', import.meta.url), { type: 'module', name: 'engine' });
 mark('engine worker created');
-const controller = new UiController(worker, host, rail);
+const canvas = CONTROLLER === 'canvas' ? new CanvasController(worker, host, rail, {
+  changed() {}, editor() {}, history() {}, reattach() {}, notice: text => { notices.push(text); },
+}) : null;
+const controller: UiController = canvas ?? new UiController(worker, host, rail);
 worker.addEventListener('message', event => controller.receive(event.data));
 worker.addEventListener('error', event => { errors.push(`worker: ${event.message}`); onChange(); });
 let placement: InferencePlacement = { kind: 'remote', endpoint: fakeEndpoint('echo') };
-controller.boot(placement, DEFAULT_DATASET, coordinatorDefaults());
+let canvasReady = !canvas;
+if (canvas) {
+  void (async () => {
+    let store: IndexedCanvasStore | null = null;
+    if (STORAGE === 'idb') {
+      await new Promise<void>(resolve => { const r = indexedDB.deleteDatabase(MEASURE_DB); r.onsuccess = r.onerror = r.onblocked = () => resolve(); });
+      store = await IndexedCanvasStore.open(MEASURE_DB);
+    }
+    await canvas.initialize(placement, DEFAULT_DATASET, coordinatorDefaults(), store);
+    mark('canvas initialized');
+    canvasReady = true;
+  })().catch(error => { errors.push(`canvas: ${String(error)}`); onChange(); });
+} else controller.boot(placement, DEFAULT_DATASET, coordinatorDefaults());
 
+/** Wire revision of the text being typed: the legacy controller has one editor-wide DraftEncoder;
+ * the canvas controller numbers each draft session (wire revision = draft sequence + 1). */
+const currentRevision = (): number => canvas ? (canvas.editing ? canvas.editing.sequence + 1 : 0) : controller.drafts.revision;
+
+/** Main-thread cost of our input handler per keystroke (controller.input: document update, the
+ * synchronous part of the canvas save, DRAFT encode + post), and the same including the microtasks
+ * it queued (a deferred save step runs there). µs, per pass. */
+let handlerSync: number[] = [], handlerFull: number[] = [];
 const input = $<HTMLTextAreaElement>('input');
-input.addEventListener('input', event => { controller.input(input.value, false, event.timeStamp); });
+input.addEventListener('input', event => {
+  const start = performance.now();
+  controller.input(input.value, false, event.timeStamp);
+  const sync = performance.now() - start, list = handlerFull;
+  handlerSync.push(sync * 1000);
+  queueMicrotask(() => { list.push((performance.now() - start) * 1000); });
+});
 
 // ───────────────────────── helpers ─────────────────────────
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
@@ -98,7 +138,7 @@ async function until<T>(fn: () => T | null | undefined | false, timeoutMs: numbe
     await sleep(5);
   }
 }
-const answerable = () => marks.has('context') && marks.has('inference:ready') && marks.has('renderer:ready') && marks.has('coordinator:ready');
+const answerable = () => canvasReady && marks.has('context') && marks.has('inference:ready') && marks.has('renderer:ready') && marks.has('coordinator:ready');
 const say = (text: string) => { $('state').textContent = text; };
 
 /** Type `text` with synthetic input events at `cadence` ms; the first character replaces the box. */
@@ -116,7 +156,7 @@ async function typeText(text: string, cadence: number): Promise<number[]> {
   return gaps;
 }
 
-interface Sample { pass: string; question: string; final: DrawnRequest | null; drawn: DrawnRequest[]; dedup: boolean; gaps: number[]; hidden: boolean }
+interface Sample { pass: string; question: string; final: DrawnRequest | null; drawn: DrawnRequest[]; dedup: boolean; gaps: number[]; hidden: boolean; handlerUs: number[]; handlerFullUs: number[] }
 
 /** A hidden tab throttles timers to 1/s and stops animation frames, which turns a 20 ms frame into
  * seconds (a 2026-10-11 hardware run showed 1 s staircases up to 30 s). Count every hide so a
@@ -129,8 +169,10 @@ const visible = () => document.visibilityState === 'visible';
 /** Type one question and wait until its last revision is answered and its frames are known. */
 async function measureQuestion(pass: string, text: string, cadence: number): Promise<Sample> {
   const since = timings.length, hidesBefore = hides;
+  handlerSync = []; handlerFull = [];
   const gaps = await typeText(text, cadence);
-  const rev = controller.drafts.revision;
+  const handlerUs = handlerSync, handlerFullUs = handlerFull;
+  const rev = currentRevision();
   const mine = () => timings.slice(since);
   await until(() => mine().some(t => t.revision === rev && (t.headline !== null || (t.rows.some(r => r.stage === 10) && !t.rows.some(r => r.stage === 11)))), 30_000, `answer to "${text}"`);
   // GPU completion of redraws, then one animation frame after it.
@@ -140,7 +182,7 @@ async function measureQuestion(pass: string, text: string, cadence: number): Pro
   await until(() => (frames.last ?? 0) >= lastGpu, 2000, 'a frame after GPU completion').catch(() => {});
   const drawn = mergeDrawn(mine(), frames);
   const finals = drawn.filter(d => d.revision === rev);
-  return { pass, question: text, final: finals.at(-1) ?? null, drawn, dedup: !finals.length, gaps, hidden: hides !== hidesBefore || !visible() };
+  return { pass, question: text, final: finals.at(-1) ?? null, drawn, dedup: !finals.length, gaps, hidden: hides !== hidesBefore || !visible(), handlerUs, handlerFullUs };
 }
 
 async function setPlacement(next: InferencePlacement): Promise<void> {
@@ -239,6 +281,7 @@ export const DEFINITIONS: Record<string, string> = {
   gpuDone: 'FIRST_PRESENTED: the promise of WebGPU queue.onSubmittedWorkDone() resolved in the engine worker (the GPU finished the frame\'s commands), observed one worker task later. With WebGL2 it is the worker\'s next animation frame instead.',
   frame: 'The first main-thread requestAnimationFrame timestamp (frame begin, vsync-aligned) at or after GPU done: the first compositor frame that can show the new image. A lower bound for the frame that shows it, accurate to about one refresh interval; the pixels reach the glass at least one more refresh interval later (scan-out and display latency are not measurable from a page). requestVideoFrameCallback applies to <video>, not canvases, so it is not used.',
   boot: 'Boot stages are performance.now() from navigation start when the main thread sees each engine STATUS ready frame and the dataset CONTEXT. "Answerable" = coordinator, renderer and inference ready and CONTEXT received. This page boots the same engine as the app but not the app shell.',
+  handler: 'input_handler: performance.now() around controller.input() in the textarea input listener, per keystroke: document update, the synchronous part of the canvas save (IndexedDB transaction and puts when the save queue is idle), DRAFT encode and post. input_handler_with_microtasks also includes the microtasks queued during it. Excludes the browser\'s own event dispatch and any work deferred to tasks or frames.',
   rtt: 'A fresh WebSocket per sample: connect = constructor → open (DNS, TCP, TLS, upgrade); HELLO→READY = one tb1 round trip on the open socket.',
 };
 
@@ -365,6 +408,8 @@ function buildReport(settings: Record<string, unknown>): MeasureReport {
         finalRows.push(f.rows);
       }
       for (const d of s.drawn) if (!d.steady && d.frame !== null) add(`hw.${pass}.any_redraw_keystroke_to_frame`, d.frame - d.keyAt);
+      for (const v of s.handlerUs) add(`hw.${pass}.input_handler`, v, 'µs');
+      for (const v of s.handlerFullUs) add(`hw.${pass}.input_handler_with_microtasks`, v, 'µs');
     }
     stages[`hw.${pass}.keystroke_to_draw`] = stageTable(finalRows);
   }
@@ -381,12 +426,14 @@ function buildReport(settings: Record<string, unknown>): MeasureReport {
   if (rttResult?.error) notes.push(`RTT: ${rttResult.error}`);
   if (costUsd) notes.push(`live inference cost this session: $${costUsd.toFixed(5)}`);
   for (const e of errors) notes.push(`error: ${e}`);
+  for (const n of notices) notes.push(`canvas notice: ${n}`);
   const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
   return {
     kind: 'time-blast.measure', version: 1, date: new Date().toISOString(),
     page: { url: location.href, userAgent: navigator.userAgent, browser: hw?.browser, crossOriginIsolated, timerResolutionMs: timerResolution() },
     hardware: { cores: hw?.cores, deviceMemoryGb: hw?.deviceMemoryGb, platform: hw?.platform, devicePixelRatio, screen: hw?.screen ?? '', refreshHz: refresh ?? undefined, gpu: hw?.gpu ?? {} },
-    settings: { ...settings, navigationType: nav?.type, transferSize: nav?.transferSize, suggestions: 'off (not mounted on this page)', dataset: DEFAULT_DATASET },
+    settings: { ...settings, navigationType: nav?.type, transferSize: nav?.transferSize, suggestions: 'off (not mounted on this page)', dataset: DEFAULT_DATASET,
+      controller: CONTROLLER, storage: STORAGE === 'idb' ? `IndexedDB (${MEASURE_DB}, emptied per load)` : STORAGE },
     metrics, stages, definitions: DEFINITIONS, notes,
   };
 }
@@ -406,6 +453,10 @@ const LABELS: Record<string, string> = {
   'hw.echo.any_redraw_keystroke_to_frame': 'Echo: any keystroke that changed the image → next frame',
   'hw.vary.any_redraw_keystroke_to_frame': 'Vary: any keystroke that changed the image → next frame',
   'hw.live.keystroke_to_draw': 'Live inference: last keystroke → first draw submitted',
+  'hw.echo.input_handler': 'Echo: input handler, main thread per keystroke (sync)',
+  'hw.echo.input_handler_with_microtasks': 'Echo: input handler incl. its microtasks',
+  'hw.vary.input_handler': 'Vary: input handler, main thread per keystroke (sync)',
+  'hw.vary.input_handler_with_microtasks': 'Vary: input handler incl. its microtasks',
   'hw.net.ws_connect': 'Network: WebSocket connect',
   'hw.net.hello_ready': 'Network: tb1 HELLO → READY round trip',
 };
@@ -450,5 +501,5 @@ onChange = () => {
 };
 
 /** For headless runs (tests/measure_page.py). */
-(globalThis as any).__measure = { get report() { return report; }, get errors() { return errors; }, get firstQuery() { return firstQuery; }, start };
+(globalThis as any).__measure = { controller, get report() { return report; }, get errors() { return errors; }, get firstQuery() { return firstQuery; }, start };
 void bootQuestion();

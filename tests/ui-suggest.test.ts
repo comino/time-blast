@@ -52,7 +52,7 @@ describe('suggest: deterministic SQL variants', () => {
     const list = suggest('hourly wind by vessel', sql, CONTEXT, 5);
     expect(by(list, 'window')!.sql).toContain("WHERE ( vessel <> 'Aurora') AND ts >= TIMESTAMP '2026-09-14 23:59:54' - INTERVAL '24 hours' GROUP BY ALL");
     expect(by(list, 'split')).toBeUndefined(); // already split by vessel
-    expect(by(list, 'view')).toEqual({ kind: 'view', label: 'as heatmap', question: 'hourly wind by vessel, as a heatmap', sql: `-- view: heatmap\n${sql}` });
+    expect(by(list, 'view')).toEqual({ kind: 'view', label: 'as heatmap', question: 'hourly wind by vessel, as a heatmap', sql: `-- view: heatmap\n${sql}`, view: 'heatmap' });
   });
 
   it('never stacks a second time window, never renames inside literals or units', () => {

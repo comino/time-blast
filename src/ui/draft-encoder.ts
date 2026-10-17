@@ -43,14 +43,25 @@ export class DraftEncoder {
   private composing = false;
   private scratch = new Uint8Array(1024);
   private readonly texts: string[] = new Array(REVISION_RING);
+  private target?: { slot: number; generation: number };
+  private fresh = false;
 
   constructor(private readonly post: PostFrame, private readonly clock: Clock = browserClock) {}
+
+  /** Each target generation has an independent edit sequence. Resuming a saved
+   * draft starts at its stored sequence; the next edit is always sent. */
+  setTarget(target: { slot: number; generation: number } | undefined, sequence = 0, seededText?: string): void {
+    this.target = target;
+    this.revision = sequence;
+    this.text = seededText ?? ''; this.composing = false; this.texts.fill(''); this.fresh = seededText === undefined;
+    if (seededText !== undefined) this.texts[sequence % REVISION_RING] = seededText;
+  }
 
   /** One input/composition event. Bumps the revision when the text changed and sends a
    * DRAFT; a pure composition-state change resends the same revision with the new flag.
    * `eventTimeStamp` is `event.timeStamp` (ms since timeOrigin). Returns whether a frame went out. */
   draft(value: string, composing: boolean, eventTimeStamp: number): boolean {
-    const changed = value !== this.text;
+    const changed = this.fresh || value !== this.text;
     if (!changed && composing === this.composing) return false;
     if (changed) this.remember(value);
     this.composing = composing;
@@ -61,7 +72,7 @@ export class DraftEncoder {
   /** Enter: COMMIT with the full text. Reuses the current revision when the text is the one
    * already drafted, so the coordinator can KEEP the live result without new work. */
   commit(value: string, eventTimeStamp: number): void {
-    if (value !== this.text) this.remember(value);
+    if (this.fresh || value !== this.text) this.remember(value);
     this.composing = false;
     this.send(Kind.COMMIT, 0, value, this.clock.origin + eventTimeStamp);
   }
@@ -94,6 +105,7 @@ export class DraftEncoder {
   get currentText(): string { return this.text; }
 
   private remember(value: string): void {
+    this.fresh = false;
     this.revision = (this.revision + 1) >>> 0;
     this.text = value;
     this.texts[this.revision % REVISION_RING] = value;
@@ -111,9 +123,11 @@ export class DraftEncoder {
     if (worst > this.scratch.length) this.scratch = new Uint8Array(Math.max(worst, this.scratch.length * 2));
     const { written } = utf8.encodeInto(value, this.scratch);
     const payloadAt = HEADER_LEN + 2 * STAMP_LEN;
-    const out = new Uint8Array(payloadAt + written);
-    this.header(out, kind, flags, 2, written, this.revision);
-    out.set(written === this.scratch.length ? this.scratch : this.scratch.subarray(0, written), payloadAt);
+    const prefix = this.target ? 4 : 0;
+    const out = new Uint8Array(payloadAt + prefix + written);
+    this.header(out, kind, flags, 2, prefix + written, this.revision);
+    if (this.target) { u32(out, 12, this.target.slot); u32(out, payloadAt, this.target.generation); }
+    out.set(written === this.scratch.length ? this.scratch : this.scratch.subarray(0, written), payloadAt + prefix);
     stamp(out, HEADER_LEN, Stage.KEY_INPUT, Node.UI, keyAt);
     stamp(out, HEADER_LEN + STAMP_LEN, Stage.DRAFT_SENT, Node.UI, this.clock.now());
     this.sent++;

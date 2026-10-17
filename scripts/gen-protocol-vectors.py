@@ -12,6 +12,16 @@ def frame(kind, flags=0, epoch=0, request=0, revision=0, context=0, stamps=(), p
     return out + payload
 
 valid = [
+    dict(name='register-target', kind=0x14, epoch=3, context=7, payload=struct.pack('<II', 90, 2)),
+    dict(name='release-target', kind=0x15, epoch=3, payload=struct.pack('<II', 90, 2)),
+    dict(name='target-draft', kind=0x10, epoch=3, request=90, revision=4, context=7, payload=struct.pack('<I', 2) + 'weekly 🌊'.encode()),
+    dict(name='target-query', kind=0x13, epoch=3, request=2, revision=4, context=7, payload=struct.pack('<I', 90) + b'SELECT 1'),
+    dict(name='edit-context', kind=0x1D, request=90, revision=2, context=7,
+         payload=b'{"mode":"refine","originalQuestion":"original","sql":"SELECT 1","history":[],"presentation":{"view":null,"params":{}}}'),
+    dict(name='edit-infer', kind=0x1E, request=10, revision=4, context=7, payload=struct.pack('<II', 90, 2) + b'weekly instead'),
+    dict(name='target-bind', kind=0x30, request=10, revision=4, context=7, payload=struct.pack('<III', 90, 256, 2)),
+    dict(name='execution', kind=0x36, request=10, revision=4, context=7, payload=b'{"slot":90,"generation":2,"status":"succeeded"}'),
+    dict(name='candidate', kind=0x37, request=10, revision=4, context=7, payload=b'{"slot":90,"generation":2,"sql":"SELECT 1"}'),
     dict(name='draft', kind=0x10, revision=42, context=7, stamps=[(1, 1, 1760000000123.25), (2, 1, 1760000000123.5)],
          payload='average speed by hour'.encode()),
     dict(name='draft-composing-unicode', kind=0x10, flags=0x01, revision=43, context=7, payload='Wellenhöhe 🌊'.encode()),

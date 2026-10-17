@@ -94,8 +94,14 @@ hosts and GPUs are never compared, and a missing metric fails.
 - the **real engine**: `src/measure/engine.worker.ts` builds the same `EngineHost` with the same
   coordinator, DuckDB and renderer factories as `src/engine/engine.worker.ts`. The renderer
   draws on this machine's GPU.
-- the app's own **`UiController`**. Slots are plain 640×360 canvases. The app shell, board and
-  next-question chips are not mounted.
+- the app's own controller: **`CanvasController`** with a real IndexedDB store (its own database,
+  `timeblast-measure-canvases`, emptied on every load), so every keystroke pays the same document
+  update and save as in the app. `controller=legacy` runs the retired transient `UiController`
+  (reports before 2026-10-17 measured that one; ingested legacy runs go to suite
+  `measure-page-legacy`). `storage=none` runs the canvas without a store. Slots are plain 640×360
+  canvases. The app shell, board and next-question chips are not mounted.
+- **input handler cost** per keystroke (`hw.<pass>.input_handler`, µs): `performance.now()` around
+  `controller.input()`; `…_with_microtasks` also covers the microtasks it queued.
 - **inference**: an in-page fake tb1 node (`src/measure/fake-inference.worker.ts`) on its own
   worker over a MessagePort, the same placement as WebLLM. It uses the canned table of
   `tests/fake_inference.py` and waits a configurable delay (0 ms by default). The engine selects
@@ -103,7 +109,8 @@ hosts and GPUs are never compared, and a missing metric fails.
   uses the real server over WebSocket.
 
 No login and no backend change. URL parameters: `auto=1`, `reps=4`, `cadence=70`, `latency=0`,
-`passes=echo,vary[,live]`, `endpoint=wss://…` (default: the build's `VITE_INFERENCE_ENDPOINT`), `rtt=5`.
+`passes=echo,vary[,live]`, `endpoint=wss://…` (default: the build's `VITE_INFERENCE_ENDPOINT`), `rtt=5`,
+`controller=canvas|legacy`, `storage=idb|none`.
 
 ### Sequence
 

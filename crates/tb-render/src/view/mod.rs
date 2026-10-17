@@ -60,6 +60,8 @@ pub trait Family {
     fn set_param(&mut self, _name: &str, _value: f64) -> bool {
         false
     }
+    /// Restore family defaults when a document replaces the complete presentation.
+    fn reset_params(&mut self) -> bool { false }
     /// Destroy GPU buffers.
     fn release(&mut self, gpu: &mut Gpu);
     /// Asked after `draw`: true schedules another frame for this slot (work deliberately

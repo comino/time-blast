@@ -1,0 +1,153 @@
+{
+  "baseGitCommit": "c4341b1b9f94b58180f061a82a85f0d493b522d5",
+  "workingTree": "persistent canvas implementation, uncommitted at measurement time",
+  "buildSha256": {
+    "index.html": "1719efe57303d14657ed77adf5fa93a74ad8480c0b7e278f301f02429c143f80",
+    "wasm/tb-coordinator.wasm": "e23988fb7f9d18eabd7b9e332f528eded38699c18267a3febf40238966881275",
+    "wasm/tb-render.wasm": "15560405760ce8ef6578fc127699db7dd33147ef75cbf75fc46d7f0b1b87b586",
+    "assets/main-BGpvl4gU.js": "d752e80bf450483cef4a22b3fdbe5311febc2a7281e1889ad46d7b082affabe7",
+    "assets/defaults-D7_CJ3XC.js": "6c18ac17931b9d6b76eb61482718dcc4694bce29f3118cfc8e79defd9b8ca18b",
+    "assets/main-CaZ7dnWF.css": "cbcf6d6fcfa2b78556b9efcaf990799ea06e0d8fd6bdb73b44d6610aa76df631"
+  },
+  "commands": [
+    "pnpm build",
+    "pnpm exec vite preview --host 127.0.0.1 --port 5395 --strictPort",
+    "python3 tests/canvas_hydration_measure.py http://127.0.0.1:5395"
+  ],
+  "runs": [
+    {
+      "at": "2026-10-15T21:53:53.661229+00:00",
+      "browser": "145.0.7632.0",
+      "url": "http://127.0.0.1:5395",
+      "environment": "Chromium headless; software GPU; warm page cache; fresh engine workers and fixture each reload",
+      "inferenceCalls": 0,
+      "costUsd": 0,
+      "observations": [
+        {
+          "charts": 1,
+          "revisionsPerChart": 5,
+          "metadataVisibleMs": 287.61499977111816,
+          "serializedBytes": 9867,
+          "revisions": 5,
+          "commits": 6,
+          "readyDefinitions": 1,
+          "resident": 1,
+          "activeRequests": 1,
+          "completedSlots": 1,
+          "firstExecutionTerminalMs": 3658.4349999427795,
+          "allInitialExecutionTerminalsMs": 3658.4349999427795,
+          "firstTimingFrameMs": 3646.1299996376038,
+          "hydratedTableCount": 1,
+          "tablesWithRows": 1,
+          "renderer": "webgl2"
+        },
+        {
+          "charts": 10,
+          "revisionsPerChart": 5,
+          "metadataVisibleMs": 265.7550001144409,
+          "serializedBytes": 123755,
+          "revisions": 50,
+          "commits": 51,
+          "readyDefinitions": 10,
+          "resident": 8,
+          "activeRequests": 8,
+          "completedSlots": 8,
+          "firstExecutionTerminalMs": 2765.425000190735,
+          "allInitialExecutionTerminalsMs": 4766.1449999809265,
+          "firstTimingFrameMs": 2477.9450001716614,
+          "hydratedTableCount": 10,
+          "tablesWithRows": 8,
+          "renderer": "webgl2"
+        },
+        {
+          "charts": 100,
+          "revisionsPerChart": 5,
+          "metadataVisibleMs": 945.0650000572205,
+          "serializedBytes": 4626184,
+          "revisions": 500,
+          "commits": 501,
+          "readyDefinitions": 100,
+          "resident": 8,
+          "activeRequests": 8,
+          "completedSlots": 8,
+          "firstExecutionTerminalMs": 2796.6550002098083,
+          "allInitialExecutionTerminalsMs": 4930.914999961853,
+          "firstTimingFrameMs": 2789.8600001335144,
+          "hydratedTableCount": 100,
+          "tablesWithRows": 8,
+          "renderer": "webgl2"
+        }
+      ]
+    },
+    {
+      "at": "2026-10-15T21:56:52.561797+00:00",
+      "browser": "145.0.7632.0",
+      "url": "http://127.0.0.1:5395",
+      "environment": "Chromium headless; software GPU; warm page cache; fresh engine workers and fixture each reload",
+      "inferenceCalls": 0,
+      "costUsd": 0,
+      "observations": [
+        {
+          "charts": 1,
+          "revisionsPerChart": 5,
+          "metadataVisibleMs": 133.3149995803833,
+          "serializedBytes": 9867,
+          "revisions": 5,
+          "commits": 6,
+          "readyDefinitions": 1,
+          "resident": 1,
+          "activeRequests": 1,
+          "completedSlots": 1,
+          "firstExecutionTerminalMs": 2226.739999771118,
+          "allInitialExecutionTerminalsMs": 2226.739999771118,
+          "firstTargetRegistrationMs": 2105.574999809265,
+          "hydrateExecutionSpanMs": 121.16499996185303,
+          "firstTimingFrameMs": 2213.8849997520447,
+          "hydratedTableCount": 1,
+          "tablesWithRows": 1,
+          "renderer": "webgl2"
+        },
+        {
+          "charts": 10,
+          "revisionsPerChart": 5,
+          "metadataVisibleMs": 181.71000003814697,
+          "serializedBytes": 123755,
+          "revisions": 50,
+          "commits": 51,
+          "readyDefinitions": 10,
+          "resident": 8,
+          "activeRequests": 8,
+          "completedSlots": 8,
+          "firstExecutionTerminalMs": 2225.875,
+          "allInitialExecutionTerminalsMs": 4052.7649998664856,
+          "firstTargetRegistrationMs": 2122.244999885559,
+          "hydrateExecutionSpanMs": 1930.5199999809265,
+          "firstTimingFrameMs": 2222.819999694824,
+          "hydratedTableCount": 10,
+          "tablesWithRows": 8,
+          "renderer": "webgl2"
+        },
+        {
+          "charts": 100,
+          "revisionsPerChart": 5,
+          "metadataVisibleMs": 873.079999923706,
+          "serializedBytes": 4626184,
+          "revisions": 500,
+          "commits": 501,
+          "readyDefinitions": 100,
+          "resident": 8,
+          "activeRequests": 8,
+          "completedSlots": 8,
+          "firstExecutionTerminalMs": 2665.2149996757507,
+          "allInitialExecutionTerminalsMs": 4717.094999790192,
+          "firstTargetRegistrationMs": 2562.914999961853,
+          "hydrateExecutionSpanMs": 2154.1799998283386,
+          "firstTimingFrameMs": 2654.289999961853,
+          "hydratedTableCount": 100,
+          "tablesWithRows": 8,
+          "renderer": "webgl2"
+        }
+      ]
+    }
+  ]
+}

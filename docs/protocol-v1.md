@@ -1,6 +1,6 @@
 # Protocol v1 (`tb1`)
 
-Status: **normative for batch 1.** This replaces the per-component JSON protocols
+Status: **normative, including negotiated persistent-canvas extensions.** This replaces the per-component JSON protocols
 (`time-blast.v1`, `time-blast.inference.v1`, the HTTP database bridge, worker messages).
 Direction: [vision.md](vision.md). Reference codecs: `crates/tb-protocol` (Rust) and
 `src/protocol/` (TypeScript). Golden vectors in `crates/tb-protocol/vectors/` keep the
@@ -85,7 +85,7 @@ unknown kinds, truncated frames, and nonzero reserved stamp fields.
 | Kind | Name | Direction | Payload |
 |---|---|---|---|
 | 0x01 | `HELLO` | any → peer | `{"node": "<role>", "name": "...", "version": 1, "context"?: <u32>}`. `context` tells a remote database node which id to give the CONTEXT it sends |
-| 0x02 | `READY` | peer → any | `{"node": "<role>", "name": "...", "model"?: "..."}` |
+| 0x02 | `READY` | peer → any | `{"node": "<role>", "name": "...", "model"?: "...", "capabilities"?: ["..."]}` |
 | 0x03 | `CONTEXT` | database → coordinator → inference | `DatasetContext` (below); header `context` = its id |
 | 0x04 | `STATUS` | any → UI | `{"component": "database|inference|renderer|coordinator", "state": "cold|loading|ready|error", "label", "detail"?, "progress"?}` |
 | 0x05 | `ERROR` | any | `{"code", "message", "detail"?}`; header `request` names the failed request or 0 |
@@ -99,11 +99,15 @@ unknown kinds, truncated frames, and nonzero reserved stamp fields.
 | 0x11 | `COMMIT` | UI → coordinator | revision, context | UTF-8 text (always the full text; Enter) |
 | 0x12 | `CANCEL` | any → any | request = 0: cancel everything, epoch = **new** epoch. request ≠ 0: cancel that request only, epoch unchanged | empty |
 | 0x13 | `QUERY` | UI → coordinator | revision, context | `u32 slot` + UTF-8 SQL: execute this SQL for this slot, no translation (chart-as-query, back). Stamps `KEY_INPUT` (the pointer/key event), `DRAFT_SENT`, `SQL_COMPLETE` (end of the SQL rewrite, node 2) |
+| 0x14 | `REGISTER_TARGET` | UI → coordinator → renderer, UI | context, epoch | `u32 slot, u32 generation`; register a persistent target lifetime |
+| 0x15 | `RELEASE_TARGET` | UI → coordinator → renderer, UI | epoch | `u32 slot, u32 generation`; cancel/release the lifetime and retain a tombstone |
 | 0x18 | `INFER` | coordinator → inference | request, revision, context | UTF-8 question text |
 | 0x19 | `SQL_DELTA` | inference → coordinator | request | UTF-8 fragment of the SQL being generated. Flag `0x02 RESET`: discard earlier deltas (a repair restarted the SQL) |
 | 0x1A | `SQL` | inference → coordinator | request | UTF-8 complete SQL. Flag `0x01 CACHED` (inference-side cache) |
 | 0x1B | `INFER_STATS` | inference → coordinator → UI | request | JSON `{model, provider?, promptTokens, completionTokens, cachedTokens?, reasoningTokens?, costUsd?, attempts, cancelled?}`; also sent for cancelled requests that reached the provider |
 | 0x1C | `PRIME` | UI → inference | context | JSON `{question, sql}`: answer an INFER for exactly this question (trimmed, whitespace collapsed, case-folded) with this SQL. See "Suggestions" |
+| 0x1D | `EDIT_CONTEXT` | UI → coordinator → inference | request = slot, revision = generation, context | Immutable edit-base JSON; see persistent targets below |
+| 0x1E | `EDIT_INFER` | coordinator → inference | request, revision, context | `u32 slot, u32 generation` + UTF-8 change request |
 | 0x20 | `EXEC` | coordinator → database; UI → database (WARM only) | request, context | UTF-8 SQL. Flags `0x01 SPECULATIVE`, `0x02 WARM` (see "Suggestions") |
 | 0x21 | `RESULT_SCHEMA` | database → renderer (+ header-only → coordinator) | request | Arrow IPC encapsulated **schema** message |
 | 0x22 | `BATCH` | database → renderer (+ header-only → coordinator) | request | Arrow IPC encapsulated **record batch** message |
@@ -156,6 +160,8 @@ anything visible ([batch-2/voice-anticipation.md](batch-2/voice-anticipation.md)
 | 0x33 | `RESULT` | coordinator → UI | request, revision, context | JSON `{slot, sql, columns: [{name, type, role}], view, cached}` once per bound request |
 | 0x34 | `TIMING` | coordinator → UI | request, revision | empty; the stamps carry the request's full stage ledger |
 | 0x35 | `KEEP` | coordinator → UI | request, revision | `u32 slot`: the committed result keeps this slot; the UI pins its card and registers a new live slot |
+| 0x36 | `EXECUTION` | coordinator → UI | request, served revision, context, current epoch | JSON `{slot, generation, status: "succeeded" | "failed" | "cancelled"}` |
+| 0x37 | `CANDIDATE` | coordinator → UI | request, served revision, context, epoch | JSON `{slot, generation, sql}` with the exact final SQL, before execution |
 
 ## Identities and fencing
 
@@ -240,6 +246,89 @@ slots (already attached to the renderer by the UI) to the coordinator's pool. Th
 binds live results to a pool slot. When it sends `KEEP(slot)`, that slot leaves the pool, and the
 UI attaches a new canvas and adds its id with another `CONFIG`. The UI keeps at least two
 slots in the pool so that typing right after Enter never waits for a canvas.
+
+### Persistent targets and contextual edits
+
+These extensions use the same frame codec and transports. The UI requires
+`canvas-targets-v1` in the coordinator's `READY`; contextual inference additionally
+requires `edit-context-v1` from inference. An older inference peer can still serve
+new questions; saved SQL loads without inference. Unsupported contextual edits
+fail explicitly, without silently sending a bare change request to `INFER`.
+
+- A target is `(slot, generation)`, independent of query request IDs. Registration
+  accepts only a newer nonzero generation. Release of an unknown/future generation
+  creates an inactive tombstone; a late registration cannot resurrect it. The
+  coordinator keeps at most 10,000 target entries: released tombstones are evicted
+  lowest slot first and leave a floor. UI slot numbers only grow, so an absent slot
+  below the floor counts as released and stays fenced. Re-registering or releasing a
+  target cancels its work and lets the next queued target `COMMIT` start. Context
+  zero invalidates pending work while retaining the previous picture.
+- Targeted `DRAFT`/`COMMIT` put the slot in header `request` and prepend a little-endian
+  `u32 generation` to the text. Header `revision` is a monotonically increasing
+  sequence within that lifetime. Equal sequence with different text rejects. Legacy
+  request-zero text frames keep their existing meaning.
+- Targeted `QUERY` puts generation in header `request`, with the existing
+  `u32 slot + SQL` payload. It requires a fresh sequence and always executes: it
+  cannot adopt a result from a previous target generation or restored definition.
+  It becomes the target's newest answer. A later `COMMIT` reuses an executed result
+  only if it is still the target's bound one; otherwise it translates and executes
+  again, so `EXECUTION succeeded` always names the SQL on screen.
+- Targeted `BIND`/`UNBIND` carry `u32 slot, u32 view, u32 generation`. View 256
+  preserves the full current presentation; 255 is explicit Auto; 0–9 select the
+  listed views. A confirmed explicit view requested in text becomes durable intent.
+  A newer manual picker choice suppresses a delayed hint from that sequence in
+  both the host and UI, including renderer-startup replay; later text can request
+  another view normally.
+- `CANDIDATE` reports only final, nonempty SQL, including cache/adoption paths.
+  `EXECUTION` is terminal and emitted once per request/served-sequence. SQL success
+  is distinct from rendering success and from an IndexedDB acknowledgement.
+- Renderer UI controls and callbacks also carry generation and bound request.
+  The host rejects late database frames and callbacks before drawing or updating
+  chrome. Source activation first invalidates execution context, even if loading fails.
+- Persistent slots never enter the legacy `freeSlots` pool. DOM shells can exist
+  without a renderer allocation; releasing a resident target frees its result/GPU
+  resources while preserving the durable definition.
+
+#### Changes to legacy (request-zero) behaviour
+
+These came with the target work and apply to the live-slot path too:
+
+- `DRAFT`/`COMMIT` whose epoch is below the coordinator's are dropped, like every
+  other request-scoped frame. The UI stamps the current epoch on text frames.
+- A renderer `ERROR` for a target request is forwarded to the UI only: drawing failure
+  is not SQL failure, and the target keeps its binding. For a request-zero request it
+  still marks the request failed and the live slot falls back to its last drawn result.
+- A context change cancels every tracked request (translations and executions), not
+  only the in-flight translation.
+- Full `CANCEL` reports each target's `EXECUTION cancelled` under the new epoch.
+- Inference accepts questions up to 16,384 characters (was 4,096), matching the bound
+  on saved canvas questions (`src/canvas/limits.ts`).
+
+`EDIT_CONTEXT` is at most 128 KiB of strict JSON:
+
+```json
+{"mode":"refine","originalQuestion":"Average temperature by station",
+ "sql":"SELECT station, avg(temperature) FROM weather GROUP BY 1",
+ "history":[{"kind":"create","text":"Average temperature by station"}],
+ "presentation":{"view":null,"params":{}}}
+```
+
+`mode` is `refine` or `regenerate`. History contains up to 32 entries from the
+selected lineage, with `kind`, `text` and optional `details`; sibling branches are
+excluded. The full history remains in the document. No result rows, files or
+schema samples belong in this payload. Schema still travels in `CONTEXT`.
+The base is immutable for its slot/generation/context handle. `EDIT_INFER` resolves
+that handle and supplies only the new request. Both backends append the exact
+validated wire JSON to the same golden-tested prompt. Repair retains that base.
+Cache identity includes source context, complete base bytes and request text;
+transport-local handles do not affect reuse. Refinement preserves selected SQL
+semantics; regeneration prioritizes original intent plus selected revisions.
+
+The browser journals draft text and final SQL separately from execution. Enter or
+leaving the editor freezes a sequence; only its successful execution can atomically
+append a chart revision and canvas commit. Restore/cancel changes runtime identity
+before hydration. IndexedDB uses monotonic canvas/draft versions and closed-draft
+tombstones, so an old save cannot reopen or overwrite the restored state.
 
 ### Result shape convention
 

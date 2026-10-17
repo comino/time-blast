@@ -1,6 +1,7 @@
 use super::*;
 use tb_protocol::{flags, node, stage};
 use LinkId::*;
+mod targets;
 
 const CTX: u32 = 7;
 
@@ -55,11 +56,13 @@ impl H {
         f.stamp(stage::KEY_INPUT, node::UI, now - 2.0).stamp(stage::DRAFT_SENT, node::UI, now - 1.0)
     }
     fn draft(&mut self, revision: u32, text: &str) -> Out {
-        let f = H::draft_frame(Kind::Draft, revision, text, self.now);
+        let mut f = H::draft_frame(Kind::Draft, revision, text, self.now);
+        f.header.epoch = self.epoch();
         self.send(Ui, f)
     }
     fn commit(&mut self, revision: u32, text: &str) -> Out {
-        let f = H::draft_frame(Kind::Commit, revision, text, self.now);
+        let mut f = H::draft_frame(Kind::Commit, revision, text, self.now);
+        f.header.epoch = self.epoch();
         self.send(Ui, f)
     }
     fn cancel(&mut self) -> Out {
@@ -715,14 +718,14 @@ fn cache_can_be_disabled() {
 fn cache_is_a_bounded_lru() {
     let mut cache = Cache::default();
     for i in 0..CACHE_CAPACITY {
-        cache.put(1, &format!("q{i}"), b"S");
+        cache.put(1, &format!("q{i}"), b"S", &None);
     }
-    assert!(cache.get(1, "q0").is_some()); // refresh q0
-    cache.put(1, "new", b"N");
+    assert!(cache.get(1, "q0", &None).is_some()); // refresh q0
+    cache.put(1, "new", b"N", &None);
     assert_eq!(cache.entries.len(), CACHE_CAPACITY);
-    assert!(cache.get(1, "q0").is_some());
-    assert!(cache.get(1, "q1").is_none(), "least recently used entry evicted");
-    assert_eq!(cache.get(1, "new"), Some(&b"N"[..]));
+    assert!(cache.get(1, "q0", &None).is_some());
+    assert!(cache.get(1, "q1", &None).is_none(), "least recently used entry evicted");
+    assert_eq!(cache.get(1, "new", &None), Some(&b"N"[..]));
 }
 
 #[test]
@@ -842,6 +845,20 @@ fn database_error_falls_back_to_previous_complete_result() {
 }
 
 #[test]
+fn legacy_renderer_error_falls_back_to_previous_complete_result() {
+    let mut h = H::new();
+    let good = h.full(1, "avg speed", "SELECT 1");
+    let bad = h.draft(2, "max speed")[0].1.header.request;
+    h.sql(bad, "SELECT 2");
+    let out = h.error(Renderer, bad);
+    assert_eq!(kinds(&out), [(Ui, Kind::Error), (Renderer, Kind::Bind), (Ui, Kind::Bind)]);
+    assert_eq!((out[1].1.header.request, out[1].1.header.revision, slot_of(&out[1].1)), (good, 1, 1));
+    // Identical SQL later is executed again, not deduplicated against the failed draw.
+    let next = one(&h.draft(3, "max speed!"), Inference, Kind::Infer).header.request;
+    one(&h.sql(next, "SELECT 2"), Database, Kind::Exec);
+}
+
+#[test]
 fn database_error_without_complete_result_unbinds() {
     let mut h = H::new();
     let bad = h.draft(1, "avg speed")[0].1.header.request;
@@ -882,7 +899,7 @@ fn hello_is_answered_with_ready() {
     let mut h = H::new();
     let out = h.send(Inference, frame(Kind::Hello));
     let ready = one(&out, Inference, Kind::Ready);
-    assert_eq!(text(ready), r#"{"node":"coordinator","name":"tb-coordinator","version":1}"#);
+    assert_eq!(text(ready), r#"{"node":"coordinator","name":"tb-coordinator","version":1,"capabilities":["canvas-targets-v1"]}"#);
 }
 
 // ───────────────────────── config switches ─────────────────────────

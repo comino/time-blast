@@ -100,6 +100,8 @@ export class Rail implements RailView {
     this.scroll();
   }
 
+  clearKept(): void { for (const button of this.q('history').querySelectorAll('.history-question')) button.remove(); }
+
   /** Main-thread cost per keystroke (ms), shown in µs. */
   uiCost(medianMs: number | null): void {
     this.q('ui-cost').textContent = medianMs === null ? '—' : `${(medianMs * 1000).toFixed(0)} µs`;

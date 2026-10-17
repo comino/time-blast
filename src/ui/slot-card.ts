@@ -2,10 +2,28 @@
  * engine worker. Everything here is cold path: it changes on BIND/RESULT/axes/table, not
  * per keystroke. Text (axis labels, legend, table) is DOM; pixels are the renderer's. */
 import type { AxisTicks, SlotSize, ViewName } from '../engine/contracts';
+import type { Layout, Presentation } from '../canvas/model';
 import type { Board, BoardItem } from './board';
 import type { CardHandlers, ErrorInfo, ResultInfo, SlotCard } from './controller';
 import { icons } from './icons';
 import { describeInferStats, formatMs, type InferStats, type TimingBreakdown } from './timing';
+
+export interface CardDocument {
+  layout: Layout;
+  presentation: Presentation;
+  originalQuestion: string;
+  sql: string;
+  status: string;
+  editing?: boolean;
+}
+
+export interface DurableCardHandlers extends CardHandlers {
+  edit?(slot: number, mode: 'question' | 'sql' | 'regenerate'): void;
+  history?(slot: number): void;
+  refresh?(slot: number): void;
+  reattach?(slot: number): void;
+  paramEnd?(slot: number): void;
+}
 
 export const VIEW_LABELS: Record<ViewName, string> = {
   line: 'Line', bar: 'Bars', scatter: 'Scatter', table: 'Table', heatmap: 'Heatmap', surface: '3D surface',
@@ -13,17 +31,17 @@ export const VIEW_LABELS: Record<ViewName, string> = {
 };
 
 const markup = `
-<header class="card-header card-drag-handle"><span class="card-glyph">${icons.chart}</span><div class="card-heading"><h2 class="card-title" data-c="title"></h2><p class="card-subtitle" data-c="subtitle">Waiting for a question</p></div><div class="card-header-actions"><button class="icon-button" data-a="close" aria-label="Remove view" title="Remove view">${icons.close}</button></div></header>
+<header class="card-header card-drag-handle"><span class="card-glyph">${icons.chart}</span><div class="card-heading"><h2 class="card-title" data-c="title"></h2><p class="card-subtitle" data-c="subtitle">Waiting for a question</p></div><div class="card-header-actions"><button type="button" class="icon-button" data-a="reattach" aria-label="Reattach source" title="Reattach source" hidden>${icons.file}</button><button class="icon-button" data-a="close" aria-label="Remove view" title="Remove view">${icons.close}</button></div></header>
 <div class="card-toolbar"><select data-c="view" aria-label="Visualization type"><option value="">Auto</option></select><div class="plot-tabs" role="tablist" aria-label="Result view"><button data-tab="chart" role="tab" aria-selected="true" class="active">Chart</button><button data-tab="table" role="tab" aria-selected="false">Data</button></div><button type="button" class="back-button" data-a="back" data-c="back" hidden title="Back to the previous query (Esc, double-click)">← Back</button><span class="drill-note mono" data-c="drill"></span><span class="live-indicator" data-c="state" data-state="loading"><span></span><b data-c="state-label">LIVE</b></span></div>
 <div class="card-body">
   <div class="plot-container" data-c="plot" tabindex="0" title="Drag to zoom into a time range · click a line, bar or point to filter · double-click or Esc to go back"><canvas data-c="canvas" role="img" aria-label="Query result"></canvas><div class="axis-layer" data-c="axes" aria-hidden="true"></div><div class="brush-band" data-c="brush" hidden></div>
-    <div class="view-controls" data-c="controls" hidden><label data-c="rotation-wrap" hidden>Rotate <input data-c="rotation" aria-label="Surface rotation" type="range" min="-180" max="180" value="-35" step="1"/></label><label data-c="playback-wrap" hidden><button type="button" data-a="play">Play</button><input data-c="playback" aria-label="Playback position" type="range" min="0" max="1000" value="1000" step="1"/></label></div>
+    <div class="view-controls" data-c="controls" hidden><label data-c="rotation-wrap" hidden>Rotate <input data-c="rotation" aria-label="Surface rotation" type="range" min="-180" max="180" value="-30" step="1"/></label><label data-c="playback-wrap" hidden><button type="button" data-a="play">Play</button><input data-c="playback" aria-label="Playback position" type="range" min="0" max="1000" value="1000" step="1"/></label></div>
     <div class="card-error" data-c="error" role="alert" hidden></div></div>
   <div class="data-table-wrap" data-c="table-wrap" hidden><table class="data-table"><thead data-c="thead"></thead><tbody data-c="tbody"></tbody></table><p data-c="table-note">No rows yet.</p></div>
 </div>
 <div class="plot-bottom"><div class="legend" data-c="legend"></div><span class="mono" data-c="columns"></span></div>
-<details class="card-sql"><summary>${icons.code}<span>SQL</span><span class="source-pill" data-c="source">—</span></summary><pre data-c="sql">No query yet.</pre><p data-c="stats"></p></details>
-<footer class="card-footer"><div class="card-latency" title="Last keystroke → first draw submitted (software timestamps, not photons)"><small>KEY → FIRST DRAW</small><strong data-c="latency">—</strong><span class="cache-pill" data-c="cache" hidden>CACHE HIT</span></div><button class="icon-button" data-a="export" aria-label="Export result as CSV" title="Export result as CSV" disabled>${icons.download}</button></footer>
+<details class="card-sql"><summary>${icons.code}<span>SQL</span><span class="source-pill" data-c="source">—</span></summary><pre data-c="sql">No query yet.</pre><p class="result-actions"><button type="button" class="detail-button" data-a="edit-sql" hidden>Edit SQL</button><button type="button" class="detail-button" data-a="regenerate" hidden>Regenerate</button></p><p data-c="stats"></p></details>
+<footer class="card-footer"><div class="card-latency" title="Last keystroke → first draw submitted (software timestamps, not photons)"><small>KEY → FIRST DRAW</small><strong data-c="latency">—</strong><span class="cache-pill" data-c="cache" hidden>CACHE HIT</span></div><div class="result-actions"><button type="button" class="detail-button" data-a="edit" hidden>Edit</button><button type="button" class="detail-button" data-a="history" hidden>History</button><button type="button" class="detail-button" data-a="refresh" hidden>Refresh</button><button class="icon-button" data-a="export" aria-label="Export result as CSV" title="Export result as CSV" disabled>${icons.download}</button></div></footer>
 <button class="card-resize-handle" aria-label="Resize view" title="Drag to resize">◢</button>`;
 const template = typeof document === 'undefined' ? null : document.createElement('template');
 if (template) template.innerHTML = markup;
@@ -43,14 +61,20 @@ export class SlotCardView implements SlotCard, BoardItem {
   private readonly yLabels: HTMLSpanElement[] = [];
   private readonly freeLabels: HTMLSpanElement[] = [];
   private chosen: ViewName | null = null;
+  /** Saved/user intent is independent of the renderer's schema-dependent fallback. */
+  private requestedView: ViewName | null = null;
   private available: ViewName[] = [];
   private playing = 0;
+  private playVersion = 0;
+  private pendingParam: string | null = null;
+  private documentStatus: string | null = null;
   private readonly controller = new AbortController();
   /** Plot rectangle of the last axes (CSS px), for the brush band. */
   private plotRect: AxisTicks['plot'] | null = null;
   private lastClick: { at: number; sent: boolean } | null = null;
+  private cancelPointer: () => void = () => {};
 
-  constructor(readonly slot: number, private readonly handlers: CardHandlers, private readonly board: Board, private readonly onDestroy: () => void = () => {}) {
+  constructor(readonly slot: number, private readonly handlers: DurableCardHandlers, private readonly board: Board, private readonly onDestroy: () => void = () => {}) {
     const element = document.createElement('article');
     element.className = 'result-card card slot-card';
     element.dataset.slot = String(slot); element.dataset.idle = 'true';
@@ -65,14 +89,29 @@ export class SlotCardView implements SlotCard, BoardItem {
     on('close', () => handlers.close(slot));
     on('export', () => handlers.exportCsv(slot));
     on('play', () => this.togglePlay());
+    const optional = (name: string, handler: (() => void) | undefined) => {
+      (element.querySelector(`[data-a="${name}"]`) as HTMLButtonElement).hidden = !handler;
+      if (handler) on(name, handler);
+    };
+    optional('edit', handlers.edit && (() => handlers.edit!(slot, 'question')));
+    optional('edit-sql', handlers.edit && (() => handlers.edit!(slot, 'sql')));
+    optional('regenerate', handlers.edit && (() => handlers.edit!(slot, 'regenerate')));
+    optional('history', handlers.history && (() => handlers.history!(slot)));
+    optional('refresh', handlers.refresh && (() => handlers.refresh!(slot)));
+    optional('reattach', handlers.reattach && (() => handlers.reattach!(slot)));
     for (const tab of element.querySelectorAll<HTMLButtonElement>('[data-tab]')) tab.addEventListener('click', () => this.tab(tab.dataset.tab as 'chart' | 'table'), { signal });
     this.q.view.addEventListener('change', () => {
       const value = (this.q.view as HTMLSelectElement).value as ViewName | '';
+      this.stopPlay();
+      this.requestedView = value || null;
       handlers.view(slot, value || null);
       this.controls(value || this.chosen);
     }, { signal });
-    this.q.rotation.addEventListener('input', () => handlers.param(slot, 'rotation', Number((this.q.rotation as HTMLInputElement).value)), { signal });
-    this.q.playback.addEventListener('input', () => { this.stopPlay(); handlers.param(slot, 'playback', Number((this.q.playback as HTMLInputElement).value) / 1000); }, { signal });
+    this.q.rotation.addEventListener('input', () => this.previewParam('rotation', Number((this.q.rotation as HTMLInputElement).value)), { signal });
+    this.q.playback.addEventListener('input', () => { if (this.playing) this.stopPlay(); this.previewParam('playback', Number((this.q.playback as HTMLInputElement).value) / 1000); }, { signal });
+    for (const input of [this.q.rotation, this.q.playback]) {
+      for (const type of ['change', 'blur', 'pointercancel']) input.addEventListener(type, () => this.endParam(), { signal });
+    }
     on('back', e => handlers.back(slot, e.timeStamp));
     this.pointer(signal);
     board.add(this);
@@ -85,6 +124,45 @@ export class SlotCardView implements SlotCard, BoardItem {
 
   // ───────────── SlotCard ─────────────
 
+  /** Replace a saved definition silently. Runtime presentation is sent by the controller. */
+  document(info: CardDocument): void {
+    this.presentation(info.presentation);
+    this.board.cancelGesture(this);
+    this.cancelPointer();
+    this.plotRect = null;
+    this.lastClick = null;
+    this.q.brush.hidden = true;
+    Object.assign(this, info.layout);
+    this.board.layout(this);
+    this.kept = !info.editing;
+    this.element.dataset.idle = 'false';
+    this.element.dataset.live = String(!!info.editing);
+    this.element.dataset.editing = String(!!info.editing);
+    if (!this.shown) this.board.shown(this, true);
+    this.q.title.textContent = info.originalQuestion || 'SQL chart';
+    this.element.setAttribute('aria-label', this.q.title.textContent);
+    this.q.sql.textContent = info.sql || 'No SQL yet.';
+    this.q.source.textContent = info.editing ? 'DRAFT SQL' : 'SAVED SQL';
+    this.q.error.hidden = true;
+    this.status(info.status);
+  }
+  /** Replace presentation intent without changing layout, query metadata or plot gestures. */
+  presentation(presentation: Presentation): void {
+    this.stopPlay(false);
+    this.pendingParam = null;
+    this.requestedView = presentation.view;
+    (this.q.rotation as HTMLInputElement).value = String(presentation.params.rotation ?? -30);
+    (this.q.playback as HTMLInputElement).value = String((presentation.params.playback ?? 1) * 1000);
+    this.viewOptions();
+  }
+  /** Frequent status/save updates must not reset playback or an active slider gesture. */
+  status(text: string): void {
+    this.documentStatus = text;
+    this.q.subtitle.textContent = text;
+    this.q['state-label'].textContent = text;
+    this.q.state.dataset.state = /error|fail|missing|unavailable|reattach|conflict/i.test(text) ? 'error'
+      : /load|pending|running|refresh|translat|generat|hydrati/i.test(text) ? 'loading' : 'ready';
+  }
   showLive(): void {
     this.element.dataset.live = 'true';
     if (this.shown) return;
@@ -124,22 +202,17 @@ export class SlotCardView implements SlotCard, BoardItem {
       const subtitle = this.q.subtitle.textContent?.split(' · ')[0] ?? '';
       this.q.subtitle.textContent = `${subtitle} · ${info.columns.length} columns${info.view ? ` · ${VIEW_LABELS[info.view] ?? info.view}` : ''}`;
     }
-    this.q.state.dataset.state = 'ready';
+    if (this.documentStatus === null) this.q.state.dataset.state = 'ready';
     (this.element.querySelector('[data-a="export"]') as HTMLButtonElement).disabled = false;
   }
   views(available: ViewName[], chosen: ViewName, columns?: Array<{ name: string; role: string }>): void {
     this.available = available; this.chosen = chosen;
-    const select = this.q.view as HTMLSelectElement, current = select.value;
-    const options = [`<option value="">Auto · ${VIEW_LABELS[chosen] ?? chosen}</option>`, ...available.map(v => `<option value="${v}">${VIEW_LABELS[v] ?? v}</option>`)];
-    select.innerHTML = options.join('');
-    // Each new result starts from the renderer's choice; keep a pick only if it is what's shown.
-    select.value = current === chosen ? current : '';
+    this.viewOptions();
     if (columns) {
       this.q.columns.textContent = columns.map(c => `${c.name}${c.role ? `·${c.role}` : ''}`).join('  ');
       const subtitle = this.q.subtitle.textContent?.split(' · ')[0] ?? '';
       this.q.subtitle.textContent = `${subtitle} · ${columns.length} columns · ${VIEW_LABELS[chosen] ?? chosen}`;
     }
-    this.controls((select.value as ViewName) || chosen);
   }
   axes(ticks: AxisTicks): void {
     const layer = this.q.axes, { plot } = ticks;
@@ -189,7 +262,7 @@ export class SlotCardView implements SlotCard, BoardItem {
   timing(t: TimingBreakdown): void {
     this.q.latency.textContent = formatMs(t.headline);
     this.q.cache.hidden = !t.cacheHit;
-    this.q.state.dataset.state = t.headline === null ? 'loading' : 'ready';
+    if (this.documentStatus === null) this.q.state.dataset.state = t.headline === null ? 'loading' : 'ready';
   }
   inferStats(s: InferStats): void { this.q.stats.textContent = describeInferStats(s); }
   error(e: ErrorInfo): void {
@@ -207,7 +280,9 @@ export class SlotCardView implements SlotCard, BoardItem {
     this.q.drill.textContent = note;
   }
   destroy(): void {
-    this.stopPlay();
+    this.stopPlay(false);
+    this.pendingParam = null;
+    this.cancelPointer();
     this.controller.abort();
     this.board.remove(this);
     this.onDestroy();
@@ -225,6 +300,12 @@ export class SlotCardView implements SlotCard, BoardItem {
       return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale };
     };
     let start: { x: number; id: number } | null = null, brushing = false, swallowClick = false;
+    this.cancelPointer = () => {
+      const id = start?.id;
+      if (start || brushing) swallowClick = true;
+      start = null; brushing = false; brush.hidden = true;
+      if (id !== undefined && plot.hasPointerCapture(id)) plot.releasePointerCapture(id);
+    };
     const band = (x0: number, x1: number) => {
       const p = this.plotRect!;
       const a = Math.max(p.left, Math.min(x0, x1)), b = Math.min(p.left + p.width, Math.max(x0, x1));
@@ -275,6 +356,12 @@ export class SlotCardView implements SlotCard, BoardItem {
   }
 
   private reset(): void {
+    this.stopPlay(false);
+    this.pendingParam = null;
+    this.cancelPointer();
+    this.documentStatus = null;
+    this.requestedView = null;
+    this.available = []; this.chosen = null;
     this.revision = -1;
     this.plotRect = null;
     this.drill(0, '');
@@ -286,7 +373,7 @@ export class SlotCardView implements SlotCard, BoardItem {
     this.q.cache.hidden = true; this.q.error.hidden = true; this.q.axes.hidden = true;
     this.q.tbody.textContent = ''; this.q.thead.textContent = ''; this.q['table-note'].textContent = 'No rows yet.';
     (this.element.querySelector('[data-a="export"]') as HTMLButtonElement).disabled = true;
-    this.stopPlay();
+    this.viewOptions();
   }
   private labels(pool: HTMLSpanElement[], count: number, className: string): void {
     while (pool.length < count) { const span = document.createElement('span'); span.className = className; this.q.axes.append(span); pool.push(span); }
@@ -304,27 +391,58 @@ export class SlotCardView implements SlotCard, BoardItem {
     this.q['rotation-wrap'].hidden = !surface;
     this.q['playback-wrap'].hidden = !tracks;
     this.q.controls.hidden = !surface && !tracks;
-    if (!tracks) this.stopPlay();
+    if (!tracks) this.stopPlay(false);
+  }
+  private viewOptions(): void {
+    const select = this.q.view as HTMLSelectElement;
+    const option = (value: string, label: string, disabled = false) => {
+      const item = document.createElement('option'); item.value = value; item.textContent = label; item.disabled = disabled; return item;
+    };
+    select.replaceChildren(option('', this.chosen ? `Auto · ${VIEW_LABELS[this.chosen]}` : 'Auto'),
+      ...this.available.map(view => option(view, VIEW_LABELS[view])));
+    if (this.requestedView && !this.available.includes(this.requestedView)) {
+      select.append(option(this.requestedView, `${VIEW_LABELS[this.requestedView]} · unavailable`, true));
+    }
+    select.value = this.requestedView ?? '';
+    const actual = this.requestedView && this.available.includes(this.requestedView) ? this.requestedView : this.chosen;
+    this.controls(actual);
+  }
+  private previewParam(name: string, value: number): void {
+    this.pendingParam = name;
+    this.handlers.param(this.slot, name, value);
+  }
+  private endParam(): void {
+    if (this.pendingParam === null) return;
+    this.pendingParam = null;
+    this.handlers.paramEnd?.(this.slot);
   }
   private togglePlay(): void {
     if (this.playing) { this.stopPlay(); return; }
     const input = this.q.playback as HTMLInputElement, button = this.element.querySelector('[data-a="play"]')!;
     let start = performance.now();
     const from = Number(input.value) >= 1000 ? 0 : Number(input.value);
+    const version = ++this.playVersion;
     button.textContent = 'Pause';
     const step = (now: number) => {
+      if (version !== this.playVersion) return;
       const value = Math.min(1000, from + (now - start) / 6);
       input.value = String(value);
-      this.handlers.param(this.slot, 'playback', value / 1000);
+      this.previewParam('playback', value / 1000);
+      if (version !== this.playVersion) return; // A handler may synchronously replace the definition.
       if (value >= 1000) { this.stopPlay(); return; }
       this.playing = requestAnimationFrame(step);
     };
     start = performance.now();
     this.playing = requestAnimationFrame(step);
   }
-  private stopPlay(): void {
-    if (!this.playing) return;
-    cancelAnimationFrame(this.playing); this.playing = 0;
+  private stopPlay(save = true): void {
+    this.playVersion++;
+    if (this.playing) cancelAnimationFrame(this.playing);
+    this.playing = 0;
     const button = this.element.querySelector('[data-a="play"]'); if (button) button.textContent = 'Play';
+    if (this.pendingParam === 'playback') {
+      if (save) this.endParam();
+      else this.pendingParam = null;
+    }
   }
 }

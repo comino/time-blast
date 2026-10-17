@@ -48,7 +48,7 @@ export interface HostDeps {
 /** A coordinator input: decoded (in-process) or still encoded (straight off the UI port). */
 type Input = [LinkId, Frame<Uint8Array> | Uint8Array];
 
-type RenderControl = Extract<UiToEngine, { type: 'attach' | 'resize' | 'detach' | 'view' | 'param' | 'export' }>;
+type RenderControl = Extract<UiToEngine, { type: 'attach' | 'resize' | 'detach' | 'view' | 'param' | 'presentation' | 'export' }>;
 
 const EMPTY = new Uint8Array(0);
 const defaultTimers: Timers = { set: (callback, ms) => setTimeout(callback, ms), clear: handle => clearTimeout(handle as number) };
@@ -98,6 +98,9 @@ export class EngineHost {
   /** DuckDB's parser behind a memo (undefined: not looked up yet; null: unavailable). */
   private tools?: CachedTools | null;
   private disposed = false;
+  private readonly targets = new Map<number, { generation: number; active: boolean; request?: number; manualViewRevision?: number }>();
+  private readonly executions = new Map<number, { epoch: number; context: number }>();
+  private readonly renderBindings = new Map<number, number>();
 
   constructor(private readonly deps: HostDeps) {
     this.now = deps.now ?? clockNow;
@@ -116,12 +119,21 @@ export class EngineHost {
       this.statusToUi('coordinator', 'ready', 'Coordinator ready');
       this.feedCoordinator();
     });
-    const renderer = deps.createRenderer(frame => this.fromRenderer(frame), (message, transfer) => deps.postToUi(message, transfer))
+    const renderer = deps.createRenderer(frame => this.fromRenderer(frame), (message, transfer) => {
+      if ('slot' in message) {
+        const target = this.targets.get(message.slot);
+        if (target) {
+          if (!target.active || !('request' in message) || message.request === undefined || message.request !== target.request) return;
+          message = { ...message, generation: target.generation };
+        }
+      }
+      deps.postToUi(message, transfer);
+    })
       .then(node => {
         this.renderer = node;
         bootMark('renderer.ready');
         for (const control of this.controlBacklog.take()) this.control(control);
-        for (const frame of this.rendererBacklog.take()) node.handle(frame);
+        for (const frame of this.rendererBacklog.take()) if (this.admitsQueuedRender(frame)) node.handle(this.preserveManualView(frame));
         this.feedCoordinator();
       });
     this.databaseReady = deps.createDatabase(frame => this.fromDatabase(frame)).then(node => {
@@ -157,9 +169,15 @@ export class EngineHost {
       case 'boot':
         bootMark('boot.message');
         this.setInference(message.inference);
-        void this.openDataset(message.dataset);
+        void this.openDataset(message.dataset).then(context => {
+          if (message.token) this.deps.postToUi({ type: 'activation', token: message.token, context: context ?? null });
+        });
         return;
-      case 'dataset': void this.openDataset(message.source); return;
+      case 'dataset':
+        void this.openDataset(message.source).then(context => {
+          if (message.token) this.deps.postToUi({ type: 'activation', token: message.token, context: context ?? null });
+        });
+        return;
       case 'inference': this.setInference(message.placement); return;
       case 'manipulate': this.manipulate(message); return;
       default: this.control(message);
@@ -182,6 +200,7 @@ export class EngineHost {
    * stamps are the pointer event (KEY_INPUT), the post (DRAFT_SENT), both from the UI, and the end
    * of the rewrite (SQL_COMPLETE, engine worker). */
   private manipulate(m: Extract<UiToEngine, { type: 'manipulate' }>): void {
+    if (!this.admitsControl(m) || m.context !== this.context?.id) return;
     const t0 = performance.now();
     let out: { sql: string | null; method: 'rewrite' | 'wrap' | 'as-is' | 'none'; reason: string };
     if (m.gesture.kind === 'sql') out = { sql: m.gesture.sql, method: 'as-is', reason: 'back' };
@@ -197,14 +216,14 @@ export class EngineHost {
       }
     }
     const ms = performance.now() - t0;
-    this.deps.postToUi({ type: 'manipulated', slot: m.slot, from: m.sql, sql: out.sql, method: out.method, reason: out.reason, ms });
-    if (!out.sql) return;
+    this.deps.postToUi({ type: 'manipulated', slot: m.slot, request: m.request, generation: m.generation, from: m.sql, sql: out.sql, method: out.method, reason: out.reason, ms });
+    if (!out.sql || m.prepareOnly) return;
     const sql = new TextEncoder().encode(out.sql);
     const payload = new Uint8Array(4 + sql.byteLength);
     new DataView(payload.buffer).setUint32(0, m.slot, true);
     payload.set(sql, 4);
     this.toCoordinator('ui', {
-      ...header(Kind.QUERY, { epoch: m.epoch, revision: m.revision, context: m.context }),
+      ...header(Kind.QUERY, { request: m.generation ?? 0, epoch: m.epoch, revision: m.revision, context: m.context }),
       stamps: [
         { stage: Stage.KEY_INPUT, node: Node.UI, at: m.keyAt },
         { stage: Stage.DRAFT_SENT, node: Node.UI, at: m.sentAt },
@@ -217,14 +236,30 @@ export class EngineHost {
   private control(message: RenderControl): void {
     const renderer = this.renderer;
     if (!renderer) { this.controlBacklog.push(message); return; }
+    if (message.type === 'detach') {
+      const target = this.targets.get(message.slot);
+      if (target && target.generation !== message.generation) return;
+    } else if (message.type !== 'attach' && message.type !== 'resize' && !this.admitsControl(message)) return;
     switch (message.type) {
-      case 'attach': renderer.attach(message.slot, message.canvas, message.size); break;
+      case 'attach': renderer.attach(message.slot, message.canvas, message.size, message.dormant); break;
       case 'resize': renderer.resize(message.slot, message.size); break;
-      case 'detach': renderer.detach(message.slot); break;
+      case 'detach': renderer.detach(message.slot); this.targets.delete(message.slot); break;
       case 'view': renderer.setView(message.slot, message.view); break;
       case 'param': renderer.setParam(message.slot, message.name, message.value); break;
+      case 'presentation': {
+        const target = this.targets.get(message.slot);
+        if (target && message.manualViewRevision !== undefined) target.manualViewRevision = Math.max(target.manualViewRevision ?? 0, message.manualViewRevision);
+        renderer.setPresentation(message.slot, message.presentation); break;
+      }
       case 'export': renderer.export(message.slot, message.format); break;
     }
+  }
+
+  private admitsControl(message: { slot: number; generation?: number; request?: number }): boolean {
+    const target = this.targets.get(message.slot);
+    if (!target) return message.generation === undefined;
+    return target.active && message.generation === target.generation
+      && (message.request === undefined || message.request === target.request);
   }
 
   // ───────────────────────── datasets and inference ─────────────────────────
@@ -238,6 +273,12 @@ export class EngineHost {
       let database: DatabaseNode;
       try { database = await this.databaseReady; } catch { return undefined; }
       if (id !== this.contextSeq || this.disposed) return undefined;
+      // Opening can cancel the database's old queue even if loading fails. Terminate
+      // those executions before touching the source, so none can later commit.
+      this.context = undefined;
+      this.columns = undefined;
+      this.tools = undefined;
+      this.toCoordinator('database', { ...header(Kind.CONTEXT, { context: 0 }), stamps: [], payload: json({ id: 0, tables: [] }) });
       let context: DatasetContext;
       try {
         context = await database.open(source, id);
@@ -293,6 +334,12 @@ export class EngineHost {
         bootMark('inference.ready');
         let model = '';
         try { model = (readJson<{ model?: string }>(frame.payload as Uint8Array).model) ?? ''; } catch { /* READY payload is optional detail */ }
+        let capabilities: string[] = [];
+        try {
+          const value = readJson<{ capabilities?: unknown }>(frame.payload as Uint8Array).capabilities;
+          if (Array.isArray(value)) capabilities = value.filter((v): v is string => typeof v === 'string');
+        } catch { /* Older nodes need not advertise capabilities. */ }
+        this.deps.postToUi({ type: 'capabilities', component: 'inference', capabilities });
         this.statusToUi('inference', 'ready', model ? `Inference ready · ${model}` : 'Inference ready');
       }
       this.toCoordinator('inference', frame as Frame<Uint8Array>);
@@ -322,6 +369,11 @@ export class EngineHost {
       }
       return;
     }
+    if (frame.request && (frame.kind === Kind.RESULT_SCHEMA || frame.kind === Kind.BATCH || frame.kind === Kind.DONE || frame.kind === Kind.ERROR)) {
+      const execution = this.executions.get(frame.request);
+      if (!execution || execution.epoch !== frame.epoch || execution.context !== frame.context) return;
+      if (frame.kind === Kind.DONE || frame.kind === Kind.ERROR) this.executions.delete(frame.request);
+    }
     switch (frame.kind) {
       case Kind.RESULT_SCHEMA:
       case Kind.BATCH:
@@ -342,8 +394,64 @@ export class EngineHost {
   }
 
   private toRenderer(frame: LocalFrame): void {
-    if (this.renderer) this.renderer.handle(frame);
+    if (frame.payload instanceof Uint8Array) {
+      const payload = frame.payload;
+      const p = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+      if ((frame.kind === Kind.REGISTER_TARGET || frame.kind === Kind.RELEASE_TARGET) && p.byteLength === 8) {
+        const slot = p.getUint32(0, true), generation = p.getUint32(4, true);
+        const target = this.targets.get(slot);
+        if (frame.kind === Kind.REGISTER_TARGET) {
+          if (target && target.generation >= generation) return;
+          this.targets.set(slot, { generation, active: true });
+        } else {
+          if (target && target.generation > generation) return;
+          this.targets.set(slot, { generation, active: false });
+        }
+        this.renderBindings.delete(slot);
+      } else if ((frame.kind === Kind.BIND || frame.kind === Kind.UNBIND) && p.byteLength >= 4) {
+        const slot = p.getUint32(0, true), target = this.targets.get(slot);
+        if (target) {
+          if (!target.active || p.byteLength < 12 || target.generation !== p.getUint32(8, true)) return;
+          if (frame.kind === Kind.BIND) target.request = frame.request;
+          else if (target.request === frame.request) target.request = undefined;
+        } else if (p.byteLength >= 12) return;
+        if (frame.kind === Kind.BIND) this.renderBindings.set(slot, frame.request);
+        else if (this.renderBindings.get(slot) === frame.request) this.renderBindings.delete(slot);
+      }
+    }
+    if (this.renderer) this.renderer.handle(this.preserveManualView(frame));
     else this.rendererBacklog.push(frame);
+  }
+
+  /** A picker change made after a question takes precedence over that question's
+   * late view hint. The next question sequence may explicitly request a new view. */
+  private preserveManualView(frame: LocalFrame): LocalFrame {
+    if (frame.kind !== Kind.BIND || !(frame.payload instanceof Uint8Array) || frame.payload.byteLength !== 12) return frame;
+    const view = new DataView(frame.payload.buffer, frame.payload.byteOffset, frame.payload.byteLength);
+    const target = this.targets.get(view.getUint32(0, true));
+    if (target?.manualViewRevision === undefined || frame.revision > target.manualViewRevision) return frame;
+    const payload = frame.payload.slice(); new DataView(payload.buffer).setUint32(4, 256, true);
+    return { ...frame, payload };
+  }
+
+  /** Startup can outlast several edits. Replaying an obsolete batch can draw
+   * synchronously, so reject it before the renderer ever sees it. */
+  private admitsQueuedRender(frame: LocalFrame): boolean {
+    if (frame.kind === Kind.REGISTER_TARGET || frame.kind === Kind.RELEASE_TARGET || frame.kind === Kind.BIND || frame.kind === Kind.UNBIND) {
+      const bytes = frame.payload as Uint8Array;
+      if (bytes.byteLength < 4) return false;
+      const p = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), slot = p.getUint32(0, true);
+      const target = this.targets.get(slot);
+      if (frame.kind === Kind.REGISTER_TARGET || frame.kind === Kind.RELEASE_TARGET) {
+        return !!target && target.generation === p.getUint32(4, true) && target.active === (frame.kind === Kind.REGISTER_TARGET);
+      }
+      if (target && (!target.active || p.byteLength < 12 || target.generation !== p.getUint32(8, true))) return false;
+      return frame.kind === Kind.BIND ? this.renderBindings.get(slot) === frame.request : !this.renderBindings.has(slot);
+    }
+    if (frame.kind === Kind.RESULT_SCHEMA || frame.kind === Kind.BATCH || frame.kind === Kind.DONE) {
+      return [...this.renderBindings.values()].includes(frame.request);
+    }
+    return true;
   }
 
   // ───────────────────────── coordinator ─────────────────────────
@@ -383,6 +491,16 @@ export class EngineHost {
       switch (link) {
         case 'renderer': this.toRenderer(frame); break;
         case 'database':
+          if (frame.kind === Kind.EXEC) this.executions.set(frame.request, { epoch: frame.epoch, context: frame.context });
+          else if (frame.kind === Kind.CANCEL) {
+            const cancelled = frame.request ? [frame.request] : [...this.executions.keys()];
+            for (const request of cancelled) for (const [slot, bound] of this.renderBindings) if (bound === request) {
+              this.renderBindings.delete(slot);
+              const target = this.targets.get(slot); if (target?.request === request) target.request = undefined;
+            }
+            if (frame.request) this.executions.delete(frame.request);
+            else this.executions.clear();
+          }
           if (this.database) this.database.handle(frame);
           else this.databaseBacklog.push(frame);
           break;

@@ -14,6 +14,8 @@ export interface RenderExports {
   tb_detach(slot: number): void;
   tb_set_view(slot: number, view: number): void;
   tb_set_param(slot: number, nameLength: number, value: number): void;
+  tb_reset_params(slot: number): void;
+  tb_invalidate(slot: number): void;
   tb_bind(slot: number, request: number, revision: number, epoch: number): number;
   tb_bind_view(slot: number, view: number): void;
   tb_unbind(slot: number, request: number): number;

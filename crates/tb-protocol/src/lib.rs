@@ -29,11 +29,15 @@ pub enum Kind {
     Cancel = 0x12,
     /// UI → coordinator: execute this SQL for a slot (chart-as-query; no translation).
     Query = 0x13,
+    RegisterTarget = 0x14,
+    ReleaseTarget = 0x15,
     Infer = 0x18,
     SqlDelta = 0x19,
     Sql = 0x1A,
     InferStats = 0x1B,
     Prime = 0x1C,
+    EditContext = 0x1D,
+    EditInfer = 0x1E,
     Exec = 0x20,
     ResultSchema = 0x21,
     Batch = 0x22,
@@ -44,14 +48,18 @@ pub enum Kind {
     Result = 0x33,
     Timing = 0x34,
     Keep = 0x35,
+    Execution = 0x36,
+    Candidate = 0x37,
 }
 
 impl Kind {
-    pub const ALL: [Kind; 25] = [
+    pub const ALL: [Kind; 31] = [
         Kind::Hello, Kind::Ready, Kind::Context, Kind::Status, Kind::Error, Kind::Config,
         Kind::Draft, Kind::Commit, Kind::Cancel, Kind::Query, Kind::Infer, Kind::SqlDelta, Kind::Sql,
         Kind::InferStats, Kind::Exec, Kind::ResultSchema, Kind::Batch, Kind::Done, Kind::Bind,
         Kind::Unbind, Kind::Drawn, Kind::Result, Kind::Timing, Kind::Keep, Kind::Prime,
+        Kind::RegisterTarget, Kind::ReleaseTarget, Kind::EditContext, Kind::EditInfer,
+        Kind::Execution, Kind::Candidate,
     ];
 
     pub fn from_u8(value: u8) -> Option<Kind> {
@@ -68,6 +76,9 @@ impl Kind {
             Kind::ResultSchema => "RESULT_SCHEMA", Kind::Batch => "BATCH", Kind::Done => "DONE",
             Kind::Bind => "BIND", Kind::Unbind => "UNBIND", Kind::Drawn => "DRAWN",
             Kind::Result => "RESULT", Kind::Timing => "TIMING", Kind::Keep => "KEEP",
+            Kind::RegisterTarget => "REGISTER_TARGET", Kind::ReleaseTarget => "RELEASE_TARGET",
+            Kind::EditContext => "EDIT_CONTEXT", Kind::EditInfer => "EDIT_INFER",
+            Kind::Execution => "EXECUTION", Kind::Candidate => "CANDIDATE",
         }
     }
 }

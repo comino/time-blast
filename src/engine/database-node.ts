@@ -219,6 +219,7 @@ export class DuckDatabaseNode implements DatabaseNode {
   rollups: RollupTable[] = [];
   private buildToken = 0;
   private building?: Promise<void>;
+  private warming?: Promise<void>;
   private catalog?: Catalog;
   private readonly templates = new Map<string, unknown>();
   private readonly rewrites = new Map<string, { sql?: string; reason: string; grain?: string }>();
@@ -351,7 +352,7 @@ export class DuckDatabaseNode implements DatabaseNode {
         this.lockOpen = true;
         this.releaseLock?.();
         bootMark('duckdb.lockdown-deferred', l0);
-        void this.warmUp();
+        this.warming = this.warmUp();
       });
     }, 0);
   }
@@ -680,11 +681,12 @@ export class DuckDatabaseNode implements DatabaseNode {
     return this.drain(this.loadConn, header);
   }
 
-  /** Stop and forget rollups (dataset change). */
+  /** Stop all background owners before a dataset load reuses the load connection. */
   private async stopRollups(): Promise<void> {
     this.buildToken++;
-    await this.building;
+    await Promise.all([this.building, this.warming]);
     this.building = undefined;
+    this.warming = undefined;
     this.rollups = [];
     this.rewrites.clear();
   }
@@ -724,6 +726,7 @@ export class DuckDatabaseNode implements DatabaseNode {
     if (this.disposed) throw new Error('database node is disposed');
     // Work for the previous context is meaningless now: stop it and refuse new EXECs.
     this.contextId = 0;
+    this.current = undefined;
     this.cancelAll();
     await this.pumping;
     await this.stopRollups();
@@ -761,10 +764,12 @@ export class DuckDatabaseNode implements DatabaseNode {
           fileName = new URL(source.url, globalThis.location?.href).pathname.split('/').pop() || source.name;
           bytes = await fetchBytes(source.url);
         }
-        const format = sniffFormat(fileName, bytes);
+        const detected = sniffFormat(fileName, bytes);
+        const format = (source.kind === 'file' || source.kind === 'url') ? source.format ?? detected : detected;
         if (format === 'parquet') this.requireParquet();
-        const table = tableNameFor(fileName);
-        const path = `${UPLOAD_DIR}${table}.${format}`;
+        const table = (source.kind === 'file' || source.kind === 'url') ? source.table ?? tableNameFor(fileName) : tableNameFor(fileName);
+        // The logical table name may come from an imported canvas: never put it in a path.
+        const path = `${UPLOAD_DIR}${tableNameFor(table)}.${format}`;
         this.db.registerFileBuffer(path, bytes); // copies into Wasm memory; `bytes` can be collected
         try {
           await this.run(this.loadConn, loadFileSql(table, path, format));

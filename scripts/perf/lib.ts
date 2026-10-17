@@ -290,7 +290,9 @@ export function ingest(m: MeasureJson, fallbackCommit = 'unknown'): PerfRecord {
     if (s) metrics[key] = s;
   }
   return {
-    kind: 'time-blast.perf', version: 1, source: 'hardware', suite: 'measure-page',
+    // The page's default (and every report before the setting existed) is the app's controller;
+    // `controller=legacy` reports measure the retired transient controller and never mix with it.
+    kind: 'time-blast.perf', version: 1, source: 'hardware', suite: m.settings?.controller === 'legacy' ? 'measure-page-legacy' : 'measure-page',
     commit: m.commit ?? fallbackCommit, dirty: false, date: m.date,
     host: {
       key: `browser|${name}|${m.hardware.cores ?? '?'}|${adapter || 'gpu?'}`, name, cpu: 'unknown (browser)',

@@ -263,7 +263,7 @@ impl Client {
         let ready: Value = serde_json::from_slice(&ready.payload).unwrap();
         assert_eq!(
             ready,
-            json!({"node":"inference","name":"time-blast-inference","version":1,"model":"fake/model"})
+            json!({"node":"inference","name":"time-blast-inference","version":1,"model":"fake/model","capabilities":["edit-context-v1"]})
         );
         self.send(context()).await;
     }
@@ -611,6 +611,49 @@ async fn repeated_question_is_served_from_the_cache() {
     let stats: Value = serde_json::from_slice(&frames.last().unwrap().payload).unwrap();
     assert_eq!(stats["attempts"], 0);
     assert_eq!(h.upstream.requests.lock().unwrap().len(), 1);
+}
+
+fn edit_context(slot: u32, generation: u32, raw: &str) -> Frame {
+    Frame::new(Header { request: slot, revision: generation, context: 1, ..Header::new(Kind::EditContext) }, raw)
+}
+fn edit_infer(request: u32, slot: u32, generation: u32, change: &str) -> Frame {
+    let mut payload = slot.to_le_bytes().to_vec(); payload.extend_from_slice(&generation.to_le_bytes()); payload.extend_from_slice(change.as_bytes());
+    Frame::new(Header { request, revision: request, context: 1, ..Header::new(Kind::EditInfer) }, payload)
+}
+
+#[tokio::test]
+async fn prepared_edits_survive_repair_and_cache_by_definition_instead_of_handle() {
+    let h = harness(vec![Reply::content(&["Here is a query: SELECT 1"]), Reply::content(&["SELECT 1"]), Reply::content(&["SELECT 2"])]).await;
+    let mut c = Client::connect(h.addr).await; c.greet().await;
+    let raw = fixture("edit-base.json").trim().to_string();
+    c.send(edit_context(90, 3, &raw)).await;
+    c.send(edit_infer(1, 90, 3, "weekly instead")).await;
+    let out = c.until(Kind::InferStats, 1).await;
+    assert_eq!(text(of(&out, Kind::Sql)[0]), "SELECT 1");
+    {
+        let requests = h.upstream.requests.lock().unwrap();
+        let messages = requests[1]["messages"].as_array().unwrap();
+        assert_eq!(messages[0]["content"], fixture("vessels-prompt.txt") + &crate::prompt::edit_prompt(&raw));
+        assert_eq!(messages[1]["content"], "weekly instead");
+        assert!(messages[3]["content"].as_str().unwrap().contains("preserving the chart definition and revision mode above"));
+    }
+    c.send(edit_context(91, 1, &raw.replace("Aurora", "Calypso"))).await;
+    c.send(edit_infer(2, 91, 1, "weekly instead")).await;
+    let out = c.until(Kind::InferStats, 2).await;
+    assert_eq!(text(of(&out, Kind::Sql)[0]), "SELECT 2");
+    let mut c2 = Client::connect(h.addr).await; c2.greet().await;
+    c2.send(edit_context(92, 7, &raw)).await;
+    c2.send(edit_infer(3, 92, 7, "weekly instead")).await;
+    let out = c2.until(Kind::InferStats, 3).await;
+    assert_eq!(of(&out, Kind::Sql)[0].header.flags, flags::CACHED);
+    assert_eq!(text(of(&out, Kind::Sql)[0]), "SELECT 1");
+    assert_eq!(h.upstream.requests.lock().unwrap().len(), 3);
+    c.send(edit_context(90, 3, &raw.replace("Aurora", "Calypso"))).await;
+    let error = c.recv().await.unwrap();
+    assert_eq!(error.header.request, 0);
+    assert!(text(&error).contains("bad_edit_context"));
+    c.send(edit_infer(4, 90, 2, "weekly instead")).await;
+    assert!(text(&c.recv().await.unwrap()).contains("unknown_edit_context"));
 }
 
 #[tokio::test]

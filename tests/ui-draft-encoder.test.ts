@@ -12,6 +12,16 @@ function setup() {
 }
 
 describe('DraftEncoder (keystroke hot path)', () => {
+  it('scopes revision and UTF-8 payload to one target generation, including identical text on another chart', () => {
+    const { encoder, frames } = setup();
+    encoder.setTarget({ slot: 7, generation: 3 }, 40);
+    encoder.draft('bigger 🌊', false, 1);
+    encoder.commit('bigger 🌊', 2);
+    encoder.setTarget({ slot: 8, generation: 1 });
+    encoder.draft('bigger 🌊', false, 3);
+    expect(frames().map(f => [f.request, f.revision, new DataView(f.payload.buffer, f.payload.byteOffset).getUint32(0, true), new TextDecoder().decode(f.payload.subarray(4))]))
+      .toEqual([[7, 41, 3, 'bigger 🌊'], [7, 41, 3, 'bigger 🌊'], [8, 1, 1, 'bigger 🌊']]);
+  });
   it('sends one DRAFT per text change with increasing revisions and KEY_INPUT/DRAFT_SENT stamps', () => {
     const { clock, encoder, frames } = setup();
     encoder.context = 7;
