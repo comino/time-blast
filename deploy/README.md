@@ -11,8 +11,8 @@ The GitHub repository remains private. Caddy exposes the Rust tb1 inference serv
 
 | Component | Live state |
 | --- | --- |
-| Source | `main` at `f613110` (persistent canvas + review fixes + motion + fullscreen focus mode, on top of batches 1–3) |
-| Static release | `/srv/time-blast/releases/20261017T195414Z-68d9bbce`; index SHA-256 `866f5434982a1389f9f01544f7d5a3d182e17519519327c2f3eeb37f8f10e287` (previous: `20261017T194930Z-de24b6a6`) |
+| Source | `main` at `8cebe29` (persistent canvas + review fixes + motion + fullscreen focus mode + advanced suggested prompts, on top of batches 1–3) |
+| Static release | `/srv/time-blast/releases/20261017T200424Z-c2da546a`; index SHA-256 `61cfd1529d49fd76062edea2e756841f0b17910f5372fc44cbcc780e648e2223` (previous: `20261017T195414Z-68d9bbce`) |
 | Rust service | binary SHA-256 prefix `a7d27c12fec8a93c` (adds `edit-context-v1`; base prompt unchanged, v6), model `openai/gpt-oss-120b` |
 | Rollback copies | binary `/srv/time-blast/backend/time-blast-inference.bak-4efbf437` (batches 1–3 server); previous release `20261011T130843Z-27f6869e` |
 
