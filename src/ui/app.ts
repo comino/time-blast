@@ -268,6 +268,7 @@ q('examples').addEventListener('click', event => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-prompt]'); if (!button) return;
   input.value = button.dataset.prompt!; input.focus();
   input.dispatchEvent(new InputEvent('input', { inputType: 'insertReplacementText' }));
+  rail.rotateExample(button);
 });
 
 // Voice input and next-question chips (docs/batch-2/voice-anticipation.md).

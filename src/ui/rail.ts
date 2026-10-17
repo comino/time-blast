@@ -2,7 +2,7 @@
 import type { DatasetContext } from '../engine/contracts';
 import type { ErrorInfo, RailView, StatusInfo } from './controller';
 import { describeInferStats, formatMs, type InferStats, type RollingSummary, type TimingBreakdown } from './timing';
-import { examplesFor } from './examples';
+import { ExampleDeck, examplesFor, type Example } from './examples';
 import { icons } from './icons';
 
 const COMPONENT_ALIASES: Record<string, string> = { model: 'inference', webllm: 'inference', duckdb: 'database', render: 'renderer' };
@@ -10,6 +10,14 @@ const MAX_HISTORY = 40, MAX_ERRORS = 4;
 const integer = new Intl.NumberFormat('en');
 
 export interface RailCallbacks { focusSlot(slot: number): boolean; notice(text: string): void }
+
+function exampleButton(e: Example): HTMLButtonElement {
+  const button = document.createElement('button'); button.type = 'button'; button.dataset.prompt = e.prompt; button.title = e.prompt;
+  const title = document.createElement('span'); title.textContent = e.title;
+  const detail = document.createElement('small'); detail.textContent = e.detail;
+  button.append(title); button.insertAdjacentHTML('beforeend', icons.arrow); button.append(detail);
+  return button;
+}
 
 export class Rail implements RailView {
   private readonly q = (name: string) => this.root.querySelector<HTMLElement>(`[data-el="${name}"]`)!;
@@ -66,13 +74,19 @@ export class Rail implements RailView {
     const box = this.q('examples'), list = examplesFor(dataset);
     box.hidden = list.length === 0;
     for (const old of box.querySelectorAll('button[data-prompt]')) old.remove();
-    for (const e of list) {
-      const button = document.createElement('button'); button.type = 'button'; button.dataset.prompt = e.prompt; button.title = e.prompt;
-      const title = document.createElement('span'); title.textContent = e.title;
-      const detail = document.createElement('small'); detail.textContent = e.detail;
-      button.append(title); button.insertAdjacentHTML('beforeend', icons.arrow); button.append(detail);
-      box.append(button);
-    }
+    // A fresh random three per dataset and page load; each used one is swapped for an unseen one.
+    this.deck = new ExampleDeck(list);
+    for (const e of this.deck.initial()) box.append(exampleButton(e));
+  }
+  private deck?: ExampleDeck;
+  /** The user took `used`: replace it with the next unseen prompt of the same dataset. */
+  rotateExample(used: HTMLButtonElement): void {
+    const box = this.q('examples');
+    const showing = [...box.querySelectorAll<HTMLButtonElement>('button[data-prompt]')].map(b => b.dataset.prompt!);
+    const next = this.deck?.next(showing);
+    if (!next) return;
+    const button = exampleButton(next); button.dataset.fresh = 'true';
+    used.replaceWith(button);
   }
 
   timing(t: TimingBreakdown, summary: RollingSummary, stats: InferStats | undefined): void {

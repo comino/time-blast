@@ -108,3 +108,5 @@
 .explore-card:not([open])>summary{padding-bottom:12px}
 /* Suggested prompts for a dataset that is still loading: visible, not yet clickable. */
 .examples[data-pending=true] button[data-prompt]{opacity:.45;pointer-events:none}
+.examples button[data-fresh=true]{animation:tb-example-in 260ms ease-out}
+@keyframes tb-example-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
