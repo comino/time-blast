@@ -11,8 +11,8 @@ The GitHub repository remains private. Caddy exposes the Rust tb1 inference serv
 
 | Component | Live state |
 | --- | --- |
-| Source | `main` at `8e78830` (persistent canvas, motion, focus mode, per-dataset suggested prompts, numeric heatmaps, server DuckDB, layered-SQL prompt rule) |
-| Static release | `/srv/time-blast/releases/20261017T212357Z-cf30d40f`; index SHA-256 `6afb12f4c77c5aa75faa79c119fc0227fda7ae972c34e49408e4a81ed2e38280`; built with `VITE_INFERENCE_ENDPOINT` and `VITE_DATABASE_ENDPOINT=wss://time-blast.46-224-133-201.sslip.io/api/database/session`; includes prebuilt `flights-2024.duckdb` (166 MiB) and `nyc-taxi.duckdb` (220 MiB), not their Parquet inputs |
+| Source | `main` at `5267745` (persistent canvas, motion, focus mode, per-dataset suggested prompts, numeric heatmaps, server DuckDB, layered-SQL prompt rule, collapsed side panels) |
+| Static release | `/srv/time-blast/releases/20261017T213619Z-82120f6c`; index SHA-256 `fccbaba5961de1866bfb074f46c7d051ee4be8036aaa6334d8b504157b81b100` (previous `20261017T212357Z-cf30d40f`); built with `VITE_INFERENCE_ENDPOINT` and `VITE_DATABASE_ENDPOINT=wss://time-blast.46-224-133-201.sslip.io/api/database/session`; includes prebuilt `flights-2024.duckdb` (166 MiB) and `nyc-taxi.duckdb` (220 MiB), not their Parquet inputs |
 | Inference service | binary SHA-256 prefix `5c90b051f87f5c73` (layered-SQL rule + nested-window pre-check), model `openai/gpt-oss-120b` |
 | Database service | `time-blast-database.service` (DuckDB 1.4.3 backend), `/srv/time-blast/backend/time-blast-database` + `libduckdb.so`, `127.0.0.1:8788`; `/etc/time-blast/database.env` (root, 0600, no secrets): `nyc-taxi.duckdb` (120 M trips, 2022–2024) as `nyc-taxi-big`, 3 threads, `memory_limit=2GB`, `MemoryMax=3G` |
 | Caddy | `/etc/caddy/sites/time-blast.caddy` from `deploy/time-blast.Caddyfile` (adds `/api/database/*`); backup `time-blast.caddy.bak-20261017` |
