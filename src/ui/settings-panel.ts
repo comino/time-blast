@@ -3,11 +3,13 @@ import type { DatasetSource, InferencePlacement, WebGpuModel } from '../engine/c
 import type { CoordinatorConfig } from './controller';
 import { datasetFromFiles, datasetFromUrl } from './dataset-drop';
 import { coordinatorDefaults, defaultInference, DEFAULT_MODEL_PROFILE, MODEL_PROFILES } from './defaults';
+import { defaultMotion, type MotionSettings } from './motion';
 
 export interface SettingsCallbacks {
   inference(placement: InferencePlacement): void;
   dataset(source: DatasetSource): void;
   config(patch: CoordinatorConfig): void;
+  motion(value: MotionSettings): void;
 }
 
 export class SettingsPanel {
@@ -32,6 +34,7 @@ export class SettingsPanel {
       const defaults = coordinatorDefaults();
       this.sync(defaults); callbacks.config(defaults);
       this.inference = defaultInference(defaultEndpoint); this.syncInference(); callbacks.inference(this.inference);
+      const motion = defaultMotion(); this.syncMotion(motion); callbacks.motion(motion);
     });
     f.datasetFile.addEventListener('change', () => {
       const source = datasetFromFiles((f.datasetFile as HTMLInputElement).files);
@@ -40,6 +43,8 @@ export class SettingsPanel {
     f.inferenceKind.addEventListener('change', () => this.inferenceFields());
     f.modelProfile.addEventListener('change', () => this.modelDetail());
     for (const name of ['live', 'speculate', 'translationCache'] as const) f[name].addEventListener('change', () => callbacks.config({ [name]: (f[name] as HTMLInputElement).checked }));
+    for (const name of ['motionGrow', 'motionCamera'] as const) f[name].addEventListener('change', () => callbacks.motion({
+      grow: (f.motionGrow as HTMLInputElement).checked, camera: (f.motionCamera as HTMLInputElement).checked }));
     f.inferencePolicy.addEventListener('change', () => callbacks.config({ inferencePolicy: (f.inferencePolicy as HTMLSelectElement).value as 'latest' | 'restart' }));
     f.minChars.addEventListener('change', () => {
       const value = Math.round(Number((f.minChars as HTMLInputElement).value));
@@ -79,6 +84,11 @@ export class SettingsPanel {
       (f.latencyDialMs as HTMLInputElement).value = String(config.latencyDialMs ?? 50);
       this.q('latency-dial-value').textContent = on ? `${config.latencyDialMs} ms` : 'off';
     }
+  }
+
+  syncMotion(motion: MotionSettings): void {
+    (this.fields.motionGrow as HTMLInputElement).checked = motion.grow;
+    (this.fields.motionCamera as HTMLInputElement).checked = motion.camera;
   }
 
   get placement(): InferencePlacement { return this.inference; }

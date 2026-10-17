@@ -72,6 +72,25 @@ Each new test was checked to fail against the previous code.
 Not changed: saved questions and history are still placed in the system prompt (JSON-escaped,
 with an instruction to treat them as data); moving them to a user message needs a live eval.
 
+## Motion (2026-10-17)
+
+Two visual settings in Settings → Motion, both on by default and off when the OS asks for reduced
+motion (`src/ui/motion.ts`; stored with the other settings only once the user chooses):
+
+- **Charts grow.** A new card is a 64 px breathing seed at its slot centre until its first result
+  (axes, table, RESULT, a timing headline or an error; at most 2.5 s), then grows into the card in
+  340 ms (`transform` + `clip-path`, content fades in). The renderer draws underneath the whole
+  time, so key → first draw submitted is unchanged; the seed covers the wait, it does not add one.
+- **Smooth camera.** Adding or removing a chart glides the camera to fit all charts in 250 ms
+  (rAF, ease-out, geometric zoom about the viewport centre); Fit, Arrange and the zoom buttons glide
+  too. Wheel, pan and card drags stop a glide immediately.
+
+Measured (headless Chromium 145, software GPU, this 2-core host at load average ~8.8, 4 interleaved
+runs each of `canvas_smoke --keystroke-only`): typed-keystroke handler median 0.38–0.47 ms with
+motion on vs 0.38–0.44 ms off; `controller.input` median 0.14–0.23 ms vs 0.16–0.21 ms. Tails
+varied 3–5× between runs of the same setting on the loaded host and are not attributable either
+way; re-measure on a quiet machine.
+
 ## Delivery and acceptance ledger
 
 - [x] Durable model, drafts, transactions, source definitions and history ownership.

@@ -1,6 +1,7 @@
 /** Boot defaults and persisted runtime settings. Pure apart from guarded localStorage. */
 import type { DatasetSource, InferencePlacement } from '../engine/contracts';
 import { DEFAULT_COORDINATOR_CONFIG, type CoordinatorConfig } from './controller';
+import { sanitizeMotion, type MotionSettings } from './motion';
 
 /** Browser model profiles offered for WebGPU inference. The id is what the engine receives in
  * `{kind:'webgpu', model}`; the inference node maps it to concrete WebLLM weights. */
@@ -26,7 +27,7 @@ export function defaultInference(endpoint: string | undefined): InferencePlaceme
   return trimmed ? { kind: 'remote', endpoint: trimmed } : { kind: 'webgpu', model: DEFAULT_MODEL_PROFILE };
 }
 
-export interface StoredSettings { inference?: InferencePlacement; coordinator?: CoordinatorConfig }
+export interface StoredSettings { inference?: InferencePlacement; coordinator?: CoordinatorConfig; motion?: MotionSettings }
 const KEY = 'time-blast.ui.v1';
 
 export function loadSettings(storage: Pick<Storage, 'getItem'> | undefined = globalThis.localStorage): StoredSettings {
@@ -39,6 +40,8 @@ export function loadSettings(storage: Pick<Storage, 'getItem'> | undefined = glo
     if (inf?.kind === 'remote' && typeof inf.endpoint === 'string' && inf.endpoint) out.inference = inf;
     if (inf?.kind === 'webgpu' && MODEL_PROFILES.some(p => p.id === inf.model)) out.inference = inf;
     if (parsed.coordinator && typeof parsed.coordinator === 'object') out.coordinator = sanitizeConfig(parsed.coordinator);
+    const motion = sanitizeMotion(parsed.motion);
+    if (motion) out.motion = motion;
     return out;
   } catch { return {}; }
 }

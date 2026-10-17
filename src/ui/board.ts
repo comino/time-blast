@@ -8,6 +8,8 @@ export interface BoardItem {
   minHeight: number;
 }
 
+import { cameraAt, GLIDE_MS, type Camera } from './motion';
+
 const GAP = 24;
 
 export class Board {
@@ -20,6 +22,13 @@ export class Board {
   private gesture?: { pointer: number; startX: number; startY: number; x: number; y: number; item?: BoardItem; resize: boolean };
   private readonly controller = new AbortController();
   private readonly observer: ResizeObserver;
+  /** Programmatic camera moves glide instead of jumping (motion setting). */
+  smooth = false;
+  /** Adding or removing a shown item refits the camera (motion setting). */
+  autoFit = false;
+  private glideFrame = 0;
+  private fitFrame = 0;
+  private lastShown = 0;
 
   constructor(private readonly viewport: HTMLElement, private readonly world: HTMLElement, private readonly zoomLabel: HTMLElement, private readonly changed: (shown: number) => void) {
     this.observer = new ResizeObserver(entries => {
@@ -35,8 +44,8 @@ export class Board {
     for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) viewport.addEventListener(type, e => this.pointerEnd(e as PointerEvent), { signal });
     viewport.addEventListener('wheel', e => {
       if ((e.target as HTMLElement).closest('.data-table-wrap,.card-sql,select,input')) return;
-      e.preventDefault();
-      if (e.ctrlKey || e.metaKey) this.zoom(Math.exp(-e.deltaY * .004));
+      e.preventDefault(); this.stopGlide();
+      if (e.ctrlKey || e.metaKey) this.zoom(Math.exp(-e.deltaY * .004), false);
       else { this.x -= e.deltaX; this.y -= e.deltaY; this.paintCamera(); }
     }, { passive: false, signal });
     this.paintCamera();
@@ -80,27 +89,27 @@ export class Board {
   /** Bring an item into view without moving it. */
   focus(item: BoardItem): void {
     this.select(item);
-    const w = item.width * this.scale, h = item.height * this.scale;
-    if (w > this.width - 24 || h > this.height - 24) this.scale = Math.max(.25, Math.min(1, (this.width - 32) / item.width, (this.height - 32) / item.height));
-    const left = this.x + item.x * this.scale, top = this.y + item.y * this.scale;
-    if (left < 12 || left + item.width * this.scale > this.width - 12) this.x = GAP - item.x * this.scale;
-    if (top < 12 || top + item.height * this.scale > this.height - 12) this.y = GAP - item.y * this.scale;
-    this.paintCamera();
+    const to = this.target();
+    const w = item.width * to.scale, h = item.height * to.scale;
+    if (w > this.width - 24 || h > this.height - 24) to.scale = Math.max(.25, Math.min(1, (this.width - 32) / item.width, (this.height - 32) / item.height));
+    const left = to.x + item.x * to.scale, top = to.y + item.y * to.scale;
+    if (left < 12 || left + item.width * to.scale > this.width - 12) to.x = GAP - item.x * to.scale;
+    if (top < 12 || top + item.height * to.scale > this.height - 12) to.y = GAP - item.y * to.scale;
+    this.moveCamera(to);
   }
-  zoom(factor: number): void {
-    const next = Math.max(.25, Math.min(1.75, this.scale * factor));
-    this.x = this.width / 2 - (this.width / 2 - this.x) * next / this.scale;
-    this.y = this.height / 2 - (this.height / 2 - this.y) * next / this.scale;
-    this.scale = next; this.paintCamera();
+  zoom(factor: number, animate = true): void {
+    const from = animate ? this.target() : { x: this.x, y: this.y, scale: this.scale };
+    const next = Math.max(.25, Math.min(1.75, from.scale * factor));
+    const to = { x: this.width / 2 - (this.width / 2 - from.x) * next / from.scale, y: this.height / 2 - (this.height / 2 - from.y) * next / from.scale, scale: next };
+    if (animate) this.moveCamera(to); else { Object.assign(this, to); this.paintCamera(); }
   }
   fit(): void {
     const shown = [...this.items].filter(i => i.shown);
     if (!shown.length) return;
     const left = Math.min(...shown.map(c => c.x)), top = Math.min(...shown.map(c => c.y));
     const right = Math.max(...shown.map(c => c.x + c.width)), bottom = Math.max(...shown.map(c => c.y + c.height));
-    this.scale = Math.max(.25, Math.min(1, (this.width - 48) / (right - left), (this.height - 48) / (bottom - top)));
-    this.x = (this.width - (right - left) * this.scale) / 2 - left * this.scale;
-    this.y = (this.height - (bottom - top) * this.scale) / 2 - top * this.scale; this.paintCamera();
+    const scale = Math.max(.25, Math.min(1, (this.width - 48) / (right - left), (this.height - 48) / (bottom - top)));
+    this.moveCamera({ scale, x: (this.width - (right - left) * scale) / 2 - left * scale, y: (this.height - (bottom - top) * scale) / 2 - top * scale });
   }
   arrange(): void {
     this.cancelGesture();
@@ -115,7 +124,7 @@ export class Board {
     this.fit();
     if (changed.length) this.onLayout?.(changed);
   }
-  resetCamera(): void { this.x = this.y = 0; this.scale = 1; this.paintCamera(); }
+  resetCamera(): void { this.stopGlide(); this.x = this.y = 0; this.scale = 1; this.paintCamera(); }
   /** A restored definition must not be overwritten by the end of an old gesture. */
   cancelGesture(item?: BoardItem): void {
     const g = this.gesture;
@@ -124,9 +133,37 @@ export class Board {
     this.viewport.classList.remove('is-panning');
     if (this.viewport.hasPointerCapture(g.pointer)) this.viewport.releasePointerCapture(g.pointer);
   }
-  destroy(): void { this.cancelGesture(); this.controller.abort(); this.observer.disconnect(); }
+  destroy(): void { this.stopGlide(); cancelAnimationFrame(this.fitFrame); this.cancelGesture(); this.controller.abort(); this.observer.disconnect(); }
 
-  private count(): void { let n = 0; for (const i of this.items) if (i.shown) n++; this.changed(n); }
+  private glide?: { from: Camera; to: Camera; start: number };
+  /** Where the camera is heading: the glide target while gliding, else the current camera. */
+  private target(): Camera { return this.glide ? { ...this.glide.to } : { x: this.x, y: this.y, scale: this.scale }; }
+  private moveCamera(to: Camera): void {
+    if (!this.smooth) { this.stopGlide(); Object.assign(this, to); this.paintCamera(); return; }
+    const from = { x: this.x, y: this.y, scale: this.scale };
+    if (Math.abs(from.x - to.x) < .5 && Math.abs(from.y - to.y) < .5 && Math.abs(from.scale - to.scale) < 1e-3) return;
+    this.glide = { from, to, start: performance.now() };
+    if (!this.glideFrame) this.glideFrame = requestAnimationFrame(t => this.step(t));
+  }
+  private step(time: number): void {
+    this.glideFrame = 0;
+    const g = this.glide; if (!g) return;
+    const t = Math.max(0, time - g.start) / GLIDE_MS;
+    Object.assign(this, cameraAt(g.from, g.to, t, { width: this.width, height: this.height }));
+    this.paintCamera();
+    if (t < 1) this.glideFrame = requestAnimationFrame(next => this.step(next));
+    else this.glide = undefined;
+  }
+  /** User camera input wins immediately; the camera stays where the glide had got to. */
+  private stopGlide(): void { cancelAnimationFrame(this.glideFrame); this.glideFrame = 0; this.glide = undefined; }
+
+  private count(): void {
+    let n = 0; for (const i of this.items) if (i.shown) n++;
+    // Coalesce a burst (a restored canvas shows many charts at once) into one refit.
+    if (this.autoFit && n !== this.lastShown && n > 0 && !this.fitFrame) this.fitFrame = requestAnimationFrame(() => { this.fitFrame = 0; this.fit(); });
+    this.lastShown = n;
+    this.changed(n);
+  }
   private paintCamera(): void {
     this.world.style.transform = `translate(${this.x}px, ${this.y}px) scale(${this.scale})`;
     this.zoomLabel.textContent = `${Math.round(this.scale * 100)}%`;
@@ -143,6 +180,7 @@ export class Board {
     const resize = !!target.closest('.card-resize-handle');
     if (item && !resize && (!target.closest('.card-drag-handle') || target.closest('button,select,input,summary'))) return;
     if (!item && target.closest('button,a,select,input')) return;
+    this.stopGlide(); // drag deltas divide by the scale, which must hold still
     this.gesture = { pointer: e.pointerId, startX: e.clientX, startY: e.clientY, x: item ? resize ? item.width : item.x : this.x, y: item ? resize ? item.height : item.y : this.y, item, resize };
     this.viewport.setPointerCapture(e.pointerId); this.viewport.classList.toggle('is-panning', !item); e.preventDefault();
   }

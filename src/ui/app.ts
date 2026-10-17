@@ -14,6 +14,7 @@ import { appShell } from './app-shell';
 import { Board } from './board';
 import { Rail } from './rail';
 import { SettingsPanel } from './settings-panel';
+import { defaultMotion, type MotionSettings } from './motion';
 import { SlotCardView } from './slot-card';
 import { mountInteractions } from './suggest-voice';
 import type { SlotSize } from '../engine/contracts';
@@ -119,7 +120,15 @@ const envEndpoint = import.meta.env.VITE_INFERENCE_ENDPOINT as string | undefine
 const stored = loadSettings();
 let inference = stored.inference ?? defaultInference(envEndpoint);
 const initialConfig: CoordinatorConfig = { ...coordinatorDefaults(), ...stored.coordinator };
-const persist = () => { const { freeSlots: _, ...coordinator } = controller.config; saveSettings({ inference, coordinator }); };
+// Motion follows the OS reduced-motion preference until the user picks a setting.
+let motion: MotionSettings = stored.motion ?? defaultMotion(), motionChanged = false;
+const applyMotion = (value: MotionSettings) => {
+  motion = value;
+  root.dataset.motionGrow = String(value.grow);
+  board.smooth = board.autoFit = value.camera;
+};
+applyMotion(motion);
+const persist = () => { const { freeSlots: _, ...coordinator } = controller.config; saveSettings({ inference, coordinator, ...(stored.motion || motionChanged ? { motion } : {}) }); };
 const toggles = root.querySelectorAll<HTMLButtonElement>('[data-toggle]');
 const syncToggles = (config: CoordinatorConfig) => toggles.forEach(t => {
   const value = config[t.dataset.toggle as 'live' | 'speculate'];
@@ -130,7 +139,9 @@ const settings = new SettingsPanel(root, inference, initialConfig, {
   inference: placement => { inference = placement; q('placement-label').textContent = describePlacement(placement); controller.setInference(placement); persist(); notice(`Inference: ${describePlacement(placement).toLowerCase()}`); },
   dataset: source => { controller.setDataset(source); notice(`Loading ${source.name}…`); },
   config: patch => applyConfig(patch),
+  motion: value => { motionChanged = true; applyMotion(value); persist(); },
 }, envEndpoint);
+settings.syncMotion(motion);
 toggles.forEach(t => t.addEventListener('click', () => { const key = t.dataset.toggle as 'live' | 'speculate'; applyConfig({ [key]: !controller.config[key] }); }));
 syncToggles(initialConfig);
 q('placement-label').textContent = describePlacement(inference);

@@ -78,3 +78,16 @@
 .back-button:hover{background:#1d3a44}
 .drill-note{font:7px var(--mono);color:#668e97;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
 .legend span[data-i]{cursor:pointer}
+/* Motion (src/ui/motion.ts), gated by #app[data-motion-grow]. A new chart is a breathing seed
+   (64 px on screen: clip radius 80 px at scale .4) until its first result, then grows in 340 ms.
+   The breath animates `scale` (compositor-only); the renderer keeps drawing underneath. */
+.slot-card::after{content:'';position:absolute;inset:0;z-index:6;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 50%,#c4fff0 0,#61dfbf 34px,#1d7a68 62px,#10212c 84px)}
+[data-motion-grow=true] .slot-card[data-grow=seed]{transform:scale(.4);animation:tb-breathe 1.1s ease-in-out infinite alternate}
+[data-motion-grow=true] .slot-card[data-grow=seed]::after{opacity:1}
+[data-motion-grow=true] .slot-card[data-grow=seed]>*{opacity:0;pointer-events:none}
+[data-motion-grow=true] .slot-card[data-grow=grow]{transition:transform 340ms cubic-bezier(.2,1.25,.35,1),clip-path 340ms cubic-bezier(.45,0,.2,1)}
+[data-motion-grow=true] .slot-card[data-grow=grow]::after{transition:opacity 220ms ease-out}
+[data-motion-grow=true] .slot-card[data-grow=grow]>*{transition:opacity 200ms ease-out 110ms}
+[data-motion-grow=true] .slot-card[data-grow]{clip-path:circle(75% at 50% 50%)}
+[data-motion-grow=true] .slot-card[data-grow=seed]{clip-path:circle(80px at 50% 50%)}
+@keyframes tb-breathe{from{scale:1}to{scale:1.13}}

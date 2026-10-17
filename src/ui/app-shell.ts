@@ -70,6 +70,10 @@ export const appShell = `
     <div class="optional-field"><label for="min-chars">Minimum characters</label><input id="min-chars" name="minChars" type="number" min="0" max="500" step="1"/></div>
     <div class="optional-field latency-dial"><label for="latency-dial">Latency dial <output data-el="latency-dial-value">off</output></label><div><input type="checkbox" name="latencyDialOn" aria-label="Enable latency dial"/><input id="latency-dial" name="latencyDialMs" type="range" min="0" max="1000" step="5"/></div><small>Releases cached translations after exactly this delay to simulate faster (or slower) inference.</small></div>
   </div>
+  <div class="runtime-section"><label>Motion <span>Purely visual; never delays a query or a draw</span></label>
+    <label class="checkbox-label"><input name="motionGrow" type="checkbox"/><span><span>Charts grow</span><small>A new chart breathes as a seed while it loads, then grows into place.</small></span></label>
+    <label class="checkbox-label"><input name="motionCamera" type="checkbox"/><span><span>Smooth camera</span><small>Adding or removing a chart glides the canvas to fit; zoom buttons glide.</small></span></label>
+  </div>
   <p class="runtime-error" data-el="settings-error" role="alert"></p>
   <div class="dialog-actions"><button type="button" class="text-button" data-action="reset-settings">Restore defaults</button><button type="button" class="primary-button" data-action="close-settings">Done ${icons.arrow}</button></div></form></dialog>
 `;

@@ -6,6 +6,7 @@ import type { Layout, Presentation } from '../canvas/model';
 import type { Board, BoardItem } from './board';
 import type { CardHandlers, ErrorInfo, ResultInfo, SlotCard } from './controller';
 import { icons } from './icons';
+import { GROW_MS, SEED_MAX_MS, type GrowState } from './motion';
 import { describeInferStats, formatMs, type InferStats, type TimingBreakdown } from './timing';
 
 export interface CardDocument {
@@ -73,6 +74,11 @@ export class SlotCardView implements SlotCard, BoardItem {
   private plotRect: AxisTicks['plot'] | null = null;
   private lastClick: { at: number; sent: boolean } | null = null;
   private cancelPointer: () => void = () => {};
+  /** Motion: seed blob until the first result, then grow (CSS-gated by the motion setting). */
+  private grow: GrowState = 'none';
+  private growTimer?: ReturnType<typeof setTimeout>;
+  private seedPainted = false;
+  private bloomPending = false;
 
   constructor(readonly slot: number, private readonly handlers: DurableCardHandlers, private readonly board: Board, private readonly onDestroy: () => void = () => {}) {
     const element = document.createElement('article');
@@ -138,7 +144,7 @@ export class SlotCardView implements SlotCard, BoardItem {
     this.element.dataset.idle = 'false';
     this.element.dataset.live = String(!!info.editing);
     this.element.dataset.editing = String(!!info.editing);
-    if (!this.shown) this.board.shown(this, true);
+    if (!this.shown) { this.seed(); this.board.shown(this, true); }
     this.q.title.textContent = info.originalQuestion || 'SQL chart';
     this.element.setAttribute('aria-label', this.q.title.textContent);
     this.q.sql.textContent = info.sql || 'No SQL yet.';
@@ -162,18 +168,21 @@ export class SlotCardView implements SlotCard, BoardItem {
     this.q['state-label'].textContent = text;
     this.q.state.dataset.state = /error|fail|missing|unavailable|reattach|conflict/i.test(text) ? 'error'
       : /load|pending|running|refresh|translat|generat|hydrati/i.test(text) ? 'loading' : 'ready';
+    if (this.q.state.dataset.state === 'error') this.bloom();
   }
   showLive(): void {
     this.element.dataset.live = 'true';
     if (this.shown) return;
     this.board.place(this);
     this.element.dataset.idle = 'false';
+    this.seed();
     this.board.shown(this, true);
     this.board.focus(this);
   }
   hide(): void {
     this.element.dataset.idle = 'true';
     this.board.shown(this, false);
+    this.unseed();
     this.reset();
   }
   keep(): void {
@@ -181,7 +190,7 @@ export class SlotCardView implements SlotCard, BoardItem {
     this.element.dataset.live = 'false';
     this.q['state-label'].textContent = 'KEPT';
     this.element.setAttribute('aria-label', this.q.title.textContent ?? '');
-    if (!this.shown) { this.board.place(this); this.element.dataset.idle = 'false'; this.board.shown(this, true); }
+    if (!this.shown) { this.board.place(this); this.element.dataset.idle = 'false'; this.seed(); this.board.shown(this, true); }
   }
   title(text: string, revision: number): void {
     this.q.title.textContent = text;
@@ -204,6 +213,7 @@ export class SlotCardView implements SlotCard, BoardItem {
     }
     if (this.documentStatus === null) this.q.state.dataset.state = 'ready';
     (this.element.querySelector('[data-a="export"]') as HTMLButtonElement).disabled = false;
+    this.bloom();
   }
   views(available: ViewName[], chosen: ViewName, columns?: Array<{ name: string; role: string }>): void {
     this.available = available; this.chosen = chosen;
@@ -215,6 +225,7 @@ export class SlotCardView implements SlotCard, BoardItem {
     }
   }
   axes(ticks: AxisTicks): void {
+    this.bloom();
     const layer = this.q.axes, { plot } = ticks;
     this.plotRect = plot.width > 0 && plot.height > 0 ? plot : null;
     this.labels(this.xLabels, ticks.x.length, 'axis-x');
@@ -257,11 +268,13 @@ export class SlotCardView implements SlotCard, BoardItem {
       body.append(tr);
     }
     this.q.tbody.replaceChildren(body);
+    this.bloom();
     this.q['table-note'].textContent = `${rows.length.toLocaleString('en')} of ${total.toLocaleString('en')} rows shown. Export for the complete result.`;
   }
   timing(t: TimingBreakdown): void {
     this.q.latency.textContent = formatMs(t.headline);
     this.q.cache.hidden = !t.cacheHit;
+    if (t.headline !== null) this.bloom();
     if (this.documentStatus === null) this.q.state.dataset.state = t.headline === null ? 'loading' : 'ready';
   }
   inferStats(s: InferStats): void { this.q.stats.textContent = describeInferStats(s); }
@@ -273,6 +286,7 @@ export class SlotCardView implements SlotCard, BoardItem {
     if (e.detail) { const small = document.createElement('small'); small.textContent = e.detail; box.append(small); }
     box.hidden = false;
     this.q.state.dataset.state = 'error';
+    this.bloom();
   }
   drill(depth: number, note: string): void {
     this.q.back.hidden = depth === 0;
@@ -280,6 +294,7 @@ export class SlotCardView implements SlotCard, BoardItem {
     this.q.drill.textContent = note;
   }
   destroy(): void {
+    clearTimeout(this.growTimer);
     this.stopPlay(false);
     this.pendingParam = null;
     this.cancelPointer();
@@ -289,6 +304,29 @@ export class SlotCardView implements SlotCard, BoardItem {
   }
 
   // ───────────── internals ─────────────
+
+  /** Appear as a seed blob. Two frames later the seed is on screen and may grow. */
+  private seed(): void {
+    this.grow = 'seed'; this.seedPainted = false; this.bloomPending = false;
+    this.element.dataset.grow = 'seed';
+    requestAnimationFrame(() => requestAnimationFrame(() => { this.seedPainted = true; if (this.bloomPending) this.bloom(); }));
+    clearTimeout(this.growTimer);
+    this.growTimer = setTimeout(() => this.bloom(), SEED_MAX_MS);
+  }
+  /** First result (or an error, or the seed timeout): grow into the card. Idempotent. */
+  private bloom(): void {
+    if (this.grow !== 'seed') return;
+    // A result in the same frame as the seed would skip the transition: wait until it painted.
+    if (!this.seedPainted) { this.bloomPending = true; return; }
+    clearTimeout(this.growTimer);
+    this.grow = 'grow'; this.element.dataset.grow = 'grow';
+    this.growTimer = setTimeout(() => { if (this.grow === 'grow') this.unseed(); }, GROW_MS + 120);
+  }
+  private unseed(): void {
+    clearTimeout(this.growTimer);
+    this.grow = 'none'; this.bloomPending = false;
+    delete this.element.dataset.grow;
+  }
 
   /** Chart-as-query gestures: drag = brush an x range, click = point (series/bar/map point),
    * legend click = series, double-click / Esc / Back = previous SQL. Coordinates are CSS px of the
