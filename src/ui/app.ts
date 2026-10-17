@@ -230,10 +230,12 @@ input.addEventListener('keydown', event => {
 q<HTMLFormElement>('composer').addEventListener('submit', event => { event.preventDefault(); commit(event.timeStamp); input.focus(); });
 action('stop', () => controller.cancel());
 action('clear-canvas', () => { controller.clear(); board.resetCamera(); });
-root.querySelectorAll<HTMLButtonElement>('[data-prompt]').forEach(button => button.addEventListener('click', () => {
+// Suggested prompts change with the dataset (rail.ts), so listen on their container.
+q('examples').addEventListener('click', event => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>('button[data-prompt]'); if (!button) return;
   input.value = button.dataset.prompt!; input.focus();
   input.dispatchEvent(new InputEvent('input', { inputType: 'insertReplacementText' }));
-}));
+});
 
 // Voice input and next-question chips (docs/batch-2/voice-anticipation.md).
 const interactions = mountInteractions(root, input, controller, scheduleChrome);

@@ -2,6 +2,8 @@
 import type { DatasetContext } from '../engine/contracts';
 import type { ErrorInfo, RailView, StatusInfo } from './controller';
 import { describeInferStats, formatMs, type InferStats, type RollingSummary, type TimingBreakdown } from './timing';
+import { examplesFor } from './examples';
+import { icons } from './icons';
 
 const COMPONENT_ALIASES: Record<string, string> = { model: 'inference', webllm: 'inference', duckdb: 'database', render: 'renderer' };
 const MAX_HISTORY = 40, MAX_ERRORS = 4;
@@ -39,7 +41,21 @@ export class Rail implements RailView {
     this.q('dataset-sub').textContent = `${integer.format(rows)} rows · ${c.tables.length} ${c.tables.length === 1 ? 'table' : 'tables'} · ${columns} columns · ${c.dialect}`;
     this.q('dataset-badge').textContent = c.name.toUpperCase();
     this.q('dataset-dot').dataset.state = 'ready';
-    this.q('examples').hidden = !/vessel/i.test(c.name);
+    this.examples(c.name);
+  }
+
+  /** Suggested prompts for the active built-in dataset; none for user data. */
+  private examples(dataset: string): void {
+    const box = this.q('examples'), list = examplesFor(dataset);
+    box.hidden = list.length === 0;
+    for (const old of box.querySelectorAll('button[data-prompt]')) old.remove();
+    for (const e of list) {
+      const button = document.createElement('button'); button.type = 'button'; button.dataset.prompt = e.prompt; button.title = e.prompt;
+      const title = document.createElement('span'); title.textContent = e.title;
+      const detail = document.createElement('small'); detail.textContent = e.detail;
+      button.append(title); button.insertAdjacentHTML('beforeend', icons.arrow); button.append(detail);
+      box.append(button);
+    }
   }
 
   timing(t: TimingBreakdown, summary: RollingSummary, stats: InferStats | undefined): void {

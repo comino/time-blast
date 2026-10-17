@@ -31,11 +31,7 @@ export const appShell = `
     <div class="status-pills pipeline-stages" data-el="status-pills" aria-label="Component status">${pill('database', 'Database')}${pill('inference', 'Inference')}${pill('renderer', 'Renderer')}${pill('coordinator', 'Coordinator')}</div>
     <div class="chat-scroll" data-el="chat-scroll">
       <div class="intro"><p>Type to explore. The live view follows every keystroke; Enter keeps it on your canvas.</p></div>
-      <div class="examples" data-el="examples"><span class="eyebrow">A FEW PLACES TO START</span>
-        <button data-prompt="Average vessel speed by hour"><span>How fast is the fleet moving?</span>${icons.arrow}<small>Average · hourly</small></button>
-        <button data-prompt="Maximum wind by hour per vessel"><span>Where did the wind pick up?</span>${icons.arrow}<small>Maximum · per vessel</small></button>
-        <button data-prompt="Wave height by hour and vessel as a heatmap"><span>Find patterns in the waves</span>${icons.arrow}<small>Heatmap · time × vessel</small></button>
-      </div>
+      <div class="examples" data-el="examples" hidden><span class="eyebrow">A FEW PLACES TO START</span></div>
       <div class="message-history" data-el="history" aria-live="polite"></div>
     </div>
     <div class="composer-area">
