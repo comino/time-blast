@@ -128,7 +128,18 @@ const applyMotion = (value: MotionSettings) => {
   board.smooth = board.autoFit = value.camera;
 };
 applyMotion(motion);
-const persist = () => { const { freeSlots: _, ...coordinator } = controller.config; saveSettings({ inference, coordinator, ...(stored.motion || motionChanged ? { motion } : {}) }); };
+const persist = () => { const { freeSlots: _, ...coordinator } = controller.config; saveSettings({ inference, coordinator, ...(stored.motion || motionChanged ? { motion } : {}), focus }); };
+// Focus: only the canvas and the chat. The board's viewport changes size, so refit the camera.
+let focus = stored.focus ?? false;
+const applyFocus = (value: boolean) => {
+  focus = value; root.dataset.focus = String(value);
+  const toggle = q('focus-toggle'), label = value ? 'Leave focus' : 'Focus: only canvas and chat';
+  toggle.setAttribute('aria-pressed', String(value)); toggle.setAttribute('aria-label', label); toggle.title = label;
+  // The board's ResizeObserver reports the new size after this frame's layout: fit one frame later.
+  requestAnimationFrame(() => requestAnimationFrame(() => board.fit()));
+};
+applyFocus(focus);
+action('focus', () => { applyFocus(!focus); persist(); });
 const toggles = root.querySelectorAll<HTMLButtonElement>('[data-toggle]');
 const syncToggles = (config: CoordinatorConfig) => toggles.forEach(t => {
   const value = config[t.dataset.toggle as 'live' | 'speculate'];

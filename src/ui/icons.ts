@@ -1,5 +1,7 @@
 export const icon = (path: string): string => `<svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
 export const icons = {
+  focus: icon('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>'),
+  unfocus: icon('<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>'),
   bolt: icon('<path d="M13 2 4 14h7l-1 8 10-13h-7l1-7Z"/>'),
   arrow: icon('<path d="m7 17 10-10M7 7h10v10"/>'),
   close: icon('<path d="m6 6 12 12M18 6 6 18"/>'),

@@ -17,6 +17,11 @@ describe('motion settings', () => {
     expect(loadSettings(storage({ motion: { grow: false, camera: true } }))).toEqual({ motion: { grow: false, camera: true } });
     expect(loadSettings(storage({}))).toEqual({});
   });
+  it('restores focus mode only from a boolean', () => {
+    const storage = (value: unknown) => ({ getItem: () => JSON.stringify(value) });
+    expect(loadSettings(storage({ focus: true }))).toEqual({ focus: true });
+    expect(loadSettings(storage({ focus: 'yes' }))).toEqual({});
+  });
 });
 
 describe('camera glide', () => {

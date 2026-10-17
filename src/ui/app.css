@@ -91,3 +91,12 @@
 [data-motion-grow=true] .slot-card[data-grow]{clip-path:circle(75% at 50% 50%)}
 [data-motion-grow=true] .slot-card[data-grow=seed]{clip-path:circle(80px at 50% 50%)}
 @keyframes tb-breathe{from{scale:1}to{scale:1.13}}
+/* Focus (top-right toggle): only the canvas and the chat. */
+.focus-toggle{position:fixed;top:12px;right:14px;z-index:40;width:28px;height:28px;display:grid;place-items:center;border:1px solid #2b4552;border-radius:7px;background:#11232ecc;color:#a0c1c7}
+.focus-toggle:hover{background:#24453f;color:#d2f5ea}.focus-toggle .icon{width:15px;height:15px}
+.focus-toggle .focus-off,#app[data-focus=true] .focus-toggle .focus-on{display:none}
+#app[data-focus=true] .focus-toggle .focus-off{display:contents}
+.header-actions{margin-right:38px}
+#app[data-focus=true] :is(.app-header,.canvas-toolbar,.canvas-document,.canvas-bottom,.conversation-heading,.dataset-chip,.status-pills,.timing-card,.chat-scroll>.intro,.chat-scroll>.examples){display:none}
+@media(min-width:651px){#app[data-focus=true] .workspace{height:100dvh}}
+#app[data-focus=true] .conversation{padding-top:44px}
