@@ -40,6 +40,8 @@ export interface RenderMetrics {
 }
 
 const DEFAULT_EXPORT_BYTES = 256 << 20;
+/** Print snapshots stay inside WebGPU's default texture limit and a sane memory bound. */
+const MAX_SNAPSHOT_SIDE = 8192, MAX_SNAPSHOT_PIXELS = 12_000_000;
 
 /** Bytes held by a batch's buffers (validity, offsets, values; dictionaries not counted). */
 function batchBytes(batch: RecordBatch): number {
@@ -145,6 +147,37 @@ export class Renderer implements RendererNode {
     if (!b?.schema || format !== 'csv') return;
     const blob = toCsv(b.schema, b.batches);
     this.ui({ type: 'export', slot, request: b.request, blob, filename: `result-${b.request}${b.truncated ? '-truncated' : ''}.csv` });
+  }
+
+  /** Print snapshot (cold path: only when the user prints). A canvas's drawing buffer is
+   * readable only until it is presented, so in one task: redraw `slots` at the print pixel
+   * ratio, take each copy (`convertToBlob` snapshots synchronously), then redraw at the screen
+   * size. Only the last frame is ever presented, so the screen never shows the print size. */
+  snapshot(id: number, slots: number[], devicePixelRatio: number): void {
+    const resized: number[] = [];
+    for (const slot of slots) {
+      const s = this.slots.get(slot);
+      if (!s?.resident || s.size.width < 1 || s.size.height < 1) continue;
+      const { width, height } = s.size;
+      const ratio = Math.max(s.size.devicePixelRatio, Math.min(devicePixelRatio, MAX_SNAPSHOT_SIDE / width, MAX_SNAPSHOT_SIDE / height,
+        Math.sqrt(MAX_SNAPSHOT_PIXELS / (width * height))));
+      this.backend.resize(slot, width * ratio, height * ratio);
+      this.core.x.tb_resize(slot, width, height, ratio);
+      resized.push(slot);
+    }
+    const settle = () => { for (let i = 0; i < 8; i++) { this.frame(false); if (!this.core.x.tb_needs_frame()) break; } };
+    if (resized.length) settle();
+    const shots = slots.map(slot => {
+      const canvas = resized.includes(slot) ? this.slots.get(slot)!.canvas : undefined;
+      return { slot, image: canvas ? canvas.convertToBlob({ type: 'image/png' }).catch(() => null) : Promise.resolve(null) };
+    });
+    for (const slot of resized) {
+      const { width, height, devicePixelRatio: dpr } = this.slots.get(slot)!.size;
+      this.backend.resize(slot, width * dpr, height * dpr);
+      this.core.x.tb_resize(slot, width, height, dpr);
+    }
+    if (resized.length) settle();
+    void Promise.all(shots.map(async s => ({ slot: s.slot, image: await s.image }))).then(images => this.ui({ type: 'snapshot', id, images }));
   }
 
   private target(frame: Frame<Uint8Array>): void {

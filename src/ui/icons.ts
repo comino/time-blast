@@ -5,6 +5,7 @@ export const icons = {
   bolt: icon('<path d="M13 2 4 14h7l-1 8 10-13h-7l1-7Z"/>'),
   arrow: icon('<path d="m7 17 10-10M7 7h10v10"/>'),
   close: icon('<path d="m6 6 12 12M18 6 6 18"/>'),
+  print: icon('<path d="M7 9V3h10v6M7 18H4v-8h16v8h-3M7 14h10v7H7z"/>'),
   chart: icon('<path d="M4 17 9 10l4 3 7-9M4 4v16h16"/>'),
   download: icon('<path d="M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4"/>'),
   code: icon('<path d="m8 7-5 5 5 5m8-10 5 5-5 5"/>'),

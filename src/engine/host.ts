@@ -48,7 +48,7 @@ export interface HostDeps {
 /** A coordinator input: decoded (in-process) or still encoded (straight off the UI port). */
 type Input = [LinkId, Frame<Uint8Array> | Uint8Array];
 
-type RenderControl = Extract<UiToEngine, { type: 'attach' | 'resize' | 'detach' | 'view' | 'param' | 'presentation' | 'export' }>;
+type RenderControl = Extract<UiToEngine, { type: 'attach' | 'resize' | 'detach' | 'view' | 'param' | 'presentation' | 'export' | 'snapshot' }>;
 
 const EMPTY = new Uint8Array(0);
 const defaultTimers: Timers = { set: (callback, ms) => setTimeout(callback, ms), clear: handle => clearTimeout(handle as number) };
@@ -236,6 +236,7 @@ export class EngineHost {
   private control(message: RenderControl): void {
     const renderer = this.renderer;
     if (!renderer) { this.controlBacklog.push(message); return; }
+    if (message.type === 'snapshot') { renderer.snapshot?.(message.id, message.slots, message.devicePixelRatio); return; }
     if (message.type === 'detach') {
       const target = this.targets.get(message.slot);
       if (target && target.generation !== message.generation) return;

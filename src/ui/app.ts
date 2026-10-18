@@ -21,6 +21,7 @@ import { mountInteractions } from './suggest-voice';
 import type { SlotSize } from '../engine/contracts';
 import { bootMark } from '../engine/boot-trace';
 import { installBootTrace } from './boot-trace';
+import { Printer } from './print';
 
 const root = document.querySelector<HTMLElement>('#app')!;
 root.innerHTML = appShell;
@@ -116,7 +117,18 @@ canvasPanel = new CanvasPanel(root, () => controller.session, {
   captionVersion: () => controller.captions.version,
   exportCaptions: () => controller.exportCaptions(),
 });
-worker.addEventListener('message', (event: MessageEvent) => controller.receive(event.data));
+const printer = new Printer(message => worker.postMessage(message));
+worker.addEventListener('message', (event: MessageEvent) => { if (!printer.receive(event.data)) controller.receive(event.data); });
+const printCanvas = () => {
+  const shown = [...cards.values()].filter(card => card.shown);
+  if (!shown.length) { notice('Nothing to print yet: keep a view on the canvas first.'); return; }
+  void printer.print(controller.session?.model.state.title ?? 'Untitled canvas', shown);
+};
+action('print', printCanvas);
+// Ctrl/Cmd+P prints the sheet too (the browser's own page print would show blank charts).
+addEventListener('keydown', event => {
+  if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === 'p') { event.preventDefault(); printCanvas(); }
+});
 worker.addEventListener('error', event => { event.preventDefault(); rail.error({ code: 'worker', message: 'The engine worker failed to start', detail: event.message }, 0); });
 worker.addEventListener('messageerror', () => rail.error({ code: 'worker', message: 'A message from the engine could not be read' }, 0));
 

@@ -7,7 +7,9 @@ since 2026-10-17, **runs the persistent canvas** (charts survive reload, rebuilt
 and a **server-side DuckDB** with 120 M NYC taxi trips next to the in-browser datasets
 (`8e78830`, [deploy/README.md](../deploy/README.md)). Since 2026-10-18 each saved chart revision gets an AI
 **caption** (title + explanation of its SQL) on a separate link, model, budget and cache; measured not
-to slow translation ([plan-captions.md](plan-captions.md)).
+to slow translation ([plan-captions.md](plan-captions.md)). **Print / PDF** (canvas toolbar, Ctrl+P) prints a static
+sheet of the cards: the render worker redraws each chart once at 3× for a PNG, the live board is not
+touched (`src/ui/print.ts`).
 
 ## On `main`: batch 1, complete in source
 

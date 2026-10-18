@@ -16,7 +16,7 @@ export const appShell = `
   <main class="canvas-space" aria-label="Data canvas">
     <div class="canvas-toolbar">
       <div class="canvas-heading"><span class="eyebrow">YOUR CANVAS</span><span class="card-count" data-el="card-count">0 views</span></div>
-      <div class="canvas-tools"><span class="fixture-tag" data-el="dataset-badge">DATASET</span><button class="text-button" data-action="arrange" title="Arrange views in a grid">${icons.grid}Arrange</button><button class="text-button" data-action="clear-canvas" title="Remove every kept view">Clear canvas</button></div>
+      <div class="canvas-tools"><span class="fixture-tag" data-el="dataset-badge">DATASET</span><button class="text-button" data-action="arrange" title="Arrange views in a grid">${icons.grid}Arrange</button><button class="text-button" data-action="print" title="Print the canvas or save it as a PDF (Ctrl+P)">${icons.print}Print / PDF</button><button class="text-button" data-action="clear-canvas" title="Remove every kept view">Clear canvas</button></div>
     </div>
     <div class="board-viewport" data-el="board-viewport" tabindex="0" aria-label="Canvas workspace. Drag the background to pan; use the controls to zoom.">
       <div class="board-world" data-el="board-world"></div>

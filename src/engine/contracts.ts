@@ -114,6 +114,8 @@ export interface RendererNode {
   handle(frame: LocalFrame): void;
   /** Build an export of the slot's current result and post `{type:'export'}` to the UI. */
   export(slot: number, format: 'csv'): void;
+  /** Print: redraw `slots` at `devicePixelRatio` and post `{type:'snapshot'}` with a PNG each. */
+  snapshot?(id: number, slots: number[], devicePixelRatio: number): void;
   /** Views available for a slot's current result, for the UI's view picker. */
   views(slot: number): ViewName[];
   /** Chart-as-query: the data under a gesture on `slot`, whose result on screen must be
@@ -173,6 +175,8 @@ export type UiToEngine =
   | { type: 'param'; slot: number; name: string; value: number; generation?: number; request?: number }
   | { type: 'presentation'; slot: number; generation: number; presentation: { view: ViewName | null; params: Record<string, number> }; manualViewRevision?: number }
   | { type: 'export'; slot: number; format: 'csv'; generation?: number; request?: number }
+  /** Print: PNGs of these slots' pixels at `devicePixelRatio` (cold path, see render/index.ts). */
+  | { type: 'snapshot'; id: number; slots: number[]; devicePixelRatio: number }
   /** Chart-as-query: the engine hit-tests, rewrites `sql` (the card's SQL for `request`) and
    * sends a QUERY frame to the coordinator. `keyAt`/`sentAt`: Unix ms of the pointer event and
    * of posting (stamped KEY_INPUT and DRAFT_SENT). */
@@ -193,6 +197,8 @@ export type EngineToUi =
   | { type: 'table'; slot: number; request?: number; generation?: number; columns: string[]; rows: string[][]; total: number }
   | { type: 'axes'; slot: number; request?: number; generation?: number; ticks: AxisTicks }
   | { type: 'export'; slot: number; request?: number; generation?: number; blob: Blob; filename: string }
+  /** Reply to `snapshot`: null for a slot with no pixels (not resident, or the copy failed). */
+  | { type: 'snapshot'; id: number; images: Array<{ slot: number; image: Blob | null }> }
   /** Outcome of a `manipulate`: the SQL sent as QUERY (null: nothing to do, see `reason`). */
   | { type: 'manipulated'; slot: number; request?: number; generation?: number; from: string; sql: string | null; method: 'rewrite' | 'wrap' | 'as-is' | 'none'; reason: string; ms: number }
   | { type: 'capabilities'; component: 'inference'; capabilities: string[] }
