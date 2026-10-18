@@ -9,6 +9,13 @@ The GitHub repository remains private. Caddy exposes the Rust tb1 inference serv
 
 ## Verified deployment — 2026-10-18 (Print / PDF)
 
+Update: release `20261018T154129Z-8676c038` (index SHA-256
+`7330380b27b4f3406a9d1441142e15769dcf4f145b6cfbd9afddca2e0af69522`, previous
+`20261018T143238Z-37b0707d`) prints four charts per page; public check: 4 charts → 1 Letter page,
+no console errors.
+
+First release:
+
 Static release `/srv/time-blast/releases/20261018T143238Z-37b0707d` (`45fd183`), index SHA-256
 `4bbe0ff069807650e6bd343221235e73d87c6240f27d014f855fcec6d34a91c2` (previous
 `20261018T124904Z-efa1f91e`); backend unchanged. Public check (headless Chromium 145, software GPU):
