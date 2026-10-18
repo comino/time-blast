@@ -12,7 +12,7 @@ The GitHub repository remains private. Caddy exposes the Rust tb1 inference serv
 | Component | Live state |
 | --- | --- |
 | Source | `main` at `4f87ad2` (`bb3ed58` + tooltip fix): chart captions ([plan-captions.md](../docs/plan-captions.md)) |
-| Static release | `/srv/time-blast/releases/20261018T115610Z-1bfd1ff7`; index SHA-256 `8df72f4388adc163df4d2c7216054ba3ae45662b93ba443b1dd5285c2e6aeb6f` (previous `20261018T115228Z-c2bfd37e`, `20261017T215001Z-9eff65c2`); same build env as below |
+| Static release | `/srv/time-blast/releases/20261018T124904Z-efa1f91e` (captions in export/import); index SHA-256 `b82040d244ccb2fb87d84edab0c4dfa59354d08cdc7b6b543eb0879f47a88dc7` (previous `20261018T115610Z-1bfd1ff7`, `20261017T215001Z-9eff65c2`); same build env as below |
 | Inference service | binary SHA-256 `1e98fffe5755899a39c178a89d613ef431f16f687137889d110cbfba27a1932f`: offers `describe-v1`; captions use `anthropic/claude-haiku-5.5` (reasoning none) with their own client, 2 slots, 60/min, 2,000/day, $0.30/day and cache. Optional env: `TIME_BLAST_DESCRIBE=false`, `TIME_BLAST_DESCRIBE_MODEL`, `TIME_BLAST_DESCRIBE_REASONING_EFFORT`, `TIME_BLAST_DESCRIBE_REQUEST_EXTRA`, `TIME_BLAST_DESCRIBE_MAX_CONCURRENT`, `TIME_BLAST_DESCRIBE_REQUESTS_PER_MINUTE`/`_PER_DAY`, `TIME_BLAST_DESCRIBE_DAILY_BUDGET_USD`, `TIME_BLAST_DESCRIBE_CACHE_ENTRIES`; `/etc/time-blast/inference.env` unchanged. `/health` reports a `describe` block |
 | Rollback copies | inference `time-blast-inference.bak-52656d1` (previous live binary, no captions; the frontend falls back to questions without `describe-v1`) |
 
@@ -23,6 +23,8 @@ Public check (headless Chromium, software GPU, HTTPS, fresh profile):
 - While the editor was open, the header showed the question.
 - After a reload the caption came back from the browser store, with no new request.
 - No console errors. Spend: $0.00019 for 2 captions; the repeat run hit the server cache.
+- Export → import in a fresh profile: the imported chart showed its caption at once; the server's
+  caption request count stayed at 3.
 
 ## Previous deployment — 2026-10-17 (big data: server DuckDB, flights 2024, NYC taxi)
 

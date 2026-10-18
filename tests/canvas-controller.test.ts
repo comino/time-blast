@@ -847,5 +847,25 @@ describe('chart captions', () => {
     expect(old.describes()).toEqual([]);
     expect(old.link.closed).toBe(true);
   });
+
+  it('exports captions with the canvas; import and Save a copy keep them on the remapped revisions without asking', async () => {
+    const wire = new CaptionWire(), h = await boot(undefined, wire);
+    const first = await create(h); wire.ready(); wire.reply('Average temperature', 'Mean of every reading.');
+    const raw = h.ui.session!.exportFile(h.ui.exportCaptions()).content;
+    expect(JSON.parse(raw).captions).toEqual([{ revisionId: first.revision.id, title: 'Average temperature', explanation: 'Mean of every reading.', model: 'fake/captioner', promptVersion: 1 }]);
+    const asked = wire.describes().length;
+    // A malformed entry is dropped, never fatal.
+    const tampered = JSON.stringify({ ...JSON.parse(raw), captions: [...JSON.parse(raw).captions, { revisionId: 'x', title: 7 }] });
+    await h.ui.importCanvas(tampered); await flush();
+    const imported = h.ui.model!, revision = [...imported.revisions.values()][0];
+    expect(imported.header.id).not.toBe(first.revision.canvasId);
+    expect(revision.id).not.toBe(first.revision.id);
+    expect(h.ui.captions.get(revision.id, revision.sql)?.title).toBe('Average temperature');
+    await h.ui.saveCopy(); await flush();
+    const copy = [...h.ui.model!.revisions.values()][0];
+    expect(copy.id).not.toBe(revision.id);
+    expect(h.ui.captions.get(copy.id, copy.sql)?.explanation).toBe('Mean of every reading.');
+    expect(wire.describes()).toHaveLength(asked);
+  });
 });
 

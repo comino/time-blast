@@ -1,5 +1,5 @@
 /** A recovery file explicitly separates acknowledged history from RAM-only work. */
-import { CanvasModel, newId, type CanvasSnapshot } from './model';
+import { CanvasModel, newId, type CanvasSnapshot, type Id } from './model';
 import { CanvasFormatError, forkCanvas, validateCanvas } from './validation';
 
 export const MAX_DOCUMENT_BYTES = 32 * 1024 * 1024;
@@ -42,19 +42,42 @@ export function validateRecovery(value: unknown): CanvasRecovery {
   return r;
 }
 
-export function parseCanvasFile(raw: string): CanvasFile {
+/** Generated captions travel next to the document (derived data, not part of its strict
+ * format): `captions` on the file root, split off before validation. Malformed entries are
+ * dropped; they never fail an import. */
+export interface ExportedCaption { revisionId: Id; title: string; explanation: string; model: string; promptVersion: number }
+const MAX_EXPORTED_CAPTIONS = 20000;
+function captionsOf(raw: unknown): ExportedCaption[] {
+  if (!Array.isArray(raw)) return [];
+  const ok = (v: unknown, max: number) => typeof v === 'string' && v.length > 0 && Array.from(v).length <= max;
+  return raw.slice(0, MAX_EXPORTED_CAPTIONS).filter((c): c is ExportedCaption => !!c && typeof c === 'object'
+    && ok(c.revisionId, 64) && ok(c.title, 80) && ok(c.explanation, 320) && typeof c.model === 'string' && c.model.length <= 200
+    && Number.isSafeInteger(c.promptVersion)).map(c => ({ revisionId: c.revisionId, title: c.title, explanation: c.explanation, model: c.model, promptVersion: c.promptVersion }));
+}
+
+export function parseCanvasFile(raw: string): CanvasFile { return parseCanvasFileWithCaptions(raw).file; }
+export function parseCanvasFileWithCaptions(raw: string): { file: CanvasFile; captions: ExportedCaption[] } {
   const bytes = new TextEncoder().encode(raw).byteLength;
   if (bytes > MAX_RECOVERY_BYTES) fail('Recovery file exceeds its two-document size limit');
   let value: unknown;
   try { value = JSON.parse(raw); } catch { fail('Canvas file is not valid JSON'); }
+  let captions: ExportedCaption[] = [];
+  if (value && typeof value === 'object' && !Array.isArray(value) && 'captions' in value) {
+    const { captions: rawCaptions, ...rest } = value as Record<string, unknown>;
+    captions = captionsOf(rawCaptions); value = rest;
+  }
+  return { file: parseValidated(value, bytes), captions };
+}
+function parseValidated(value: unknown, bytes: number): CanvasFile {
   if ((value as { format?: string })?.format === 'timeblast-canvas-recovery') return validateRecovery(value);
   if (bytes > MAX_DOCUMENT_BYTES) fail('Canvas file exceeds 32 MiB');
   return validateCanvas(value);
 }
 
-export function encodeCanvasFile(file: CanvasFile): string {
+export function encodeCanvasFile(file: CanvasFile, captions: ExportedCaption[] = []): string {
   if (file.format === 'timeblast-canvas-recovery') validateRecovery(file); else validateCanvas(file);
-  const raw = JSON.stringify(file);
+  const kept = captionsOf(captions);
+  const raw = JSON.stringify(kept.length ? { ...file, captions: kept } : file);
   const limit = file.format === 'timeblast-canvas-recovery' ? MAX_RECOVERY_BYTES : MAX_DOCUMENT_BYTES;
   if (new TextEncoder().encode(raw).byteLength > limit) fail('Canvas file exceeds its document size limit; no history was truncated');
   return raw;
@@ -62,10 +85,10 @@ export function encodeCanvasFile(file: CanvasFile): string {
 
 /** Recovering does not replay a source tab's CAS operations. It creates a labelled
  * new canvas. The caller must acknowledge its initial transaction before Saved. */
-export function importCanvasFile(file: CanvasFile): CanvasModel {
+export function importCanvasFile(file: CanvasFile, identities = new Map<Id, Id>()): CanvasModel {
   const recovery = file.format === 'timeblast-canvas-recovery';
   if (recovery) validateRecovery(file);
-  const snapshot = forkCanvas(recovery ? file.working : file);
+  const snapshot = forkCanvas(recovery ? file.working : file, newId, identities);
   if (recovery) {
     const parent = snapshot.commits.find(c => c.id === snapshot.canvas.headCommitId)!;
     const id = newId();

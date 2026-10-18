@@ -175,3 +175,20 @@ describe('canvas acknowledgement and recovery boundaries', () => {
     expect(() => validateRecovery(reopened)).toThrow(/acknowledged draft/);
   });
 });
+
+describe('captions in canvas files', () => {
+  it('rides next to the strict document: encoded when present, split off on parse, malformed entries dropped', async () => {
+    const { encodeCanvasFile, parseCanvasFileWithCaptions } = await import('../src/canvas/recovery');
+    const model = CanvasModel.create('Captions');
+    const doc = model.snapshot();
+    expect(JSON.parse(encodeCanvasFile(doc))).not.toHaveProperty('captions');
+    const caption = { revisionId: 'r1', title: 'T', explanation: 'E', model: 'm', promptVersion: 1 };
+    const raw = encodeCanvasFile(doc, [caption, { ...caption, title: '' } as never]);
+    expect(JSON.parse(raw).captions).toEqual([caption]);
+    const parsed = parseCanvasFileWithCaptions(raw);
+    expect(parsed.captions).toEqual([caption]);
+    expect(parsed.file).toEqual(doc);
+    expect(parseCanvasFile(raw)).toEqual(doc);
+    expect(parseCanvasFileWithCaptions(JSON.stringify({ ...doc, captions: 'nonsense' })).captions).toEqual([]);
+  });
+});

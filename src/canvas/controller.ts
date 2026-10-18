@@ -14,6 +14,7 @@ import { CANVAS_CAPABILITY, EDIT_CAPABILITY, editBase, prepareEdit, registerTarg
 import { boundedText, CANVAS_LIMITS } from './limits';
 import { CaptionService, IndexedCaptionStore, type CaptionLinkFactory, type CaptionStorage, type CaptionWork, type StoredCaption } from './captions';
 import { referencedTables, type CaptionRequest } from '../inference-node/caption';
+import { parseCanvasFileWithCaptions, type ExportedCaption } from './recovery';
 
 export interface CanvasHooks {
   changed(): void;
@@ -888,8 +889,30 @@ export class CanvasController extends UiController {
       return new CanvasSession(new CanvasModel(saved), this.storage);
     });
   }
-  async importCanvas(raw: string): Promise<void> { await this.switchTo(() => CanvasSession.import(this.storage, raw), true); }
-  async saveCopy(): Promise<void> { if (this.session) { const raw = this.session.exportFile().content; await this.switchTo(() => CanvasSession.import(this.storage, raw)); } }
+  async importCanvas(raw: string): Promise<void> { await this.switchTo(() => this.importWithCaptions(raw), true); }
+  async saveCopy(): Promise<void> { if (this.session) { const raw = this.session.exportFile(this.exportCaptions()).content; await this.switchTo(() => this.importWithCaptions(raw)); } }
+  /** The current canvas's valid captions, for its export file (they follow their revisions). */
+  exportCaptions(): ExportedCaption[] {
+    const model = this.model; if (!model) return [];
+    const out: ExportedCaption[] = [];
+    for (const r of model.revisions.values()) {
+      const c = this.captions.get(r.id, r.sql);
+      if (c) out.push({ revisionId: r.id, title: c.title, explanation: c.explanation, model: c.model, promptVersion: c.promptVersion });
+    }
+    return out;
+  }
+  private async importWithCaptions(raw: string): Promise<CanvasSession> {
+    const identities = new Map<Id, Id>();
+    const session = CanvasSession.import(this.storage, raw, identities);
+    const { captions } = parseCanvasFileWithCaptions(raw), model = session.model;
+    const adopted: StoredCaption[] = [];
+    for (const c of captions) {
+      const revision = model.revisions.get(identities.get(c.revisionId) ?? '');
+      if (revision) adopted.push({ ...c, canvasId: model.header.id, revisionId: revision.id, sql: revision.sql, at: Date.now() });
+    }
+    await this.captions.adopt(adopted);
+    return session;
+  }
   private async switchTo(load: () => CanvasSession | Promise<CanvasSession>, imported = false): Promise<void> {
     if (this.switching) return;
     this.switching = true;

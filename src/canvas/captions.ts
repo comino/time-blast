@@ -139,11 +139,21 @@ export class CaptionService {
       let records: StoredCaption[] = [];
       try { records = await this.store?.all(canvasId) ?? []; } catch { /* derived data: regenerate */ }
       if (this.loadedCanvas !== canvasId) return;
-      for (const c of records) if (c.promptVersion === CAPTION_PROMPT_VERSION && !this.captions.has(c.revisionId)) this.captions.set(c.revisionId, c);
+      for (const c of [...records, ...this.adopted.values()]) if (c.canvasId === canvasId && c.promptVersion === CAPTION_PROMPT_VERSION && !this.captions.has(c.revisionId)) this.captions.set(c.revisionId, c);
       this.version++;
     })();
     return loading.then(() => this.pump());
   }
+
+  /** Captions that arrive with an imported canvas: stored before its session opens, so the
+   * canvas starts captioned and backfill skips them. */
+  async adopt(records: StoredCaption[]): Promise<void> {
+    for (const c of records) {
+      this.adopted.set(c.revisionId, c);
+      try { await this.store?.put(c); } catch { /* still adopted in memory for this tab */ }
+    }
+  }
+  private readonly adopted = new Map<Id, StoredCaption>();
 
   /** A valid caption for this revision, or undefined. */
   get(revisionId: Id, sql: string): StoredCaption | undefined {

@@ -114,6 +114,7 @@ canvasPanel = new CanvasPanel(root, () => controller.session, {
   chooseSource: () => q<HTMLDialogElement>('settings-dialog').showModal(),
   caption: id => { const r = controller.model?.revisions.get(id); return r ? controller.captions.get(id, r.sql) : undefined; },
   captionVersion: () => controller.captions.version,
+  exportCaptions: () => controller.exportCaptions(),
 });
 worker.addEventListener('message', (event: MessageEvent) => controller.receive(event.data));
 worker.addEventListener('error', event => { event.preventDefault(); rail.error({ code: 'worker', message: 'The engine worker failed to start', detail: event.message }, 0); });

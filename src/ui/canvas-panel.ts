@@ -26,6 +26,7 @@ export interface CanvasPanelActions {
   /** The generated caption of a revision, if any; `captionVersion` changes when one arrives. */
   caption?(revisionId: string): { title: string; explanation: string } | undefined;
   captionVersion?(): number;
+  exportCaptions?(): import('../canvas/recovery').ExportedCaption[];
 }
 type Tab = 'library' | 'canvas' | 'chart' | 'drafts' | 'sources';
 const TABS: Array<[Tab, string]> = [['library', 'Canvases'], ['canvas', 'Canvas history'], ['chart', 'Chart history'], ['drafts', 'Drafts'], ['sources', 'Sources']];
@@ -437,7 +438,7 @@ export class CanvasPanel {
   }
   private download(): void {
     const session = this.getSession(); if (!session) return;
-    const file = session.exportFile(), url = URL.createObjectURL(new Blob([file.content], { type: 'application/json' }));
+    const file = session.exportFile(this.actions.exportCaptions?.()), url = URL.createObjectURL(new Blob([file.content], { type: 'application/json' }));
     const anchor = element('a'); anchor.href = url; anchor.download = file.filename;
     document.body.append(anchor); anchor.click(); anchor.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }

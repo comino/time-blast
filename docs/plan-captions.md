@@ -43,6 +43,10 @@ The SQL stays authoritative. The question moves to the header tooltip ("Asked: �
 - **Failures.** On `budget`, captions pause for 60 s. An endpoint without `describe-v1` is not
   asked again. A dropped link retries the request once the link is back. The browser WebLLM
   node does not advertise `describe-v1`: one engine, one job slot.
+- **Files.** Export writes the canvas's valid captions as an optional `captions` field next to
+  the strict document, which is otherwise unchanged. Import and Save a copy remap them onto the
+  forked revision ids and store them before the canvas opens, so nothing is asked again.
+  Malformed entries are dropped and never fail an import.
 - **Setting.** Settings → Captions → Chart captions, on by default. Off cancels and restores the
   questions.
 - **Prompt.** `src/inference-node/caption.ts` and `crates/inference-server/src/caption.rs`,
@@ -133,6 +137,5 @@ per saved revision, and that is the only work captions add to the page.
 
 ## Next
 
-- Export/import captions (portable format bump); today an imported canvas regenerates them.
 - WebLLM `describe-v1`, after measuring its effect on the next translation on real GPUs.
 - A user-edited chart title as authoring state (a `Change` on the revision).

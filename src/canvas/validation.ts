@@ -212,9 +212,9 @@ export function parseCanvas(text: string): CanvasSnapshot {
 }
 
 /** Import retains every branch but cannot overwrite another canvas's records. */
-export function forkCanvas(original: CanvasSnapshot, makeId: () => Id = newId): CanvasSnapshot {
+export function forkCanvas(original: CanvasSnapshot, makeId: () => Id = newId, identities = new Map<string, string>()): CanvasSnapshot {
   validateCanvas(original);
-  const snapshot = structuredClone(original), identities = new Map<string, string>();
+  const snapshot = structuredClone(original);
   const remap = (old: Id): Id => { let next = identities.get(old); if (!next) { next = makeId(); identities.set(old, next); } return next; };
   const canvasId = remap(snapshot.canvas.id);
   snapshot.canvas = { ...snapshot.canvas, id: canvasId, storeVersion: 0, createdAt: Date.now(), headCommitId: remap(snapshot.canvas.headCommitId),

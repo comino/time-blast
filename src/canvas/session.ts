@@ -1,6 +1,6 @@
-import { CanvasModel, type CanvasPatch, type CanvasSnapshot, type DraftSession } from './model';
+import { CanvasModel, type CanvasPatch, type CanvasSnapshot, type DraftSession, type Id } from './model';
 import { type CanvasStorage, CanvasConflictError } from './store';
-import { encodeCanvasFile, importCanvasFile, parseCanvasFile, type CanvasFile } from './recovery';
+import { encodeCanvasFile, importCanvasFile, parseCanvasFile, type CanvasFile, type ExportedCaption } from './recovery';
 
 type Mutation = CanvasPatch | null | { draft: DraftSession; patch: CanvasPatch };
 export interface SaveState { state: 'saved' | 'saving' | 'error' | 'conflict'; message: string; pending: number }
@@ -32,7 +32,8 @@ export class CanvasSession {
   }
 
   static create(storage: CanvasStorage | null, title?: string): CanvasSession { return new CanvasSession(CanvasModel.create(title), storage, false); }
-  static import(storage: CanvasStorage | null, raw: string): CanvasSession { return new CanvasSession(importCanvasFile(parseCanvasFile(raw)), storage, false); }
+  /** `identities` receives old → new ids (captions follow their revisions). */
+  static import(storage: CanvasStorage | null, raw: string, identities?: Map<Id, Id>): CanvasSession { return new CanvasSession(importCanvasFile(parseCanvasFile(raw), identities), storage, false); }
 
   /** Queue the exact result in the same call that mutates authoring state. */
   command<T extends Mutation>(fn: (model: CanvasModel) => T): T {
@@ -127,12 +128,12 @@ export class CanvasSession {
   }
 
   /** Capture both sides of the boundary synchronously, including an in-flight save. */
-  exportFile(): { filename: string; content: string } {
+  exportFile(captions: ExportedCaption[] = []): { filename: string; content: string } {
     const saved = this.acknowledged?.snapshot() ?? null;
     const dirty = this.saveState.state !== 'saved' || !saved;
     const file: CanvasFile = dirty ? { format: 'timeblast-canvas-recovery', formatVersion: 1, exportedAt: Date.now(),
       acknowledged: saved, working: this.model.snapshot() } : saved;
-    return { filename: `canvas-${this.model.header.id}${dirty ? '-recovery' : ''}.timeblast.json`, content: encodeCanvasFile(file) };
+    return { filename: `canvas-${this.model.header.id}${dirty ? '-recovery' : ''}.timeblast.json`, content: encodeCanvasFile(file, captions) };
   }
   savedSnapshot(): CanvasSnapshot | null { return this.acknowledged?.snapshot() ?? null; }
   async settled(): Promise<void> {
