@@ -7,6 +7,15 @@ The GitHub repository remains private. Caddy exposes the Rust tb1 inference serv
 (engine worker). The server's default profile is `openai/gpt-oss-120b` on Groq, reasoning low
 ([batch-2/inference.md](../docs/batch-2/inference.md)).
 
+## Verified deployment — 2026-10-18 (Print / PDF)
+
+Static release `/srv/time-blast/releases/20261018T143238Z-37b0707d` (`45fd183`), index SHA-256
+`4bbe0ff069807650e6bd343221235e73d87c6240f27d014f855fcec6d34a91c2` (previous
+`20261018T124904Z-efa1f91e`); backend unchanged. Public check (headless Chromium 145, software GPU):
+two charts, one widened past the page; Print / PDF reached `print()` in 0.6 s with 3× PNGs
+(1494×840, 2370×996), PDF 2 pages with selectable text, sheet removed after printing, a new question
+drew afterwards, no console errors.
+
 ## Verified deployment — 2026-10-18 (chart captions)
 
 | Component | Live state |
