@@ -9,8 +9,10 @@ export interface PrintCard { readonly slot: number; readonly element: HTMLElemen
 
 /** ~290 dpi on paper (a CSS px is 1/96 in). */
 const PRINT_DPR = 3;
-/** Content width of A4 or Letter portrait inside the 12 mm page padding, in CSS px: wider cards scale down. */
-const PAGE_WIDTH = 700;
+/** Content box of A4 or Letter portrait inside the 12 mm page padding, in CSS px (Letter is
+ * shorter: 965 px), less the sheet header on the first page. Cards scale to a quarter page, so
+ * four fit on a page; a card that would get much smaller that way takes a whole row instead. */
+const PAGE_WIDTH = 700, GAP = 16, ROW_HEIGHT = 440, CELL_WIDTH = (PAGE_WIDTH - GAP) / 2;
 const SNAPSHOT_TIMEOUT_MS = 5000;
 
 type Images = Extract<EngineToUi, { type: 'snapshot' }>['images'];
@@ -77,12 +79,22 @@ export class Printer {
     for (const card of cards) {
       const item = document.createElement('section');
       item.className = 'print-item';
-      if (card.width > PAGE_WIDTH) item.style.zoom = String(PAGE_WIDTH / card.width);
       item.append(this.copy(card, images.get(card.slot), decoding));
       flow.append(item);
     }
     sheet.append(head, flow);
     await Promise.all(decoding);
+    // Measure the copies at full size (off screen), then scale each to its cell.
+    sheet.classList.add('measuring');
+    document.body.append(sheet);
+    for (const item of flow.children as HTMLCollectionOf<HTMLElement>) {
+      const width = item.offsetWidth, height = item.offsetHeight;
+      if (!width || !height) continue;
+      const quarter = Math.min(1, CELL_WIDTH / width, ROW_HEIGHT / height), row = Math.min(1, PAGE_WIDTH / width, ROW_HEIGHT / height);
+      const zoom = quarter >= .7 * row ? quarter : row;
+      if (zoom < 1) item.style.zoom = zoom.toFixed(4);
+    }
+    sheet.classList.remove('measuring');
     return sheet;
   }
 
