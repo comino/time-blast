@@ -50,7 +50,8 @@ export class FakeCard implements SlotCard {
   keep(): void { this.kept = true; this.visible = true; }
   title(text: string, revision: number): void { this.titleText = text; this.titleRevision = revision; }
   captionShown: { title: string; explanation: string } | null = null;
-  caption(c: { title: string; explanation: string } | null): void { this.captionShown = c; }
+  captionQuestion = '';
+  caption(c: { title: string; explanation: string } | null, question = ''): void { this.captionShown = c; this.captionQuestion = question; }
   result(info: ResultInfo, request: number): void { this.lastResult = { info, request }; }
   views(available: ViewName[], chosen: ViewName): void { this.lastViews = { available, chosen }; }
   axes(ticks: AxisTicks): void { this.lastAxes = ticks; }

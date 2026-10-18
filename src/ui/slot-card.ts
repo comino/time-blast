@@ -146,7 +146,6 @@ export class SlotCardView implements SlotCard, BoardItem {
     this.element.dataset.editing = String(!!info.editing);
     if (!this.shown) { this.seed(); this.board.shown(this, true); }
     this.q.title.textContent = info.originalQuestion || 'SQL chart';
-    this.question = info.originalQuestion;
     this.element.setAttribute('aria-label', this.q.title.textContent);
     this.q.sql.textContent = info.sql || 'No SQL yet.';
     this.q.source.textContent = info.editing ? 'DRAFT SQL' : 'SAVED SQL';
@@ -195,12 +194,12 @@ export class SlotCardView implements SlotCard, BoardItem {
   }
   /** Show (or clear) the saved revision's generated caption. Only text changes: no layout,
    * status, plot or gesture state is touched. */
-  caption(caption: { title: string; explanation: string } | null): void {
+  caption(caption: { title: string; explanation: string } | null, question = ''): void {
     const { title, explain } = this.q;
     explain.hidden = !caption; explain.textContent = caption?.explanation ?? '';
     if (!caption) {
       // A caption was showing: the question takes the header back.
-      if (title.dataset.caption) { title.textContent = this.question || 'SQL chart'; this.element.setAttribute('aria-label', title.textContent); }
+      if (title.dataset.caption) { title.textContent = question || 'SQL chart'; this.element.setAttribute('aria-label', title.textContent); }
       delete title.dataset.caption; title.removeAttribute('title'); return;
     }
     if (title.textContent !== caption.title) {
@@ -209,10 +208,9 @@ export class SlotCardView implements SlotCard, BoardItem {
       delete title.dataset.caption; void title.offsetWidth;
     }
     title.dataset.caption = 'true';
-    if (this.question) title.title = `Asked: ${this.question}`;
+    if (question) title.title = `Asked: ${question}`;
     this.element.setAttribute('aria-label', caption.title);
   }
-  private question = '';
   title(text: string, revision: number): void {
     this.q.title.textContent = text;
     this.element.setAttribute('aria-label', `${this.kept ? '' : 'Live preview: '}${text}`);
@@ -425,7 +423,7 @@ export class SlotCardView implements SlotCard, BoardItem {
     this.plotRect = null;
     this.drill(0, '');
     this.element.dataset.live = 'false';
-    this.q.title.textContent = ''; this.caption(null); this.question = '';
+    this.q.title.textContent = ''; this.caption(null);
     this.q.subtitle.textContent = 'Waiting for a question';
     this.q.sql.textContent = 'No query yet.'; this.q.stats.textContent = ''; this.q.source.textContent = '—';
     this.q.columns.textContent = ''; this.q.legend.textContent = ''; this.q.latency.textContent = '—';

@@ -597,7 +597,7 @@ export class CanvasController extends UiController {
     e.status = status;
     e.card.document?.({ layout, presentation: e.presentation, originalQuestion: question, sql: draft?.candidate?.sql ?? revision?.sql ?? '', status, editing });
     e.card.title(question || draft?.text || 'SQL chart', draft ? draft.sequence + 1 : 0);
-    e.card.caption?.(this.shownCaption(e) ?? null);
+    this.showCaption(e);
     e.card.keep(); e.card.status?.(status);
     e.card.drill(revision ? this.model!.lineage(revision.id).length - 1 : 0, '');
   }
@@ -620,15 +620,21 @@ export class CanvasController extends UiController {
     this.refreshCaptions();
     if (enabled) this.backfillCaptions();
   }
+  /** The card's caption, with the question it replaces (tooltip, and the title when cleared). */
+  private showCaption(e: Entry, caption = this.shownCaption(e)): void {
+    const draft = e.draftId ? this.model?.drafts.get(e.draftId) : undefined;
+    const question = draft?.state === 'open' ? draft.originalQuestion || draft.text : this.model?.selected(e.chartId)?.originalQuestion ?? '';
+    e.card.caption?.(caption ?? null, question);
+  }
   private refreshCaptions(): void {
-    for (const e of this.entries.values()) e.card.caption?.(this.shownCaption(e) ?? null);
+    for (const e of this.entries.values()) this.showCaption(e);
     this.hooks.changed();
   }
   private captionArrived(caption: StoredCaption): void {
     if (caption.canvasId !== this.model?.header.id) return;
     for (const e of this.entries.values()) {
       const shown = this.shownCaption(e);
-      if (shown?.revisionId === caption.revisionId) e.card.caption?.(shown);
+      if (shown?.revisionId === caption.revisionId) this.showCaption(e, shown);
     }
     this.hooks.changed();
     // A presentation-only child waits for its parent's caption: offer it again.

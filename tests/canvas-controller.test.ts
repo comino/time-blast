@@ -775,6 +775,7 @@ describe('chart captions', () => {
     wire.reply('Average temperature overall', 'Mean of all temperature readings.');
     const c = card(h, first.chartId);
     expect(c.captionShown).toMatchObject({ title: 'Average temperature overall', explanation: 'Mean of all temperature readings.' });
+    expect(c.captionQuestion).toBe('Average temperature');
     h.ui.editChart(first.chartId); await flush();
     expect(c.captionShown).toBeNull();
     h.ui.finishEditor(); await flush();

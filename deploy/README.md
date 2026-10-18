@@ -7,7 +7,24 @@ The GitHub repository remains private. Caddy exposes the Rust tb1 inference serv
 (engine worker). The server's default profile is `openai/gpt-oss-120b` on Groq, reasoning low
 ([batch-2/inference.md](../docs/batch-2/inference.md)).
 
-## Verified deployment — 2026-10-17 (big data: server DuckDB, flights 2024, NYC taxi)
+## Verified deployment — 2026-10-18 (chart captions)
+
+| Component | Live state |
+| --- | --- |
+| Source | `main` at `bb3ed58` + the caption tooltip fix (this commit's parent): chart captions ([plan-captions.md](../docs/plan-captions.md)) |
+| Static release | `/srv/time-blast/releases/20261018T115610Z-1bfd1ff7`; index SHA-256 `8df72f4388adc163df4d2c7216054ba3ae45662b93ba443b1dd5285c2e6aeb6f` (previous `20261018T115228Z-c2bfd37e`, `20261017T215001Z-9eff65c2`); same build env as below |
+| Inference service | binary SHA-256 `1e98fffe5755899a39c178a89d613ef431f16f687137889d110cbfba27a1932f`: offers `describe-v1`; captions use `anthropic/claude-haiku-5.5` (reasoning none) with their own client, 2 slots, 60/min, 2,000/day, $0.30/day and cache. Optional env: `TIME_BLAST_DESCRIBE=false`, `TIME_BLAST_DESCRIBE_MODEL`, `TIME_BLAST_DESCRIBE_REASONING_EFFORT`, `TIME_BLAST_DESCRIBE_REQUEST_EXTRA`, `TIME_BLAST_DESCRIBE_MAX_CONCURRENT`, `TIME_BLAST_DESCRIBE_REQUESTS_PER_MINUTE`/`_PER_DAY`, `TIME_BLAST_DESCRIBE_DAILY_BUDGET_USD`, `TIME_BLAST_DESCRIBE_CACHE_ENTRIES`; `/etc/time-blast/inference.env` unchanged. `/health` reports a `describe` block |
+| Rollback copies | inference `time-blast-inference.bak-52656d1` (previous live binary, no captions; the frontend falls back to questions without `describe-v1`) |
+
+Public check (headless Chromium, software GPU, HTTPS, fresh profile):
+- A new chart got its caption 2.2–3.2 s after typing started ("Average wind per vessel, by day").
+- Refining it to "only Aurora, hourly" changed the title to "Average wind for Aurora, by hour"; the
+  explanation matches the new SQL and the tooltip shows the original question.
+- While the editor was open, the header showed the question.
+- After a reload the caption came back from the browser store, with no new request.
+- No console errors. Spend: $0.00019 for 2 captions; the repeat run hit the server cache.
+
+## Previous deployment — 2026-10-17 (big data: server DuckDB, flights 2024, NYC taxi)
 
 | Component | Live state |
 | --- | --- |
