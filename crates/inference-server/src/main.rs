@@ -1,3 +1,4 @@
+mod caption;
 mod config;
 mod infer;
 mod prompt;

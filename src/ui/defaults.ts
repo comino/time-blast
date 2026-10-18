@@ -44,7 +44,7 @@ export function defaultInference(endpoint: string | undefined): InferencePlaceme
   return trimmed ? { kind: 'remote', endpoint: trimmed } : { kind: 'webgpu', model: DEFAULT_MODEL_PROFILE };
 }
 
-export interface StoredSettings { inference?: InferencePlacement; coordinator?: CoordinatorConfig; motion?: MotionSettings; focus?: boolean }
+export interface StoredSettings { inference?: InferencePlacement; coordinator?: CoordinatorConfig; motion?: MotionSettings; focus?: boolean; captions?: boolean }
 const KEY = 'time-blast.ui.v1';
 
 export function loadSettings(storage: Pick<Storage, 'getItem'> | undefined = globalThis.localStorage): StoredSettings {
@@ -60,6 +60,7 @@ export function loadSettings(storage: Pick<Storage, 'getItem'> | undefined = glo
     const motion = sanitizeMotion(parsed.motion);
     if (motion) out.motion = motion;
     if (typeof parsed.focus === 'boolean') out.focus = parsed.focus;
+    if (typeof parsed.captions === 'boolean') out.captions = parsed.captions;
     return out;
   } catch { return {}; }
 }

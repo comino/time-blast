@@ -12,6 +12,8 @@ import { IndexedCanvasStore, type CanvasStorage } from './store';
 import { SourceBindings } from './sources';
 import { CANVAS_CAPABILITY, EDIT_CAPABILITY, editBase, prepareEdit, registerTarget, releaseTarget, savedQuery, type CandidateInfo, type ExecutionInfo } from './protocol';
 import { boundedText, CANVAS_LIMITS } from './limits';
+import { CaptionService, IndexedCaptionStore, type CaptionLinkFactory, type CaptionStorage, type CaptionWork, type StoredCaption } from './captions';
+import { referencedTables, type CaptionRequest } from '../inference-node/caption';
 
 export interface CanvasHooks {
   changed(): void;
@@ -46,6 +48,15 @@ interface Entry {
  * groups queued hydration by source; priority jobs (interactive edits) go first. */
 interface Job { entry?: Entry; ticket?: number; sourceId?: Id; priority?: boolean; run(): Promise<void>; /** Dropped before it ran. */ cancelled?(): void }
 const RESIDENT_LIMIT = 8;
+/** Backfill captions for at most this many revisions per chart chain (newest kept). */
+const CAPTION_CHAIN = 10;
+const CAPTION_CHANGE_CHARS = 300;
+export interface CanvasControllerOptions {
+  /** Caption storage; default: IndexedDB `timeblast-captions` (null: memory only). */
+  captionStore?: CaptionStorage | null;
+  /** For tests: the caption link transport. */
+  captionLink?: CaptionLinkFactory;
+}
 const errorText = (e: unknown): string => e instanceof Error ? e.message : String(e);
 const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
 const now = (): number => performance.now();
@@ -94,8 +105,14 @@ export class CanvasController extends UiController {
   /** The edit that failed only because inference lacked edit-context-v1. */
   private unsupportedDraft?: Id;
 
-  constructor(private readonly engine: EnginePort, private readonly cardHost: SlotHost, private readonly canvasRail: RailView, private readonly hooks: CanvasHooks) {
+  readonly captions: CaptionService;
+  /** The current canvas's charts may need captions once boot work has drained. */
+  private captionBackfill = false;
+
+  constructor(private readonly engine: EnginePort, private readonly cardHost: SlotHost, private readonly canvasRail: RailView, private readonly hooks: CanvasHooks,
+    private readonly options: CanvasControllerOptions = {}) {
     super(engine, cardHost, canvasRail, { minFree: 0 });
+    this.captions = new CaptionService(null, item => this.captionWork(item.canvasId, item.revisionId), c => this.captionArrived(c), options.captionLink);
   }
   get model(): CanvasModel | null { return this.session?.model ?? null; }
   get editing(): DraftSession | undefined { return this.editorId ? this.model?.drafts.get(this.editorId) : undefined; }
@@ -135,8 +152,10 @@ export class CanvasController extends UiController {
 
   async initialize(inference: InferencePlacement, dataset: DatasetSource, config: CoordinatorConfig = {}, storage?: CanvasStorage | null): Promise<void> {
     this.fallbackDataset = dataset;
+    this.captions.setEndpoint(inference.kind === 'remote' ? inference.endpoint : null);
     let session: CanvasSession;
     try {
+      this.captions.useStore(this.options.captionStore !== undefined ? this.options.captionStore : await IndexedCaptionStore.open().catch(() => null));
       this.storage = storage === undefined ? await IndexedCanvasStore.open() : storage;
       const active = await this.storage?.getActive();
       const snapshot = active ? await this.storage?.load(active) : null;
@@ -160,6 +179,7 @@ export class CanvasController extends UiController {
     this.hydrated = true;
     this.initializing = false;
     this.sync();
+    if (this.captionBackfill) queueMicrotask(() => { if (!this.runningJob && !this.jobs.length) this.backfillCaptions(); });
     // A chart opened for editing during boot already has its edit job queued;
     // hydrating it would move that edit to Drafts and the replayed text would
     // start a new chart.
@@ -182,6 +202,9 @@ export class CanvasController extends UiController {
     this.sessionSubscription?.();
     this.session = session; this.sessions.set(session.model.header.id, session);
     this.sessionSubscription = session.subscribe(() => this.hooks.changed());
+    const canvasId = session.model.header.id;
+    this.captionBackfill = true;
+    void this.captions.load(canvasId).then(() => { if (this.model?.header.id === canvasId) { this.refreshCaptions(); this.backfillCaptions(); } });
     this.defaultSourceId = session.model.sources.keys().next().value ?? null;
     this.activeSourceId = undefined;
     this.sync(); this.hooks.changed();
@@ -379,6 +402,7 @@ export class CanvasController extends UiController {
     entry.draftId = undefined; entry.card.keep(); this.status(entry, 'Ready · definition checkpointed');
     this.canvasRail.kept(entry.slot, draft.originalQuestion || 'SQL chart');
     entry.done?.(); entry.done = undefined;
+    this.wantCaptions(entry.chartId);
     const following = entry.afterCheckpoint;
     entry.afterCheckpoint = undefined;
     this.hooks.changed();
@@ -426,6 +450,7 @@ export class CanvasController extends UiController {
     this.command(action);
     if (this.editing?.state !== 'open') this.editorId = undefined;
     this.sync(true); this.hooks.changed();
+    this.backfillCaptions();
   }
   undo(): void { this.restore(m => m.undo()); }
   redo(id?: Id): void { this.restore(m => m.redo(id)); }
@@ -476,6 +501,7 @@ export class CanvasController extends UiController {
       if (selected && !same(normalizePresentation(selected.presentation), entry.presentation)) {
         this.command(m => m.changePresentation(entry.chartId, entry.presentation));
         entry.revisionId = this.model!.selected(entry.chartId)!.id;
+        this.wantCaptions(entry.chartId);
       }
     }
   }
@@ -571,10 +597,79 @@ export class CanvasController extends UiController {
     e.status = status;
     e.card.document?.({ layout, presentation: e.presentation, originalQuestion: question, sql: draft?.candidate?.sql ?? revision?.sql ?? '', status, editing });
     e.card.title(question || draft?.text || 'SQL chart', draft ? draft.sequence + 1 : 0);
+    e.card.caption?.(this.shownCaption(e) ?? null);
     e.card.keep(); e.card.status?.(status);
     e.card.drill(revision ? this.model!.lineage(revision.id).length - 1 : 0, '');
   }
   private status(e: Entry, text: string): void { e.status = text; e.card.status?.(text); }
+
+  // ───────────── captions ─────────────
+
+  /** The caption a card shows: its selected revision's, only while no edit is open on it (an
+   * open draft's SQL is not the revision's). */
+  private shownCaption(e: Entry): StoredCaption | undefined {
+    const revision = this.model?.selected(e.chartId);
+    const draft = e.draftId ? this.model?.drafts.get(e.draftId) : undefined;
+    if (!revision || draft?.state === 'open' || e.revisionId !== revision.id) return undefined;
+    return this.captions.get(revision.id, revision.sql);
+  }
+  /** Turn chart captions on or off (setting). Off: cards show the question again. */
+  setCaptions(enabled: boolean): void {
+    this.captions.enabled = enabled;
+    if (!enabled) this.captions.cancel();
+    this.refreshCaptions();
+    if (enabled) this.backfillCaptions();
+  }
+  private refreshCaptions(): void {
+    for (const e of this.entries.values()) e.card.caption?.(this.shownCaption(e) ?? null);
+    this.hooks.changed();
+  }
+  private captionArrived(caption: StoredCaption): void {
+    if (caption.canvasId !== this.model?.header.id) return;
+    for (const e of this.entries.values()) {
+      const shown = this.shownCaption(e);
+      if (shown?.revisionId === caption.revisionId) e.card.caption?.(shown);
+    }
+    this.hooks.changed();
+    // A presentation-only child waits for its parent's caption: offer it again.
+    const children = [...this.model.revisions.values()].filter(r => r.parentId === caption.revisionId && r.sql === caption.sql);
+    if (children.length) this.captions.want(caption.canvasId, children.map(r => r.id));
+  }
+  /** Caption the chart's selected revision and its recent ancestors, oldest first. */
+  private wantCaptions(chartId: Id): void {
+    const model = this.model, revision = model?.selected(chartId);
+    if (!model || !revision) return;
+    this.captions.want(model.header.id, model.lineage(revision.id).slice(-CAPTION_CHAIN).map(r => r.id));
+  }
+  /** After boot or a canvas switch: once queued source and hydration work has drained, so
+   * captions never compete with loading charts. */
+  private backfillCaptions(): void {
+    if (!this.model || this.initializing || this.runningJob || this.jobs.length) return;
+    this.captionBackfill = false;
+    for (const chart of this.model.state.charts) this.wantCaptions(chart.id);
+  }
+  private captionWork(canvasId: Id, revisionId: Id): CaptionWork {
+    const model = this.model, revision = model?.revisions.get(revisionId);
+    if (!model || !revision || model.header.id !== canvasId) return { kind: 'skip' };
+    const parent = revision.parentId ? model.revisions.get(revision.parentId) : undefined;
+    const parentCaption = parent ? this.captions.get(parent.id, parent.sql) : undefined;
+    if (parent && parent.sql === revision.sql) {
+      if (parentCaption) return { kind: 'inherit', canvasId, revisionId, sql: revision.sql, from: parentCaption };
+      // The parent will be (or failed to be) captioned; its arrival offers this child again.
+      if (!this.captions.has(parent.id)) return { kind: 'skip' };
+    }
+    const source = model.sources.get(revision.sourceRefId);
+    const dialect = this.activeSourceId === revision.sourceRefId && this.context?.dialect === 'clickhouse' ? 'clickhouse' : 'duckdb';
+    const kind = revision.change.kind;
+    const change = kind === 'create' ? undefined : kind === 'sql' ? 'Edited the SQL' : kind === 'view' ? undefined
+      : Array.from(revision.change.text).slice(0, CAPTION_CHANGE_CHARS).join('') || undefined;
+    const payload: CaptionRequest = {
+      v: 1, sql: revision.sql, question: Array.from(revision.originalQuestion).slice(0, 16384).join(''), dialect,
+      tables: referencedTables(source?.tables ?? [], revision.sql),
+      ...(parentCaption ? { previousTitle: parentCaption.title } : {}), ...(change ? { change } : {}),
+    };
+    return { kind: 'request', canvasId, chartId: revision.chartId, revisionId, sql: revision.sql, payload };
+  }
   /** First two-column grid cell that overlaps no saved or drafted chart. */
   private nextLayout(): Layout {
     const size = defaultLayout(), taken = [...this.entries.values()].map(e => this.model?.state.charts.find(c => c.id === e.chartId)?.layout
@@ -674,7 +769,11 @@ export class CanvasController extends UiController {
           }
         }
       }
-    } finally { this.activeJob = undefined; this.runningJob = false; if (this.jobs.length) void this.pumpJobs(); }
+    } finally {
+      this.activeJob = undefined; this.runningJob = false;
+      if (this.jobs.length) void this.pumpJobs();
+      else if (this.captionBackfill) this.backfillCaptions();
+    }
   }
   private async activate(source: SourceRef, reload = false, self?: Entry): Promise<DatasetContext> {
     if (!reload && this.activeSourceId === source.id && this.context) return this.context;
@@ -760,7 +859,11 @@ export class CanvasController extends UiController {
     });
     entry.cancelCapability = undefined;
   }
-  override setInference(placement: InferencePlacement): void { this.editSupported = null; super.setInference(placement); }
+  override setInference(placement: InferencePlacement): void {
+    this.editSupported = null; super.setInference(placement);
+    this.captions.setEndpoint(placement.kind === 'remote' ? placement.endpoint : null);
+    if (placement.kind === 'remote') this.backfillCaptions();
+  }
 
   async listCanvases(): Promise<Array<{ id: Id; title: string; at: number }>> {
     const all = new Map<Id, { id: Id; title: string; at: number }>();
@@ -790,7 +893,7 @@ export class CanvasController extends UiController {
       // A stalled IndexedDB write cannot lock the app; unsaved work stays in `sessions`.
       await Promise.race([previous?.settled(), new Promise(resolve => setTimeout(resolve, 5000))]);
       const next = await load();
-      this.cancel(); this.editorId = undefined; this.pendingInput = undefined;
+      this.cancel(); this.captions.cancel(); this.editorId = undefined; this.pendingInput = undefined;
       for (const e of this.entries.values()) { this.invalidate(e, true); this.sendControl({ type: 'detach', slot: e.slot, generation: e.generation }); e.card.destroy(); }
       this.entries.clear(); this.bySlot.clear(); this.busy.clear();
       this.canvasRail.clearKept?.();

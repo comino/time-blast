@@ -71,6 +71,9 @@ export const appShell = `
     <label class="checkbox-label"><input name="motionGrow" type="checkbox"/><span><span>Charts grow</span><small>A new chart breathes as a seed while it loads, then grows into place.</small></span></label>
     <label class="checkbox-label"><input name="motionCamera" type="checkbox"/><span><span>Smooth camera</span><small>Adding or removing a chart glides the canvas to fit; zoom buttons glide.</small></span></label>
   </div>
+  <div class="runtime-section"><label>Captions <span>Separate connection and model; never delays a query or a draw</span></label>
+    <label class="checkbox-label"><input name="captions" type="checkbox"/><span><span>Chart captions</span><small>Each saved chart gets a generated title and a short explanation of its SQL (remote inference only).</small></span></label>
+  </div>
   <p class="runtime-error" data-el="settings-error" role="alert"></p>
   <div class="dialog-actions"><button type="button" class="text-button" data-action="reset-settings">Restore defaults</button><button type="button" class="primary-button" data-action="close-settings">Done ${icons.arrow}</button></div></form></dialog>
 `;

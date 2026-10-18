@@ -41,7 +41,7 @@ const markup = `
   <div class="data-table-wrap" data-c="table-wrap" hidden><table class="data-table"><thead data-c="thead"></thead><tbody data-c="tbody"></tbody></table><p data-c="table-note">No rows yet.</p></div>
 </div>
 <div class="plot-bottom"><div class="legend" data-c="legend"></div><span class="mono" data-c="columns"></span></div>
-<details class="card-sql"><summary>${icons.code}<span>SQL</span><span class="source-pill" data-c="source">—</span></summary><pre data-c="sql">No query yet.</pre><p class="result-actions"><button type="button" class="detail-button" data-a="edit-sql" hidden>Edit SQL</button><button type="button" class="detail-button" data-a="regenerate" hidden>Regenerate</button></p><p data-c="stats"></p></details>
+<details class="card-sql"><summary>${icons.code}<span>SQL</span><span class="source-pill" data-c="source">—</span></summary><p class="card-explain" data-c="explain" hidden></p><pre data-c="sql">No query yet.</pre><p class="result-actions"><button type="button" class="detail-button" data-a="edit-sql" hidden>Edit SQL</button><button type="button" class="detail-button" data-a="regenerate" hidden>Regenerate</button></p><p data-c="stats"></p></details>
 <footer class="card-footer"><div class="card-latency" title="Last keystroke → first draw submitted (software timestamps, not photons)"><small>KEY → FIRST DRAW</small><strong data-c="latency">—</strong><span class="cache-pill" data-c="cache" hidden>CACHE HIT</span></div><div class="result-actions"><button type="button" class="detail-button" data-a="edit" hidden>Edit</button><button type="button" class="detail-button" data-a="history" hidden>History</button><button type="button" class="detail-button" data-a="refresh" hidden>Refresh</button><button class="icon-button" data-a="export" aria-label="Export result as CSV" title="Export result as CSV" disabled>${icons.download}</button></div></footer>
 <button class="card-resize-handle" aria-label="Resize view" title="Drag to resize">◢</button>`;
 const template = typeof document === 'undefined' ? null : document.createElement('template');
@@ -146,6 +146,7 @@ export class SlotCardView implements SlotCard, BoardItem {
     this.element.dataset.editing = String(!!info.editing);
     if (!this.shown) { this.seed(); this.board.shown(this, true); }
     this.q.title.textContent = info.originalQuestion || 'SQL chart';
+    this.question = info.originalQuestion;
     this.element.setAttribute('aria-label', this.q.title.textContent);
     this.q.sql.textContent = info.sql || 'No SQL yet.';
     this.q.source.textContent = info.editing ? 'DRAFT SQL' : 'SAVED SQL';
@@ -192,6 +193,26 @@ export class SlotCardView implements SlotCard, BoardItem {
     this.element.setAttribute('aria-label', this.q.title.textContent ?? '');
     if (!this.shown) { this.board.place(this); this.element.dataset.idle = 'false'; this.seed(); this.board.shown(this, true); }
   }
+  /** Show (or clear) the saved revision's generated caption. Only text changes: no layout,
+   * status, plot or gesture state is touched. */
+  caption(caption: { title: string; explanation: string } | null): void {
+    const { title, explain } = this.q;
+    explain.hidden = !caption; explain.textContent = caption?.explanation ?? '';
+    if (!caption) {
+      // A caption was showing: the question takes the header back.
+      if (title.dataset.caption) { title.textContent = this.question || 'SQL chart'; this.element.setAttribute('aria-label', title.textContent); }
+      delete title.dataset.caption; title.removeAttribute('title'); return;
+    }
+    if (title.textContent !== caption.title) {
+      title.textContent = caption.title;
+      // Restart the fade for each new caption (motion setting gates it in CSS).
+      delete title.dataset.caption; void title.offsetWidth;
+    }
+    title.dataset.caption = 'true';
+    if (this.question) title.title = `Asked: ${this.question}`;
+    this.element.setAttribute('aria-label', caption.title);
+  }
+  private question = '';
   title(text: string, revision: number): void {
     this.q.title.textContent = text;
     this.element.setAttribute('aria-label', `${this.kept ? '' : 'Live preview: '}${text}`);
@@ -404,7 +425,7 @@ export class SlotCardView implements SlotCard, BoardItem {
     this.plotRect = null;
     this.drill(0, '');
     this.element.dataset.live = 'false';
-    this.q.title.textContent = '';
+    this.q.title.textContent = ''; this.caption(null); this.question = '';
     this.q.subtitle.textContent = 'Waiting for a question';
     this.q.sql.textContent = 'No query yet.'; this.q.stats.textContent = ''; this.q.source.textContent = '—';
     this.q.columns.textContent = ''; this.q.legend.textContent = ''; this.q.latency.textContent = '—';

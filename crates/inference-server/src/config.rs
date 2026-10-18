@@ -11,9 +11,29 @@ pub const DEFAULT_REASONING: ReasoningEffort = ReasoningEffort::Low;
 pub const DEFAULT_REQUEST_EXTRA: &str =
     r#"{"provider":{"order":["groq"],"require_parameters":true}}"#;
 
+/// Default caption model, without reasoning: best of the phase-1 caption experiment
+/// (docs/plan-captions.md: titles 96.6 % fully right, none wrong, p50 0.95 s, $0.0001 each).
+/// A different upstream from translation (Groq), so captions draw on separate provider limits.
+pub const DEFAULT_DESCRIBE_MODEL: &str = "anthropic/claude-haiku-5.5";
+
+/// OpenRouter routing for captions: fastest endpoint, without `require_parameters`, which finds no
+/// Anthropic endpoint for this parameter set (HTTP 404, measured 2026-10-18).
+pub const DEFAULT_DESCRIBE_REQUEST_EXTRA: &str = r#"{"provider":{"sort":"latency"}}"#;
+
+/// DESCRIBE (captions): its own provider client, slots, budget and cache.
+pub struct DescribeConfig {
+    pub provider: ProviderConfig,
+    pub requests_per_minute: u32,
+    pub requests_per_day: u32,
+    pub daily_budget_usd: f64,
+    pub cache_entries: usize,
+}
+
 pub struct Config {
     pub bind: SocketAddr,
     pub provider: ProviderConfig,
+    /// None: DESCRIBE is not offered (`TIME_BLAST_DESCRIBE=false`).
+    pub describe: Option<DescribeConfig>,
     pub allowed_origins: Vec<String>,
     pub requests_per_minute: u32,
     pub requests_per_day: u32,
@@ -85,7 +105,48 @@ impl Config {
         {
             return Err("TIME_BLAST_ALLOWED_ORIGINS must list explicit browser origins".into());
         }
+        let describe = match env::var("TIME_BLAST_DESCRIBE").as_deref() {
+            Ok("false") => None,
+            Err(_) if !openrouter && env::var("TIME_BLAST_DESCRIBE_MODEL").is_err() => None,
+            Err(_) | Ok("true") => {
+                let model_env = env::var("TIME_BLAST_DESCRIBE_MODEL").ok();
+                let default_model = openrouter && model_env.is_none();
+                let model = model_env.unwrap_or_else(|| DEFAULT_DESCRIBE_MODEL.into());
+                if model.trim().is_empty() || model.len() > 200 {
+                    return Err("Invalid TIME_BLAST_DESCRIBE_MODEL".into());
+                }
+                Some(DescribeConfig {
+                    provider: ProviderConfig {
+                        endpoint: endpoint.clone(),
+                        model,
+                        api_key: api_key.clone(),
+                        openrouter,
+                        reasoning_effort: match env::var("TIME_BLAST_DESCRIBE_REASONING_EFFORT").ok() {
+                            None if default_model => Some(ReasoningEffort::None),
+                            value => parse_reasoning_effort(value.as_deref(), openrouter)?,
+                        },
+                        temperature: Some(0.0),
+                        timeout: Duration::from_secs(number("TIME_BLAST_TIMEOUT_SECONDS", 25, 1, 30)? as u64),
+                        max_concurrent: number("TIME_BLAST_DESCRIBE_MAX_CONCURRENT", 2, 1, 64)? as usize,
+                        max_tokens: number("TIME_BLAST_DESCRIBE_MAX_TOKENS", 600, 16, 4096)?,
+                        extra: match env::var("TIME_BLAST_DESCRIBE_REQUEST_EXTRA").ok() {
+                            None if openrouter => parse_extra(Some(DEFAULT_DESCRIBE_REQUEST_EXTRA))?,
+                            value => parse_extra(value.as_deref())?,
+                        },
+                    },
+                    requests_per_minute: number("TIME_BLAST_DESCRIBE_REQUESTS_PER_MINUTE", 60, 1, 100000)?,
+                    requests_per_day: number("TIME_BLAST_DESCRIBE_REQUESTS_PER_DAY", 2000, 1, 10000000)?,
+                    daily_budget_usd: match env::var("TIME_BLAST_DESCRIBE_DAILY_BUDGET_USD").ok() {
+                        None => 0.3,
+                        value => parse_budget(value.as_deref())?,
+                    },
+                    cache_entries: number("TIME_BLAST_DESCRIBE_CACHE_ENTRIES", 512, 0, 100000)? as usize,
+                })
+            }
+            Ok(_) => return Err("TIME_BLAST_DESCRIBE must be true or false".into()),
+        };
         Ok(Self {
+            describe,
             bind: env::var("TIME_BLAST_BIND")
                 .unwrap_or_else(|_| "127.0.0.1:8787".into())
                 .parse()
@@ -238,6 +299,12 @@ mod tests {
         for bad in ["[]", "1", "{", r#"{"model":"x"}"#, r#"{"stream":false}"#, r#"{"messages":[]}"#] {
             assert!(parse_extra(Some(bad)).is_err(), "{bad}");
         }
+    }
+
+    #[test]
+    fn default_describe_extra_routes_without_required_parameters() {
+        let extra = parse_extra(Some(DEFAULT_DESCRIBE_REQUEST_EXTRA)).unwrap();
+        assert_eq!(serde_json::Value::Object(extra), serde_json::json!({"provider":{"sort":"latency"}}));
     }
 
     #[test]

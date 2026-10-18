@@ -22,6 +22,8 @@ valid = [
     dict(name='target-bind', kind=0x30, request=10, revision=4, context=7, payload=struct.pack('<III', 90, 256, 2)),
     dict(name='execution', kind=0x36, request=10, revision=4, context=7, payload=b'{"slot":90,"generation":2,"status":"succeeded"}'),
     dict(name='candidate', kind=0x37, request=10, revision=4, context=7, payload=b'{"slot":90,"generation":2,"sql":"SELECT 1"}'),
+    dict(name='describe', kind=0x40, request=3, payload=b'{"v":1,"sql":"SELECT 1","question":"","dialect":"duckdb","tables":[]}'),
+    dict(name='description', kind=0x41, request=3, payload=b'{"title":"One","explanation":"The number one."}'),
     dict(name='draft', kind=0x10, revision=42, context=7, stamps=[(1, 1, 1760000000123.25), (2, 1, 1760000000123.5)],
          payload='average speed by hour'.encode()),
     dict(name='draft-composing-unicode', kind=0x10, flags=0x01, revision=43, context=7, payload='Wellenhöhe 🌊'.encode()),

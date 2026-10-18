@@ -1,0 +1,1 @@
+{"v":1,"sql":"SELECT carrier, count(*) AS flights FROM flights GROUP BY carrier ORDER BY carrier","question":"number of flights per airline","dialect":"duckdb","tables":[{"name":"flights","columns":[["flight_date","DATE"],["carrier","VARCHAR"],["origin","VARCHAR"],["dep_delay","DOUBLE"],["cancelled","BOOLEAN"]]}]}

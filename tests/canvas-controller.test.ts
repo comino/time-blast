@@ -8,6 +8,25 @@ import type { DatasetContext, EngineToUi } from '../src/engine/contracts';
 import { encode, header, json, Kind, readJson, readText, Stage, type Frame, type Header } from '../src/protocol/frame';
 import { SuggestController } from '../src/ui/suggest-controller';
 import { FakeEngine, FakeHost, FakeRail } from './ui-fake-engine';
+import { MemoryCaptionStore, type CaptionLinkFactory } from '../src/canvas/captions';
+
+/** The caption link: records frames per opened link; tests play the inference node. */
+class CaptionWire {
+  readonly links: Array<{ endpoint: string; sent: Frame[]; onFrame: (f: Frame) => void; closed: boolean }> = [];
+  readonly factory: CaptionLinkFactory = (endpoint, onFrame) => {
+    const link = { endpoint, sent: [] as Frame[], onFrame, closed: false };
+    this.links.push(link);
+    return { send: f => { link.sent.push(f); }, close: () => { link.closed = true; } };
+  };
+  get link() { return this.links.at(-1)!; }
+  ready(capabilities = ['edit-context-v1', 'describe-v1']) { this.link.onFrame({ ...header(Kind.READY), stamps: [], payload: json({ capabilities }) }); }
+  describes(): Array<{ request: number; payload: Record<string, unknown> }> {
+    return this.links.flatMap(l => l.sent).filter(f => f.kind === Kind.DESCRIBE).map(f => ({ request: f.request, payload: readJson(f.payload) }));
+  }
+  reply(title: string, explanation = `${title}, explained.`, request = this.describes().at(-1)!.request) {
+    this.link.onFrame({ ...header(Kind.DESCRIPTION, { request }), stamps: [], payload: json({ title, explanation, model: 'fake/captioner', cached: false }) });
+  }
+}
 
 class MemoryStorage implements CanvasStorage {
   readonly snapshots = new Map<string, CanvasSnapshot>();
@@ -48,11 +67,11 @@ interface Harness {
   ui: CanvasController; engine: FakeEngine; host: FakeHost; rail: FakeRail; storage: MemoryStorage;
   notices: string[]; editors: Array<Parameters<CanvasHooks['editor']>>;
 }
-async function boot(storage = new MemoryStorage()): Promise<Harness> {
+async function boot(storage = new MemoryStorage(), wire = new CaptionWire(), captionStore = new MemoryCaptionStore()): Promise<Harness> {
   const engine = new FakeEngine(), host = new FakeHost(), rail = new FakeRail(), notices: string[] = [];
   const editors: Array<Parameters<CanvasHooks['editor']>> = [];
   const ui = new CanvasController(engine, host, rail, { changed() {}, editor: (...args) => editors.push(args),
-    history() {}, reattach() {}, notice: text => notices.push(text) });
+    history() {}, reattach() {}, notice: text => notices.push(text) }, { captionStore, captionLink: wire.factory });
   const initialized = ui.initialize(inference, weather, {}, storage);
   await flush();
   expect(engine.messages('boot')).toHaveLength(1);
@@ -739,3 +758,93 @@ describe('canvas editing semantics (review 2026-10-17)', () => {
     expect(first).toBeDefined();
   });
 });
+
+describe('chart captions', () => {
+  const card = (h: Harness, chartId: string) => [...h.host.cards.values()].find(c => !c.destroyed && h.ui.model!.state.charts.some(ch => ch.id === chartId))!;
+
+  it('captions a saved chart over its own link, never through the engine, and shows it only while no edit is open', async () => {
+    const wire = new CaptionWire(), h = await boot(undefined, wire); h.engine.clear();
+    const first = await create(h);
+    expect(wire.links).toHaveLength(1);
+    expect(wire.link.endpoint).toBe(inference.endpoint);
+    expect(wire.describes()).toEqual([]); // waits for READY with describe-v1
+    wire.ready();
+    expect(wire.describes()).toEqual([{ request: 1, payload: { v: 1, sql: first.revision.sql, question: 'Average temperature', dialect: 'duckdb',
+      tables: [{ name: 'weather', columns: [['temperature', 'DOUBLE']] }] } }]);
+    expect(h.engine.frames.some(f => f.kind === Kind.DESCRIBE || f.kind === Kind.DESCRIPTION)).toBe(false);
+    wire.reply('Average temperature overall', 'Mean of all temperature readings.');
+    const c = card(h, first.chartId);
+    expect(c.captionShown).toMatchObject({ title: 'Average temperature overall', explanation: 'Mean of all temperature readings.' });
+    h.ui.editChart(first.chartId); await flush();
+    expect(c.captionShown).toBeNull();
+    h.ui.finishEditor(); await flush();
+  });
+
+  it('refinements carry the previous title and change; a presentation change inherits without a request', async () => {
+    const wire = new CaptionWire(), h = await boot(undefined, wire);
+    const first = await create(h); wire.ready(); wire.reply('Average temperature');
+    h.ui.editChart(first.chartId); h.ui.input('Use maximum instead', false, 3); await flush();
+    const refined = execution(lastFrame(h, Kind.DRAFT), 202, 'SELECT max(temperature) FROM weather');
+    h.ui.commit('Use maximum instead', 4); candidate(h, refined); outcome(h, refined);
+    await h.ui.session!.settled(); await flush();
+    expect(wire.describes().at(-1)!.payload).toMatchObject({ sql: refined.sql, question: 'Average temperature',
+      previousTitle: 'Average temperature', change: 'Use maximum instead' });
+    wire.reply('Maximum temperature');
+    const c = card(h, first.chartId);
+    expect(c.captionShown?.title).toBe('Maximum temperature');
+    const before = wire.describes().length;
+    c.handlers.view(c.slot, 'bar'); await flush();
+    const head = h.ui.model!.selected(first.chartId)!;
+    expect(head.change.kind).toBe('view');
+    expect(wire.describes()).toHaveLength(before);
+    expect(h.ui.captions.get(head.id, head.sql)?.title).toBe('Maximum temperature');
+  });
+
+  it('ignores a late caption for a revision the chart no longer shows, and keeps it for history', async () => {
+    const wire = new CaptionWire(), h = await boot(undefined, wire);
+    const first = await create(h); wire.ready(); wire.reply('Average temperature');
+    h.ui.editChart(first.chartId); h.ui.input('Use maximum instead', false, 3); await flush();
+    const refined = execution(lastFrame(h, Kind.DRAFT), 202, 'SELECT max(temperature) FROM weather');
+    h.ui.commit('Use maximum instead', 4); candidate(h, refined); outcome(h, refined);
+    await h.ui.session!.settled(); await flush();
+    const pending = wire.describes().at(-1)!;
+    h.ui.undo(); await flush();
+    wire.reply('Maximum temperature', 'Late.', pending.request);
+    const c = card(h, first.chartId);
+    expect(c.captionShown?.title).toBe('Average temperature');
+    const refinedRevision = [...h.ui.model!.revisions.values()].find(r => r.sql === refined.sql)!;
+    expect(h.ui.captions.get(refinedRevision.id, refinedRevision.sql)?.title).toBe('Maximum temperature');
+  });
+
+  it('restores stored captions after a reload without asking again, and backfills missing ones', async () => {
+    const wire = new CaptionWire(), store = new MemoryCaptionStore(), h = await boot(undefined, wire, store);
+    const first = await create(h); wire.ready(); wire.reply('Average temperature');
+    const second = await create(h, 'Coldest reading', 'SELECT min(temperature) FROM weather', 301);
+    expect(wire.describes().at(-1)!.payload).toMatchObject({ sql: second.revision.sql });
+    // The second caption never arrives (tab closed).
+    const wire2 = new CaptionWire(), restored = await boot(h.storage, wire2, store);
+    const query = restored.engine.frames.filter(f => f.kind === Kind.QUERY);
+    for (const [i, q] of query.entries()) { const e = execution(q, 400 + i, readText(q.payload.subarray(4))); candidate(restored, e); outcome(restored, e); }
+    await flush();
+    expect(card(restored, first.chartId).captionShown?.title).toBe('Average temperature');
+    wire2.ready();
+    expect(wire2.describes().map(d => d.payload.sql)).toEqual([second.revision.sql]);
+  });
+
+  it('turning captions off restores questions and stops asking; an endpoint without describe-v1 is not asked', async () => {
+    const wire = new CaptionWire(), h = await boot(undefined, wire);
+    const first = await create(h); wire.ready(); wire.reply('Average temperature');
+    h.ui.setCaptions(false);
+    expect(card(h, first.chartId).captionShown).toBeNull();
+    await create(h, 'Coldest reading', 'SELECT min(temperature) FROM weather', 301);
+    expect(wire.describes()).toHaveLength(1);
+    h.ui.setCaptions(true);
+    expect(card(h, first.chartId).captionShown?.title).toBe('Average temperature');
+
+    const old = new CaptionWire(), o = await boot(undefined, old);
+    await create(o); old.ready(['edit-context-v1']);
+    expect(old.describes()).toEqual([]);
+    expect(old.link.closed).toBe(true);
+  });
+});
+

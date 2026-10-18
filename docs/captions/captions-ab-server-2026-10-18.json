@@ -1,0 +1,6681 @@
+{
+  "kind": "timeblast.captions-ab",
+  "version": 1,
+  "date": "2026-10-18T11:29:50.352Z",
+  "endpoint": "ws://127.0.0.1:8797/session",
+  "translationModel": "openai/gpt-oss-120b",
+  "reps": 2,
+  "measurement": "Client-side performance.now on this host; INFER sent → first SQL_DELTA / SQL received over loopback WebSocket to a local inference server with SQL and caption caches off (every request reaches the provider). Pairs in random arm order. Arm on = one DESCRIBE sent at the same instant on a second connection (worst case; the app sends one per saved revision). Provider warmth: warm after the first few requests.",
+  "summary": {
+    "firstDeltaMs": {
+      "off": {
+        "n": 314,
+        "p50": 274.1,
+        "p95": 919.2,
+        "p99": 1475.5
+      },
+      "on": {
+        "n": 314,
+        "p50": 264.1,
+        "p95": 873.9,
+        "p99": 1238.4
+      },
+      "p50Delta": {
+        "delta": -10,
+        "ci95": [
+          -31.9,
+          4.5
+        ]
+      },
+      "p95Delta": {
+        "delta": -45.2,
+        "ci95": [
+          -219.2,
+          78.9
+        ]
+      }
+    },
+    "sqlMs": {
+      "off": {
+        "n": 314,
+        "p50": 406.1,
+        "p95": 1050.2,
+        "p99": 1673.6
+      },
+      "on": {
+        "n": 314,
+        "p50": 385.4,
+        "p95": 1003.4,
+        "p99": 1380.1
+      },
+      "p50Delta": {
+        "delta": -20.7,
+        "ci95": [
+          -43.4,
+          6.7
+        ]
+      },
+      "p95Delta": {
+        "delta": -46.9,
+        "ci95": [
+          -197.3,
+          72.5
+        ]
+      }
+    },
+    "errors": {
+      "off": [],
+      "on": []
+    },
+    "captions": {
+      "sent": 314,
+      "ok": 314,
+      "errors": [],
+      "ms": {
+        "p50": 814.5,
+        "p95": 1224.6
+      },
+      "models": [
+        "anthropic/claude-haiku-5.5"
+      ],
+      "costUsd": 0.02874
+    },
+    "translationCostUsd": 0.1175
+  },
+  "pairs": [
+    {
+      "id": "vessels/avg_speed_per_vessel",
+      "off": {
+        "id": "vessels/avg_speed_per_vessel",
+        "firstDeltaMs": 229.47898300000008,
+        "sqlMs": 285.1239790000001,
+        "cost": 0.0001404
+      },
+      "on": {
+        "id": "vessels/avg_speed_per_vessel",
+        "firstDeltaMs": 219.6669730000001,
+        "sqlMs": 314.42284100000006,
+        "cost": 0.0001212
+      },
+      "caption": {
+        "ms": 1141.9615780000001,
+        "title": "Average fleet water temperature",
+        "cost": 0.0000765,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/readings_per_vessel",
+      "on": {
+        "id": "vessels/readings_per_vessel",
+        "firstDeltaMs": 232.24262999999974,
+        "sqlMs": 347.49217,
+        "cost": 0.00013935
+      },
+      "caption": {
+        "ms": 744.1533039999999,
+        "title": "Average speed by hour of day",
+        "cost": 0.0000857,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/readings_per_vessel",
+        "firstDeltaMs": 691.247636,
+        "sqlMs": 725.2016589999998,
+        "cost": 0.00012015
+      }
+    },
+    {
+      "id": "vessels/overall_max_wave",
+      "off": {
+        "id": "vessels/overall_max_wave",
+        "firstDeltaMs": 357.747026,
+        "sqlMs": 409.33419200000026,
+        "cost": 0.0001659
+      },
+      "on": {
+        "id": "vessels/overall_max_wave",
+        "firstDeltaMs": 229.41902200000004,
+        "sqlMs": 280.0557719999997,
+        "cost": 0.0001269
+      },
+      "caption": {
+        "ms": 729.3937310000001,
+        "title": "Average hourly wind, September 3–5, 2026",
+        "cost": 0.000097,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/fleet_avg_water_temp",
+      "on": {
+        "id": "vessels/fleet_avg_water_temp",
+        "firstDeltaMs": 220.89087500000005,
+        "sqlMs": 263.2956839999997,
+        "cost": 0.0001281
+      },
+      "caption": {
+        "ms": 804.7926660000003,
+        "title": "Hours Solstice saw wind above 30 knots",
+        "cost": 0.0000847,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/fleet_avg_water_temp",
+        "firstDeltaMs": 251.24275599999964,
+        "sqlMs": 302.5197969999999,
+        "cost": 0.0001269
+      }
+    },
+    {
+      "id": "vessels/min_max_speed_per_vessel",
+      "on": {
+        "id": "vessels/min_max_speed_per_vessel",
+        "firstDeltaMs": 261.5252529999998,
+        "sqlMs": 313.11385900000005,
+        "cost": 0.00018405
+      },
+      "caption": {
+        "ms": 854.6621640000003,
+        "title": "Water temperature range by vessel",
+        "cost": 0.0000854,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/min_max_speed_per_vessel",
+        "firstDeltaMs": 251.841327000001,
+        "sqlMs": 320.4387859999997,
+        "cost": 0.00016185
+      }
+    },
+    {
+      "id": "vessels/hourly_wind_last_2_days",
+      "off": {
+        "id": "vessels/hourly_wind_last_2_days",
+        "firstDeltaMs": 667.7649930000007,
+        "sqlMs": 974.95579,
+        "cost": 0.00020265
+      },
+      "on": {
+        "id": "vessels/hourly_wind_last_2_days",
+        "firstDeltaMs": 409.6600390000003,
+        "sqlMs": 660.781594,
+        "cost": 0.00020265
+      },
+      "caption": {
+        "ms": 1045.6700060000003,
+        "title": "Hourly average vessel positions on a map",
+        "cost": 0.0000945,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/daily_max_wave_per_vessel",
+      "off": {
+        "id": "vessels/daily_max_wave_per_vessel",
+        "firstDeltaMs": 257.7568279999996,
+        "sqlMs": 356.43628399999943,
+        "cost": 0.00013965
+      },
+      "on": {
+        "id": "vessels/daily_max_wave_per_vessel",
+        "firstDeltaMs": 246.25407099999939,
+        "sqlMs": 716.3877479999992,
+        "cost": 0.00019725
+      },
+      "caption": {
+        "ms": 1101.4837650000009,
+        "title": "Hourly vessel speed deviation from 24-hour average",
+        "cost": 0.0001086,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/daily_min_max_water_temp",
+      "off": {
+        "id": "vessels/daily_min_max_water_temp",
+        "firstDeltaMs": 240.64861500000006,
+        "sqlMs": 356.7662099999998,
+        "cost": 0.0001461
+      },
+      "on": {
+        "id": "vessels/daily_min_max_water_temp",
+        "firstDeltaMs": 1133.0922690000007,
+        "sqlMs": 1235.1721429999998,
+        "cost": 0.0001461
+      },
+      "caption": {
+        "ms": 825.7280280000014,
+        "title": "Daily maximum temperature in Madrid, last 30 days",
+        "cost": 0.0000959,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/aurora_speed_15min_last_day",
+      "off": {
+        "id": "vessels/aurora_speed_15min_last_day",
+        "firstDeltaMs": 499.21201800000017,
+        "sqlMs": 699.3826970000009,
+        "cost": 0.0001923
+      },
+      "on": {
+        "id": "vessels/aurora_speed_15min_last_day",
+        "firstDeltaMs": 507.8619259999996,
+        "sqlMs": 715.1107269999993,
+        "cost": 0.0001947
+      },
+      "caption": {
+        "ms": 853.6847079999989,
+        "title": "Average temperature by month, all cities",
+        "cost": 0.0000783,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/six_hour_wind_per_vessel",
+      "on": {
+        "id": "vessels/six_hour_wind_per_vessel",
+        "firstDeltaMs": 288.06942999999956,
+        "sqlMs": 430.6908000000003,
+        "cost": 0.0001518
+      },
+      "caption": {
+        "ms": 814.0024670000021,
+        "title": "Hours below freezing per city in 2023",
+        "cost": 0.0000937,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/six_hour_wind_per_vessel",
+        "firstDeltaMs": 542.1369959999975,
+        "sqlMs": 600.395156999999,
+        "cost": 0.000171
+      }
+    },
+    {
+      "id": "vessels/hour_of_day_speed",
+      "on": {
+        "id": "vessels/hour_of_day_speed",
+        "firstDeltaMs": 894.0574430000015,
+        "sqlMs": 946.1684989999994,
+        "cost": 0.0001461
+      },
+      "caption": {
+        "ms": 798.556482,
+        "title": "Warmest month of 2024 by city",
+        "cost": 0.0000938,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/hour_of_day_speed",
+        "firstDeltaMs": 595.637275000001,
+        "sqlMs": 628.572881,
+        "cost": 0.0001491
+      }
+    },
+    {
+      "id": "vessels/weekday_wave",
+      "off": {
+        "id": "vessels/weekday_wave",
+        "firstDeltaMs": 333.40232900000046,
+        "sqlMs": 441.8614319999979,
+        "cost": 0.0001548
+      },
+      "on": {
+        "id": "vessels/weekday_wave",
+        "firstDeltaMs": 360.56779599999936,
+        "sqlMs": 493.2385159999976,
+        "cost": 0.0001536
+      },
+      "caption": {
+        "ms": 991.3485949999995,
+        "title": "Total precipitation by city, 2023 vs 2024",
+        "cost": 0.0001092,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/atlas_speed_10min_today",
+      "off": {
+        "id": "vessels/atlas_speed_10min_today",
+        "firstDeltaMs": 438.1170880000027,
+        "sqlMs": 602.6043150000005,
+        "cost": 0.0002178
+      },
+      "on": {
+        "id": "vessels/atlas_speed_10min_today",
+        "firstDeltaMs": 528.823088000001,
+        "sqlMs": 686.3357940000024,
+        "cost": 0.0002208
+      },
+      "caption": {
+        "ms": 633.9392539999972,
+        "title": "Average departure delay by airline",
+        "cost": 0.0001061,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/aurora_water_temp_last_week",
+      "on": {
+        "id": "vessels/aurora_water_temp_last_week",
+        "firstDeltaMs": 334.6087499999994,
+        "sqlMs": 810.1702420000001,
+        "cost": 0.00018675
+      },
+      "caption": {
+        "ms": 673.4933729999975,
+        "title": "Flight departures by origin state",
+        "cost": 0.0001019,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/aurora_water_temp_last_week",
+        "firstDeltaMs": 368.15288599999985,
+        "sqlMs": 578.1163339999985,
+        "cost": 0.00015675
+      }
+    },
+    {
+      "id": "vessels/fastest_last_24h",
+      "off": {
+        "id": "vessels/fastest_last_24h",
+        "firstDeltaMs": 269.1829859999998,
+        "sqlMs": 426.51108899999963,
+        "cost": 0.0001596
+      },
+      "on": {
+        "id": "vessels/fastest_last_24h",
+        "firstDeltaMs": 694.1611689999991,
+        "sqlMs": 751.3596719999987,
+        "cost": 0.000162
+      },
+      "caption": {
+        "ms": 1036.0816449999984,
+        "title": "Diverted flights per airline",
+        "cost": 0.0001009,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/wave_by_hour_last_12h",
+      "on": {
+        "id": "vessels/wave_by_hour_last_12h",
+        "firstDeltaMs": 553.9490790000018,
+        "sqlMs": 725.6009090000007,
+        "cost": 0.0001731
+      },
+      "caption": {
+        "ms": 760.5561899999993,
+        "title": "Cancelled flights by airline",
+        "cost": 0.0000984,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/wave_by_hour_last_12h",
+        "firstDeltaMs": 342.81901199999993,
+        "sqlMs": 509.8760030000012,
+        "cost": 0.0001731
+      }
+    },
+    {
+      "id": "vessels/speed_last_30_min",
+      "off": {
+        "id": "vessels/speed_last_30_min",
+        "firstDeltaMs": 1928.8866689999995,
+        "sqlMs": 2089.4522279999983,
+        "cost": 0.0002148
+      },
+      "on": {
+        "id": "vessels/speed_last_30_min",
+        "firstDeltaMs": 434.116020999998,
+        "sqlMs": 565.1849929999989,
+        "cost": 0.000213
+      },
+      "caption": {
+        "ms": 867.2753049999992,
+        "title": "Weekly flight count by carrier",
+        "cost": 0.0001007,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/wind_sept_3_to_5",
+      "on": {
+        "id": "vessels/wind_sept_3_to_5",
+        "firstDeltaMs": 295.51243800000157,
+        "sqlMs": 479.040352,
+        "cost": 0.00018
+      },
+      "caption": {
+        "ms": 844.036745999998,
+        "title": "Top destination from each busiest origin airport",
+        "cost": 0.0001134,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/wind_sept_3_to_5",
+        "firstDeltaMs": 489.7616569999991,
+        "sqlMs": 659.8779800000011,
+        "cost": 0.0001806
+      }
+    },
+    {
+      "id": "vessels/wave_last_hour_minutes",
+      "on": {
+        "id": "vessels/wave_last_hour_minutes",
+        "firstDeltaMs": 389.0545669999992,
+        "sqlMs": 522.0434119999991,
+        "cost": 0.00019185
+      },
+      "caption": {
+        "ms": 770.7814469999939,
+        "title": "Southernmost city by latitude",
+        "cost": 0.0000685,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/wave_last_hour_minutes",
+        "firstDeltaMs": 328.6050069999983,
+        "sqlMs": 446.85020000000077,
+        "cost": 0.00019005
+      }
+    },
+    {
+      "id": "vessels/kestrel_vs_nomad_hourly",
+      "off": {
+        "id": "vessels/kestrel_vs_nomad_hourly",
+        "firstDeltaMs": 264.09377900000254,
+        "sqlMs": 388.7872420000058,
+        "cost": 0.00016545
+      },
+      "on": {
+        "id": "vessels/kestrel_vs_nomad_hourly",
+        "firstDeltaMs": 257.5967079999973,
+        "sqlMs": 389.7646989999994,
+        "cost": 0.00016545
+      },
+      "caption": {
+        "ms": 864.1939730000013,
+        "title": "Largest city in each country",
+        "cost": 0.0000799,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/excluding_aurora_last_day",
+      "off": {
+        "id": "vessels/excluding_aurora_last_day",
+        "firstDeltaMs": 412.7829350000029,
+        "sqlMs": 592.9773920000007,
+        "cost": 0.00019185
+      },
+      "on": {
+        "id": "vessels/excluding_aurora_last_day",
+        "firstDeltaMs": 405.4862890000004,
+        "sqlMs": 577.6222080000007,
+        "cost": 0.00019185
+      },
+      "caption": {
+        "ms": 646.1439050000045,
+        "title": "Number of cities per continent",
+        "cost": 0.0000881,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/waves_above_4_per_vessel",
+      "off": {
+        "id": "vessels/waves_above_4_per_vessel",
+        "firstDeltaMs": 212.10384599999816,
+        "sqlMs": 266.67542400000093,
+        "cost": 0.0001332
+      },
+      "on": {
+        "id": "vessels/waves_above_4_per_vessel",
+        "firstDeltaMs": 597.0447419999982,
+        "sqlMs": 626.6460909999951,
+        "cost": 0.0001332
+      },
+      "caption": {
+        "ms": 900.6009190000041,
+        "title": "City counts for India and China",
+        "cost": 0.0000776,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/north_of_50_hourly_speed",
+      "off": {
+        "id": "vessels/north_of_50_hourly_speed",
+        "firstDeltaMs": 209.55592199999955,
+        "sqlMs": 369.0738229999988,
+        "cost": 0.0001599
+      },
+      "on": {
+        "id": "vessels/north_of_50_hourly_speed",
+        "firstDeltaMs": 284.69617299999663,
+        "sqlMs": 432.85255999999936,
+        "cost": 0.0001791
+      },
+      "caption": {
+        "ms": 689.4925710000025,
+        "title": "Average speed per vessel",
+        "cost": 0.0000765,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/unknown_vessel_poseidon",
+      "off": {
+        "id": "vessels/unknown_vessel_poseidon",
+        "firstDeltaMs": 240.41057200000068,
+        "sqlMs": 388.39963599999464,
+        "cost": 0.0001674
+      },
+      "on": {
+        "id": "vessels/unknown_vessel_poseidon",
+        "firstDeltaMs": 289.0755680000002,
+        "sqlMs": 442.2143599999981,
+        "cost": 0.0001836
+      },
+      "caption": {
+        "ms": 799.8823879999982,
+        "title": "Daily minimum and maximum water temperature",
+        "cost": 0.0000862,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/solstice_strong_wind_hours",
+      "off": {
+        "id": "vessels/solstice_strong_wind_hours",
+        "firstDeltaMs": 283.4734729999982,
+        "sqlMs": 378.23430100000405,
+        "cost": 0.00015855
+      },
+      "on": {
+        "id": "vessels/solstice_strong_wind_hours",
+        "firstDeltaMs": 278.3786650000038,
+        "sqlMs": 693.6589230000027,
+        "cost": 0.0003231
+      },
+      "caption": {
+        "ms": 736.0024510000003,
+        "title": "Average speed of fastest vessel, last 24 hours",
+        "cost": 0.0000928,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/top10_hourly_waves",
+      "on": {
+        "id": "vessels/top10_hourly_waves",
+        "firstDeltaMs": 346.6582780000026,
+        "sqlMs": 434.76927299999807,
+        "cost": 0.0002181
+      },
+      "caption": {
+        "ms": 845.4355720000021,
+        "title": "Readings with waves over 4 m, by vessel",
+        "cost": 0.0000881,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/top10_hourly_waves",
+        "firstDeltaMs": 215.5961060000045,
+        "sqlMs": 334.5308700000023,
+        "cost": 0.0001497
+      }
+    },
+    {
+      "id": "vessels/top3_fastest_7d",
+      "on": {
+        "id": "vessels/top3_fastest_7d",
+        "firstDeltaMs": 267.9784059999947,
+        "sqlMs": 383.0912249999965,
+        "cost": 0.00016935
+      },
+      "caption": {
+        "ms": 674.7843989999965,
+        "title": "Coldest recorded water temperature by vessel",
+        "cost": 0.0000836,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/top3_fastest_7d",
+        "firstDeltaMs": 632.9447600000058,
+        "sqlMs": 690.058981000002,
+        "cost": 0.00020715
+      }
+    },
+    {
+      "id": "vessels/windiest_day",
+      "on": {
+        "id": "vessels/windiest_day",
+        "firstDeltaMs": 177.74665500000265,
+        "sqlMs": 243.77502999999706,
+        "cost": 0.00012885
+      },
+      "caption": {
+        "ms": 968.0870409999989,
+        "title": "Average vessel speed by week, first vs second",
+        "cost": 0.0000959,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/windiest_day",
+        "firstDeltaMs": 195.9524889999957,
+        "sqlMs": 269.5904339999979,
+        "cost": 0.00012885
+      }
+    },
+    {
+      "id": "vessels/coldest_water_vessel",
+      "off": {
+        "id": "vessels/coldest_water_vessel",
+        "firstDeltaMs": 163.45352899999853,
+        "sqlMs": 218.13782899999933,
+        "cost": 0.00011925
+      },
+      "on": {
+        "id": "vessels/coldest_water_vessel",
+        "firstDeltaMs": 264.1120599999995,
+        "sqlMs": 381.6333200000008,
+        "cost": 0.00011925
+      },
+      "caption": {
+        "ms": 1001.0230069999961,
+        "title": "Average wind speed per hour",
+        "cost": 0.0000801,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/farthest_east",
+      "off": {
+        "id": "vessels/farthest_east",
+        "firstDeltaMs": 345.22769400000107,
+        "sqlMs": 386.6987270000027,
+        "cost": 0.0001257
+      },
+      "on": {
+        "id": "vessels/farthest_east",
+        "firstDeltaMs": 180.62746499999776,
+        "sqlMs": 258.08663700000034,
+        "cost": 0.0001185
+      },
+      "caption": {
+        "ms": 831.9054610000021,
+        "title": "Highest temperature recorded across all cities",
+        "cost": 0.0000766,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/wind_speed_correlation",
+      "off": {
+        "id": "vessels/wind_speed_correlation",
+        "firstDeltaMs": 796.1077250000017,
+        "sqlMs": 824.5198130000063,
+        "cost": 0.0001272
+      },
+      "on": {
+        "id": "vessels/wind_speed_correlation",
+        "firstDeltaMs": 216.27039800000057,
+        "sqlMs": 252.75438500000018,
+        "cost": 0.0001272
+      },
+      "caption": {
+        "ms": 655.2703839999958,
+        "title": "Hours with rain in each city",
+        "cost": 0.0000809,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/water_temp_range_per_vessel",
+      "off": {
+        "id": "vessels/water_temp_range_per_vessel",
+        "firstDeltaMs": 173.98923100000684,
+        "sqlMs": 250.46830500000215,
+        "cost": 0.00012915
+      },
+      "on": {
+        "id": "vessels/water_temp_range_per_vessel",
+        "firstDeltaMs": 186.86401299999852,
+        "sqlMs": 243.54202699999587,
+        "cost": 0.00012915
+      },
+      "caption": {
+        "ms": 799.0265760000038,
+        "title": "Peak daily temperature in Rome",
+        "cost": 0.0000818,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/speed_and_wave_hourly_7d",
+      "on": {
+        "id": "vessels/speed_and_wave_hourly_7d",
+        "firstDeltaMs": 223.7843270000012,
+        "sqlMs": 364.07613900000433,
+        "cost": 0.00016335
+      },
+      "caption": {
+        "ms": 1059.177287999999,
+        "title": "Hourly average temperature over the past week",
+        "cost": 0.0000946,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/speed_and_wave_hourly_7d",
+        "firstDeltaMs": 369.8911589999989,
+        "sqlMs": 509.3196360000002,
+        "cost": 0.00020055
+      }
+    },
+    {
+      "id": "vessels/wave_wind_ratio_hourly",
+      "off": {
+        "id": "vessels/wave_wind_ratio_hourly",
+        "firstDeltaMs": 919.1524009999994,
+        "sqlMs": 968.9813369999974,
+        "cost": 0.0001893
+      },
+      "on": {
+        "id": "vessels/wave_wind_ratio_hourly",
+        "firstDeltaMs": 733.7510140000013,
+        "sqlMs": 844.3234349999984,
+        "cost": 0.0002175
+      },
+      "caption": {
+        "ms": 909.4965950000042,
+        "title": "Daily temperature range in Vienna, July 2024",
+        "cost": 0.0000971,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/speed_kmh_per_vessel",
+      "off": {
+        "id": "vessels/speed_kmh_per_vessel",
+        "firstDeltaMs": 305.58509399999457,
+        "sqlMs": 416.5559609999982,
+        "cost": 0.0001806
+      },
+      "on": {
+        "id": "vessels/speed_kmh_per_vessel",
+        "firstDeltaMs": 307.61996799999906,
+        "sqlMs": 455.5236709999954,
+        "cost": 0.00018
+      },
+      "caption": {
+        "ms": 882.1731660000005,
+        "title": "Days per city above typical peak temperature",
+        "cost": 0.0001024,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/first_vs_second_week_speed",
+      "on": {
+        "id": "vessels/first_vs_second_week_speed",
+        "firstDeltaMs": 497.8377990000008,
+        "sqlMs": 708.4023789999992,
+        "cost": 0.0002586
+      },
+      "caption": {
+        "ms": 1254.6343699999998,
+        "title": "Cancelled flights per day",
+        "cost": 0.0000974,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/first_vs_second_week_speed",
+        "firstDeltaMs": 503.7170599999954,
+        "sqlMs": 1106.3445009999996,
+        "cost": 0.0002586
+      }
+    },
+    {
+      "id": "vessels/latest_position",
+      "off": {
+        "id": "vessels/latest_position",
+        "firstDeltaMs": 156.7824150000015,
+        "sqlMs": 248.72499600000447,
+        "cost": 0.00012435
+      },
+      "on": {
+        "id": "vessels/latest_position",
+        "firstDeltaMs": 163.26752699999633,
+        "sqlMs": 264.7925929999983,
+        "cost": 0.00012435
+      },
+      "caption": {
+        "ms": 927.2734219999984,
+        "title": "Longest flight distance in miles",
+        "cost": 0.0000967,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/meridian_yesterday",
+      "off": {
+        "id": "vessels/meridian_yesterday",
+        "firstDeltaMs": 767.5919170000052,
+        "sqlMs": 839.2326690000045,
+        "cost": 0.000174
+      },
+      "on": {
+        "id": "vessels/meridian_yesterday",
+        "firstDeltaMs": 441.57619200000045,
+        "sqlMs": 710.418414000007,
+        "cost": 0.000216
+      },
+      "caption": {
+        "ms": 772.4612810000035,
+        "title": "Share of flights arriving within 15 minutes, by carrier",
+        "cost": 0.0001206,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/tracks_map",
+      "off": {
+        "id": "vessels/tracks_map",
+        "firstDeltaMs": 162.10546700000123,
+        "sqlMs": 225.85748299999977,
+        "cost": 0.00011625
+      },
+      "on": {
+        "id": "vessels/tracks_map",
+        "firstDeltaMs": 202.30199899998843,
+        "sqlMs": 244.78964899999846,
+        "cost": 0.00011625
+      },
+      "caption": {
+        "ms": 940.098364000005,
+        "title": "Cancelled flights by day of week",
+        "cost": 0.0001088,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/bounding_box_north",
+      "off": {
+        "id": "vessels/bounding_box_north",
+        "firstDeltaMs": 796.0078859999921,
+        "sqlMs": 867.3815529999993,
+        "cost": 0.0001317
+      },
+      "on": {
+        "id": "vessels/bounding_box_north",
+        "firstDeltaMs": 179.38196499999322,
+        "sqlMs": 227.55303299998923,
+        "cost": 0.0001179
+      },
+      "caption": {
+        "ms": 823.836083999995,
+        "title": "Atlanta departures per hour, June 30 2024",
+        "cost": 0.0001157,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/aurora_daily_position",
+      "on": {
+        "id": "vessels/aurora_daily_position",
+        "firstDeltaMs": 889.6698170000018,
+        "sqlMs": 936.0715349999955,
+        "cost": 0.00016125
+      },
+      "caption": {
+        "ms": 930.1238319999975,
+        "title": "Capital cities on a map",
+        "cost": 0.0000859,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/aurora_daily_position",
+        "firstDeltaMs": 282.64337999999407,
+        "sqlMs": 410.06345099999453,
+        "cost": 0.00016125
+      }
+    },
+    {
+      "id": "vessels/partial_per_ves",
+      "on": {
+        "id": "vessels/partial_per_ves",
+        "firstDeltaMs": 279.6998889999959,
+        "sqlMs": 335.2178030000068,
+        "cost": 0.00012675
+      },
+      "caption": {
+        "ms": 576.5341530000005,
+        "title": "Number of cities per European time zone",
+        "cost": 0.0000847,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/partial_per_ves",
+        "firstDeltaMs": 226.8050199999998,
+        "sqlMs": 314.10876099999587,
+        "cost": 0.00012675
+      }
+    },
+    {
+      "id": "vessels/single_word_wind",
+      "on": {
+        "id": "vessels/single_word_wind",
+        "firstDeltaMs": 257.0677399999986,
+        "sqlMs": 355.1052259999997,
+        "cost": 0.00015195
+      },
+      "caption": {
+        "ms": 550.6674280000007,
+        "title": "Ten largest countries by area",
+        "cost": 0.000074,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/single_word_wind",
+        "firstDeltaMs": 789.2897309999971,
+        "sqlMs": 882.9775019999943,
+        "cost": 0.00018915
+      }
+    },
+    {
+      "id": "vessels/speed_last_week_vague",
+      "off": {
+        "id": "vessels/speed_last_week_vague",
+        "firstDeltaMs": 354.1413690000045,
+        "sqlMs": 499.24478400000953,
+        "cost": 0.00020205
+      },
+      "on": {
+        "id": "vessels/speed_last_week_vague",
+        "firstDeltaMs": 818.4593530000129,
+        "sqlMs": 865.6424040000129,
+        "cost": 0.00015405
+      },
+      "caption": {
+        "ms": 858.3444389999931,
+        "title": "Cities above 1000 m per country",
+        "cost": 0.0000785,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/scatter_wind_wave",
+      "off": {
+        "id": "vessels/scatter_wind_wave",
+        "firstDeltaMs": 263.14072500000475,
+        "sqlMs": 330.8412090000056,
+        "cost": 0.0001443
+      },
+      "on": {
+        "id": "vessels/scatter_wind_wave",
+        "firstDeltaMs": 266.05345400000806,
+        "sqlMs": 332.5466379999998,
+        "cost": 0.0001407
+      },
+      "caption": {
+        "ms": 693.2648400000035,
+        "title": "Largest-to-second-largest city population ratio by country",
+        "cost": 0.0001143,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/layered_speed_zscore_rolling_24h",
+      "off": {
+        "id": "vessels/layered_speed_zscore_rolling_24h",
+        "firstDeltaMs": 626.5419330000004,
+        "sqlMs": 976.7409950000001,
+        "cost": 0.00031305
+      },
+      "on": {
+        "id": "vessels/layered_speed_zscore_rolling_24h",
+        "firstDeltaMs": 635.3410450000083,
+        "sqlMs": 887.5718630000047,
+        "cost": 0.00031305
+      },
+      "caption": {
+        "ms": 611.1030279999977,
+        "title": "Lowest and highest speed per vessel",
+        "cost": 0.0000855,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/layered_speed_zscore_vessel_overall",
+      "on": {
+        "id": "vessels/layered_speed_zscore_vessel_overall",
+        "firstDeltaMs": 225.90884400000505,
+        "sqlMs": 474.30407600000035,
+        "cost": 0.0001842
+      },
+      "caption": {
+        "ms": 1203.5749360000045,
+        "title": "Average wave height by weekday",
+        "cost": 0.0000899,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/layered_speed_zscore_vessel_overall",
+        "firstDeltaMs": 871.87391200001,
+        "sqlMs": 939.3299120000011,
+        "cost": 0.000177
+      }
+    },
+    {
+      "id": "vessels/layered_avg_hourly_speed_change",
+      "off": {
+        "id": "vessels/layered_avg_hourly_speed_change",
+        "firstDeltaMs": 218.27743400000327,
+        "sqlMs": 407.84073300000455,
+        "cost": 0.0001653
+      },
+      "on": {
+        "id": "vessels/layered_avg_hourly_speed_change",
+        "firstDeltaMs": 214.5603689999989,
+        "sqlMs": 424.37601699998777,
+        "cost": 0.0001731
+      },
+      "caption": {
+        "ms": 661.0872479999962,
+        "title": "Average wave height per minute, last hour",
+        "cost": 0.0000929,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/avg_temp_per_city",
+      "off": {
+        "id": "weather/avg_temp_per_city",
+        "firstDeltaMs": 214.09712099999888,
+        "sqlMs": 277.1018849999964,
+        "cost": 0.000279
+      },
+      "on": {
+        "id": "weather/avg_temp_per_city",
+        "firstDeltaMs": 192.63283299999603,
+        "sqlMs": 252.77094699999725,
+        "cost": 0.0002694
+      },
+      "caption": {
+        "ms": 975.3776530000032,
+        "title": "Top 10 hourly average wave heights by vessel",
+        "cost": 0.0000936,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/max_temp_overall",
+      "off": {
+        "id": "weather/max_temp_overall",
+        "firstDeltaMs": 620.7403950000007,
+        "sqlMs": 651.7767679999961,
+        "cost": 0.00027015
+      },
+      "on": {
+        "id": "weather/max_temp_overall",
+        "firstDeltaMs": 191.4463720000058,
+        "sqlMs": 245.60878399999638,
+        "cost": 0.00027555
+      },
+      "caption": {
+        "ms": 1206.948556000003,
+        "title": "Hourly average speed and wave height, last 7 days",
+        "cost": 0.000093,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/precip_per_city_2024",
+      "off": {
+        "id": "weather/precip_per_city_2024",
+        "firstDeltaMs": 305.3078499999974,
+        "sqlMs": 430.94321100000525,
+        "cost": 0.000294
+      },
+      "on": {
+        "id": "weather/precip_per_city_2024",
+        "firstDeltaMs": 206.9250780000002,
+        "sqlMs": 338.5313809999934,
+        "cost": 0.0002682
+      },
+      "caption": {
+        "ms": 791.0941640000092,
+        "title": "Readings north of 50°N by vessel",
+        "cost": 0.0000844,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/monthly_temp_berlin",
+      "on": {
+        "id": "weather/monthly_temp_berlin",
+        "firstDeltaMs": 228.11700300000666,
+        "sqlMs": 372.8973330000008,
+        "cost": 0.00025875
+      },
+      "caption": {
+        "ms": 757.5991890000005,
+        "title": "Hourly vessel speed as z-score per vessel",
+        "cost": 0.0001113,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/monthly_temp_berlin",
+        "firstDeltaMs": 861.5887769999972,
+        "sqlMs": 951.0443549999909,
+        "cost": 0.00029715
+      }
+    },
+    {
+      "id": "weather/daily_max_madrid_30d",
+      "on": {
+        "id": "weather/daily_max_madrid_30d",
+        "firstDeltaMs": 327.98472000000766,
+        "sqlMs": 463.6476939999993,
+        "cost": 0.00026385
+      },
+      "caption": {
+        "ms": 1034.952919000003,
+        "title": "Hourly wind speed in Copenhagen, last two days",
+        "cost": 0.0000914,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/daily_max_madrid_30d",
+        "firstDeltaMs": 348.2531089999975,
+        "sqlMs": 778.6438310000085,
+        "cost": 0.00030225
+      }
+    },
+    {
+      "id": "weather/hourly_wind_copenhagen_2d",
+      "off": {
+        "id": "weather/hourly_wind_copenhagen_2d",
+        "firstDeltaMs": 267.966128,
+        "sqlMs": 764.1366620000044,
+        "cost": 0.00042615000000000003
+      },
+      "on": {
+        "id": "weather/hourly_wind_copenhagen_2d",
+        "firstDeltaMs": 283.51155599999765,
+        "sqlMs": 703.7176229999895,
+        "cost": 0.00039495000000000003
+      },
+      "caption": {
+        "ms": 710.9366670000018,
+        "title": "Daily average temperature, Berlin and London, 2024",
+        "cost": 0.0000925,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/coldest_city",
+      "on": {
+        "id": "weather/coldest_city",
+        "firstDeltaMs": 235.26540699999896,
+        "sqlMs": 292.4785509999929,
+        "cost": 0.000249
+      },
+      "caption": {
+        "ms": 691.2262079999928,
+        "title": "Daily average pressure and wind speed in Oslo",
+        "cost": 0.0000892,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/coldest_city",
+        "firstDeltaMs": 253.737644000008,
+        "sqlMs": 317.8688269999984,
+        "cost": 0.0002106
+      }
+    },
+    {
+      "id": "weather/top5_windiest_hours_oslo",
+      "on": {
+        "id": "weather/top5_windiest_hours_oslo",
+        "firstDeltaMs": 220.36234999999579,
+        "sqlMs": 284.66369600000326,
+        "cost": 0.00011775
+      },
+      "caption": {
+        "ms": 989.6263000000035,
+        "title": "Days Madrid reached 30°C in 2024",
+        "cost": 0.0000908,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/top5_windiest_hours_oslo",
+        "firstDeltaMs": 235.37292799999705,
+        "sqlMs": 372.59808900000644,
+        "cost": 0.00023475
+      }
+    },
+    {
+      "id": "weather/rainy_hours_per_city",
+      "on": {
+        "id": "weather/rainy_hours_per_city",
+        "firstDeltaMs": 207.37780699999712,
+        "sqlMs": 254.33665399999882,
+        "cost": 0.00019785
+      },
+      "caption": {
+        "ms": 683.0765490000049,
+        "title": "Hours with wind over 50 km/h, by city",
+        "cost": 0.0000889,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/rainy_hours_per_city",
+        "firstDeltaMs": 205.42753299999458,
+        "sqlMs": 263.3213689999975,
+        "cost": 0.00027465
+      }
+    },
+    {
+      "id": "weather/humidity_by_country",
+      "off": {
+        "id": "weather/humidity_by_country",
+        "firstDeltaMs": 180.26178000000073,
+        "sqlMs": 249.44945000000007,
+        "cost": 0.000117
+      },
+      "on": {
+        "id": "weather/humidity_by_country",
+        "firstDeltaMs": 200.35428499999398,
+        "sqlMs": 255.7732790000009,
+        "cost": 0.0001938
+      },
+      "caption": {
+        "ms": 1071.1705439999932,
+        "title": "Share of flights cancelled, by airline",
+        "cost": 0.0001028,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/temp_by_hour_of_day",
+      "on": {
+        "id": "weather/temp_by_hour_of_day",
+        "firstDeltaMs": 208.7384299999976,
+        "sqlMs": 281.3734390000027,
+        "cost": 0.0002493
+      },
+      "caption": {
+        "ms": 717.295976999987,
+        "title": "Departures from each airport, mapped",
+        "cost": 0.0001102,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/temp_by_hour_of_day",
+        "firstDeltaMs": 215.21086200000718,
+        "sqlMs": 733.5664970000071,
+        "cost": 0.0002877
+      }
+    },
+    {
+      "id": "weather/monthly_temp_all",
+      "off": {
+        "id": "weather/monthly_temp_all",
+        "firstDeltaMs": 208.33026399998926,
+        "sqlMs": 302.6268049999926,
+        "cost": 0.00028845
+      },
+      "on": {
+        "id": "weather/monthly_temp_all",
+        "firstDeltaMs": 231.93050899999798,
+        "sqlMs": 357.52866900000663,
+        "cost": 0.00020385
+      },
+      "caption": {
+        "ms": 785.7194739999977,
+        "title": "JFK departures on June 15, 2024",
+        "cost": 0.0001002,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/berlin_vs_london_daily_2024",
+      "on": {
+        "id": "weather/berlin_vs_london_daily_2024",
+        "firstDeltaMs": 222.0782590000017,
+        "sqlMs": 456.7442949999968,
+        "cost": 0.00025185
+      },
+      "caption": {
+        "ms": 810.583781999987,
+        "title": "Average departure delay by day",
+        "cost": 0.0001019,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/berlin_vs_london_daily_2024",
+        "firstDeltaMs": 202.6160450000025,
+        "sqlMs": 376.35507300001336,
+        "cost": 0.00020085
+      }
+    },
+    {
+      "id": "weather/min_pressure_per_city",
+      "off": {
+        "id": "weather/min_pressure_per_city",
+        "firstDeltaMs": 164.45670899999095,
+        "sqlMs": 246.66032299998915,
+        "cost": 0.0001107
+      },
+      "on": {
+        "id": "weather/min_pressure_per_city",
+        "firstDeltaMs": 160.77616500000295,
+        "sqlMs": 223.5392850000062,
+        "cost": 0.0001875
+      },
+      "caption": {
+        "ms": 1156.5647339999996,
+        "title": "Average in-air speed by airline",
+        "cost": 0.0001167,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/temp_range_per_city",
+      "off": {
+        "id": "weather/temp_range_per_city",
+        "firstDeltaMs": 179.61136999999871,
+        "sqlMs": 232.33527699999104,
+        "cost": 0.00027195
+      },
+      "on": {
+        "id": "weather/temp_range_per_city",
+        "firstDeltaMs": 191.55729500000598,
+        "sqlMs": 242.3412490000046,
+        "cost": 0.00023415
+      },
+      "caption": {
+        "ms": 783.5080769999913,
+        "title": "10 most populous cities",
+        "cost": 0.0000795,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/hottest_day_rome",
+      "off": {
+        "id": "weather/hottest_day_rome",
+        "firstDeltaMs": 239.26627500000177,
+        "sqlMs": 327.8271989999921,
+        "cost": 0.00029895
+      },
+      "on": {
+        "id": "weather/hottest_day_rome",
+        "firstDeltaMs": 901.0520189999952,
+        "sqlMs": 1031.881070000003,
+        "cost": 0.00026055
+      },
+      "caption": {
+        "ms": 774.2642380000034,
+        "title": "Cities with over one million people",
+        "cost": 0.0000739,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/cloud_cover_monthly_london",
+      "off": {
+        "id": "weather/cloud_cover_monthly_london",
+        "firstDeltaMs": 959.4694239999953,
+        "sqlMs": 1013.0593850000005,
+        "cost": 0.00029745
+      },
+      "on": {
+        "id": "weather/cloud_cover_monthly_london",
+        "firstDeltaMs": 277.5581739999907,
+        "sqlMs": 371.50622999999905,
+        "cost": 0.00029745
+      },
+      "caption": {
+        "ms": 774.9455299999972,
+        "title": "Average population by feature code",
+        "cost": 0.000073,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/weekly_precip_per_city",
+      "off": {
+        "id": "weather/weekly_precip_per_city",
+        "firstDeltaMs": 234.08710699999938,
+        "sqlMs": 341.4049529999902,
+        "cost": 0.00029355
+      },
+      "on": {
+        "id": "weather/weekly_precip_per_city",
+        "firstDeltaMs": 220.55355399999826,
+        "sqlMs": 342.83913700000267,
+        "cost": 0.00028755
+      },
+      "caption": {
+        "ms": 815.640630000009,
+        "title": "City population totals by continent",
+        "cost": 0.0000839,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/freezing_hours_2023",
+      "off": {
+        "id": "weather/freezing_hours_2023",
+        "firstDeltaMs": 352.4488629999978,
+        "sqlMs": 485.301987999992,
+        "cost": 0.0001836
+      },
+      "on": {
+        "id": "weather/freezing_hours_2023",
+        "firstDeltaMs": 432.9056069999933,
+        "sqlMs": 554.3906569999963,
+        "cost": 0.0001818
+      },
+      "caption": {
+        "ms": 735.4695709999942,
+        "title": "Share of population in listed cities by country",
+        "cost": 0.0001015,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/scatter_pressure_wind_oslo",
+      "off": {
+        "id": "weather/scatter_pressure_wind_oslo",
+        "firstDeltaMs": 277.1296469999943,
+        "sqlMs": 352.7472679999919,
+        "cost": 0.0001446
+      },
+      "on": {
+        "id": "weather/scatter_pressure_wind_oslo",
+        "firstDeltaMs": 230.5733259999979,
+        "sqlMs": 303.2138560000021,
+        "cost": 0.0001674
+      },
+      "caption": {
+        "ms": 1102.127357999998,
+        "title": "Readings per vessel",
+        "cost": 0.0000734,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/partial_per_ci",
+      "on": {
+        "id": "weather/partial_per_ci",
+        "firstDeltaMs": 241.7737189999898,
+        "sqlMs": 288.0336349999998,
+        "cost": 0.0002736
+      },
+      "caption": {
+        "ms": 946.169636000006,
+        "title": "Aurora's average speed per 15 minutes",
+        "cost": 0.000103,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/partial_per_ci",
+        "firstDeltaMs": 193.98501699999906,
+        "sqlMs": 248.6188370000018,
+        "cost": 0.000198
+      }
+    },
+    {
+      "id": "weather/single_word_precipitation",
+      "off": {
+        "id": "weather/single_word_precipitation",
+        "firstDeltaMs": 331.3148590000055,
+        "sqlMs": 422.93323500000406,
+        "cost": 0.00028725
+      },
+      "on": {
+        "id": "weather/single_word_precipitation",
+        "firstDeltaMs": 389.7818649999972,
+        "sqlMs": 501.1549809999997,
+        "cost": 0.00032565
+      },
+      "caption": {
+        "ms": 812.6421800000098,
+        "title": "Average wave height by vessel and hour",
+        "cost": 0.0000979,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/temperature_last_week_vague",
+      "off": {
+        "id": "weather/temperature_last_week_vague",
+        "firstDeltaMs": 230.5650469999964,
+        "sqlMs": 389.7747059999965,
+        "cost": 0.00019665
+      },
+      "on": {
+        "id": "weather/temperature_last_week_vague",
+        "firstDeltaMs": 556.7684179999924,
+        "sqlMs": 609.513924999992,
+        "cost": 0.00027345
+      },
+      "caption": {
+        "ms": 713.3542319999979,
+        "title": "Hourly average vessel speed north of 50°N",
+        "cost": 0.0000962,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/line_monthly_temp_per_city",
+      "off": {
+        "id": "weather/line_monthly_temp_per_city",
+        "firstDeltaMs": 246.5489619999862,
+        "sqlMs": 820.2178299999941,
+        "cost": 0.0001836
+      },
+      "on": {
+        "id": "weather/line_monthly_temp_per_city",
+        "firstDeltaMs": 256.24440799999866,
+        "sqlMs": 355.1093889999902,
+        "cost": 0.0002028
+      },
+      "caption": {
+        "ms": 858.4944890000043,
+        "title": "Furthest east position per vessel",
+        "cost": 0.0000845,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/unknown_city_lisbon",
+      "off": {
+        "id": "weather/unknown_city_lisbon",
+        "firstDeltaMs": 213.3600299999962,
+        "sqlMs": 268.4487380000064,
+        "cost": 0.0002706
+      },
+      "on": {
+        "id": "weather/unknown_city_lisbon",
+        "firstDeltaMs": 256.1764070000063,
+        "sqlMs": 296.63590300000214,
+        "cost": 0.0002472
+      },
+      "caption": {
+        "ms": 692.5179929999867,
+        "title": "Latest known position of each vessel",
+        "cost": 0.0000882,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/warmest_month_per_city_2024",
+      "off": {
+        "id": "weather/warmest_month_per_city_2024",
+        "firstDeltaMs": 741.049748999998,
+        "sqlMs": 1634.5531999999948,
+        "cost": 0.00020355
+      },
+      "on": {
+        "id": "weather/warmest_month_per_city_2024",
+        "firstDeltaMs": 332.59444200000144,
+        "sqlMs": 543.9689589999907,
+        "cost": 0.00028035
+      },
+      "caption": {
+        "ms": 783.0895119999914,
+        "title": "Average vessel speed by hour, past week",
+        "cost": 0.000092,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/madrid_days_over_30_2024",
+      "off": {
+        "id": "weather/madrid_days_over_30_2024",
+        "firstDeltaMs": 328.76877599999716,
+        "sqlMs": 502.02663700000267,
+        "cost": 0.0001497
+      },
+      "on": {
+        "id": "weather/madrid_days_over_30_2024",
+        "firstDeltaMs": 998.5046580000053,
+        "sqlMs": 1061.5333430000028,
+        "cost": 0.0002301
+      },
+      "caption": {
+        "ms": 702.998133999994,
+        "title": "Total precipitation by city in 2024",
+        "cost": 0.0000829,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/winter_wind_per_city",
+      "off": {
+        "id": "weather/winter_wind_per_city",
+        "firstDeltaMs": 311.19971400000213,
+        "sqlMs": 415.3471060000011,
+        "cost": 0.00015945
+      },
+      "on": {
+        "id": "weather/winter_wind_per_city",
+        "firstDeltaMs": 340.9638670000131,
+        "sqlMs": 444.527408000009,
+        "cost": 0.00016065
+      },
+      "caption": {
+        "ms": 679.6074130000052,
+        "title": "Average humidity by country",
+        "cost": 0.0000739,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/temp_humidity_corr",
+      "off": {
+        "id": "weather/temp_humidity_corr",
+        "firstDeltaMs": 215.79383300000336,
+        "sqlMs": 277.61893599999894,
+        "cost": 0.0002316
+      },
+      "on": {
+        "id": "weather/temp_humidity_corr",
+        "firstDeltaMs": 264.7509549999959,
+        "sqlMs": 318.959726999994,
+        "cost": 0.000174
+      },
+      "caption": {
+        "ms": 565.2876049999904,
+        "title": "Average monthly cloud cover in London",
+        "cost": 0.0000809,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/vienna_daily_range_july_2024",
+      "on": {
+        "id": "weather/vienna_daily_range_july_2024",
+        "firstDeltaMs": 665.6291719999863,
+        "sqlMs": 783.4956400000083,
+        "cost": 0.0002937
+      },
+      "caption": {
+        "ms": 931.8442330000107,
+        "title": "Average monthly temperature by city",
+        "cost": 0.0000812,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/vienna_daily_range_july_2024",
+        "firstDeltaMs": 939.3648819999944,
+        "sqlMs": 1050.2491900000023,
+        "cost": 0.0001773
+      }
+    },
+    {
+      "id": "weather/partial_daily_temp_ber",
+      "off": {
+        "id": "weather/partial_daily_temp_ber",
+        "firstDeltaMs": 196.11833399999887,
+        "sqlMs": 292.28598899999633,
+        "cost": 0.00013275
+      },
+      "on": {
+        "id": "weather/partial_daily_temp_ber",
+        "firstDeltaMs": 964.1748690000095,
+        "sqlMs": 1003.3869840000116,
+        "cost": 0.00029055
+      },
+      "caption": {
+        "ms": 859.308423999988,
+        "title": "Daily average temperature in Berlin",
+        "cost": 0.0000821,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/sunniest_city_2024",
+      "on": {
+        "id": "weather/sunniest_city_2024",
+        "firstDeltaMs": 242.63837500000955,
+        "sqlMs": 390.47623900001054,
+        "cost": 0.00020565
+      },
+      "caption": {
+        "ms": 1683.1236389999976,
+        "title": "Share of 2024 rain falling on each city's wettest day",
+        "cost": 0.000102,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/sunniest_city_2024",
+        "firstDeltaMs": 385.4535119999782,
+        "sqlMs": 532.9978109999793,
+        "cost": 0.00030165
+      }
+    },
+    {
+      "id": "weather/yearly_precip_compare",
+      "off": {
+        "id": "weather/yearly_precip_compare",
+        "firstDeltaMs": 215.06389999997918,
+        "sqlMs": 420.6405579999846,
+        "cost": 0.0001689
+      },
+      "on": {
+        "id": "weather/yearly_precip_compare",
+        "firstDeltaMs": 240.2333740000031,
+        "sqlMs": 414.47577200000524,
+        "cost": 0.0001605
+      },
+      "caption": {
+        "ms": 949.3955750000023,
+        "title": "Average departure delay by hour of day",
+        "cost": 0.0001043,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/stormy_hours_count",
+      "off": {
+        "id": "weather/stormy_hours_count",
+        "firstDeltaMs": 856.7631009999895,
+        "sqlMs": 935.349973000004,
+        "cost": 0.00019695
+      },
+      "on": {
+        "id": "weather/stormy_hours_count",
+        "firstDeltaMs": 185.3095489999978,
+        "sqlMs": 245.68202800001018,
+        "cost": 0.00015855
+      },
+      "caption": {
+        "ms": 1055.0798740000173,
+        "title": "Total weather delay minutes per day",
+        "cost": 0.000105,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/layered_longest_dry_streak",
+      "on": {
+        "id": "weather/layered_longest_dry_streak",
+        "firstDeltaMs": 220.6973580000049,
+        "sqlMs": 503.51882399999886,
+        "cost": 0.0001875
+      },
+      "caption": {
+        "ms": 1083.6405260000029,
+        "title": "Daily flight counts for Southwest and Delta",
+        "cost": 0.0001103,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/layered_longest_dry_streak",
+        "firstDeltaMs": 351.3777659999905,
+        "sqlMs": 619.2703359999869,
+        "cost": 0.0002433
+      }
+    },
+    {
+      "id": "weather/layered_monthly_temp_anomaly",
+      "on": {
+        "id": "weather/layered_monthly_temp_anomaly",
+        "firstDeltaMs": 266.41842400000314,
+        "sqlMs": 404.0860329999996,
+        "cost": 0.0002394
+      },
+      "caption": {
+        "ms": 676.9072079999896,
+        "title": "Median departure delay by airline",
+        "cost": 0.0001015,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/layered_monthly_temp_anomaly",
+        "firstDeltaMs": 397.68352300001425,
+        "sqlMs": 545.9514340000169,
+        "cost": 0.0002988
+      }
+    },
+    {
+      "id": "weather/layered_days_above_city_p90",
+      "off": {
+        "id": "weather/layered_days_above_city_p90",
+        "firstDeltaMs": 169.77856099998462,
+        "sqlMs": 651.9817789999943,
+        "cost": 0.00016275
+      },
+      "on": {
+        "id": "weather/layered_days_above_city_p90",
+        "firstDeltaMs": 482.64662499999395,
+        "sqlMs": 564.3001499999955,
+        "cost": 0.00016995
+      },
+      "caption": {
+        "ms": 645.382024999999,
+        "title": "Carrier average departure delay versus overall average",
+        "cost": 0.0001062,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/layered_wettest_day_share_2024",
+      "on": {
+        "id": "weather/layered_wettest_day_share_2024",
+        "firstDeltaMs": 201.7207509999862,
+        "sqlMs": 494.3857869999774,
+        "cost": 0.0001938
+      },
+      "caption": {
+        "ms": 719.296656999999,
+        "title": "Average city elevation by continent",
+        "cost": 0.0000903,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/layered_wettest_day_share_2024",
+        "firstDeltaMs": 229.32558599999174,
+        "sqlMs": 604.3531990000047,
+        "cost": 0.0002322
+      }
+    },
+    {
+      "id": "flights/flights_per_airline",
+      "on": {
+        "id": "flights/flights_per_airline",
+        "firstDeltaMs": 288.35456199999317,
+        "sqlMs": 358.1437230000156,
+        "cost": 0.0001932
+      },
+      "caption": {
+        "ms": 816.6020120000176,
+        "title": "Count of cities in the southern hemisphere",
+        "cost": 0.0000772,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/flights_per_airline",
+        "firstDeltaMs": 234.4840350000013,
+        "sqlMs": 333.911385000014,
+        "cost": 0.000189
+      }
+    },
+    {
+      "id": "flights/avg_dep_delay_per_carrier",
+      "on": {
+        "id": "flights/avg_dep_delay_per_carrier",
+        "firstDeltaMs": 196.00101300000097,
+        "sqlMs": 305.4995770000096,
+        "cost": 0.0001842
+      },
+      "caption": {
+        "ms": 703.8811930000084,
+        "title": "Cities in Denmark on a map",
+        "cost": 0.0000719,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/avg_dep_delay_per_carrier",
+        "firstDeltaMs": 201.34706499997992,
+        "sqlMs": 289.4356609999959,
+        "cost": 0.0001842
+      }
+    },
+    {
+      "id": "flights/cancellation_rate_per_airline",
+      "off": {
+        "id": "flights/cancellation_rate_per_airline",
+        "firstDeltaMs": 190.92036600000574,
+        "sqlMs": 326.8605849999876,
+        "cost": 0.0001908
+      },
+      "on": {
+        "id": "flights/cancellation_rate_per_airline",
+        "firstDeltaMs": 1038.372829,
+        "sqlMs": 1174.8538980000012,
+        "cost": 0.0001944
+      },
+      "caption": {
+        "ms": 819.0753350000014,
+        "title": "Average city latitude by continent",
+        "cost": 0.0000873,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/top10_busiest_airports",
+      "off": {
+        "id": "flights/top10_busiest_airports",
+        "firstDeltaMs": 260.5343240000075,
+        "sqlMs": 329.57451200002106,
+        "cost": 0.0001905
+      },
+      "on": {
+        "id": "flights/top10_busiest_airports",
+        "firstDeltaMs": 246.54592299999786,
+        "sqlMs": 303.13581700000213,
+        "cost": 0.0001905
+      },
+      "caption": {
+        "ms": 758.5886940000055,
+        "title": "Largest city's share of population, by continent",
+        "cost": 0.0001005,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/flights_per_day",
+      "on": {
+        "id": "flights/flights_per_day",
+        "firstDeltaMs": 173.69906899999478,
+        "sqlMs": 254.68802299999516,
+        "cost": 0.0001656
+      },
+      "caption": {
+        "ms": 1079.402134999982,
+        "title": "Hourly average wind over two days",
+        "cost": 0.0000946,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/flights_per_day",
+        "firstDeltaMs": 572.6830150000169,
+        "sqlMs": 604.7235670000082,
+        "cost": 0.0002424
+      }
+    },
+    {
+      "id": "flights/cancellations_per_day",
+      "off": {
+        "id": "flights/cancellations_per_day",
+        "firstDeltaMs": 212.28197399998317,
+        "sqlMs": 367.1215979999979,
+        "cost": 0.0001782
+      },
+      "on": {
+        "id": "flights/cancellations_per_day",
+        "firstDeltaMs": 269.04394999999204,
+        "sqlMs": 347.1975350000139,
+        "cost": 0.0001782
+      },
+      "caption": {
+        "ms": 674.1771619999781,
+        "title": "Atlas average speed in 10-minute intervals",
+        "cost": 0.0000917,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/delay_by_hour_of_day",
+      "off": {
+        "id": "flights/delay_by_hour_of_day",
+        "firstDeltaMs": 314.067005000019,
+        "sqlMs": 422.4875110000139,
+        "cost": 0.0002031
+      },
+      "on": {
+        "id": "flights/delay_by_hour_of_day",
+        "firstDeltaMs": 860.6411709999957,
+        "sqlMs": 977.529423,
+        "cost": 0.0002031
+      },
+      "caption": {
+        "ms": 763.9311469999957,
+        "title": "Hourly average speed, Kestrel and Nomad",
+        "cost": 0.0000963,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/arr_delay_per_carrier_7d",
+      "on": {
+        "id": "flights/arr_delay_per_carrier_7d",
+        "firstDeltaMs": 304.6022820000071,
+        "sqlMs": 425.4208010000002,
+        "cost": 0.0002133
+      },
+      "caption": {
+        "ms": 1191.68982900001,
+        "title": "Top three vessels by average speed, past week",
+        "cost": 0.0000923,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/arr_delay_per_carrier_7d",
+        "firstDeltaMs": 605.6691430000064,
+        "sqlMs": 643.7525989999995,
+        "cost": 0.0002133
+      }
+    },
+    {
+      "id": "flights/departures_per_state",
+      "on": {
+        "id": "flights/departures_per_state",
+        "firstDeltaMs": 189.4592999999877,
+        "sqlMs": 291.9617440000002,
+        "cost": 0.0001782
+      },
+      "caption": {
+        "ms": 742.9173850000079,
+        "title": "Hourly average wave-to-wind height ratio",
+        "cost": 0.0000938,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/departures_per_state",
+        "firstDeltaMs": 188.1621579999919,
+        "sqlMs": 266.28718300000764,
+        "cost": 0.0001782
+      }
+    },
+    {
+      "id": "flights/airport_map_departures",
+      "on": {
+        "id": "flights/airport_map_departures",
+        "firstDeltaMs": 240.27469500000007,
+        "sqlMs": 385.83631999997306,
+        "cost": 0.0001941
+      },
+      "caption": {
+        "ms": 726.1061770000088,
+        "title": "Aurora's average daily position",
+        "cost": 0.0000853,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/airport_map_departures",
+        "firstDeltaMs": 240.56589999998687,
+        "sqlMs": 349.5772969999816,
+        "cost": 0.0001935
+      }
+    },
+    {
+      "id": "flights/top5_routes",
+      "on": {
+        "id": "flights/top5_routes",
+        "firstDeltaMs": 284.590257999982,
+        "sqlMs": 374.28508099998,
+        "cost": 0.000171
+      },
+      "caption": {
+        "ms": 1089.982278999989,
+        "title": "Average hourly speed change per vessel",
+        "cost": 0.0001136,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/top5_routes",
+        "firstDeltaMs": 193.97237800000585,
+        "sqlMs": 249.45921299999463,
+        "cost": 0.0001788
+      }
+    },
+    {
+      "id": "flights/avg_distance_per_airline",
+      "on": {
+        "id": "flights/avg_distance_per_airline",
+        "firstDeltaMs": 240.43385800000397,
+        "sqlMs": 336.70007500000065,
+        "cost": 0.0001782
+      },
+      "caption": {
+        "ms": 560.1308409999765,
+        "title": "Coldest city by average temperature",
+        "cost": 0.0000736,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/avg_distance_per_airline",
+        "firstDeltaMs": 220.92760200001067,
+        "sqlMs": 310.17457800000557,
+        "cost": 0.0001794
+      }
+    },
+    {
+      "id": "flights/longest_route",
+      "on": {
+        "id": "flights/longest_route",
+        "firstDeltaMs": 212.09241000001202,
+        "sqlMs": 321.7861780000094,
+        "cost": 0.0001797
+      },
+      "caption": {
+        "ms": 734.1501160000043,
+        "title": "Lowest recorded air pressure by city",
+        "cost": 0.0000839,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/longest_route",
+        "firstDeltaMs": 198.60461799998302,
+        "sqlMs": 278.58847499999683,
+        "cost": 0.0001701
+      }
+    },
+    {
+      "id": "flights/weather_delay_per_day",
+      "on": {
+        "id": "flights/weather_delay_per_day",
+        "firstDeltaMs": 242.79993900001864,
+        "sqlMs": 316.6612900000182,
+        "cost": 0.00019035
+      },
+      "caption": {
+        "ms": 760.1909630000009,
+        "title": "Average temperature by city",
+        "cost": 0.000073,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/weather_delay_per_day",
+        "firstDeltaMs": 276.7029230000044,
+        "sqlMs": 363.7767009999952,
+        "cost": 0.00018675
+      }
+    },
+    {
+      "id": "flights/delay_causes",
+      "on": {
+        "id": "flights/delay_causes",
+        "firstDeltaMs": 338.49094499999774,
+        "sqlMs": 1091.9312329999811,
+        "cost": 0.00030915
+      },
+      "caption": {
+        "ms": 997.8893349999853,
+        "title": "Average wind speed by city in winter",
+        "cost": 0.0000766,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/delay_causes",
+        "firstDeltaMs": 400.69073599998956,
+        "sqlMs": 552.4486679999973,
+        "cost": 0.00023655
+      }
+    },
+    {
+      "id": "flights/diverted_per_airline",
+      "on": {
+        "id": "flights/diverted_per_airline",
+        "firstDeltaMs": 203.5521440000157,
+        "sqlMs": 277.1512910000165,
+        "cost": 0.0001773
+      },
+      "caption": {
+        "ms": 849.117494999984,
+        "title": "Longest dry spell in hours by city",
+        "cost": 0.0001025,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/diverted_per_airline",
+        "firstDeltaMs": 269.7665229999984,
+        "sqlMs": 378.70095800000126,
+        "cost": 0.0001875
+      }
+    },
+    {
+      "id": "flights/jfk_june_15",
+      "off": {
+        "id": "flights/jfk_june_15",
+        "firstDeltaMs": 980.2672719999973,
+        "sqlMs": 1011.2530849999748,
+        "cost": 0.00019455
+      },
+      "on": {
+        "id": "flights/jfk_june_15",
+        "firstDeltaMs": 262.77100299997255,
+        "sqlMs": 340.61238199999207,
+        "cost": 0.00018135
+      },
+      "caption": {
+        "ms": 877.3516610000224,
+        "title": "Busiest airports by number of departures",
+        "cost": 0.0001023,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/taxi_out_busiest10",
+      "off": {
+        "id": "flights/taxi_out_busiest10",
+        "firstDeltaMs": 256.2832509999862,
+        "sqlMs": 372.5552120000066,
+        "cost": 0.00020475
+      },
+      "on": {
+        "id": "flights/taxi_out_busiest10",
+        "firstDeltaMs": 351.3374879999901,
+        "sqlMs": 511.1001969999925,
+        "cost": 0.00020475
+      },
+      "caption": {
+        "ms": 797.7692919999827,
+        "title": "Five busiest origin-destination routes by flight count",
+        "cost": 0.0000999,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/delta_daily_arr_delay",
+      "off": {
+        "id": "flights/delta_daily_arr_delay",
+        "firstDeltaMs": 1023.781141000014,
+        "sqlMs": 1093.6205039999913,
+        "cost": 0.00019995
+      },
+      "on": {
+        "id": "flights/delta_daily_arr_delay",
+        "firstDeltaMs": 255.46295700001065,
+        "sqlMs": 337.78549400001066,
+        "cost": 0.00019995
+      },
+      "caption": {
+        "ms": 782.9385159999947,
+        "title": "Average taxi-out time at ten busiest origins",
+        "cost": 0.0001155,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/on_time_pct_per_carrier",
+      "on": {
+        "id": "flights/on_time_pct_per_carrier",
+        "firstDeltaMs": 253.22435800000676,
+        "sqlMs": 394.3025070000149,
+        "cost": 0.0001974
+      },
+      "caption": {
+        "ms": 976.9452159999928,
+        "title": "Lufthansa flights operated, all dates",
+        "cost": 0.0001068,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/on_time_pct_per_carrier",
+        "firstDeltaMs": 232.92024899998796,
+        "sqlMs": 364.021665999986,
+        "cost": 0.0001974
+      }
+    },
+    {
+      "id": "flights/wn_dl_daily_flights",
+      "off": {
+        "id": "flights/wn_dl_daily_flights",
+        "firstDeltaMs": 643.5601970000134,
+        "sqlMs": 685.0146309999982,
+        "cost": 0.00020205
+      },
+      "on": {
+        "id": "flights/wn_dl_daily_flights",
+        "firstDeltaMs": 244.29036499999347,
+        "sqlMs": 337.7592140000197,
+        "cost": 0.00019365
+      },
+      "caption": {
+        "ms": 910.8356379999896,
+        "title": "Share of flights departing over an hour late, daily",
+        "cost": 0.0001163,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/worst_airports_dep_delay",
+      "off": {
+        "id": "flights/worst_airports_dep_delay",
+        "firstDeltaMs": 280.5951890000142,
+        "sqlMs": 354.50150199999916,
+        "cost": 0.00020145
+      },
+      "on": {
+        "id": "flights/worst_airports_dep_delay",
+        "firstDeltaMs": 283.1746339999954,
+        "sqlMs": 339.00183500000276,
+        "cost": 0.00018165
+      },
+      "caption": {
+        "ms": 631.6673129999836,
+        "title": "Countries with the most cities",
+        "cost": 0.0000801,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/partial_cancelled_per_carr",
+      "off": {
+        "id": "flights/partial_cancelled_per_carr",
+        "firstDeltaMs": 299.4904759999772,
+        "sqlMs": 385.01746799997636,
+        "cost": 0.00018375
+      },
+      "on": {
+        "id": "flights/partial_cancelled_per_carr",
+        "firstDeltaMs": 256.8262209999957,
+        "sqlMs": 314.91222099997685,
+        "cost": 0.00019095
+      },
+      "caption": {
+        "ms": 698.904509999993,
+        "title": "Ten largest cities in Germany by population",
+        "cost": 0.0000835,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/single_word_delays",
+      "off": {
+        "id": "flights/single_word_delays",
+        "firstDeltaMs": 232.50292200001422,
+        "sqlMs": 290.62208300002385,
+        "cost": 0.00018375
+      },
+      "on": {
+        "id": "flights/single_word_delays",
+        "firstDeltaMs": 235.83942000000388,
+        "sqlMs": 353.78764999998384,
+        "cost": 0.00019335
+      },
+      "caption": {
+        "ms": 566.9669200000062,
+        "title": "Number of countries per continent",
+        "cost": 0.0000739,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/unknown_airline_lufthansa",
+      "on": {
+        "id": "flights/unknown_airline_lufthansa",
+        "firstDeltaMs": 195.26908200001344,
+        "sqlMs": 653.964817,
+        "cost": 0.00017175
+      },
+      "caption": {
+        "ms": 964.2899190000026,
+        "title": "Country area against population",
+        "cost": 0.0000756,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/unknown_airline_lufthansa",
+        "firstDeltaMs": 231.3124620000017,
+        "sqlMs": 279.7663360000006,
+        "cost": 0.00017175
+      }
+    },
+    {
+      "id": "flights/scatter_dep_arr_delay_airport",
+      "off": {
+        "id": "flights/scatter_dep_arr_delay_airport",
+        "firstDeltaMs": 283.9656879999966,
+        "sqlMs": 396.5911469999992,
+        "cost": 0.0002103
+      },
+      "on": {
+        "id": "flights/scatter_dep_arr_delay_airport",
+        "firstDeltaMs": 306.34667299999273,
+        "sqlMs": 415.38354999999865,
+        "cost": 0.0002115
+      },
+      "caption": {
+        "ms": 852.5100749999983,
+        "title": "Cities per 10-degree latitude band",
+        "cost": 0.0000895,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/cancellations_by_weekday",
+      "off": {
+        "id": "flights/cancellations_by_weekday",
+        "firstDeltaMs": 341.5969210000185,
+        "sqlMs": 457.2071510000096,
+        "cost": 0.0002223
+      },
+      "on": {
+        "id": "flights/cancellations_by_weekday",
+        "firstDeltaMs": 332.36128200002713,
+        "sqlMs": 456.6942620000045,
+        "cost": 0.0002163
+      },
+      "caption": {
+        "ms": 771.6539639999974,
+        "title": "Highest wave height recorded",
+        "cost": 0.0000729,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/median_dep_delay_per_carrier",
+      "on": {
+        "id": "flights/median_dep_delay_per_carrier",
+        "firstDeltaMs": 223.62804899999173,
+        "sqlMs": 301.49682999998913,
+        "cost": 0.0001902
+      },
+      "caption": {
+        "ms": 887.152471999987,
+        "title": "Average wind per vessel in six-hour buckets",
+        "cost": 0.0000925,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/median_dep_delay_per_carrier",
+        "firstDeltaMs": 355.9367670000065,
+        "sqlMs": 451.53337300001294,
+        "cost": 0.0002862
+      }
+    },
+    {
+      "id": "flights/ohare_avg_delay",
+      "on": {
+        "id": "flights/ohare_avg_delay",
+        "firstDeltaMs": 308.97495900001377,
+        "sqlMs": 1047.8880390000122,
+        "cost": 0.0002073
+      },
+      "caption": {
+        "ms": 887.8817649999983,
+        "title": "Average speed per minute, last 30 minutes",
+        "cost": 0.0000988,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/ohare_avg_delay",
+        "firstDeltaMs": 484.38269900000887,
+        "sqlMs": 553.2294439999969,
+        "cost": 0.0002073
+      }
+    },
+    {
+      "id": "flights/weekly_flights_per_carrier",
+      "on": {
+        "id": "flights/weekly_flights_per_carrier",
+        "firstDeltaMs": 217.41262300001108,
+        "sqlMs": 309.5760490000248,
+        "cost": 0.0001881
+      },
+      "caption": {
+        "ms": 807.7164240000129,
+        "title": "Poseidon hourly average wind, past week",
+        "cost": 0.000095,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/weekly_flights_per_carrier",
+        "firstDeltaMs": 292.63979799998924,
+        "sqlMs": 444.8623779999907,
+        "cost": 0.0001983
+      }
+    },
+    {
+      "id": "flights/avg_speed_per_carrier_mph",
+      "off": {
+        "id": "flights/avg_speed_per_carrier_mph",
+        "firstDeltaMs": 590.0010769999935,
+        "sqlMs": 709.923941999994,
+        "cost": 0.000288
+      },
+      "on": {
+        "id": "flights/avg_speed_per_carrier_mph",
+        "firstDeltaMs": 353.48384600001737,
+        "sqlMs": 466.2419070000178,
+        "cost": 0.0002892
+      },
+      "caption": {
+        "ms": 954.5814330000139,
+        "title": "Wind-speed correlation by vessel",
+        "cost": 0.0000865,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/share_delayed_over_hour_per_day",
+      "on": {
+        "id": "flights/share_delayed_over_hour_per_day",
+        "firstDeltaMs": 410.4911870000069,
+        "sqlMs": 462.5914829999965,
+        "cost": 0.0002115
+      },
+      "caption": {
+        "ms": 613.2988780000014,
+        "title": "Meridian's hourly average position on 13 September",
+        "cost": 0.0000912,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/share_delayed_over_hour_per_day",
+        "firstDeltaMs": 282.53222400002414,
+        "sqlMs": 406.0834710000199,
+        "cost": 0.0001989
+      }
+    },
+    {
+      "id": "flights/cancellation_reasons",
+      "off": {
+        "id": "flights/cancellation_reasons",
+        "firstDeltaMs": 360.42088399999193,
+        "sqlMs": 451.68933599998127,
+        "cost": 0.0002754
+      },
+      "on": {
+        "id": "flights/cancellation_reasons",
+        "firstDeltaMs": 277.1822519999987,
+        "sqlMs": 352.3203860000067,
+        "cost": 0.0001956
+      },
+      "caption": {
+        "ms": 846.2878090000013,
+        "title": "Hourly average wind against wave height",
+        "cost": 0.0000995,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/hourly_departures_atl_last_day",
+      "on": {
+        "id": "flights/hourly_departures_atl_last_day",
+        "firstDeltaMs": 412.0411730000051,
+        "sqlMs": 500.6552189999784,
+        "cost": 0.00023475
+      },
+      "caption": {
+        "ms": 907.4986229999922,
+        "title": "Monthly average temperature in Berlin",
+        "cost": 0.0000828,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/hourly_departures_atl_last_day",
+        "firstDeltaMs": 347.86630900000455,
+        "sqlMs": 468.95251299999654,
+        "cost": 0.00023475
+      }
+    },
+    {
+      "id": "flights/layered_carrier_delay_vs_overall",
+      "on": {
+        "id": "flights/layered_carrier_delay_vs_overall",
+        "firstDeltaMs": 1098.6955949999974,
+        "sqlMs": 1228.585951999994,
+        "cost": 0.00018345
+      },
+      "caption": {
+        "ms": 557.5587590000068,
+        "title": "Average temperature by hour of day",
+        "cost": 0.0000803,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/layered_carrier_delay_vs_overall",
+        "firstDeltaMs": 234.96356599999126,
+        "sqlMs": 316.70901299998513,
+        "cost": 0.00018345
+      }
+    },
+    {
+      "id": "flights/layered_median_daily_cancel_rate",
+      "on": {
+        "id": "flights/layered_median_daily_cancel_rate",
+        "firstDeltaMs": 284.7515420000127,
+        "sqlMs": 855.5628499999875,
+        "cost": 0.00022455
+      },
+      "caption": {
+        "ms": 664.2110349999857,
+        "title": "Total precipitation per city by week",
+        "cost": 0.0000815,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/layered_median_daily_cancel_rate",
+        "firstDeltaMs": 301.55251099998713,
+        "sqlMs": 459.0701030000055,
+        "cost": 0.00022515
+      }
+    },
+    {
+      "id": "flights/layered_top_dest_of_busiest_origins",
+      "off": {
+        "id": "flights/layered_top_dest_of_busiest_origins",
+        "firstDeltaMs": 263.2271720000135,
+        "sqlMs": 497.4053240000212,
+        "cost": 0.00023985
+      },
+      "on": {
+        "id": "flights/layered_top_dest_of_busiest_origins",
+        "firstDeltaMs": 257.364711000002,
+        "sqlMs": 497.2774420000205,
+        "cost": 0.00024405
+      },
+      "caption": {
+        "ms": 673.6745180000144,
+        "title": "Average temperature in Lisbon",
+        "cost": 0.0000796,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/top10_largest_cities",
+      "off": {
+        "id": "cities/top10_largest_cities",
+        "firstDeltaMs": 390.38500199999544,
+        "sqlMs": 430.0836450000061,
+        "cost": 0.00018495
+      },
+      "on": {
+        "id": "cities/top10_largest_cities",
+        "firstDeltaMs": 210.7295490000106,
+        "sqlMs": 257.9629619999905,
+        "cost": 0.00012495
+      },
+      "caption": {
+        "ms": 739.6924559999898,
+        "title": "Average cloud cover by city in 2024",
+        "cost": 0.0000978,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/cities_per_country_top10",
+      "on": {
+        "id": "cities/cities_per_country_top10",
+        "firstDeltaMs": 323.4615289999929,
+        "sqlMs": 425.2290009999997,
+        "cost": 0.0001638
+      },
+      "caption": {
+        "ms": 867.5670969999919,
+        "title": "Number of flights per airline",
+        "cost": 0.0000986,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/cities_per_country_top10",
+        "firstDeltaMs": 567.3930889999901,
+        "sqlMs": 623.7353789999906,
+        "cost": 0.0001632
+      }
+    },
+    {
+      "id": "cities/city_population_per_continent",
+      "on": {
+        "id": "cities/city_population_per_continent",
+        "firstDeltaMs": 197.96596900001168,
+        "sqlMs": 318.8344900000084,
+        "cost": 0.00013455
+      },
+      "caption": {
+        "ms": 625.1094830000075,
+        "title": "Average arrival delay by carrier, June 2024",
+        "cost": 0.0001083,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/city_population_per_continent",
+        "firstDeltaMs": 276.3786390000023,
+        "sqlMs": 362.54896300000837,
+        "cost": 0.00013455
+      }
+    },
+    {
+      "id": "cities/capitals_map",
+      "on": {
+        "id": "cities/capitals_map",
+        "firstDeltaMs": 241.46363700000802,
+        "sqlMs": 326.47990099998424,
+        "cost": 0.00013575
+      },
+      "caption": {
+        "ms": 1153.508501000004,
+        "title": "Average minutes of each delay cause",
+        "cost": 0.0001211,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/capitals_map",
+        "firstDeltaMs": 243.89331899999524,
+        "sqlMs": 322.9347199999902,
+        "cost": 0.00013635
+      }
+    },
+    {
+      "id": "cities/avg_elevation_per_continent",
+      "on": {
+        "id": "cities/avg_elevation_per_continent",
+        "firstDeltaMs": 212.66382200000226,
+        "sqlMs": 324.86735400001635,
+        "cost": 0.00013635
+      },
+      "caption": {
+        "ms": 727.9424939999881,
+        "title": "Airports with highest average departure delay",
+        "cost": 0.0001121,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/avg_elevation_per_continent",
+        "firstDeltaMs": 211.14055499999085,
+        "sqlMs": 296.6137870000093,
+        "cost": 0.00013635
+      }
+    },
+    {
+      "id": "cities/highest_cities",
+      "on": {
+        "id": "cities/highest_cities",
+        "firstDeltaMs": 297.59100299997954,
+        "sqlMs": 400.4191339999961,
+        "cost": 0.00016335
+      },
+      "caption": {
+        "ms": 839.8262199999881,
+        "title": "Average departure delay at Chicago O'Hare",
+        "cost": 0.0001096,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/highest_cities",
+        "firstDeltaMs": 388.7240129999991,
+        "sqlMs": 515.2569919999805,
+        "cost": 0.00017835
+      }
+    },
+    {
+      "id": "cities/southernmost_city",
+      "on": {
+        "id": "cities/southernmost_city",
+        "firstDeltaMs": 252.31782499997644,
+        "sqlMs": 356.6510609999823,
+        "cost": 0.0001452
+      },
+      "caption": {
+        "ms": 768.4145910000079,
+        "title": "Median daily cancellation rate by airline",
+        "cost": 0.000111,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/southernmost_city",
+        "firstDeltaMs": 235.62657699998817,
+        "sqlMs": 330.27932699999656,
+        "cost": 0.0001452
+      }
+    },
+    {
+      "id": "cities/count_over_million",
+      "on": {
+        "id": "cities/count_over_million",
+        "firstDeltaMs": 231.80235099999118,
+        "sqlMs": 255.62916099998984,
+        "cost": 0.00012855
+      },
+      "caption": {
+        "ms": 960.6567809999979,
+        "title": "Ten highest cities by elevation",
+        "cost": 0.0000748,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/count_over_million",
+        "firstDeltaMs": 238.9229939999932,
+        "sqlMs": 281.73013099998934,
+        "cost": 0.00012855
+      }
+    },
+    {
+      "id": "cities/largest_german_cities",
+      "on": {
+        "id": "cities/largest_german_cities",
+        "firstDeltaMs": 348.2056359999988,
+        "sqlMs": 417.9740369999781,
+        "cost": 0.00014535
+      },
+      "caption": {
+        "ms": 642.4309819999908,
+        "title": "Population of European capital cities",
+        "cost": 0.0000937,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/largest_german_cities",
+        "firstDeltaMs": 268.59438500000397,
+        "sqlMs": 322.7474370000127,
+        "cost": 0.00014535
+      }
+    },
+    {
+      "id": "cities/densest_countries",
+      "off": {
+        "id": "cities/densest_countries",
+        "firstDeltaMs": 268.7838679999986,
+        "sqlMs": 340.0203749999928,
+        "cost": 0.00013785
+      },
+      "on": {
+        "id": "cities/densest_countries",
+        "firstDeltaMs": 239.10359699997935,
+        "sqlMs": 302.8858149999869,
+        "cost": 0.00013785
+      },
+      "caption": {
+        "ms": 1224.6283669999975,
+        "title": "Population of Berlin",
+        "cost": 0.0000786,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/europe_timezones",
+      "on": {
+        "id": "cities/europe_timezones",
+        "firstDeltaMs": 252.76315300000715,
+        "sqlMs": 349.9985469999956,
+        "cost": 0.000147
+      },
+      "caption": {
+        "ms": 624.9986419999914,
+        "title": "Population of places named Atlantis",
+        "cost": 0.0000773,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/europe_timezones",
+        "firstDeltaMs": 223.66333100001793,
+        "sqlMs": 350.83608100001584,
+        "cost": 0.000147
+      }
+    },
+    {
+      "id": "cities/southern_hemisphere_count",
+      "on": {
+        "id": "cities/southern_hemisphere_count",
+        "firstDeltaMs": 194.41618800000288,
+        "sqlMs": 241.88336499998695,
+        "cost": 0.000117
+      },
+      "caption": {
+        "ms": 632.3784889999952,
+        "title": "Third-largest city in each European country",
+        "cost": 0.0000955,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/southern_hemisphere_count",
+        "firstDeltaMs": 218.90740899997763,
+        "sqlMs": 255.99680799999624,
+        "cost": 0.0001272
+      }
+    },
+    {
+      "id": "cities/european_capitals_population",
+      "off": {
+        "id": "cities/european_capitals_population",
+        "firstDeltaMs": 226.2189360000193,
+        "sqlMs": 347.98159300000407,
+        "cost": 0.0001509
+      },
+      "on": {
+        "id": "cities/european_capitals_population",
+        "firstDeltaMs": 250.26866900001187,
+        "sqlMs": 383.87121000001207,
+        "cost": 0.0001509
+      },
+      "caption": {
+        "ms": 866.8959669999895,
+        "title": "Daily peak wave height by vessel",
+        "cost": 0.0000858,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/largest_city_per_country",
+      "off": {
+        "id": "cities/largest_city_per_country",
+        "firstDeltaMs": 249.1245700000145,
+        "sqlMs": 431.345387999987,
+        "cost": 0.00016275
+      },
+      "on": {
+        "id": "cities/largest_city_per_country",
+        "firstDeltaMs": 240.22761699999683,
+        "sqlMs": 386.66445899999235,
+        "cost": 0.00015315
+      },
+      "caption": {
+        "ms": 1012.3496730000188,
+        "title": "Aurora water temperature, hourly average over past week",
+        "cost": 0.0001032,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/avg_population_per_feature",
+      "on": {
+        "id": "cities/avg_population_per_feature",
+        "firstDeltaMs": 196.44582299998729,
+        "sqlMs": 263.658139999985,
+        "cost": 0.00012015
+      },
+      "caption": {
+        "ms": 725.2192480000085,
+        "title": "Average vessel speed by hour, excluding Aurora",
+        "cost": 0.0001024,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/avg_population_per_feature",
+        "firstDeltaMs": 296.58094699998037,
+        "sqlMs": 364.55719799999497,
+        "cost": 0.00017895
+      }
+    },
+    {
+      "id": "cities/countries_per_continent",
+      "off": {
+        "id": "cities/countries_per_continent",
+        "firstDeltaMs": 232.99829200000386,
+        "sqlMs": 286.51237400001264,
+        "cost": 0.00012435
+      },
+      "on": {
+        "id": "cities/countries_per_continent",
+        "firstDeltaMs": 193.24036799999885,
+        "sqlMs": 262.1670350000204,
+        "cost": 0.00012255
+      },
+      "caption": {
+        "ms": 546.827935999987,
+        "title": "Day with highest average wind",
+        "cost": 0.0000768,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/euro_countries",
+      "off": {
+        "id": "cities/euro_countries",
+        "firstDeltaMs": 2498.118419000006,
+        "sqlMs": 2534.2896820000024,
+        "cost": 0.00011595
+      },
+      "on": {
+        "id": "cities/euro_countries",
+        "firstDeltaMs": 219.42233800000395,
+        "sqlMs": 280.70583399999305,
+        "cost": 0.00012795
+      },
+      "caption": {
+        "ms": 692.7942099999927,
+        "title": "Average vessel speed in km/h, last day",
+        "cost": 0.0000981,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/largest_countries_by_area",
+      "on": {
+        "id": "cities/largest_countries_by_area",
+        "firstDeltaMs": 244.819095999992,
+        "sqlMs": 315.24674899998354,
+        "cost": 0.00014355
+      },
+      "caption": {
+        "ms": 814.768991000019,
+        "title": "Average wave height by vessel",
+        "cost": 0.0000774,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/largest_countries_by_area",
+        "firstDeltaMs": 265.1675260000047,
+        "sqlMs": 321.1694509999943,
+        "cost": 0.00013995
+      }
+    },
+    {
+      "id": "cities/denmark_cities_map",
+      "off": {
+        "id": "cities/denmark_cities_map",
+        "firstDeltaMs": 294.54323299997486,
+        "sqlMs": 357.8071619999828,
+        "cost": 0.0001473
+      },
+      "on": {
+        "id": "cities/denmark_cities_map",
+        "firstDeltaMs": 291.90526699999464,
+        "sqlMs": 361.6908289999992,
+        "cost": 0.0001413
+      },
+      "caption": {
+        "ms": 665.6917440000107,
+        "title": "Average temperature by city",
+        "cost": 0.0000739,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/population_of_berlin",
+      "on": {
+        "id": "cities/population_of_berlin",
+        "firstDeltaMs": 204.85680799998227,
+        "sqlMs": 244.9287379999878,
+        "cost": 0.00011925
+      },
+      "caption": {
+        "ms": 890.7688999999955,
+        "title": "Five windiest hours recorded in Oslo",
+        "cost": 0.0000897,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/population_of_berlin",
+        "firstDeltaMs": 212.93626699998276,
+        "sqlMs": 272.14648599998327,
+        "cost": 0.00015765
+      }
+    },
+    {
+      "id": "cities/partial_per_contin",
+      "on": {
+        "id": "cities/partial_per_contin",
+        "firstDeltaMs": 269.5730420000036,
+        "sqlMs": 392.92964699998265,
+        "cost": 0.00018855
+      },
+      "caption": {
+        "ms": 562.2812030000205,
+        "title": "Temperature range by city",
+        "cost": 0.0000791,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/partial_per_contin",
+        "firstDeltaMs": 375.11177999997744,
+        "sqlMs": 458.96586399999796,
+        "cost": 0.00018855
+      }
+    },
+    {
+      "id": "cities/single_word_population",
+      "off": {
+        "id": "cities/single_word_population",
+        "firstDeltaMs": 485.73616500000935,
+        "sqlMs": 951.7803110000095,
+        "cost": 0.0002739
+      },
+      "on": {
+        "id": "cities/single_word_population",
+        "firstDeltaMs": 240.10793500000727,
+        "sqlMs": 333.31466000000364,
+        "cost": 0.00018375
+      },
+      "caption": {
+        "ms": 672.7536660000042,
+        "title": "Total daily precipitation across all cities",
+        "cost": 0.0000819,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/scatter_area_population",
+      "off": {
+        "id": "cities/scatter_area_population",
+        "firstDeltaMs": 257.93696200000704,
+        "sqlMs": 322.060026000021,
+        "cost": 0.0001395
+      },
+      "on": {
+        "id": "cities/scatter_area_population",
+        "firstDeltaMs": 593.8115859999962,
+        "sqlMs": 624.0638270000054,
+        "cost": 0.0001395
+      },
+      "caption": {
+        "ms": 1019.0528300000005,
+        "title": "Temperature-humidity correlation by city",
+        "cost": 0.0000875,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/countries_without_cities",
+      "on": {
+        "id": "cities/countries_without_cities",
+        "firstDeltaMs": 767.2485329999763,
+        "sqlMs": 832.2258529999817,
+        "cost": 0.0001635
+      },
+      "caption": {
+        "ms": 785.6422500000044,
+        "title": "Monthly temperature departure from each city's average",
+        "cost": 0.0001021,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/countries_without_cities",
+        "firstDeltaMs": 273.7745550000109,
+        "sqlMs": 461.6814719999966,
+        "cost": 0.0001593
+      }
+    },
+    {
+      "id": "cities/most_cities_above_1000m",
+      "off": {
+        "id": "cities/most_cities_above_1000m",
+        "firstDeltaMs": 261.6751069999882,
+        "sqlMs": 428.6090620000032,
+        "cost": 0.00013965
+      },
+      "on": {
+        "id": "cities/most_cities_above_1000m",
+        "firstDeltaMs": 789.3193140000221,
+        "sqlMs": 835.3081860000093,
+        "cost": 0.00013965
+      },
+      "caption": {
+        "ms": 708.8985289999982,
+        "title": "Flights per day",
+        "cost": 0.0000903,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/avg_latitude_per_continent",
+      "on": {
+        "id": "cities/avg_latitude_per_continent",
+        "firstDeltaMs": 226.9826690000191,
+        "sqlMs": 332.814412000007,
+        "cost": 0.0001371
+      },
+      "caption": {
+        "ms": 677.7512719999941,
+        "title": "Average flight distance by airline",
+        "cost": 0.0000894,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/avg_latitude_per_continent",
+        "firstDeltaMs": 382.65987100001075,
+        "sqlMs": 419.9859540000034,
+        "cost": 0.0001371
+      }
+    },
+    {
+      "id": "cities/unknown_city_atlantis",
+      "off": {
+        "id": "cities/unknown_city_atlantis",
+        "firstDeltaMs": 244.1703249999846,
+        "sqlMs": 307.25849199999357,
+        "cost": 0.00012945
+      },
+      "on": {
+        "id": "cities/unknown_city_atlantis",
+        "firstDeltaMs": 247.69734600000083,
+        "sqlMs": 333.93395199999213,
+        "cost": 0.00012945
+      },
+      "caption": {
+        "ms": 814.5042280000052,
+        "title": "Delta average arrival delay by day",
+        "cost": 0.0000998,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/india_vs_china_cities",
+      "off": {
+        "id": "cities/india_vs_china_cities",
+        "firstDeltaMs": 308.72487700000056,
+        "sqlMs": 411.5925289999868,
+        "cost": 0.00015075
+      },
+      "on": {
+        "id": "cities/india_vs_china_cities",
+        "firstDeltaMs": 300.84310100000584,
+        "sqlMs": 428.06537200001185,
+        "cost": 0.00015075
+      },
+      "caption": {
+        "ms": 808.7425290000101,
+        "title": "Average departure vs arrival delay by origin airport",
+        "cost": 0.0001096,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/urban_share_per_country_top10",
+      "on": {
+        "id": "cities/urban_share_per_country_top10",
+        "firstDeltaMs": 278.6198390000209,
+        "sqlMs": 385.42439900001045,
+        "cost": 0.00014835
+      },
+      "caption": {
+        "ms": 1000.9939599999925,
+        "title": "Flight cancellations by reason",
+        "cost": 0.0000982,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/urban_share_per_country_top10",
+        "firstDeltaMs": 1446.0398249999853,
+        "sqlMs": 1497.8421969999908,
+        "cost": 0.00020835
+      }
+    },
+    {
+      "id": "cities/cities_per_lat_band",
+      "off": {
+        "id": "cities/cities_per_lat_band",
+        "firstDeltaMs": 450.78208400000585,
+        "sqlMs": 516.7435000000114,
+        "cost": 0.00013755
+      },
+      "on": {
+        "id": "cities/cities_per_lat_band",
+        "firstDeltaMs": 257.2851920000103,
+        "sqlMs": 330.0001240000129,
+        "cost": 0.00013755
+      },
+      "caption": {
+        "ms": 747.652757999982,
+        "title": "Total city population by continent",
+        "cost": 0.0000847,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/partial_capitals_in_afr",
+      "off": {
+        "id": "cities/partial_capitals_in_afr",
+        "firstDeltaMs": 316.733894999983,
+        "sqlMs": 458.09104899998056,
+        "cost": 0.0001662
+      },
+      "on": {
+        "id": "cities/partial_capitals_in_afr",
+        "firstDeltaMs": 267.7106910000148,
+        "sqlMs": 392.08407300000545,
+        "cost": 0.0001464
+      },
+      "caption": {
+        "ms": 622.7122059999965,
+        "title": "Ten most densely populated countries",
+        "cost": 0.0000788,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/layered_urban_primacy",
+      "on": {
+        "id": "cities/layered_urban_primacy",
+        "firstDeltaMs": 390.5123259999964,
+        "sqlMs": 689.040307999996,
+        "cost": 0.00024345
+      },
+      "caption": {
+        "ms": 927.7226990000054,
+        "title": "Countries Using the Euro",
+        "cost": 0.0000668,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/layered_urban_primacy",
+        "firstDeltaMs": 567.5110149999964,
+        "sqlMs": 888.4960640000063,
+        "cost": 0.00021765
+      }
+    },
+    {
+      "id": "cities/layered_largest_city_share_by_continent",
+      "off": {
+        "id": "cities/layered_largest_city_share_by_continent",
+        "firstDeltaMs": 285.02571000001626,
+        "sqlMs": 452.17826900002547,
+        "cost": 0.0001689
+      },
+      "on": {
+        "id": "cities/layered_largest_city_share_by_continent",
+        "firstDeltaMs": 1238.4153310000256,
+        "sqlMs": 1380.1218920000247,
+        "cost": 0.0002181
+      },
+      "caption": {
+        "ms": 657.0796379999956,
+        "title": "Countries with no cities listed",
+        "cost": 0.0000862,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/layered_third_largest_city_europe",
+      "on": {
+        "id": "cities/layered_third_largest_city_europe",
+        "firstDeltaMs": 292.36519599999883,
+        "sqlMs": 939.6113439999754,
+        "cost": 0.0003354
+      },
+      "caption": {
+        "ms": 812.4295929999789,
+        "title": "African capital cities by name",
+        "cost": 0.0000821,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/layered_third_largest_city_europe",
+        "firstDeltaMs": 326.3231809999561,
+        "sqlMs": 493.6998639999656,
+        "cost": 0.0001764
+      }
+    },
+    {
+      "id": "vessels/avg_speed_per_vessel",
+      "off": {
+        "id": "vessels/avg_speed_per_vessel",
+        "firstDeltaMs": 180.4438680000021,
+        "sqlMs": 224.52582699997583,
+        "cost": 0.0001212
+      },
+      "on": {
+        "id": "vessels/avg_speed_per_vessel",
+        "firstDeltaMs": 190.2854370000423,
+        "sqlMs": 235.85782199999085,
+        "cost": 0.0001212
+      },
+      "caption": {
+        "ms": 743.6199689999921,
+        "title": "Mean vessel speed per minute, last 30 minutes",
+        "cost": 0.0001003,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/readings_per_vessel",
+      "on": {
+        "id": "vessels/readings_per_vessel",
+        "firstDeltaMs": 1297.8332349999691,
+        "sqlMs": 1378.4803439999814,
+        "cost": 0.00012015
+      },
+      "caption": {
+        "ms": 658.6514249999891,
+        "title": "Poseidon's average hourly wind, past week",
+        "cost": 0.000094,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/readings_per_vessel",
+        "firstDeltaMs": 1081.74579299998,
+        "sqlMs": 1112.6770859999815,
+        "cost": 0.00012015
+      }
+    },
+    {
+      "id": "vessels/overall_max_wave",
+      "off": {
+        "id": "vessels/overall_max_wave",
+        "firstDeltaMs": 610.5859180000261,
+        "sqlMs": 646.4983360000188,
+        "cost": 0.0001287
+      },
+      "on": {
+        "id": "vessels/overall_max_wave",
+        "firstDeltaMs": 212.91906800004654,
+        "sqlMs": 306.1073530000285,
+        "cost": 0.0001269
+      },
+      "caption": {
+        "ms": 1197.0388589999638,
+        "title": "Wind-speed correlation by vessel",
+        "cost": 0.0000895,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/fleet_avg_water_temp",
+      "off": {
+        "id": "vessels/fleet_avg_water_temp",
+        "firstDeltaMs": 234.32827699999325,
+        "sqlMs": 280.67031499999575,
+        "cost": 0.0001269
+      },
+      "on": {
+        "id": "vessels/fleet_avg_water_temp",
+        "firstDeltaMs": 258.3732510000118,
+        "sqlMs": 341.9561710000271,
+        "cost": 0.0001281
+      },
+      "caption": {
+        "ms": 732.0792909999727,
+        "title": "Meridian's hourly average position on 13 September",
+        "cost": 0.0000942,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/min_max_speed_per_vessel",
+      "on": {
+        "id": "vessels/min_max_speed_per_vessel",
+        "firstDeltaMs": 222.6480749999755,
+        "sqlMs": 332.73113099997863,
+        "cost": 0.00012645
+      },
+      "caption": {
+        "ms": 1005.1071140000131,
+        "title": "Hourly average wind and wave height",
+        "cost": 0.0000955,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/min_max_speed_per_vessel",
+        "firstDeltaMs": 227.04927099996712,
+        "sqlMs": 341.62136499996996,
+        "cost": 0.00012645
+      }
+    },
+    {
+      "id": "vessels/hourly_wind_last_2_days",
+      "off": {
+        "id": "vessels/hourly_wind_last_2_days",
+        "firstDeltaMs": 394.324672000017,
+        "sqlMs": 536.0823940000264,
+        "cost": 0.00020025
+      },
+      "on": {
+        "id": "vessels/hourly_wind_last_2_days",
+        "firstDeltaMs": 390.803292000026,
+        "sqlMs": 571.6747280000127,
+        "cost": 0.00020265
+      },
+      "caption": {
+        "ms": 577.8943140000338,
+        "title": "Monthly average temperature in Berlin",
+        "cost": 0.0000828,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/daily_max_wave_per_vessel",
+      "on": {
+        "id": "vessels/daily_max_wave_per_vessel",
+        "firstDeltaMs": 485.8341289999662,
+        "sqlMs": 578.0025160000077,
+        "cost": 0.00015345
+      },
+      "caption": {
+        "ms": 687.3105600000126,
+        "title": "Average temperature by hour of day",
+        "cost": 0.0000828,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/daily_max_wave_per_vessel",
+        "firstDeltaMs": 263.2834959999891,
+        "sqlMs": 366.3253909999621,
+        "cost": 0.00015345
+      }
+    },
+    {
+      "id": "vessels/daily_min_max_water_temp",
+      "off": {
+        "id": "vessels/daily_min_max_water_temp",
+        "firstDeltaMs": 240.28297900001053,
+        "sqlMs": 376.42000400001416,
+        "cost": 0.0001461
+      },
+      "on": {
+        "id": "vessels/daily_min_max_water_temp",
+        "firstDeltaMs": 217.29518299998017,
+        "sqlMs": 317.7546340000117,
+        "cost": 0.0001461
+      },
+      "caption": {
+        "ms": 894.5977309999871,
+        "title": "Total weekly precipitation by city",
+        "cost": 0.0000845,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/aurora_speed_15min_last_day",
+      "off": {
+        "id": "vessels/aurora_speed_15min_last_day",
+        "firstDeltaMs": 355.1487179999822,
+        "sqlMs": 504.0025219999952,
+        "cost": 0.0001923
+      },
+      "on": {
+        "id": "vessels/aurora_speed_15min_last_day",
+        "firstDeltaMs": 355.7692479999969,
+        "sqlMs": 507.4225810000207,
+        "cost": 0.0001947
+      },
+      "caption": {
+        "ms": 702.541023000027,
+        "title": "Average temperature in Lisbon",
+        "cost": 0.0000751,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/six_hour_wind_per_vessel",
+      "on": {
+        "id": "vessels/six_hour_wind_per_vessel",
+        "firstDeltaMs": 235.34641400002874,
+        "sqlMs": 333.65386800002307,
+        "cost": 0.0001518
+      },
+      "caption": {
+        "ms": 812.1736300000339,
+        "title": "Average cloud cover by city in 2024",
+        "cost": 0.0000898,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/six_hour_wind_per_vessel",
+        "firstDeltaMs": 334.2660380000016,
+        "sqlMs": 477.7843099999591,
+        "cost": 0.0001518
+      }
+    },
+    {
+      "id": "vessels/hour_of_day_speed",
+      "off": {
+        "id": "vessels/hour_of_day_speed",
+        "firstDeltaMs": 280.1848670000327,
+        "sqlMs": 353.38148799998453,
+        "cost": 0.0001491
+      },
+      "on": {
+        "id": "vessels/hour_of_day_speed",
+        "firstDeltaMs": 312.1849780000048,
+        "sqlMs": 406.0688760000048,
+        "cost": 0.0001491
+      },
+      "caption": {
+        "ms": 979.5459139999584,
+        "title": "Number of flights per airline",
+        "cost": 0.0001026,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/weekday_wave",
+      "off": {
+        "id": "vessels/weekday_wave",
+        "firstDeltaMs": 337.09812700003386,
+        "sqlMs": 416.6236570000183,
+        "cost": 0.0001548
+      },
+      "on": {
+        "id": "vessels/weekday_wave",
+        "firstDeltaMs": 682.9055250000092,
+        "sqlMs": 776.4406960000051,
+        "cost": 0.0001512
+      },
+      "caption": {
+        "ms": 711.2049719999777,
+        "title": "Average arrival delay by carrier, June 2024",
+        "cost": 0.0001088,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/atlas_speed_10min_today",
+      "on": {
+        "id": "vessels/atlas_speed_10min_today",
+        "firstDeltaMs": 430.63633899996057,
+        "sqlMs": 596.6126379999914,
+        "cost": 0.0002208
+      },
+      "caption": {
+        "ms": 974.8100330000161,
+        "title": "Average delay minutes by cause",
+        "cost": 0.0001166,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/atlas_speed_10min_today",
+        "firstDeltaMs": 569.4108499999857,
+        "sqlMs": 737.799990999978,
+        "cost": 0.000249
+      }
+    },
+    {
+      "id": "vessels/aurora_water_temp_last_week",
+      "off": {
+        "id": "vessels/aurora_water_temp_last_week",
+        "firstDeltaMs": 264.65876000002027,
+        "sqlMs": 409.6937780000153,
+        "cost": 0.00015675
+      },
+      "on": {
+        "id": "vessels/aurora_water_temp_last_week",
+        "firstDeltaMs": 389.38126799999736,
+        "sqlMs": 553.9121830000076,
+        "cost": 0.00018495
+      },
+      "caption": {
+        "ms": 1019.3522010000306,
+        "title": "Ten origin airports with highest average departure delay",
+        "cost": 0.0001016,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/fastest_last_24h",
+      "off": {
+        "id": "vessels/fastest_last_24h",
+        "firstDeltaMs": 268.9726330000558,
+        "sqlMs": 413.52836400002707,
+        "cost": 0.000162
+      },
+      "on": {
+        "id": "vessels/fastest_last_24h",
+        "firstDeltaMs": 916.0585410000058,
+        "sqlMs": 984.661202999996,
+        "cost": 0.0001608
+      },
+      "caption": {
+        "ms": 925.2176599999657,
+        "title": "Average departure delay at Chicago O'Hare",
+        "cost": 0.0001101,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/wave_by_hour_last_12h",
+      "off": {
+        "id": "vessels/wave_by_hour_last_12h",
+        "firstDeltaMs": 289.7133110000286,
+        "sqlMs": 474.363331999979,
+        "cost": 0.0001731
+      },
+      "on": {
+        "id": "vessels/wave_by_hour_last_12h",
+        "firstDeltaMs": 779.9770370000042,
+        "sqlMs": 868.4766420000233,
+        "cost": 0.0001593
+      },
+      "caption": {
+        "ms": 930.9135569999926,
+        "title": "Median daily cancellation rate by carrier",
+        "cost": 0.000112,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/speed_last_30_min",
+      "off": {
+        "id": "vessels/speed_last_30_min",
+        "firstDeltaMs": 394.8860829999903,
+        "sqlMs": 514.0340159999905,
+        "cost": 0.0001986
+      },
+      "on": {
+        "id": "vessels/speed_last_30_min",
+        "firstDeltaMs": 407.7695850000018,
+        "sqlMs": 534.0284000000102,
+        "cost": 0.0001986
+      },
+      "caption": {
+        "ms": 996.1204819999984,
+        "title": "Ten highest cities by elevation",
+        "cost": 0.0000758,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/wind_sept_3_to_5",
+      "off": {
+        "id": "vessels/wind_sept_3_to_5",
+        "firstDeltaMs": 328.5737809999846,
+        "sqlMs": 833.1754739999888,
+        "cost": 0.00018
+      },
+      "on": {
+        "id": "vessels/wind_sept_3_to_5",
+        "firstDeltaMs": 274.6212110000197,
+        "sqlMs": 479.8608269999968,
+        "cost": 0.00018
+      },
+      "caption": {
+        "ms": 765.5436700000428,
+        "title": "Population of European capital cities",
+        "cost": 0.0000897,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/wave_last_hour_minutes",
+      "off": {
+        "id": "vessels/wave_last_hour_minutes",
+        "firstDeltaMs": 428.2799390000291,
+        "sqlMs": 579.4771039999905,
+        "cost": 0.00021465
+      },
+      "on": {
+        "id": "vessels/wave_last_hour_minutes",
+        "firstDeltaMs": 360.1671259999857,
+        "sqlMs": 489.83447999996133,
+        "cost": 0.00019005
+      },
+      "caption": {
+        "ms": 798.8574040000094,
+        "title": "Population of Berlin",
+        "cost": 0.0000771,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/kestrel_vs_nomad_hourly",
+      "on": {
+        "id": "vessels/kestrel_vs_nomad_hourly",
+        "firstDeltaMs": 274.4513690000167,
+        "sqlMs": 385.42012100003194,
+        "cost": 0.00016545
+      },
+      "caption": {
+        "ms": 588.4348979999777,
+        "title": "Population of cities named Atlantis",
+        "cost": 0.0000718,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/kestrel_vs_nomad_hourly",
+        "firstDeltaMs": 279.1791700000176,
+        "sqlMs": 841.8585450000246,
+        "cost": 0.00016545
+      }
+    },
+    {
+      "id": "vessels/excluding_aurora_last_day",
+      "on": {
+        "id": "vessels/excluding_aurora_last_day",
+        "firstDeltaMs": 362.0881979999831,
+        "sqlMs": 520.8395329999621,
+        "cost": 0.00019185
+      },
+      "caption": {
+        "ms": 696.359077000001,
+        "title": "Third-largest city in each European country",
+        "cost": 0.000092,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/excluding_aurora_last_day",
+        "firstDeltaMs": 313.6498439999996,
+        "sqlMs": 468.6393140000291,
+        "cost": 0.00019185
+      }
+    },
+    {
+      "id": "vessels/waves_above_4_per_vessel",
+      "on": {
+        "id": "vessels/waves_above_4_per_vessel",
+        "firstDeltaMs": 223.01908200001344,
+        "sqlMs": 293.58265799999936,
+        "cost": 0.0001308
+      },
+      "caption": {
+        "ms": 1061.5927299999748,
+        "title": "Daily peak wave height by vessel",
+        "cost": 0.0000853,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/waves_above_4_per_vessel",
+        "firstDeltaMs": 253.29800399998203,
+        "sqlMs": 321.7635439999867,
+        "cost": 0.0001332
+      }
+    },
+    {
+      "id": "vessels/north_of_50_hourly_speed",
+      "on": {
+        "id": "vessels/north_of_50_hourly_speed",
+        "firstDeltaMs": 300.4694170000148,
+        "sqlMs": 454.8210770000005,
+        "cost": 0.0001851
+      },
+      "caption": {
+        "ms": 991.5949240000336,
+        "title": "Aurora hourly average water temperature, past week",
+        "cost": 0.0000957,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/north_of_50_hourly_speed",
+        "firstDeltaMs": 530.9532679999829,
+        "sqlMs": 698.4047129999963,
+        "cost": 0.0001989
+      }
+    },
+    {
+      "id": "vessels/unknown_vessel_poseidon",
+      "off": {
+        "id": "vessels/unknown_vessel_poseidon",
+        "firstDeltaMs": 294.0650269999751,
+        "sqlMs": 442.0496970000095,
+        "cost": 0.000168
+      },
+      "on": {
+        "id": "vessels/unknown_vessel_poseidon",
+        "firstDeltaMs": 247.16629799996736,
+        "sqlMs": 392.86596899997676,
+        "cost": 0.0001704
+      },
+      "caption": {
+        "ms": 650.4924480000045,
+        "title": "Average vessel speed by hour, excluding Aurora",
+        "cost": 0.0000994,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/solstice_strong_wind_hours",
+      "on": {
+        "id": "vessels/solstice_strong_wind_hours",
+        "firstDeltaMs": 271.88812400004826,
+        "sqlMs": 367.7500960000325,
+        "cost": 0.00015915
+      },
+      "caption": {
+        "ms": 681.8510280000046,
+        "title": "Average wind by day, strongest day only",
+        "cost": 0.0000838,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/solstice_strong_wind_hours",
+        "firstDeltaMs": 828.3869529999793,
+        "sqlMs": 894.603013999993,
+        "cost": 0.00015915
+      }
+    },
+    {
+      "id": "vessels/top10_hourly_waves",
+      "off": {
+        "id": "vessels/top10_hourly_waves",
+        "firstDeltaMs": 254.65590700000757,
+        "sqlMs": 379.8281040000147,
+        "cost": 0.0001497
+      },
+      "on": {
+        "id": "vessels/top10_hourly_waves",
+        "firstDeltaMs": 228.61761900002602,
+        "sqlMs": 340.8513929999899,
+        "cost": 0.0001497
+      },
+      "caption": {
+        "ms": 1610.1998240000103,
+        "title": "Average vessel speed in km/h, last day",
+        "cost": 0.0000961,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/top3_fastest_7d",
+      "on": {
+        "id": "vessels/top3_fastest_7d",
+        "firstDeltaMs": 414.45066099998076,
+        "sqlMs": 547.018665999989,
+        "cost": 0.00020715
+      },
+      "caption": {
+        "ms": 921.1773120000144,
+        "title": "Average wave height by vessel",
+        "cost": 0.0000779,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/top3_fastest_7d",
+        "firstDeltaMs": 397.93081600003643,
+        "sqlMs": 587.9454100000439,
+        "cost": 0.00019995
+      }
+    },
+    {
+      "id": "vessels/windiest_day",
+      "off": {
+        "id": "vessels/windiest_day",
+        "firstDeltaMs": 982.0601619999507,
+        "sqlMs": 1133.3335680000018,
+        "cost": 0.00013305
+      },
+      "on": {
+        "id": "vessels/windiest_day",
+        "firstDeltaMs": 264.43439700000454,
+        "sqlMs": 296.7877139999764,
+        "cost": 0.00012885
+      },
+      "caption": {
+        "ms": 960.7424339999561,
+        "title": "Average temperature by city",
+        "cost": 0.0000704,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/coldest_water_vessel",
+      "off": {
+        "id": "vessels/coldest_water_vessel",
+        "firstDeltaMs": 168.75110799999675,
+        "sqlMs": 233.21165800001472,
+        "cost": 0.00011925
+      },
+      "on": {
+        "id": "vessels/coldest_water_vessel",
+        "firstDeltaMs": 177.9119059999939,
+        "sqlMs": 236.45855500001926,
+        "cost": 0.00011925
+      },
+      "caption": {
+        "ms": 680.8978120000102,
+        "title": "Five strongest wind readings in Oslo",
+        "cost": 0.0000837,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/farthest_east",
+      "on": {
+        "id": "vessels/farthest_east",
+        "firstDeltaMs": 270.9440280000563,
+        "sqlMs": 323.9336610000464,
+        "cost": 0.0001263
+      },
+      "caption": {
+        "ms": 530.7163449999643,
+        "title": "Temperature range by city",
+        "cost": 0.0000756,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/farthest_east",
+        "firstDeltaMs": 244.63889599998947,
+        "sqlMs": 300.5453390000039,
+        "cost": 0.0001257
+      }
+    },
+    {
+      "id": "vessels/wind_speed_correlation",
+      "on": {
+        "id": "vessels/wind_speed_correlation",
+        "firstDeltaMs": 227.65296300000045,
+        "sqlMs": 335.16161499999,
+        "cost": 0.0001272
+      },
+      "caption": {
+        "ms": 790.6154230000102,
+        "title": "Total daily precipitation over all cities",
+        "cost": 0.0000804,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/wind_speed_correlation",
+        "firstDeltaMs": 205.70362499996554,
+        "sqlMs": 259.15538599999854,
+        "cost": 0.0001272
+      }
+    },
+    {
+      "id": "vessels/water_temp_range_per_vessel",
+      "off": {
+        "id": "vessels/water_temp_range_per_vessel",
+        "firstDeltaMs": 240.63930700003402,
+        "sqlMs": 341.8465309999883,
+        "cost": 0.00012915
+      },
+      "on": {
+        "id": "vessels/water_temp_range_per_vessel",
+        "firstDeltaMs": 218.87725199997658,
+        "sqlMs": 275.5639879999799,
+        "cost": 0.00012915
+      },
+      "caption": {
+        "ms": 1021.8672079999815,
+        "title": "Temperature and humidity correlation by city",
+        "cost": 0.000092,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/speed_and_wave_hourly_7d",
+      "off": {
+        "id": "vessels/speed_and_wave_hourly_7d",
+        "firstDeltaMs": 488.1528920000419,
+        "sqlMs": 644.4722250000341,
+        "cost": 0.00021375
+      },
+      "on": {
+        "id": "vessels/speed_and_wave_hourly_7d",
+        "firstDeltaMs": 542.2917450000532,
+        "sqlMs": 709.4569849999971,
+        "cost": 0.00024375
+      },
+      "caption": {
+        "ms": 855.8057070000214,
+        "title": "Monthly temperature deviation from each city's average",
+        "cost": 0.0000946,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/wave_wind_ratio_hourly",
+      "off": {
+        "id": "vessels/wave_wind_ratio_hourly",
+        "firstDeltaMs": 996.489011000027,
+        "sqlMs": 1046.9061199999996,
+        "cost": 0.0001893
+      },
+      "on": {
+        "id": "vessels/wave_wind_ratio_hourly",
+        "firstDeltaMs": 777.307713999995,
+        "sqlMs": 1445.2837849999778,
+        "cost": 0.0002175
+      },
+      "caption": {
+        "ms": 855.2797779999673,
+        "title": "Number of flights per day",
+        "cost": 0.0000963,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/speed_kmh_per_vessel",
+      "on": {
+        "id": "vessels/speed_kmh_per_vessel",
+        "firstDeltaMs": 361.1976639999775,
+        "sqlMs": 489.1069079999579,
+        "cost": 0.00018
+      },
+      "caption": {
+        "ms": 801.4932520000148,
+        "title": "Average flight distance by airline",
+        "cost": 0.0001014,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/speed_kmh_per_vessel",
+        "firstDeltaMs": 354.0170199999702,
+        "sqlMs": 484.4490280000027,
+        "cost": 0.0001806
+      }
+    },
+    {
+      "id": "vessels/first_vs_second_week_speed",
+      "off": {
+        "id": "vessels/first_vs_second_week_speed",
+        "firstDeltaMs": 529.5500049999682,
+        "sqlMs": 744.4206279999926,
+        "cost": 0.0002586
+      },
+      "on": {
+        "id": "vessels/first_vs_second_week_speed",
+        "firstDeltaMs": 541.959858999995,
+        "sqlMs": 934.9041509999661,
+        "cost": 0.0002586
+      },
+      "caption": {
+        "ms": 956.3580800000345,
+        "title": "Delta average arrival delay by day",
+        "cost": 0.0001098,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/latest_position",
+      "on": {
+        "id": "vessels/latest_position",
+        "firstDeltaMs": 194.66087399999378,
+        "sqlMs": 284.33061900001485,
+        "cost": 0.00012435
+      },
+      "caption": {
+        "ms": 755.668061000004,
+        "title": "Average departure vs arrival delay by origin airport",
+        "cost": 0.0001071,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/latest_position",
+        "firstDeltaMs": 243.2265110000153,
+        "sqlMs": 355.69684899999993,
+        "cost": 0.00012435
+      }
+    },
+    {
+      "id": "vessels/meridian_yesterday",
+      "off": {
+        "id": "vessels/meridian_yesterday",
+        "firstDeltaMs": 491.3951479999814,
+        "sqlMs": 977.5570050000097,
+        "cost": 0.0002304
+      },
+      "on": {
+        "id": "vessels/meridian_yesterday",
+        "firstDeltaMs": 258.2300899999682,
+        "sqlMs": 409.8707029999932,
+        "cost": 0.0001596
+      },
+      "caption": {
+        "ms": 1012.6287700000103,
+        "title": "Cancelled flights by cancellation reason",
+        "cost": 0.0000987,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/tracks_map",
+      "off": {
+        "id": "vessels/tracks_map",
+        "firstDeltaMs": 167.73205099999905,
+        "sqlMs": 246.2029629999888,
+        "cost": 0.00011625
+      },
+      "on": {
+        "id": "vessels/tracks_map",
+        "firstDeltaMs": 189.54322599997977,
+        "sqlMs": 246.81397299998207,
+        "cost": 0.00011865
+      },
+      "caption": {
+        "ms": 747.0621139999712,
+        "title": "City population totals by continent",
+        "cost": 0.0000892,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/bounding_box_north",
+      "on": {
+        "id": "vessels/bounding_box_north",
+        "firstDeltaMs": 189.28850199998124,
+        "sqlMs": 237.57389400003012,
+        "cost": 0.0001179
+      },
+      "caption": {
+        "ms": 826.3284409999615,
+        "title": "Ten most densely populated countries",
+        "cost": 0.0000788,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/bounding_box_north",
+        "firstDeltaMs": 304.5646479999996,
+        "sqlMs": 361.93299699999625,
+        "cost": 0.0001317
+      }
+    },
+    {
+      "id": "vessels/aurora_daily_position",
+      "off": {
+        "id": "vessels/aurora_daily_position",
+        "firstDeltaMs": 304.7555719999946,
+        "sqlMs": 404.64133399998536,
+        "cost": 0.00016125
+      },
+      "on": {
+        "id": "vessels/aurora_daily_position",
+        "firstDeltaMs": 290.0341189999599,
+        "sqlMs": 403.8803609999595,
+        "cost": 0.00016125
+      },
+      "caption": {
+        "ms": 842.2029129999573,
+        "title": "Countries Using the Euro",
+        "cost": 0.0000668,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/partial_per_ves",
+      "on": {
+        "id": "vessels/partial_per_ves",
+        "firstDeltaMs": 211.2335600000224,
+        "sqlMs": 279.00792800000636,
+        "cost": 0.00012675
+      },
+      "caption": {
+        "ms": 674.9195109999855,
+        "title": "Countries with no listed cities",
+        "cost": 0.0000887,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/partial_per_ves",
+        "firstDeltaMs": 184.66462299996056,
+        "sqlMs": 250.59047900000587,
+        "cost": 0.00012795
+      }
+    },
+    {
+      "id": "vessels/single_word_wind",
+      "on": {
+        "id": "vessels/single_word_wind",
+        "firstDeltaMs": 269.2127989999717,
+        "sqlMs": 354.3221059999778,
+        "cost": 0.00015195
+      },
+      "caption": {
+        "ms": 488.8948649999802,
+        "title": "Capital cities in Africa",
+        "cost": 0.0000806,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/single_word_wind",
+        "firstDeltaMs": 291.9803519999841,
+        "sqlMs": 401.7172830000054,
+        "cost": 0.00015195
+      }
+    },
+    {
+      "id": "vessels/speed_last_week_vague",
+      "off": {
+        "id": "vessels/speed_last_week_vague",
+        "firstDeltaMs": 372.0892529999837,
+        "sqlMs": 534.7812970000086,
+        "cost": 0.00020205
+      },
+      "on": {
+        "id": "vessels/speed_last_week_vague",
+        "firstDeltaMs": 407.3186589999823,
+        "sqlMs": 550.3374440000043,
+        "cost": 0.00019125
+      },
+      "caption": {
+        "ms": 745.8139330000267,
+        "title": "Fleet average water temperature",
+        "cost": 0.000077,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/scatter_wind_wave",
+      "off": {
+        "id": "vessels/scatter_wind_wave",
+        "firstDeltaMs": 232.0313989999704,
+        "sqlMs": 285.1084339999943,
+        "cost": 0.0001353
+      },
+      "on": {
+        "id": "vessels/scatter_wind_wave",
+        "firstDeltaMs": 249.84730600001058,
+        "sqlMs": 328.23401700000977,
+        "cost": 0.0001407
+      },
+      "caption": {
+        "ms": 798.7230850000051,
+        "title": "Average speed by hour of day",
+        "cost": 0.0000792,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/layered_speed_zscore_rolling_24h",
+      "off": {
+        "id": "vessels/layered_speed_zscore_rolling_24h",
+        "firstDeltaMs": 275.921875,
+        "sqlMs": 1576.439767999982,
+        "cost": 0.00042825000000000003
+      },
+      "on": {
+        "id": "vessels/layered_speed_zscore_rolling_24h",
+        "firstDeltaMs": 835.5812410000362,
+        "sqlMs": 1085.600269000046,
+        "cost": 0.00032625
+      },
+      "caption": {
+        "ms": 707.9347599999746,
+        "title": "Hourly average wind, September 3 to 5, 2026",
+        "cost": 0.000101,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "vessels/layered_speed_zscore_vessel_overall",
+      "on": {
+        "id": "vessels/layered_speed_zscore_vessel_overall",
+        "firstDeltaMs": 206.22603399999207,
+        "sqlMs": 455.47360999998637,
+        "cost": 0.0001776
+      },
+      "caption": {
+        "ms": 1512.9844349999912,
+        "title": "Hours Solstice logged wind above 30 knots",
+        "cost": 0.0000882,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/layered_speed_zscore_vessel_overall",
+        "firstDeltaMs": 202.6155719999806,
+        "sqlMs": 432.63021599996137,
+        "cost": 0.000177
+      }
+    },
+    {
+      "id": "vessels/layered_avg_hourly_speed_change",
+      "on": {
+        "id": "vessels/layered_avg_hourly_speed_change",
+        "firstDeltaMs": 208.42975200002547,
+        "sqlMs": 761.3008000000264,
+        "cost": 0.00034185
+      },
+      "caption": {
+        "ms": 743.058366000012,
+        "title": "Water temperature range per vessel",
+        "cost": 0.0000854,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "vessels/layered_avg_hourly_speed_change",
+        "firstDeltaMs": 237.4537320000236,
+        "sqlMs": 883.4934660000145,
+        "cost": 0.0001731
+      }
+    },
+    {
+      "id": "weather/avg_temp_per_city",
+      "on": {
+        "id": "weather/avg_temp_per_city",
+        "firstDeltaMs": 257.07947100000456,
+        "sqlMs": 309.7298179999925,
+        "cost": 0.0001158
+      },
+      "caption": {
+        "ms": 722.9025790000451,
+        "title": "Hourly average vessel positions by vessel",
+        "cost": 0.0000895,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/avg_temp_per_city",
+        "firstDeltaMs": 177.3729770000209,
+        "sqlMs": 228.9819870000356,
+        "cost": 0.0001158
+      }
+    },
+    {
+      "id": "weather/max_temp_overall",
+      "on": {
+        "id": "weather/max_temp_overall",
+        "firstDeltaMs": 244.82145899999887,
+        "sqlMs": 309.8559000000241,
+        "cost": 0.00019875
+      },
+      "caption": {
+        "ms": 963.9830540000112,
+        "title": "Hourly vessel speed z-score vs 24-hour average",
+        "cost": 0.0001166,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/max_temp_overall",
+        "firstDeltaMs": 186.4303330000257,
+        "sqlMs": 257.31187500001397,
+        "cost": 0.00027015
+      }
+    },
+    {
+      "id": "weather/precip_per_city_2024",
+      "off": {
+        "id": "weather/precip_per_city_2024",
+        "firstDeltaMs": 343.840726000024,
+        "sqlMs": 538.2778370000306,
+        "cost": 0.000294
+      },
+      "on": {
+        "id": "weather/precip_per_city_2024",
+        "firstDeltaMs": 353.28896899998654,
+        "sqlMs": 485.8980139999767,
+        "cost": 0.0001872
+      },
+      "caption": {
+        "ms": 641.3814140000031,
+        "title": "Daily high temperature in Madrid, last 30 days",
+        "cost": 0.0000914,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/monthly_temp_berlin",
+      "off": {
+        "id": "weather/monthly_temp_berlin",
+        "firstDeltaMs": 288.7775370000163,
+        "sqlMs": 375.91519899998093,
+        "cost": 0.00029715
+      },
+      "on": {
+        "id": "weather/monthly_temp_berlin",
+        "firstDeltaMs": 237.67389699997148,
+        "sqlMs": 332.01816300000064,
+        "cost": 0.00029715
+      },
+      "caption": {
+        "ms": 2017.403890000016,
+        "title": "Average temperature by month, all cities",
+        "cost": 0.0000833,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/daily_max_madrid_30d",
+      "on": {
+        "id": "weather/daily_max_madrid_30d",
+        "firstDeltaMs": 333.63575099996524,
+        "sqlMs": 928.5468439999968,
+        "cost": 0.0003051
+      },
+      "caption": {
+        "ms": 604.0649310000008,
+        "title": "Hours below freezing by city in 2023",
+        "cost": 0.0000887,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/daily_max_madrid_30d",
+        "firstDeltaMs": 310.2067059999681,
+        "sqlMs": 751.9956810000003,
+        "cost": 0.0003153
+      }
+    },
+    {
+      "id": "weather/hourly_wind_copenhagen_2d",
+      "on": {
+        "id": "weather/hourly_wind_copenhagen_2d",
+        "firstDeltaMs": 223.84957899997244,
+        "sqlMs": 685.457294999971,
+        "cost": 0.00030855
+      },
+      "caption": {
+        "ms": 775.2719219999854,
+        "title": "Warmest month of 2024 by city",
+        "cost": 0.0000928,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/hourly_wind_copenhagen_2d",
+        "firstDeltaMs": 257.57491900003515,
+        "sqlMs": 1430.8937830000068,
+        "cost": 0.00030975
+      }
+    },
+    {
+      "id": "weather/coldest_city",
+      "off": {
+        "id": "weather/coldest_city",
+        "firstDeltaMs": 604.157892999996,
+        "sqlMs": 647.672322999977,
+        "cost": 0.000249
+      },
+      "on": {
+        "id": "weather/coldest_city",
+        "firstDeltaMs": 189.26430200005416,
+        "sqlMs": 253.00132100004703,
+        "cost": 0.0001218
+      },
+      "caption": {
+        "ms": 909.7133199999807,
+        "title": "Total precipitation by city, 2023 and 2024",
+        "cost": 0.0001052,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/top5_windiest_hours_oslo",
+      "on": {
+        "id": "weather/top5_windiest_hours_oslo",
+        "firstDeltaMs": 245.15890500001842,
+        "sqlMs": 357.6878850000212,
+        "cost": 0.00027135
+      },
+      "caption": {
+        "ms": 1059.4591009999858,
+        "title": "Average departure delay by airline",
+        "cost": 0.0001011,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/top5_windiest_hours_oslo",
+        "firstDeltaMs": 186.81609999999637,
+        "sqlMs": 235.0287309999694,
+        "cost": 0.00011775
+      }
+    },
+    {
+      "id": "weather/rainy_hours_per_city",
+      "on": {
+        "id": "weather/rainy_hours_per_city",
+        "firstDeltaMs": 238.1713849999942,
+        "sqlMs": 433.5699930000119,
+        "cost": 0.00027465
+      },
+      "caption": {
+        "ms": 828.0836739999941,
+        "title": "Departures per state",
+        "cost": 0.0001009,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/rainy_hours_per_city",
+        "firstDeltaMs": 209.59413199999835,
+        "sqlMs": 273.43639300001087,
+        "cost": 0.00012105
+      }
+    },
+    {
+      "id": "weather/humidity_by_country",
+      "off": {
+        "id": "weather/humidity_by_country",
+        "firstDeltaMs": 290.29276400001254,
+        "sqlMs": 402.68542100000195,
+        "cost": 0.0002706
+      },
+      "on": {
+        "id": "weather/humidity_by_country",
+        "firstDeltaMs": 189.52090699999826,
+        "sqlMs": 263.28269799996633,
+        "cost": 0.0002322
+      },
+      "caption": {
+        "ms": 668.2701189999934,
+        "title": "Diverted flights by airline",
+        "cost": 0.0000979,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/temp_by_hour_of_day",
+      "off": {
+        "id": "weather/temp_by_hour_of_day",
+        "firstDeltaMs": 354.25790599995526,
+        "sqlMs": 433.6921559999464,
+        "cost": 0.0001341
+      },
+      "on": {
+        "id": "weather/temp_by_hour_of_day",
+        "firstDeltaMs": 238.24666699999943,
+        "sqlMs": 305.4324650000199,
+        "cost": 0.0001341
+      },
+      "caption": {
+        "ms": 965.146195999987,
+        "title": "Cancelled flights by airline",
+        "cost": 0.0000984,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/monthly_temp_all",
+      "off": {
+        "id": "weather/monthly_temp_all",
+        "firstDeltaMs": 268.6968709999928,
+        "sqlMs": 347.3433869999717,
+        "cost": 0.00016845
+      },
+      "on": {
+        "id": "weather/monthly_temp_all",
+        "firstDeltaMs": 238.61043300002348,
+        "sqlMs": 316.5316560000065,
+        "cost": 0.00013485
+      },
+      "caption": {
+        "ms": 666.4436069999938,
+        "title": "Weekly flight counts by carrier",
+        "cost": 0.0000997,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/berlin_vs_london_daily_2024",
+      "on": {
+        "id": "weather/berlin_vs_london_daily_2024",
+        "firstDeltaMs": 625.1896569999517,
+        "sqlMs": 765.1977499999921,
+        "cost": 0.00021345
+      },
+      "caption": {
+        "ms": 935.370802999998,
+        "title": "Top destination from each busiest origin airport",
+        "cost": 0.0001139,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/berlin_vs_london_daily_2024",
+        "firstDeltaMs": 789.977537000028,
+        "sqlMs": 876.6392300000298,
+        "cost": 0.00028965
+      }
+    },
+    {
+      "id": "weather/min_pressure_per_city",
+      "off": {
+        "id": "weather/min_pressure_per_city",
+        "firstDeltaMs": 186.17584999999963,
+        "sqlMs": 234.39744099997915,
+        "cost": 0.0001491
+      },
+      "on": {
+        "id": "weather/min_pressure_per_city",
+        "firstDeltaMs": 193.6003769999952,
+        "sqlMs": 241.42252200003713,
+        "cost": 0.0001875
+      },
+      "caption": {
+        "ms": 667.9987149999943,
+        "title": "Southernmost city by latitude",
+        "cost": 0.0000715,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/temp_range_per_city",
+      "on": {
+        "id": "weather/temp_range_per_city",
+        "firstDeltaMs": 213.6427220000187,
+        "sqlMs": 276.29120199999306,
+        "cost": 0.00015675
+      },
+      "caption": {
+        "ms": 1064.9643170000054,
+        "title": "Largest city in each country",
+        "cost": 0.0000844,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/temp_range_per_city",
+        "firstDeltaMs": 231.8595970000024,
+        "sqlMs": 293.93042600003537,
+        "cost": 0.00015795
+      }
+    },
+    {
+      "id": "weather/hottest_day_rome",
+      "off": {
+        "id": "weather/hottest_day_rome",
+        "firstDeltaMs": 269.4589639999904,
+        "sqlMs": 636.9132179999724,
+        "cost": 0.00042255000000000005
+      },
+      "on": {
+        "id": "weather/hottest_day_rome",
+        "firstDeltaMs": 301.8589229999925,
+        "sqlMs": 683.2774980000104,
+        "cost": 0.00027
+      },
+      "caption": {
+        "ms": 780.4115720000118,
+        "title": "Number of cities per continent",
+        "cost": 0.0000886,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/cloud_cover_monthly_london",
+      "on": {
+        "id": "weather/cloud_cover_monthly_london",
+        "firstDeltaMs": 258.8915820000111,
+        "sqlMs": 369.0755220000283,
+        "cost": 0.00029745
+      },
+      "caption": {
+        "ms": 1014.7230520000448,
+        "title": "City counts for India and China",
+        "cost": 0.0000836,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/cloud_cover_monthly_london",
+        "firstDeltaMs": 264.66696300002513,
+        "sqlMs": 359.7162810000009,
+        "cost": 0.00014385
+      }
+    },
+    {
+      "id": "weather/weekly_precip_per_city",
+      "off": {
+        "id": "weather/weekly_precip_per_city",
+        "firstDeltaMs": 903.0147260000231,
+        "sqlMs": 987.6092240000144,
+        "cost": 0.00029355
+      },
+      "on": {
+        "id": "weather/weekly_precip_per_city",
+        "firstDeltaMs": 244.17104899999686,
+        "sqlMs": 352.84728300001007,
+        "cost": 0.00029355
+      },
+      "caption": {
+        "ms": 1282.6340700000292,
+        "title": "Average speed by vessel",
+        "cost": 0.00008,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/freezing_hours_2023",
+      "off": {
+        "id": "weather/freezing_hours_2023",
+        "firstDeltaMs": 333.171623000002,
+        "sqlMs": 491.73931599996286,
+        "cost": 0.0001878
+      },
+      "on": {
+        "id": "weather/freezing_hours_2023",
+        "firstDeltaMs": 434.501969999983,
+        "sqlMs": 600.462950999965,
+        "cost": 0.0001836
+      },
+      "caption": {
+        "ms": 1183.4214799999609,
+        "title": "Daily minimum and maximum water temperature",
+        "cost": 0.0000907,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/scatter_pressure_wind_oslo",
+      "off": {
+        "id": "weather/scatter_pressure_wind_oslo",
+        "firstDeltaMs": 221.27425400004722,
+        "sqlMs": 281.7802570000058,
+        "cost": 0.0002826
+      },
+      "on": {
+        "id": "weather/scatter_pressure_wind_oslo",
+        "firstDeltaMs": 319.50706699996954,
+        "sqlMs": 364.55328399996506,
+        "cost": 0.0002826
+      },
+      "caption": {
+        "ms": 676.739385999972,
+        "title": "Average speed of fastest vessel, last 24 hours",
+        "cost": 0.0000983,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/partial_per_ci",
+      "on": {
+        "id": "weather/partial_per_ci",
+        "firstDeltaMs": 262.7858899999992,
+        "sqlMs": 306.8010490000015,
+        "cost": 0.0002352
+      },
+      "caption": {
+        "ms": 1337.1048099999898,
+        "title": "Readings with waves over 4 m, by vessel",
+        "cost": 0.0000896,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/partial_per_ci",
+        "firstDeltaMs": 989.796623000002,
+        "sqlMs": 1052.0160550000146,
+        "cost": 0.0002742
+      }
+    },
+    {
+      "id": "weather/single_word_precipitation",
+      "on": {
+        "id": "weather/single_word_precipitation",
+        "firstDeltaMs": 530.6029069999931,
+        "sqlMs": 638.6560499999905,
+        "cost": 0.00017205
+      },
+      "caption": {
+        "ms": 649.629758999974,
+        "title": "Coldest recorded water temperature by vessel",
+        "cost": 0.0000826,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/single_word_precipitation",
+        "firstDeltaMs": 330.38757500000065,
+        "sqlMs": 433.6501149999676,
+        "cost": 0.00032565
+      }
+    },
+    {
+      "id": "weather/temperature_last_week_vague",
+      "on": {
+        "id": "weather/temperature_last_week_vague",
+        "firstDeltaMs": 808.9880269999849,
+        "sqlMs": 874.805440999975,
+        "cost": 0.00025125
+      },
+      "caption": {
+        "ms": 774.239906999981,
+        "title": "Average vessel speed by week, two weeks compared",
+        "cost": 0.0001014,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/temperature_last_week_vague",
+        "firstDeltaMs": 306.5054039999959,
+        "sqlMs": 450.1751599999843,
+        "cost": 0.00031185
+      }
+    },
+    {
+      "id": "weather/line_monthly_temp_per_city",
+      "on": {
+        "id": "weather/line_monthly_temp_per_city",
+        "firstDeltaMs": 340.277025999967,
+        "sqlMs": 495.5131420000107,
+        "cost": 0.0002604
+      },
+      "caption": {
+        "ms": 1042.4515709999832,
+        "title": "Average wind speed per hour",
+        "cost": 0.0000776,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/line_monthly_temp_per_city",
+        "firstDeltaMs": 226.18281899997965,
+        "sqlMs": 320.0845579999732,
+        "cost": 0.0001836
+      }
+    },
+    {
+      "id": "weather/unknown_city_lisbon",
+      "off": {
+        "id": "weather/unknown_city_lisbon",
+        "firstDeltaMs": 279.44765799999004,
+        "sqlMs": 323.1075299999793,
+        "cost": 0.0002514
+      },
+      "on": {
+        "id": "weather/unknown_city_lisbon",
+        "firstDeltaMs": 436.282080999983,
+        "sqlMs": 507.96335700002965,
+        "cost": 0.0002874
+      },
+      "caption": {
+        "ms": 1293.944386999996,
+        "title": "Highest temperature recorded across all cities",
+        "cost": 0.0000781,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/warmest_month_per_city_2024",
+      "off": {
+        "id": "weather/warmest_month_per_city_2024",
+        "firstDeltaMs": 759.330009999976,
+        "sqlMs": 832.0862649999908,
+        "cost": 0.00017235
+      },
+      "on": {
+        "id": "weather/warmest_month_per_city_2024",
+        "firstDeltaMs": 210.30522600002587,
+        "sqlMs": 426.74323700001696,
+        "cost": 0.00017235
+      },
+      "caption": {
+        "ms": 764.852305999957,
+        "title": "Hours with rain in each city",
+        "cost": 0.0000829,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/madrid_days_over_30_2024",
+      "off": {
+        "id": "weather/madrid_days_over_30_2024",
+        "firstDeltaMs": 289.7365550000104,
+        "sqlMs": 432.544297000044,
+        "cost": 0.0001725
+      },
+      "on": {
+        "id": "weather/madrid_days_over_30_2024",
+        "firstDeltaMs": 597.648022999987,
+        "sqlMs": 759.6608160000178,
+        "cost": 0.0002493
+      },
+      "caption": {
+        "ms": 852.5810979999951,
+        "title": "Highest daily temperature in Rome",
+        "cost": 0.0000833,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/winter_wind_per_city",
+      "off": {
+        "id": "weather/winter_wind_per_city",
+        "firstDeltaMs": 286.73886300000595,
+        "sqlMs": 387.69392400002107,
+        "cost": 0.00027345
+      },
+      "on": {
+        "id": "weather/winter_wind_per_city",
+        "firstDeltaMs": 309.45273499999894,
+        "sqlMs": 396.08374799997546,
+        "cost": 0.00016065
+      },
+      "caption": {
+        "ms": 1282.8504759999923,
+        "title": "Average hourly temperature over the past week",
+        "cost": 0.0000876,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/temp_humidity_corr",
+      "off": {
+        "id": "weather/temp_humidity_corr",
+        "firstDeltaMs": 212.9535110000288,
+        "sqlMs": 256.7405060000019,
+        "cost": 0.0001164
+      },
+      "on": {
+        "id": "weather/temp_humidity_corr",
+        "firstDeltaMs": 203.1171420000028,
+        "sqlMs": 272.32149499998195,
+        "cost": 0.0001164
+      },
+      "caption": {
+        "ms": 715.3595320000313,
+        "title": "Daily temperature range in Vienna, July 2024",
+        "cost": 0.0000941,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/vienna_daily_range_july_2024",
+      "on": {
+        "id": "weather/vienna_daily_range_july_2024",
+        "firstDeltaMs": 421.0641389999655,
+        "sqlMs": 599.9437829999952,
+        "cost": 0.0002169
+      },
+      "caption": {
+        "ms": 1976.2286709999898,
+        "title": "Days per city above their 90th-percentile high",
+        "cost": 0.0001139,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/vienna_daily_range_july_2024",
+        "firstDeltaMs": 308.0415109999594,
+        "sqlMs": 479.04793900001096,
+        "cost": 0.0001845
+      }
+    },
+    {
+      "id": "weather/partial_daily_temp_ber",
+      "on": {
+        "id": "weather/partial_daily_temp_ber",
+        "firstDeltaMs": 204.56228699994972,
+        "sqlMs": 311.9218980000005,
+        "cost": 0.00028995
+      },
+      "caption": {
+        "ms": 1809.5258369999938,
+        "title": "Cancelled flights per day",
+        "cost": 0.0000994,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/partial_daily_temp_ber",
+        "firstDeltaMs": 248.50784399994882,
+        "sqlMs": 361.1723069999716,
+        "cost": 0.00024795
+      }
+    },
+    {
+      "id": "weather/sunniest_city_2024",
+      "on": {
+        "id": "weather/sunniest_city_2024",
+        "firstDeltaMs": 273.9513229999575,
+        "sqlMs": 432.56249799998477,
+        "cost": 0.00026325
+      },
+      "caption": {
+        "ms": 1279.9873880000087,
+        "title": "Longest flight distance in miles",
+        "cost": 0.0000977,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/sunniest_city_2024",
+        "firstDeltaMs": 272.9911060000304,
+        "sqlMs": 451.32718100002967,
+        "cost": 0.00026985
+      }
+    },
+    {
+      "id": "weather/yearly_precip_compare",
+      "on": {
+        "id": "weather/yearly_precip_compare",
+        "firstDeltaMs": 250.69304199999897,
+        "sqlMs": 366.11375200003386,
+        "cost": 0.0001485
+      },
+      "caption": {
+        "ms": 921.753572000016,
+        "title": "Share of flights arriving within 15 minutes, by carrier",
+        "cost": 0.0001201,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/yearly_precip_compare",
+        "firstDeltaMs": 266.47359399998095,
+        "sqlMs": 437.1894179999945,
+        "cost": 0.0001605
+      }
+    },
+    {
+      "id": "weather/stormy_hours_count",
+      "on": {
+        "id": "weather/stormy_hours_count",
+        "firstDeltaMs": 180.89867900003446,
+        "sqlMs": 267.4995320000453,
+        "cost": 0.00012015
+      },
+      "caption": {
+        "ms": 996.1834149999777,
+        "title": "Flight cancellations by day of week",
+        "cost": 0.0001028,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/stormy_hours_count",
+        "firstDeltaMs": 225.86973400000716,
+        "sqlMs": 331.76348000002326,
+        "cost": 0.00012015
+      }
+    },
+    {
+      "id": "weather/layered_longest_dry_streak",
+      "on": {
+        "id": "weather/layered_longest_dry_streak",
+        "firstDeltaMs": 248.32588100002613,
+        "sqlMs": 600.2219480000203,
+        "cost": 0.0001881
+      },
+      "caption": {
+        "ms": 833.3287269999855,
+        "title": "Atlanta departures per hour on June 30",
+        "cost": 0.0001127,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "weather/layered_longest_dry_streak",
+        "firstDeltaMs": 1475.5152799999923,
+        "sqlMs": 1673.636416000023,
+        "cost": 0.0001857
+      }
+    },
+    {
+      "id": "weather/layered_monthly_temp_anomaly",
+      "off": {
+        "id": "weather/layered_monthly_temp_anomaly",
+        "firstDeltaMs": 300.52674100000877,
+        "sqlMs": 513.3853310000268,
+        "cost": 0.00018
+      },
+      "on": {
+        "id": "weather/layered_monthly_temp_anomaly",
+        "firstDeltaMs": 279.36361699999543,
+        "sqlMs": 429.1418790000025,
+        "cost": 0.0001626
+      },
+      "caption": {
+        "ms": 763.842249999987,
+        "title": "Capital cities on a map",
+        "cost": 0.0000774,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/layered_days_above_city_p90",
+      "off": {
+        "id": "weather/layered_days_above_city_p90",
+        "firstDeltaMs": 202.0075230000075,
+        "sqlMs": 423.70666500000516,
+        "cost": 0.00017595
+      },
+      "on": {
+        "id": "weather/layered_days_above_city_p90",
+        "firstDeltaMs": 342.48370499996236,
+        "sqlMs": 587.7663339999854,
+        "cost": 0.00017295
+      },
+      "caption": {
+        "ms": 842.3375629999791,
+        "title": "Number of cities per European time zone",
+        "cost": 0.0000852,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "weather/layered_wettest_day_share_2024",
+      "off": {
+        "id": "weather/layered_wettest_day_share_2024",
+        "firstDeltaMs": 302.04496700002346,
+        "sqlMs": 598.7492429999984,
+        "cost": 0.0001938
+      },
+      "on": {
+        "id": "weather/layered_wettest_day_share_2024",
+        "firstDeltaMs": 214.11925099999644,
+        "sqlMs": 561.3905590000213,
+        "cost": 0.0001938
+      },
+      "caption": {
+        "ms": 2080.071423999965,
+        "title": "Ten largest countries by area",
+        "cost": 0.0000725,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/flights_per_airline",
+      "off": {
+        "id": "flights/flights_per_airline",
+        "firstDeltaMs": 232.27196399995591,
+        "sqlMs": 322.845365999965,
+        "cost": 0.000189
+      },
+      "on": {
+        "id": "flights/flights_per_airline",
+        "firstDeltaMs": 331.9682840000023,
+        "sqlMs": 433.7716789999977,
+        "cost": 0.0001854
+      },
+      "caption": {
+        "ms": 831.4445359999663,
+        "title": "Cities above 1000 m by country",
+        "cost": 0.000081,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/avg_dep_delay_per_carrier",
+      "on": {
+        "id": "flights/avg_dep_delay_per_carrier",
+        "firstDeltaMs": 328.66486700001406,
+        "sqlMs": 408.1340370000107,
+        "cost": 0.0001806
+      },
+      "caption": {
+        "ms": 1243.443879999977,
+        "title": "Largest-to-second-largest city population ratio by country",
+        "cost": 0.0001093,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/avg_dep_delay_per_carrier",
+        "firstDeltaMs": 210.13846400001785,
+        "sqlMs": 321.4000620000297,
+        "cost": 0.0001842
+      }
+    },
+    {
+      "id": "flights/cancellation_rate_per_airline",
+      "on": {
+        "id": "flights/cancellation_rate_per_airline",
+        "firstDeltaMs": 371.7968509999919,
+        "sqlMs": 507.1487049999996,
+        "cost": 0.0001908
+      },
+      "caption": {
+        "ms": 564.6671360000037,
+        "title": "Minimum and maximum speed by vessel",
+        "cost": 0.000085,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/cancellation_rate_per_airline",
+        "firstDeltaMs": 1077.4568179999478,
+        "sqlMs": 1229.9114069999778,
+        "cost": 0.0001908
+      }
+    },
+    {
+      "id": "flights/top10_busiest_airports",
+      "off": {
+        "id": "flights/top10_busiest_airports",
+        "firstDeltaMs": 274.1178469999577,
+        "sqlMs": 349.671949999989,
+        "cost": 0.0001905
+      },
+      "on": {
+        "id": "flights/top10_busiest_airports",
+        "firstDeltaMs": 298.6509500000393,
+        "sqlMs": 357.2879210000392,
+        "cost": 0.0001905
+      },
+      "caption": {
+        "ms": 1013.4267940000282,
+        "title": "Average wave height by weekday",
+        "cost": 0.0000894,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/flights_per_day",
+      "on": {
+        "id": "flights/flights_per_day",
+        "firstDeltaMs": 187.40683100000024,
+        "sqlMs": 250.87456500000553,
+        "cost": 0.0001656
+      },
+      "caption": {
+        "ms": 780.1234909999766,
+        "title": "Average wave height per minute, last hour",
+        "cost": 0.0000974,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/flights_per_day",
+        "firstDeltaMs": 176.22311899997294,
+        "sqlMs": 235.8008259999915,
+        "cost": 0.0001656
+      }
+    },
+    {
+      "id": "flights/cancellations_per_day",
+      "off": {
+        "id": "flights/cancellations_per_day",
+        "firstDeltaMs": 235.53126099996734,
+        "sqlMs": 279.215933999978,
+        "cost": 0.0001764
+      },
+      "on": {
+        "id": "flights/cancellations_per_day",
+        "firstDeltaMs": 215.16958999994677,
+        "sqlMs": 345.58539899997413,
+        "cost": 0.0001782
+      },
+      "caption": {
+        "ms": 845.8782260000007,
+        "title": "Highest hourly average wave heights by vessel",
+        "cost": 0.0000956,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/delay_by_hour_of_day",
+      "off": {
+        "id": "flights/delay_by_hour_of_day",
+        "firstDeltaMs": 309.42309500003466,
+        "sqlMs": 410.42483600002015,
+        "cost": 0.0002145
+      },
+      "on": {
+        "id": "flights/delay_by_hour_of_day",
+        "firstDeltaMs": 209.16516599996248,
+        "sqlMs": 319.6689119999646,
+        "cost": 0.0001893
+      },
+      "caption": {
+        "ms": 770.2636419999762,
+        "title": "Hourly average speed and wave height, last 7 days",
+        "cost": 0.000099,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/arr_delay_per_carrier_7d",
+      "on": {
+        "id": "flights/arr_delay_per_carrier_7d",
+        "firstDeltaMs": 873.9478699999745,
+        "sqlMs": 998.8783439999679,
+        "cost": 0.0002133
+      },
+      "caption": {
+        "ms": 910.4436979999882,
+        "title": "Readings north of 50°N by vessel",
+        "cost": 0.0000874,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/arr_delay_per_carrier_7d",
+        "firstDeltaMs": 326.87499699997716,
+        "sqlMs": 428.828434999974,
+        "cost": 0.0002127
+      }
+    },
+    {
+      "id": "flights/departures_per_state",
+      "on": {
+        "id": "flights/departures_per_state",
+        "firstDeltaMs": 205.1136969999643,
+        "sqlMs": 280.1538709999877,
+        "cost": 0.0001782
+      },
+      "caption": {
+        "ms": 947.2460130000254,
+        "title": "Hourly vessel speed as z-score per vessel",
+        "cost": 0.0001028,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/departures_per_state",
+        "firstDeltaMs": 263.97675199998775,
+        "sqlMs": 347.09710499999346,
+        "cost": 0.0001914
+      }
+    },
+    {
+      "id": "flights/airport_map_departures",
+      "on": {
+        "id": "flights/airport_map_departures",
+        "firstDeltaMs": 308.6687619999866,
+        "sqlMs": 366.76060400001006,
+        "cost": 0.0001941
+      },
+      "caption": {
+        "ms": 688.1672670000116,
+        "title": "Copenhagen wind speed by hour, last two days",
+        "cost": 0.0000889,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/airport_map_departures",
+        "firstDeltaMs": 235.46710000000894,
+        "sqlMs": 347.9257599999546,
+        "cost": 0.0001941
+      }
+    },
+    {
+      "id": "flights/top5_routes",
+      "off": {
+        "id": "flights/top5_routes",
+        "firstDeltaMs": 225.1065219999873,
+        "sqlMs": 293.7608650000184,
+        "cost": 0.0001764
+      },
+      "on": {
+        "id": "flights/top5_routes",
+        "firstDeltaMs": 223.11456700001145,
+        "sqlMs": 284.7083490000223,
+        "cost": 0.0001764
+      },
+      "caption": {
+        "ms": 741.7316299999948,
+        "title": "Daily average temperature, Berlin and London, 2024",
+        "cost": 0.0000915,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/avg_distance_per_airline",
+      "on": {
+        "id": "flights/avg_distance_per_airline",
+        "firstDeltaMs": 222.57975800003624,
+        "sqlMs": 312.9807570000412,
+        "cost": 0.00018
+      },
+      "caption": {
+        "ms": 976.0539509999799,
+        "title": "Daily average pressure and wind speed in Oslo",
+        "cost": 0.0000932,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/avg_distance_per_airline",
+        "firstDeltaMs": 240.7231909999973,
+        "sqlMs": 343.73272700002417,
+        "cost": 0.0001782
+      }
+    },
+    {
+      "id": "flights/longest_route",
+      "on": {
+        "id": "flights/longest_route",
+        "firstDeltaMs": 330.1765729999752,
+        "sqlMs": 425.63245899998583,
+        "cost": 0.0001743
+      },
+      "caption": {
+        "ms": 1048.7054040000075,
+        "title": "Days Madrid reached 30 degrees in 2024",
+        "cost": 0.0000978,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/longest_route",
+        "firstDeltaMs": 242.2039769999683,
+        "sqlMs": 312.9180359999882,
+        "cost": 0.0001797
+      }
+    },
+    {
+      "id": "flights/weather_delay_per_day",
+      "off": {
+        "id": "flights/weather_delay_per_day",
+        "firstDeltaMs": 266.4369139999617,
+        "sqlMs": 326.2031049999641,
+        "cost": 0.00018555
+      },
+      "on": {
+        "id": "flights/weather_delay_per_day",
+        "firstDeltaMs": 291.83551200001966,
+        "sqlMs": 322.73584500001743,
+        "cost": 0.00018195
+      },
+      "caption": {
+        "ms": 697.7860329999821,
+        "title": "Hours with wind above 50 km/h, by city",
+        "cost": 0.0000829,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/delay_causes",
+      "on": {
+        "id": "flights/delay_causes",
+        "firstDeltaMs": 919.0270479999599,
+        "sqlMs": 1028.2224109999952,
+        "cost": 0.00026295
+      },
+      "caption": {
+        "ms": 1212.2698649999802,
+        "title": "Share of flights cancelled, by airline",
+        "cost": 0.0001098,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/delay_causes",
+        "firstDeltaMs": 1081.1276829999988,
+        "sqlMs": 1122.6423189999769,
+        "cost": 0.00026295
+      }
+    },
+    {
+      "id": "flights/diverted_per_airline",
+      "on": {
+        "id": "flights/diverted_per_airline",
+        "firstDeltaMs": 227.30411899997853,
+        "sqlMs": 333.3178680000128,
+        "cost": 0.0001875
+      },
+      "caption": {
+        "ms": 1043.1349479999626,
+        "title": "Departures from each airport, shown on a map",
+        "cost": 0.0001162,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/diverted_per_airline",
+        "firstDeltaMs": 431.8029659999884,
+        "sqlMs": 585.6053390000015,
+        "cost": 0.0001773
+      }
+    },
+    {
+      "id": "flights/jfk_june_15",
+      "off": {
+        "id": "flights/jfk_june_15",
+        "firstDeltaMs": 333.583713,
+        "sqlMs": 418.4786970000132,
+        "cost": 0.00019455
+      },
+      "on": {
+        "id": "flights/jfk_june_15",
+        "firstDeltaMs": 245.8102390000131,
+        "sqlMs": 305.16906300000846,
+        "cost": 0.00019455
+      },
+      "caption": {
+        "ms": 799.2381830000086,
+        "title": "JFK departures on June 15, 2024",
+        "cost": 0.0001042,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/taxi_out_busiest10",
+      "on": {
+        "id": "flights/taxi_out_busiest10",
+        "firstDeltaMs": 293.96558899997035,
+        "sqlMs": 440.09390899998834,
+        "cost": 0.00020475
+      },
+      "caption": {
+        "ms": 775.3811310000019,
+        "title": "Average departure delay by day",
+        "cost": 0.0000964,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/taxi_out_busiest10",
+        "firstDeltaMs": 266.3106329999864,
+        "sqlMs": 389.35663499997463,
+        "cost": 0.00020475
+      }
+    },
+    {
+      "id": "flights/delta_daily_arr_delay",
+      "off": {
+        "id": "flights/delta_daily_arr_delay",
+        "firstDeltaMs": 837.304078999965,
+        "sqlMs": 930.7044899999746,
+        "cost": 0.00019935
+      },
+      "on": {
+        "id": "flights/delta_daily_arr_delay",
+        "firstDeltaMs": 372.37186100002145,
+        "sqlMs": 456.5528730000369,
+        "cost": 0.00019995
+      },
+      "caption": {
+        "ms": 1011.8098079999909,
+        "title": "Average in-air speed by airline, mph",
+        "cost": 0.0001097,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/on_time_pct_per_carrier",
+      "off": {
+        "id": "flights/on_time_pct_per_carrier",
+        "firstDeltaMs": 223.9128619999974,
+        "sqlMs": 364.6132079999661,
+        "cost": 0.0001974
+      },
+      "on": {
+        "id": "flights/on_time_pct_per_carrier",
+        "firstDeltaMs": 194.9934030000004,
+        "sqlMs": 336.7889279999654,
+        "cost": 0.0001974
+      },
+      "caption": {
+        "ms": 589.3860440000426,
+        "title": "Ten most populous cities",
+        "cost": 0.000072,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/wn_dl_daily_flights",
+      "on": {
+        "id": "flights/wn_dl_daily_flights",
+        "firstDeltaMs": 246.1701259999536,
+        "sqlMs": 324.2599119999795,
+        "cost": 0.00019365
+      },
+      "caption": {
+        "ms": 635.9747269999934,
+        "title": "Cities with over one million people",
+        "cost": 0.0000684,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/wn_dl_daily_flights",
+        "firstDeltaMs": 267.4835729999468,
+        "sqlMs": 356.7513119999785,
+        "cost": 0.00019785
+      }
+    },
+    {
+      "id": "flights/worst_airports_dep_delay",
+      "off": {
+        "id": "flights/worst_airports_dep_delay",
+        "firstDeltaMs": 259.38531300000614,
+        "sqlMs": 339.7992990000057,
+        "cost": 0.00020085
+      },
+      "on": {
+        "id": "flights/worst_airports_dep_delay",
+        "firstDeltaMs": 261.16246400005184,
+        "sqlMs": 328.1663390000467,
+        "cost": 0.00018165
+      },
+      "caption": {
+        "ms": 702.2211499999976,
+        "title": "Average population by feature code",
+        "cost": 0.0000725,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/partial_cancelled_per_carr",
+      "off": {
+        "id": "flights/partial_cancelled_per_carr",
+        "firstDeltaMs": 272.75870400003623,
+        "sqlMs": 340.7319959999877,
+        "cost": 0.00019275
+      },
+      "on": {
+        "id": "flights/partial_cancelled_per_carr",
+        "firstDeltaMs": 268.6460719999741,
+        "sqlMs": 307.5821039999719,
+        "cost": 0.00019095
+      },
+      "caption": {
+        "ms": 2094.184034999984,
+        "title": "City population totals by continent",
+        "cost": 0.0000824,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/single_word_delays",
+      "off": {
+        "id": "flights/single_word_delays",
+        "firstDeltaMs": 215.6869589999551,
+        "sqlMs": 316.4281769999652,
+        "cost": 0.00019575
+      },
+      "on": {
+        "id": "flights/single_word_delays",
+        "firstDeltaMs": 234.39920300000813,
+        "sqlMs": 311.7102559999912,
+        "cost": 0.00018735
+      },
+      "caption": {
+        "ms": 832.411036000005,
+        "title": "Urban population share by country, top 10",
+        "cost": 0.000099,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/unknown_airline_lufthansa",
+      "on": {
+        "id": "flights/unknown_airline_lufthansa",
+        "firstDeltaMs": 222.43303600000218,
+        "sqlMs": 266.0882289999863,
+        "cost": 0.00017175
+      },
+      "caption": {
+        "ms": 842.7459740000195,
+        "title": "Readings per vessel",
+        "cost": 0.0000774,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/unknown_airline_lufthansa",
+        "firstDeltaMs": 265.2932949999813,
+        "sqlMs": 341.73181399999885,
+        "cost": 0.00018675
+      }
+    },
+    {
+      "id": "flights/scatter_dep_arr_delay_airport",
+      "on": {
+        "id": "flights/scatter_dep_arr_delay_airport",
+        "firstDeltaMs": 735.3200809999835,
+        "sqlMs": 813.7453129999922,
+        "cost": 0.0002151
+      },
+      "caption": {
+        "ms": 1016.9843390000169,
+        "title": "Aurora's average speed in 15-minute buckets",
+        "cost": 0.0000975,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/scatter_dep_arr_delay_airport",
+        "firstDeltaMs": 323.3114160000114,
+        "sqlMs": 406.622612999985,
+        "cost": 0.0002115
+      }
+    },
+    {
+      "id": "flights/cancellations_by_weekday",
+      "off": {
+        "id": "flights/cancellations_by_weekday",
+        "firstDeltaMs": 330.6128209999879,
+        "sqlMs": 440.8690829999978,
+        "cost": 0.0002163
+      },
+      "on": {
+        "id": "flights/cancellations_by_weekday",
+        "firstDeltaMs": 1939.3842070000246,
+        "sqlMs": 2025.0991260000155,
+        "cost": 0.0002217
+      },
+      "caption": {
+        "ms": 639.7983940000413,
+        "title": "Average wave height by vessel and hour",
+        "cost": 0.0000929,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/median_dep_delay_per_carrier",
+      "on": {
+        "id": "flights/median_dep_delay_per_carrier",
+        "firstDeltaMs": 241.50268599996343,
+        "sqlMs": 315.3477589999675,
+        "cost": 0.0001902
+      },
+      "caption": {
+        "ms": 793.441083999991,
+        "title": "Hourly average vessel speed north of 50°N",
+        "cost": 0.0000967,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/median_dep_delay_per_carrier",
+        "firstDeltaMs": 297.80441599996993,
+        "sqlMs": 380.9105700000073,
+        "cost": 0.0002052
+      }
+    },
+    {
+      "id": "flights/ohare_avg_delay",
+      "on": {
+        "id": "flights/ohare_avg_delay",
+        "firstDeltaMs": 372.6513070000219,
+        "sqlMs": 451.70031100005144,
+        "cost": 0.0001965
+      },
+      "caption": {
+        "ms": 1055.343721000012,
+        "title": "Easternmost longitude reached by each vessel",
+        "cost": 0.0001065,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/ohare_avg_delay",
+        "firstDeltaMs": 779.862129999965,
+        "sqlMs": 908.717313000001,
+        "cost": 0.0001965
+      }
+    },
+    {
+      "id": "flights/weekly_flights_per_carrier",
+      "off": {
+        "id": "flights/weekly_flights_per_carrier",
+        "firstDeltaMs": 382.3264339999878,
+        "sqlMs": 465.7982740000007,
+        "cost": 0.0001983
+      },
+      "on": {
+        "id": "flights/weekly_flights_per_carrier",
+        "firstDeltaMs": 217.6129540000111,
+        "sqlMs": 752.0481310000177,
+        "cost": 0.0001881
+      },
+      "caption": {
+        "ms": 837.2846010000212,
+        "title": "Latest position of each vessel",
+        "cost": 0.0000847,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/avg_speed_per_carrier_mph",
+      "on": {
+        "id": "flights/avg_speed_per_carrier_mph",
+        "firstDeltaMs": 233.45338599995011,
+        "sqlMs": 376.41717199998675,
+        "cost": 0.0001932
+      },
+      "caption": {
+        "ms": 640.0291980000329,
+        "title": "Average vessel speed by hour, past seven days",
+        "cost": 0.0000955,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/avg_speed_per_carrier_mph",
+        "firstDeltaMs": 234.24732000002405,
+        "sqlMs": 337.42657900002087,
+        "cost": 0.0001896
+      }
+    },
+    {
+      "id": "flights/share_delayed_over_hour_per_day",
+      "on": {
+        "id": "flights/share_delayed_over_hour_per_day",
+        "firstDeltaMs": 188.97093900002073,
+        "sqlMs": 345.0988720000023,
+        "cost": 0.0001845
+      },
+      "caption": {
+        "ms": 672.358395999996,
+        "title": "Total precipitation by city in 2024",
+        "cost": 0.0000824,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "flights/share_delayed_over_hour_per_day",
+        "firstDeltaMs": 242.6452649999992,
+        "sqlMs": 341.6177720000269,
+        "cost": 0.0001917
+      }
+    },
+    {
+      "id": "flights/cancellation_reasons",
+      "off": {
+        "id": "flights/cancellation_reasons",
+        "firstDeltaMs": 286.0553330000257,
+        "sqlMs": 359.7259639999829,
+        "cost": 0.0001884
+      },
+      "on": {
+        "id": "flights/cancellation_reasons",
+        "firstDeltaMs": 223.23813000001246,
+        "sqlMs": 337.2565370000084,
+        "cost": 0.0001884
+      },
+      "caption": {
+        "ms": 481.4014229999739,
+        "title": "Average humidity by country",
+        "cost": 0.0000704,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/hourly_departures_atl_last_day",
+      "off": {
+        "id": "flights/hourly_departures_atl_last_day",
+        "firstDeltaMs": 268.2099059999455,
+        "sqlMs": 392.73757399996975,
+        "cost": 0.00021435
+      },
+      "on": {
+        "id": "flights/hourly_departures_atl_last_day",
+        "firstDeltaMs": 320.1892419999931,
+        "sqlMs": 446.44741999998223,
+        "cost": 0.00021435
+      },
+      "caption": {
+        "ms": 718.5033519999706,
+        "title": "Average monthly cloud cover in London",
+        "cost": 0.0000804,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/layered_carrier_delay_vs_overall",
+      "off": {
+        "id": "flights/layered_carrier_delay_vs_overall",
+        "firstDeltaMs": 209.21772800001781,
+        "sqlMs": 299.22248100000434,
+        "cost": 0.00018345
+      },
+      "on": {
+        "id": "flights/layered_carrier_delay_vs_overall",
+        "firstDeltaMs": 678.9954309999594,
+        "sqlMs": 795.3801179999718,
+        "cost": 0.00020445
+      },
+      "caption": {
+        "ms": 1202.1864150000038,
+        "title": "Monthly average temperature by city",
+        "cost": 0.0000812,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/layered_median_daily_cancel_rate",
+      "off": {
+        "id": "flights/layered_median_daily_cancel_rate",
+        "firstDeltaMs": 526.541000999976,
+        "sqlMs": 682.9629790000035,
+        "cost": 0.00036435
+      },
+      "on": {
+        "id": "flights/layered_median_daily_cancel_rate",
+        "firstDeltaMs": 3124.679212999996,
+        "sqlMs": 3311.4224340000073,
+        "cost": 0.00022515
+      },
+      "caption": {
+        "ms": 1044.5702560000354,
+        "title": "Daily average temperature in Berlin",
+        "cost": 0.0000846,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "flights/layered_top_dest_of_busiest_origins",
+      "off": {
+        "id": "flights/layered_top_dest_of_busiest_origins",
+        "firstDeltaMs": 221.09957399999257,
+        "sqlMs": 467.10577699996065,
+        "cost": 0.00022725
+      },
+      "on": {
+        "id": "flights/layered_top_dest_of_busiest_origins",
+        "firstDeltaMs": 266.58655800001,
+        "sqlMs": 500.7812370000174,
+        "cost": 0.00022965
+      },
+      "caption": {
+        "ms": 805.3360909999465,
+        "title": "Share of 2024 rain on each city's wettest day",
+        "cost": 0.0000975,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/top10_largest_cities",
+      "on": {
+        "id": "cities/top10_largest_cities",
+        "firstDeltaMs": 199.37263900000835,
+        "sqlMs": 251.27005399996415,
+        "cost": 0.00012495
+      },
+      "caption": {
+        "ms": 845.2827399999951,
+        "title": "Average departure delay by scheduled hour",
+        "cost": 0.0001073,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/top10_largest_cities",
+        "firstDeltaMs": 234.2391199999838,
+        "sqlMs": 294.8393249999499,
+        "cost": 0.00012495
+      }
+    },
+    {
+      "id": "cities/cities_per_country_top10",
+      "off": {
+        "id": "cities/cities_per_country_top10",
+        "firstDeltaMs": 301.96492900000885,
+        "sqlMs": 406.18912599998293,
+        "cost": 0.0001638
+      },
+      "on": {
+        "id": "cities/cities_per_country_top10",
+        "firstDeltaMs": 677.6451280000038,
+        "sqlMs": 768.7069380000466,
+        "cost": 0.0001614
+      },
+      "caption": {
+        "ms": 805.7505380000221,
+        "title": "Total weather delay minutes per day",
+        "cost": 0.0001045,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/city_population_per_continent",
+      "on": {
+        "id": "cities/city_population_per_continent",
+        "firstDeltaMs": 188.251527000044,
+        "sqlMs": 287.91280600003665,
+        "cost": 0.00013455
+      },
+      "caption": {
+        "ms": 1982.5311959999963,
+        "title": "Daily flight counts for Southwest and Delta",
+        "cost": 0.0001088,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/city_population_per_continent",
+        "firstDeltaMs": 193.38049499999033,
+        "sqlMs": 269.43124700000044,
+        "cost": 0.00013455
+      }
+    },
+    {
+      "id": "cities/capitals_map",
+      "on": {
+        "id": "cities/capitals_map",
+        "firstDeltaMs": 290.47540999995545,
+        "sqlMs": 405.93152099999133,
+        "cost": 0.00013635
+      },
+      "caption": {
+        "ms": 909.5056880000047,
+        "title": "Median departure delay by airline",
+        "cost": 0.0001035,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/capitals_map",
+        "firstDeltaMs": 244.72142100002384,
+        "sqlMs": 309.22597400000086,
+        "cost": 0.00013575
+      }
+    },
+    {
+      "id": "cities/avg_elevation_per_continent",
+      "on": {
+        "id": "cities/avg_elevation_per_continent",
+        "firstDeltaMs": 287.37539699999616,
+        "sqlMs": 384.08094499999424,
+        "cost": 0.00017415
+      },
+      "caption": {
+        "ms": 714.9610519999987,
+        "title": "Carrier average departure delay versus overall average",
+        "cost": 0.0001092,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/avg_elevation_per_continent",
+        "firstDeltaMs": 216.50705499999458,
+        "sqlMs": 302.02301000000443,
+        "cost": 0.00013635
+      }
+    },
+    {
+      "id": "cities/highest_cities",
+      "off": {
+        "id": "cities/highest_cities",
+        "firstDeltaMs": 385.73373300000094,
+        "sqlMs": 439.57494199997745,
+        "cost": 0.00017355
+      },
+      "on": {
+        "id": "cities/highest_cities",
+        "firstDeltaMs": 388.71310500003165,
+        "sqlMs": 465.9459570000181,
+        "cost": 0.00017355
+      },
+      "caption": {
+        "ms": 789.7086220000056,
+        "title": "Average city elevation by continent",
+        "cost": 0.0000878,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/southernmost_city",
+      "on": {
+        "id": "cities/southernmost_city",
+        "firstDeltaMs": 230.99674400000367,
+        "sqlMs": 319.8936780000222,
+        "cost": 0.0001404
+      },
+      "caption": {
+        "ms": 717.1113699999987,
+        "title": "Cities in the southern hemisphere",
+        "cost": 0.0000732,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/southernmost_city",
+        "firstDeltaMs": 919.9456280000159,
+        "sqlMs": 1054.5593900000094,
+        "cost": 0.000144
+      }
+    },
+    {
+      "id": "cities/count_over_million",
+      "on": {
+        "id": "cities/count_over_million",
+        "firstDeltaMs": 245.70243800000753,
+        "sqlMs": 287.52203900000313,
+        "cost": 0.00012855
+      },
+      "caption": {
+        "ms": 832.926007000031,
+        "title": "Cities in Denmark on a map",
+        "cost": 0.0000729,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/count_over_million",
+        "firstDeltaMs": 206.83392699999968,
+        "sqlMs": 244.51749699999345,
+        "cost": 0.00012315
+      }
+    },
+    {
+      "id": "cities/largest_german_cities",
+      "on": {
+        "id": "cities/largest_german_cities",
+        "firstDeltaMs": 286.8533470000257,
+        "sqlMs": 352.72508399997605,
+        "cost": 0.00014775
+      },
+      "caption": {
+        "ms": 799.4876299999887,
+        "title": "Average city latitude by continent",
+        "cost": 0.0000868,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/largest_german_cities",
+        "firstDeltaMs": 259.4343950000475,
+        "sqlMs": 375.2969140000059,
+        "cost": 0.00014775
+      }
+    },
+    {
+      "id": "cities/densest_countries",
+      "off": {
+        "id": "cities/densest_countries",
+        "firstDeltaMs": 233.51250800001435,
+        "sqlMs": 289.48631399997976,
+        "cost": 0.00013725
+      },
+      "on": {
+        "id": "cities/densest_countries",
+        "firstDeltaMs": 896.5602250000229,
+        "sqlMs": 1010.801116000046,
+        "cost": 0.00013125
+      },
+      "caption": {
+        "ms": 903.1179380000103,
+        "title": "Largest city's share of urban population by continent",
+        "cost": 0.000096,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/europe_timezones",
+      "on": {
+        "id": "cities/europe_timezones",
+        "firstDeltaMs": 982.6449100000318,
+        "sqlMs": 1104.5861330000334,
+        "cost": 0.000147
+      },
+      "caption": {
+        "ms": 912.3298569999752,
+        "title": "Hourly average wind over two days",
+        "cost": 0.0000956,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/europe_timezones",
+        "firstDeltaMs": 252.66795800003456,
+        "sqlMs": 369.4327330000233,
+        "cost": 0.000147
+      }
+    },
+    {
+      "id": "cities/southern_hemisphere_count",
+      "off": {
+        "id": "cities/southern_hemisphere_count",
+        "firstDeltaMs": 176.54488499998115,
+        "sqlMs": 214.4546589999809,
+        "cost": 0.0001122
+      },
+      "on": {
+        "id": "cities/southern_hemisphere_count",
+        "firstDeltaMs": 172.2142500000191,
+        "sqlMs": 208.89932299999055,
+        "cost": 0.0001122
+      },
+      "caption": {
+        "ms": 1042.75798699999,
+        "title": "Atlas average speed in 10-minute intervals",
+        "cost": 0.0000927,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/european_capitals_population",
+      "off": {
+        "id": "cities/european_capitals_population",
+        "firstDeltaMs": 240.44334699999308,
+        "sqlMs": 345.4099580000038,
+        "cost": 0.0001509
+      },
+      "on": {
+        "id": "cities/european_capitals_population",
+        "firstDeltaMs": 253.96914100000868,
+        "sqlMs": 364.50572700001067,
+        "cost": 0.0001509
+      },
+      "caption": {
+        "ms": 819.3776540000108,
+        "title": "Hourly average speed, Kestrel and Nomad",
+        "cost": 0.0000973,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/largest_city_per_country",
+      "off": {
+        "id": "cities/largest_city_per_country",
+        "firstDeltaMs": 236.58852099999785,
+        "sqlMs": 364.324683999992,
+        "cost": 0.00015315
+      },
+      "on": {
+        "id": "cities/largest_city_per_country",
+        "firstDeltaMs": 426.5347170000314,
+        "sqlMs": 631.2096080000047,
+        "cost": 0.00015315
+      },
+      "caption": {
+        "ms": 759.8545869999798,
+        "title": "Average speed of top three vessels, past week",
+        "cost": 0.0000883,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/avg_population_per_feature",
+      "off": {
+        "id": "cities/avg_population_per_feature",
+        "firstDeltaMs": 198.24462000001222,
+        "sqlMs": 272.03309300000547,
+        "cost": 0.00012135
+      },
+      "on": {
+        "id": "cities/avg_population_per_feature",
+        "firstDeltaMs": 179.55945699999575,
+        "sqlMs": 247.86923599999864,
+        "cost": 0.00012135
+      },
+      "caption": {
+        "ms": 895.1102400000091,
+        "title": "Average wave-to-wind ratio by hour, past day",
+        "cost": 0.0001018,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/countries_per_continent",
+      "off": {
+        "id": "cities/countries_per_continent",
+        "firstDeltaMs": 197.22488200000953,
+        "sqlMs": 271.51968399999896,
+        "cost": 0.00012435
+      },
+      "on": {
+        "id": "cities/countries_per_continent",
+        "firstDeltaMs": 188.46833100001095,
+        "sqlMs": 258.98822699999437,
+        "cost": 0.00012435
+      },
+      "caption": {
+        "ms": 840.1336519999895,
+        "title": "Aurora's average daily position",
+        "cost": 0.0000828,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/euro_countries",
+      "off": {
+        "id": "cities/euro_countries",
+        "firstDeltaMs": 223.31873199995607,
+        "sqlMs": 285.86241099995095,
+        "cost": 0.00012075
+      },
+      "on": {
+        "id": "cities/euro_countries",
+        "firstDeltaMs": 202.28097000002163,
+        "sqlMs": 239.95890000002692,
+        "cost": 0.00012075
+      },
+      "caption": {
+        "ms": 823.4274839999853,
+        "title": "Average hourly speed change per vessel",
+        "cost": 0.0000946,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/largest_countries_by_area",
+      "off": {
+        "id": "cities/largest_countries_by_area",
+        "firstDeltaMs": 255.16904100001557,
+        "sqlMs": 306.1025200000149,
+        "cost": 0.00013875
+      },
+      "on": {
+        "id": "cities/largest_countries_by_area",
+        "firstDeltaMs": 255.5000069999951,
+        "sqlMs": 316.1798940000008,
+        "cost": 0.00013815
+      },
+      "caption": {
+        "ms": 561.5898880000459,
+        "title": "Average temperature of the coldest city",
+        "cost": 0.0000771,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/denmark_cities_map",
+      "off": {
+        "id": "cities/denmark_cities_map",
+        "firstDeltaMs": 365.09829799999716,
+        "sqlMs": 451.20214299997315,
+        "cost": 0.0001455
+      },
+      "on": {
+        "id": "cities/denmark_cities_map",
+        "firstDeltaMs": 718.7710390000138,
+        "sqlMs": 775.2454129999969,
+        "cost": 0.0001401
+      },
+      "caption": {
+        "ms": 922.9852420000243,
+        "title": "Lowest recorded air pressure by city",
+        "cost": 0.0000839,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/population_of_berlin",
+      "off": {
+        "id": "cities/population_of_berlin",
+        "firstDeltaMs": 209.8726200000383,
+        "sqlMs": 267.9049809999997,
+        "cost": 0.00015765
+      },
+      "on": {
+        "id": "cities/population_of_berlin",
+        "firstDeltaMs": 178.06955200002994,
+        "sqlMs": 227.44320300000254,
+        "cost": 0.00011925
+      },
+      "caption": {
+        "ms": 790.3668339999858,
+        "title": "Average temperature by city",
+        "cost": 0.000073,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/partial_per_contin",
+      "on": {
+        "id": "cities/partial_per_contin",
+        "firstDeltaMs": 184.23461799998768,
+        "sqlMs": 283.2372060000198,
+        "cost": 0.00013095
+      },
+      "caption": {
+        "ms": 854.390138000017,
+        "title": "Average wind speed by city in winter",
+        "cost": 0.0000776,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/partial_per_contin",
+        "firstDeltaMs": 258.3530169999576,
+        "sqlMs": 388.9283889999497,
+        "cost": 0.00013335
+      }
+    },
+    {
+      "id": "cities/single_word_population",
+      "on": {
+        "id": "cities/single_word_population",
+        "firstDeltaMs": 488.7437509999727,
+        "sqlMs": 567.5636710000108,
+        "cost": 0.0003123
+      },
+      "caption": {
+        "ms": 1214.1011440000148,
+        "title": "Longest dry spell in hours by city",
+        "cost": 0.0001,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/single_word_population",
+        "firstDeltaMs": 218.40308700001333,
+        "sqlMs": 298.31034600001294,
+        "cost": 0.00021255
+      }
+    },
+    {
+      "id": "cities/scatter_area_population",
+      "on": {
+        "id": "cities/scatter_area_population",
+        "firstDeltaMs": 297.9907410000451,
+        "sqlMs": 363.8644370000111,
+        "cost": 0.0001971
+      },
+      "caption": {
+        "ms": 617.8975390000269,
+        "title": "Ten busiest airports by departure count",
+        "cost": 0.0000993,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/scatter_area_population",
+        "firstDeltaMs": 283.90953800000716,
+        "sqlMs": 367.5494610000169,
+        "cost": 0.0001383
+      }
+    },
+    {
+      "id": "cities/countries_without_cities",
+      "on": {
+        "id": "cities/countries_without_cities",
+        "firstDeltaMs": 595.4829520000494,
+        "sqlMs": 644.7354020000203,
+        "cost": 0.0001635
+      },
+      "caption": {
+        "ms": 1000.4439780000248,
+        "title": "Five busiest origin-destination routes by flight count",
+        "cost": 0.0000984,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/countries_without_cities",
+        "firstDeltaMs": 295.41309599997476,
+        "sqlMs": 407.8937159999623,
+        "cost": 0.0001569
+      }
+    },
+    {
+      "id": "cities/most_cities_above_1000m",
+      "off": {
+        "id": "cities/most_cities_above_1000m",
+        "firstDeltaMs": 269.0243210000335,
+        "sqlMs": 472.7063949999865,
+        "cost": 0.00013965
+      },
+      "on": {
+        "id": "cities/most_cities_above_1000m",
+        "firstDeltaMs": 214.6828239999595,
+        "sqlMs": 336.36500300001353,
+        "cost": 0.00013965
+      },
+      "caption": {
+        "ms": 1070.9140349999652,
+        "title": "Average taxi-out time at 10 busiest origins",
+        "cost": 0.000122,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/avg_latitude_per_continent",
+      "off": {
+        "id": "cities/avg_latitude_per_continent",
+        "firstDeltaMs": 201.97648499999195,
+        "sqlMs": 286.02709499996854,
+        "cost": 0.0001371
+      },
+      "on": {
+        "id": "cities/avg_latitude_per_continent",
+        "firstDeltaMs": 199.93236900004558,
+        "sqlMs": 299.8788930000155,
+        "cost": 0.0001371
+      },
+      "caption": {
+        "ms": 771.8919960000203,
+        "title": "Lufthansa flights operated",
+        "cost": 0.0000983,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/unknown_city_atlantis",
+      "off": {
+        "id": "cities/unknown_city_atlantis",
+        "firstDeltaMs": 255.4088060000213,
+        "sqlMs": 324.48031800001627,
+        "cost": 0.00017925
+      },
+      "on": {
+        "id": "cities/unknown_city_atlantis",
+        "firstDeltaMs": 247.5919119999744,
+        "sqlMs": 293.25301899999613,
+        "cost": 0.00017085
+      },
+      "caption": {
+        "ms": 812.0618890000042,
+        "title": "Share of flights departing over an hour late, daily",
+        "cost": 0.0001103,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/india_vs_china_cities",
+      "off": {
+        "id": "cities/india_vs_china_cities",
+        "firstDeltaMs": 541.8334669999895,
+        "sqlMs": 616.2636709999642,
+        "cost": 0.00015075
+      },
+      "on": {
+        "id": "cities/india_vs_china_cities",
+        "firstDeltaMs": 601.1622510000016,
+        "sqlMs": 644.2610339999665,
+        "cost": 0.00015075
+      },
+      "caption": {
+        "ms": 949.9711479999823,
+        "title": "Countries with the most cities",
+        "cost": 0.0000801,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    },
+    {
+      "id": "cities/urban_share_per_country_top10",
+      "on": {
+        "id": "cities/urban_share_per_country_top10",
+        "firstDeltaMs": 574.912398000015,
+        "sqlMs": 622.2246150000719,
+        "cost": 0.00020835
+      },
+      "caption": {
+        "ms": 738.7358639999293,
+        "title": "Ten largest cities in Germany by population",
+        "cost": 0.0000775,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/urban_share_per_country_top10",
+        "firstDeltaMs": 226.74491100001615,
+        "sqlMs": 360.0997320000315,
+        "cost": 0.00014835
+      }
+    },
+    {
+      "id": "cities/cities_per_lat_band",
+      "on": {
+        "id": "cities/cities_per_lat_band",
+        "firstDeltaMs": 261.64795399992727,
+        "sqlMs": 322.68752699997276,
+        "cost": 0.00013755
+      },
+      "caption": {
+        "ms": 559.0887250000378,
+        "title": "Number of countries per continent",
+        "cost": 0.0000734,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/cities_per_lat_band",
+        "firstDeltaMs": 214.69146400003228,
+        "sqlMs": 306.19916199997533,
+        "cost": 0.00014175
+      }
+    },
+    {
+      "id": "cities/partial_capitals_in_afr",
+      "on": {
+        "id": "cities/partial_capitals_in_afr",
+        "firstDeltaMs": 244.34913599991705,
+        "sqlMs": 390.99186499998905,
+        "cost": 0.0001848
+      },
+      "caption": {
+        "ms": 1065.9877499999711,
+        "title": "Country area against population",
+        "cost": 0.0000746,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/partial_capitals_in_afr",
+        "firstDeltaMs": 285.05255799996667,
+        "sqlMs": 401.9700550000416,
+        "cost": 0.0001662
+      }
+    },
+    {
+      "id": "cities/layered_urban_primacy",
+      "on": {
+        "id": "cities/layered_urban_primacy",
+        "firstDeltaMs": 401.228002000018,
+        "sqlMs": 699.3498249999247,
+        "cost": 0.00024285
+      },
+      "caption": {
+        "ms": 951.0054470000323,
+        "title": "Cities per 10-degree latitude band",
+        "cost": 0.0000865,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/layered_urban_primacy",
+        "firstDeltaMs": 3034.7862360000145,
+        "sqlMs": 3336.44299999997,
+        "cost": 0.00024345
+      }
+    },
+    {
+      "id": "cities/layered_largest_city_share_by_continent",
+      "on": {
+        "id": "cities/layered_largest_city_share_by_continent",
+        "firstDeltaMs": 371.91641700000037,
+        "sqlMs": 548.8995900000446,
+        "cost": 0.0002019
+      },
+      "caption": {
+        "ms": 653.3885930000106,
+        "title": "Highest recorded wave height",
+        "cost": 0.0000729,
+        "model": "anthropic/claude-haiku-5.5"
+      },
+      "off": {
+        "id": "cities/layered_largest_city_share_by_continent",
+        "firstDeltaMs": 911.9083729999838,
+        "sqlMs": 1010.1284669999732,
+        "cost": 0.0002181
+      }
+    },
+    {
+      "id": "cities/layered_third_largest_city_europe",
+      "off": {
+        "id": "cities/layered_third_largest_city_europe",
+        "firstDeltaMs": 319.4832320000278,
+        "sqlMs": 467.58574700006284,
+        "cost": 0.0001764
+      },
+      "on": {
+        "id": "cities/layered_third_largest_city_europe",
+        "firstDeltaMs": 292.09047900000587,
+        "sqlMs": 822.8201560000889,
+        "cost": 0.0003354
+      },
+      "caption": {
+        "ms": 903.5299479999812,
+        "title": "Average wind per vessel in six-hour periods",
+        "cost": 0.00009,
+        "model": "anthropic/claude-haiku-5.5"
+      }
+    }
+  ]
+}

@@ -12,6 +12,7 @@ export const Kind = {
   INFER: 0x18, SQL_DELTA: 0x19, SQL: 0x1a, INFER_STATS: 0x1b, PRIME: 0x1c, EDIT_CONTEXT: 0x1d, EDIT_INFER: 0x1e,
   EXEC: 0x20, RESULT_SCHEMA: 0x21, BATCH: 0x22, DONE: 0x23,
   BIND: 0x30, UNBIND: 0x31, DRAWN: 0x32, RESULT: 0x33, TIMING: 0x34, KEEP: 0x35, EXECUTION: 0x36, CANDIDATE: 0x37,
+  DESCRIBE: 0x40, DESCRIPTION: 0x41,
 } as const;
 export type Kind = typeof Kind[keyof typeof Kind];
 const KINDS = new Set<number>(Object.values(Kind));
@@ -35,7 +36,7 @@ export const Stage = {
   KEY_INPUT: 1, DRAFT_SENT: 2, COORD_RECEIVED: 3, INFER_SENT: 4, INFER_RECEIVED: 5,
   PROVIDER_REQUEST: 6, FIRST_TOKEN: 7, SQL_FIRST_DELTA: 8, SQL_COMPLETE: 9, SQL_RECEIVED: 10,
   EXEC_SENT: 11, EXEC_RECEIVED: 12, DB_FIRST_BATCH: 13, DB_DONE: 14, RENDER_FIRST_BATCH: 15,
-  FIRST_DRAW_SUBMITTED: 16, FIRST_PRESENTED: 17, CACHE_HIT: 18,
+  FIRST_DRAW_SUBMITTED: 16, FIRST_PRESENTED: 17, CACHE_HIT: 18, DESCRIPTION_COMPLETE: 19,
 } as const;
 
 export interface Stamp { stage: number; node: number; /** Unix epoch ms. */ at: number }

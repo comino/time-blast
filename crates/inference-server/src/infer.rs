@@ -161,7 +161,7 @@ pub struct Spent {
 }
 
 impl Spent {
-    fn add(&mut self, usage: &Usage) {
+    pub(crate) fn add(&mut self, usage: &Usage) {
         self.prompt_tokens += usage.prompt_tokens.unwrap_or(0);
         self.completion_tokens += usage.completion_tokens.unwrap_or(0);
         if let Some(n) = usage.cached_tokens {

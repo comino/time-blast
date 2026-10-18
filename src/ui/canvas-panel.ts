@@ -23,6 +23,9 @@ export interface CanvasPanelActions {
   sourceInfo?(): { name: string; detail?: string };
   chooseSource?(): ActionResult;
   rebindChart?(chartId: string): ActionResult;
+  /** The generated caption of a revision, if any; `captionVersion` changes when one arrives. */
+  caption?(revisionId: string): { title: string; explanation: string } | undefined;
+  captionVersion?(): number;
 }
 type Tab = 'library' | 'canvas' | 'chart' | 'drafts' | 'sources';
 const TABS: Array<[Tab, string]> = [['library', 'Canvases'], ['canvas', 'Canvas history'], ['chart', 'Chart history'], ['drafts', 'Drafts'], ['sources', 'Sources']];
@@ -277,7 +280,7 @@ export class CanvasPanel {
     const draftKey = this.tab === 'drafts' && model ? [...model.drafts.values()].map(d => `${d.id}:${d.version}`).join('|') : '';
     const sourceKey = this.tab === 'sources' || this.tab === 'chart' ? JSON.stringify(this.actions.sourceInfo?.()) : '';
     const key = [this.tab, this.chartId, model?.header.id, model?.header.storeVersion, model?.commits.size,
-      model?.revisions.size, model?.sources.size, this.libraryVersion, draftKey, sourceKey].join(':');
+      model?.revisions.size, model?.sources.size, this.libraryVersion, draftKey, sourceKey, this.tab === 'chart' ? this.actions.captionVersion?.() : ''].join(':');
     if (key === this.renderedKey) return;
     this.renderedKey = key;
     for (const [tab, button] of this.tabButtons) { button.dataset.selected = String(tab === this.tab); button.setAttribute('aria-current', tab === this.tab ? 'page' : 'false'); }
@@ -362,7 +365,8 @@ export class CanvasPanel {
     const chartId = this.chartId!, selected = model.selected(chartId);
     const picker = element('select', 'canvas-chart-picker'); picker.setAttribute('aria-label', 'Chart to inspect');
     for (const [id, revision] of charts) {
-      const option = element('option', '', `${short(revision.originalQuestion || revision.change.text || 'SQL chart')}${model.selected(id) ? '' : ' · removed from current canvas'}`);
+      const head = model.selected(id), caption = head ? this.actions.caption?.(head.id) : undefined;
+      const option = element('option', '', `${short(caption?.title || revision.originalQuestion || revision.change.text || 'SQL chart')}${model.selected(id) ? '' : ' · removed from current canvas'}`);
       option.value = id; picker.append(option);
     }
     picker.value = chartId; picker.addEventListener('change', () => { this.chartId = picker.value; this.renderedKey = ''; this.renderDialog(); });
@@ -380,9 +384,11 @@ export class CanvasPanel {
     for (const { value: revision, depth } of ordered.reverse()) {
       const current = selected?.id === revision.id, source = model.sources.get(revision.sourceRefId);
       const branch = current ? 'Current revision' : path.has(revision.id) ? 'On selected branch' : 'Retained branch / future';
-      const { row, actions } = this.row(`Revision ${number.get(revision.id)} · ${revision.change.kind}`, `${branch} · ${date(revision.at)}${revision.parentId ? ` · from revision ${number.get(revision.parentId)}` : ' · original'}`);
+      const caption = this.actions.caption?.(revision.id);
+      const { row, actions } = this.row(`Revision ${number.get(revision.id)} · ${caption?.title ?? revision.change.kind}`, `${caption ? `${revision.change.kind} · ` : ''}${branch} · ${date(revision.at)}${revision.parentId ? ` · from revision ${number.get(revision.parentId)}` : ' · original'}`);
       row.dataset.selected = String(current); row.style.setProperty('--history-depth', String(Math.min(depth, 4)));
       actions.append(this.actionButton(current ? 'Selected' : 'Restore revision', () => this.actions.restoreChart(chartId, revision.id), 'restore-chart', !!selected && !current));
+      if (caption) row.append(this.label('What it shows (generated)', caption.explanation));
       row.append(this.label('Change request', revision.change.text || 'SQL or presentation change'),
         this.details(`revision:${revision.id}`, 'Original question, exact SQL and presentation',
           this.label('Original question', revision.originalQuestion || 'Created directly from SQL'), this.sql(revision.sql),

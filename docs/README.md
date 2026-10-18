@@ -13,7 +13,7 @@ background, and where it conflicts with the vision, the vision wins.
 | [canvas-implementation.md](canvas-implementation.md) | Persistent canvas implementation, verification, operational limits and acceptance evidence (2026-10-15; not deployed) |
 | [persistent-canvas.md](persistent-canvas.md) | Original design for durable canvas documents, SQL hydration, contextual editing and revision history; implemented contract is linked above |
 | [Persistent canvas critical review](reviews/persistent-canvas-2026-10-15.md) | Three independent reviews, required design corrections and the first complete implementation path |
-| [plan-captions.md](plan-captions.md) | Proposal: AI title + explanation per chart revision, isolated from the data path (reviewed by Codex) |
+| [plan-captions.md](plan-captions.md) | Chart captions (implemented 2026-10-18): AI title + explanation per revision on isolated resources; model choice and data-path A/B |
 | [plan-batch-3.md](plan-batch-3.md) | Batch 3 (done): cold start, generality, perf harness, real-hardware page |
 | [batch-3/](batch-3/) | Batch 3 per area: [cold-start.md](batch-3/cold-start.md), [generality.md](batch-3/generality.md) (real datasets, per-dataset evals), [measurement.md](batch-3/measurement.md) |
 | [perf/README.md](perf/README.md) | `pnpm perf`: regression harness, history, budgets, dashboard (`perf/index.html`); `/measure.html` for real hardware |

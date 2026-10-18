@@ -10,6 +10,7 @@ export interface SettingsCallbacks {
   dataset(source: DatasetSource): void;
   config(patch: CoordinatorConfig): void;
   motion(value: MotionSettings): void;
+  captions(enabled: boolean): void;
 }
 
 export class SettingsPanel {
@@ -38,6 +39,7 @@ export class SettingsPanel {
       this.sync(defaults); callbacks.config(defaults);
       this.inference = defaultInference(defaultEndpoint); this.syncInference(); callbacks.inference(this.inference);
       const motion = defaultMotion(); this.syncMotion(motion); callbacks.motion(motion);
+      this.syncCaptions(true); callbacks.captions(true);
     });
     f.datasetFile.addEventListener('change', () => {
       const source = datasetFromFiles((f.datasetFile as HTMLInputElement).files);
@@ -48,6 +50,7 @@ export class SettingsPanel {
     for (const name of ['live', 'speculate', 'translationCache'] as const) f[name].addEventListener('change', () => callbacks.config({ [name]: (f[name] as HTMLInputElement).checked }));
     for (const name of ['motionGrow', 'motionCamera'] as const) f[name].addEventListener('change', () => callbacks.motion({
       grow: (f.motionGrow as HTMLInputElement).checked, camera: (f.motionCamera as HTMLInputElement).checked }));
+    f.captions.addEventListener('change', () => callbacks.captions((f.captions as HTMLInputElement).checked));
     f.inferencePolicy.addEventListener('change', () => callbacks.config({ inferencePolicy: (f.inferencePolicy as HTMLSelectElement).value as 'latest' | 'restart' }));
     f.minChars.addEventListener('change', () => {
       const value = Math.round(Number((f.minChars as HTMLInputElement).value));
@@ -93,6 +96,8 @@ export class SettingsPanel {
     (this.fields.motionGrow as HTMLInputElement).checked = motion.grow;
     (this.fields.motionCamera as HTMLInputElement).checked = motion.camera;
   }
+
+  syncCaptions(enabled: boolean): void { (this.fields.captions as HTMLInputElement).checked = enabled; }
 
   get placement(): InferencePlacement { return this.inference; }
 

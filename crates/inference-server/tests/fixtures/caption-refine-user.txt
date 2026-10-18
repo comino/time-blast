@@ -1,0 +1,9 @@
+Dialect: DuckDB
+Columns:
+weather(time TIMESTAMP, city VARCHAR, temperature DOUBLE)
+Städte "x"()
+Question: Daily average temperature in Berlin during 2024 
+Previous title: Daily average temperature in Berlin, 2024
+Latest change: Use monthly buckets	instead of daily buckets.
+SQL:
+SELECT date_trunc('month', time) AS month, avg(temperature) AS temperature FROM weather WHERE city = 'Berlin' AND time >= TIMESTAMP '2024-01-01' AND time < TIMESTAMP '2025-01-01' GROUP BY 1 ORDER BY 1

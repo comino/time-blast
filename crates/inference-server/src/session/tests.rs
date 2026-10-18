@@ -166,6 +166,7 @@ async fn harness_with(replies: Vec<Reply>, tweak: impl FnOnce(&mut Config)) -> H
         session_concurrency: 2,
         cache_entries: 64,
         row_check: true,
+        describe: None,
     };
     tweak(&mut config);
     let app = App::new(config).unwrap();
@@ -260,11 +261,13 @@ impl Client {
         self.send(hello()).await;
         let ready = self.recv().await.unwrap();
         assert_eq!(ready.header.kind, Kind::Ready);
-        let ready: Value = serde_json::from_slice(&ready.payload).unwrap();
+        let mut ready: Value = serde_json::from_slice(&ready.payload).unwrap();
+        let capabilities = ready.as_object_mut().unwrap().remove("capabilities").unwrap();
         assert_eq!(
             ready,
-            json!({"node":"inference","name":"time-blast-inference","version":1,"model":"fake/model","capabilities":["edit-context-v1"]})
+            json!({"node":"inference","name":"time-blast-inference","version":1,"model":"fake/model"})
         );
+        assert_eq!(capabilities[0], json!("edit-context-v1"));
         self.send(context()).await;
     }
 }
@@ -714,4 +717,159 @@ async fn budget_refusal_and_origin_checks() {
         .await
         .unwrap_err();
     assert!(refused.starts_with("HTTP/1.1 403"), "{refused}");
+}
+
+// ───────────── DESCRIBE (captions) ─────────────
+
+fn describe_config(endpoint: &str, rpm: u32) -> crate::config::DescribeConfig {
+    crate::config::DescribeConfig {
+        provider: ProviderConfig {
+            endpoint: endpoint.into(),
+            model: "fake/captioner".into(),
+            api_key: None,
+            openrouter: false,
+            reasoning_effort: None,
+            temperature: Some(0.0),
+            max_tokens: 600,
+            timeout: Duration::from_secs(5),
+            max_concurrent: 2,
+            extra: Default::default(),
+        },
+        requests_per_minute: rpm,
+        requests_per_day: 1000,
+        daily_budget_usd: 1.0,
+        cache_entries: 16,
+    }
+}
+async fn caption_harness(replies: Vec<Reply>, rpm: u32, tweak: impl FnOnce(&mut Config)) -> Harness {
+    harness_with(replies, |c| {
+        c.describe = Some(describe_config(&c.provider.endpoint.clone(), rpm));
+        tweak(c);
+    })
+    .await
+}
+fn describe(request: u32, sql: &str) -> Frame {
+    Frame::new(
+        Header { request, ..Header::new(Kind::Describe) },
+        json!({"v":1,"sql":sql,"question":"q","dialect":"duckdb","tables":[]}).to_string(),
+    )
+}
+impl Client {
+    /// HELLO → READY on a caption link: READY advertises describe-v1. No CONTEXT is needed.
+    async fn greet_captions(&mut self) {
+        self.send(hello()).await;
+        let ready: Value = serde_json::from_slice(&self.recv().await.unwrap().payload).unwrap();
+        assert_eq!(ready["capabilities"], json!(["edit-context-v1", "describe-v1"]));
+    }
+}
+
+#[tokio::test]
+async fn describe_returns_a_bounded_caption_from_the_caption_model() {
+    let h = caption_harness(vec![Reply::content(&["TITLE: Flights per", " airline.\nEXPLAIN: Number of flights for each airline."])], 10, |_| {}).await;
+    let mut c = Client::connect(h.addr).await;
+    c.greet_captions().await;
+    c.send(Frame::new(Header { request: 5, ..Header::new(Kind::Describe) }, fixture("caption-create.json").trim().to_string())).await;
+    let frames = c.until(Kind::Description, 5).await;
+    let d = frames.last().unwrap();
+    let body: Value = serde_json::from_slice(&d.payload).unwrap();
+    assert_eq!((body["title"].clone(), body["explanation"].clone()), (json!("Flights per airline"), json!("Number of flights for each airline.")));
+    assert_eq!((body["model"].clone(), body["cached"].clone(), d.header.flags), (json!("fake/model-1"), json!(false), 0));
+    use node::*;
+    use stage::*;
+    assert_eq!(stages(d), [(INFER_RECEIVED, INFERENCE), (PROVIDER_REQUEST, INFERENCE), (FIRST_TOKEN, PROVIDER), (DESCRIPTION_COMPLETE, INFERENCE)]);
+    let requests = h.upstream.requests.lock().unwrap();
+    assert_eq!(requests[0]["model"], json!("fake/captioner"));
+    assert_eq!(requests[0]["max_tokens"], json!(600));
+    assert_eq!(requests[0]["messages"][0], json!({"role":"system","content":fixture("caption-system.txt")}));
+    assert_eq!(requests[0]["messages"][1], json!({"role":"user","content":fixture("caption-create-user.txt")}));
+}
+
+#[tokio::test]
+async fn identical_describe_is_answered_from_the_caption_cache() {
+    let h = caption_harness(vec![Reply::content(&["TITLE: One\nEXPLAIN: The number one."])], 10, |_| {}).await;
+    let mut c = Client::connect(h.addr).await;
+    c.greet_captions().await;
+    c.send(describe(1, "SELECT 1")).await;
+    c.until(Kind::Description, 1).await;
+    c.send(describe(2, "SELECT 1")).await;
+    let cached = c.until(Kind::Description, 2).await.pop().unwrap();
+    assert_eq!(cached.header.flags, flags::CACHED);
+    let body: Value = serde_json::from_slice(&cached.payload).unwrap();
+    assert_eq!((body["title"].clone(), body["model"].clone(), body["cached"].clone()), (json!("One"), json!("fake/captioner"), json!(true)));
+    assert_eq!(h.upstream.requests.lock().unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn translations_neither_cancel_nor_wait_for_a_caption() {
+    // Session concurrency 1: a caption in flight must not make a translation busy, and
+    // cancelling translations by id must not touch the caption.
+    let h = caption_harness(vec![Reply::slow(), Reply::content(&["SELECT 1"]), Reply::content(&["SELECT 2"])], 10, |c| c.session_concurrency = 1).await;
+    let mut c = Client::connect(h.addr).await;
+    c.greet().await;
+    c.send(describe(100, "SELECT 1")).await;
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    c.send(infer(1, 0, "first")).await;
+    let first = c.until(Kind::InferStats, 1).await;
+    assert!(of(&first, Kind::Error).is_empty(), "{first:?}");
+    c.send(cancel(1, 0)).await;
+    c.send(infer(2, 0, "second")).await;
+    let second = c.until(Kind::InferStats, 2).await;
+    assert!(of(&second, Kind::Error).is_empty() && !of(&second, Kind::Sql).is_empty());
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    assert_eq!(h.upstream.dropped.load(Ordering::SeqCst), 2, "only the finished translations' streams closed");
+    // Cancel-all still stops the caption (its upstream stream is dropped).
+    c.send(cancel(0, 1)).await;
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert_eq!(h.upstream.dropped.load(Ordering::SeqCst), 3);
+}
+
+#[tokio::test]
+async fn cancelling_a_caption_by_id_leaves_translations_running() {
+    let h = caption_harness(vec![Reply::slow(), Reply::content(&["SELECT 1"])], 10, |_| {}).await;
+    let mut c = Client::connect(h.addr).await;
+    c.greet().await;
+    c.send(describe(100, "SELECT 1")).await;
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    c.send(cancel(100, 0)).await;
+    c.send(infer(1, 0, "first")).await;
+    let frames = c.until(Kind::InferStats, 1).await;
+    assert!(!of(&frames, Kind::Sql).is_empty());
+    assert!(frames.iter().all(|f| f.header.request != 100), "a cancelled caption sends nothing: {frames:?}");
+}
+
+#[tokio::test]
+async fn caption_budget_and_concurrency_are_separate_from_translation() {
+    // Caption quota 1/min: the second caption is refused; translation admission is untouched.
+    let h = caption_harness(vec![Reply::content(&["TITLE: A\nEXPLAIN: B."]), Reply::content(&["SELECT 1"])], 1, |c| c.requests_per_minute = 1).await;
+    let mut c = Client::connect(h.addr).await;
+    c.greet().await;
+    c.send(describe(100, "SELECT 1")).await;
+    c.until(Kind::Description, 100).await;
+    c.send(describe(101, "SELECT 2")).await;
+    let refused = c.until(Kind::Error, 101).await.pop().unwrap();
+    assert_eq!(serde_json::from_slice::<Value>(&refused.payload).unwrap()["code"], json!("budget"));
+    c.send(infer(1, 0, "first")).await;
+    let frames = c.until(Kind::InferStats, 1).await;
+    assert!(!of(&frames, Kind::Sql).is_empty(), "translation admitted under its own quota: {frames:?}");
+}
+
+#[tokio::test]
+async fn one_caption_in_flight_per_session_and_disabled_nodes_refuse() {
+    let h = caption_harness(vec![Reply::slow()], 10, |_| {}).await;
+    let mut c = Client::connect(h.addr).await;
+    c.greet_captions().await;
+    c.send(describe(1, "SELECT 1")).await;
+    c.send(describe(2, "SELECT 2")).await;
+    let busy = c.until(Kind::Error, 2).await.pop().unwrap();
+    assert_eq!(serde_json::from_slice::<Value>(&busy.payload).unwrap()["code"], json!("busy"));
+    c.send(Frame::new(Header { request: 3, ..Header::new(Kind::Describe) }, r#"{"v":1}"#)).await;
+    let bad = c.until(Kind::Error, 3).await.pop().unwrap();
+    assert_eq!(serde_json::from_slice::<Value>(&bad.payload).unwrap()["code"], json!("bad_request"));
+
+    let off = harness(vec![]).await;
+    let mut c = Client::connect(off.addr).await;
+    c.greet().await;
+    c.send(describe(1, "SELECT 1")).await;
+    let refused = c.until(Kind::Error, 1).await.pop().unwrap();
+    assert_eq!(serde_json::from_slice::<Value>(&refused.payload).unwrap()["code"], json!("unsupported"));
 }

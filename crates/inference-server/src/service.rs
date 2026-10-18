@@ -20,6 +20,7 @@ use tokio::sync::Semaphore;
 use tokio_util::sync::CancellationToken;
 
 use crate::{
+    caption::CaptionCache,
     config::Config,
     infer::{Spent, SqlCache},
     provider::Provider,
@@ -39,7 +40,19 @@ pub struct App {
     pub session_concurrency: usize,
     /// Repair replies that would return raw rows of a large table (`TIME_BLAST_ROW_CHECK`).
     pub row_check: bool,
+    /// DESCRIBE (captions), if enabled. Shares nothing with translation but the process.
+    pub describe: Option<Describer>,
     pub shutdown: CancellationToken,
+}
+
+/// Caption resources: a separate provider client and slot pool, budget, totals and cache, so a
+/// caption can never refuse, delay or cancel a translation (docs/plan-captions.md).
+pub struct Describer {
+    pub provider: Provider,
+    pub model: String,
+    pub budget: Mutex<Budget>,
+    pub totals: Mutex<Totals>,
+    pub cache: CaptionCache,
 }
 
 pub struct Budget {
@@ -122,7 +135,18 @@ impl Totals {
 impl App {
     pub fn new(config: Config) -> Result<Arc<App>, String> {
         let model = config.provider.model.clone();
+        let describe = match config.describe {
+            None => None,
+            Some(d) => Some(Describer {
+                model: d.provider.model.clone(),
+                provider: Provider::new(d.provider)?,
+                budget: Mutex::new(Budget::new(d.requests_per_minute, d.requests_per_day, d.daily_budget_usd)),
+                totals: Mutex::new(Totals::default()),
+                cache: CaptionCache::new(d.cache_entries),
+            }),
+        };
         Ok(Arc::new(App {
+            describe,
             provider: Provider::new(config.provider)?,
             model,
             origins: config.allowed_origins,
@@ -209,9 +233,16 @@ async fn origin_guard(State(app): State<Arc<App>>, request: Request, next: Next)
 }
 
 async fn health(State(app): State<Arc<App>>) -> Json<Value> {
+    let describe = app.describe.as_ref().map(|d| {
+        let (totals, budget) = (d.totals.lock().unwrap(), d.budget.lock().unwrap());
+        json!({"model": d.model, "requests": totals.requests, "cacheHits": totals.cache_hits,
+            "cancelled": totals.cancelled, "failed": totals.failed, "costUsd": totals.cost_usd,
+            "requestsToday": budget.day, "costTodayUsd": budget.day_cost_usd, "dailyBudgetUsd": budget.day_cost_limit_usd})
+    });
     let totals = app.totals.lock().unwrap();
     let budget = app.budget.lock().unwrap();
     Json(json!({
+        "describe": describe,
         "status": "ready",
         "protocol": tb_protocol::SUBPROTOCOL,
         "model": app.model,

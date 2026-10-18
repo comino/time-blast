@@ -163,6 +163,21 @@ anything visible ([batch-2/voice-anticipation.md](batch-2/voice-anticipation.md)
 | 0x36 | `EXECUTION` | coordinator → UI | request, served revision, context, current epoch | JSON `{slot, generation, status: "succeeded" | "failed" | "cancelled"}` |
 | 0x37 | `CANDIDATE` | coordinator → UI | request, served revision, context, epoch | JSON `{slot, generation, sql}` with the exact final SQL, before execution |
 
+### Captions (separate link)
+
+Sent on a **caption link**: a second tb1 connection from the UI (canvas controller) straight to
+an inference node that advertises `describe-v1` in READY. The coordinator never sees these
+frames, and captions never share a socket, slots, budget, cache or epoch with translation
+(see [plan-captions.md](plan-captions.md)).
+
+| Kind | Name | Direction | Header | Payload |
+|---|---|---|---|---|
+| 0x40 | `DESCRIBE` | UI → inference | request (sender-assigned) | JSON `{v: 1, sql, question, dialect, tables: [{name, columns: [[name, type]]}], previousTitle?, change?}`, ≤ 16 KiB |
+| 0x41 | `DESCRIPTION` | inference → UI | request | JSON `{title, explanation, model, cached, usage?}`; flag `CACHED` (0x01) for a cache hit; stamps `INFER_RECEIVED`, `PROVIDER_REQUEST`, `FIRST_TOKEN`, `DESCRIPTION_COMPLETE`. Failures are `ERROR` with `unsupported`, `bad_request`, `busy`, `budget`, `invalid_caption`, `timeout` or `upstream` |
+
+At most one DESCRIBE is in flight per session. `CANCEL` with its request id stops it; `CANCEL`
+with request 0 stops it too. Neither epochs nor translation cancels affect it.
+
 ## Identities and fencing
 
 - **revision**: monotonic per editor, assigned by the UI. A newer revision supersedes older ones.
@@ -370,6 +385,7 @@ Roles: `time`, `category`, `series`, `value`, `measure`, `lat`, `lon`.
 | 16 | `FIRST_DRAW_SUBMITTED` | renderer |
 | 17 | `FIRST_PRESENTED` | renderer, best effort (`onSubmittedWorkDone` / next frame) |
 | 18 | `CACHE_HIT` | coordinator |
+| 19 | `DESCRIPTION_COMPLETE` | inference (captions) |
 
 The headline number is **`KEY_INPUT` of the bound revision → `FIRST_DRAW_SUBMITTED`**, i.e. last
 keystroke → first point. The coordinator keeps one ledger per request and emits it in `TIMING`.

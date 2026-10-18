@@ -5,7 +5,9 @@ Persistent-canvas source updated **2026-10-15**; earlier implementation measurem
 private; the [live synthetic-data demo](https://time-blast.46-224-133-201.sslip.io) is public and,
 since 2026-10-17, **runs the persistent canvas** (charts survive reload, rebuilt from saved SQL)
 and a **server-side DuckDB** with 120 M NYC taxi trips next to the in-browser datasets
-(`8e78830`, [deploy/README.md](../deploy/README.md)).
+(`8e78830`, [deploy/README.md](../deploy/README.md)). Since 2026-10-18 each saved chart revision gets an AI
+**caption** (title + explanation of its SQL) on a separate link, model, budget and cache; measured not
+to slow translation ([plan-captions.md](plan-captions.md)).
 
 ## On `main`: batch 1, complete in source
 

@@ -1,0 +1,6 @@
+Dialect: DuckDB
+Columns:
+flights(flight_date DATE, carrier VARCHAR, origin VARCHAR, dep_delay DOUBLE, cancelled BOOLEAN)
+Question: number of flights per airline
+SQL:
+SELECT carrier, count(*) AS flights FROM flights GROUP BY carrier ORDER BY carrier

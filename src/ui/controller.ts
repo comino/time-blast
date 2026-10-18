@@ -48,6 +48,8 @@ export interface SlotCard {
   hide(): void;
   keep(): void;
   title(text: string, revision: number): void;
+  /** The saved revision's generated caption (title + explanation), or null to show the question. */
+  caption?(caption: { title: string; explanation: string } | null): void;
   result(info: ResultInfo, request: number): void;
   views(available: ViewName[], chosen: ViewName, columns?: Array<{ name: string; role: string }>): void;
   axes(ticks: AxisTicks): void;

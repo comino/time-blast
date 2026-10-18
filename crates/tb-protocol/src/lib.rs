@@ -50,16 +50,20 @@ pub enum Kind {
     Keep = 0x35,
     Execution = 0x36,
     Candidate = 0x37,
+    /// UI → inference (caption link): title + explanation for one saved revision's SQL.
+    Describe = 0x40,
+    /// inference → UI: the caption for a DESCRIBE.
+    Description = 0x41,
 }
 
 impl Kind {
-    pub const ALL: [Kind; 31] = [
+    pub const ALL: [Kind; 33] = [
         Kind::Hello, Kind::Ready, Kind::Context, Kind::Status, Kind::Error, Kind::Config,
         Kind::Draft, Kind::Commit, Kind::Cancel, Kind::Query, Kind::Infer, Kind::SqlDelta, Kind::Sql,
         Kind::InferStats, Kind::Exec, Kind::ResultSchema, Kind::Batch, Kind::Done, Kind::Bind,
         Kind::Unbind, Kind::Drawn, Kind::Result, Kind::Timing, Kind::Keep, Kind::Prime,
         Kind::RegisterTarget, Kind::ReleaseTarget, Kind::EditContext, Kind::EditInfer,
-        Kind::Execution, Kind::Candidate,
+        Kind::Execution, Kind::Candidate, Kind::Describe, Kind::Description,
     ];
 
     pub fn from_u8(value: u8) -> Option<Kind> {
@@ -79,6 +83,7 @@ impl Kind {
             Kind::RegisterTarget => "REGISTER_TARGET", Kind::ReleaseTarget => "RELEASE_TARGET",
             Kind::EditContext => "EDIT_CONTEXT", Kind::EditInfer => "EDIT_INFER",
             Kind::Execution => "EXECUTION", Kind::Candidate => "CANDIDATE",
+            Kind::Describe => "DESCRIBE", Kind::Description => "DESCRIPTION",
         }
     }
 }
@@ -136,6 +141,7 @@ pub mod stage {
     pub const FIRST_DRAW_SUBMITTED: u16 = 16;
     pub const FIRST_PRESENTED: u16 = 17;
     pub const CACHE_HIT: u16 = 18;
+    pub const DESCRIPTION_COMPLETE: u16 = 19;
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

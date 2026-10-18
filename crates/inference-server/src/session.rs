@@ -4,7 +4,7 @@
 //! All decisions live in [`Session`], which is synchronous and IO-free: it consumes decoded
 //! frames and job outputs and returns frames to send. [`run`] wires it to the socket.
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{HashMap, HashSet, VecDeque},
     sync::{
         Arc, Mutex,
         atomic::{AtomicU64, Ordering},
@@ -21,6 +21,7 @@ use tokio::{
 };
 
 use crate::{
+    caption::{self, Caption},
     infer::{self, Job, Outbox, Prepared, Spent, cached_frames, error_frame, now_ms},
     prompt::DatasetContext,
     service::App,
@@ -36,6 +37,8 @@ pub enum Action {
     Send(Frame),
     /// Start this job.
     Spawn(Job),
+    /// Start this caption job (separate provider, budget and bookkeeping).
+    SpawnCaption(caption::Job),
     /// Abort the job for this request (drops its upstream stream).
     Abort(u32),
     /// Protocol violation: send the frame (if any) and close.
@@ -54,30 +57,42 @@ pub struct Session {
     contexts: VecDeque<(u32, Arc<Prepared>)>,
     edits: VecDeque<PreparedEdit>,
     active: HashMap<u32, Active>,
+    /// In-flight DESCRIBE requests. Not epoch-fenced and not counted against `concurrency`:
+    /// typing never cancels a caption; CANCEL for its id or cancel-all (request 0) does.
+    captions: HashSet<u32>,
     concurrency: usize,
     model: String,
+    /// The caption model, if DESCRIBE is offered.
+    describe: Option<String>,
 }
 
+/// At most this many captions in flight per session (the client sends one at a time).
+pub const MAX_CAPTIONS: usize = 1;
+
 impl Session {
-    pub fn new(concurrency: usize, model: String) -> Self {
+    pub fn new(concurrency: usize, model: String, describe: Option<String>) -> Self {
         Session {
             greeted: false,
             epoch: 0,
             contexts: VecDeque::new(),
             edits: VecDeque::new(),
             active: HashMap::new(),
+            captions: HashSet::new(),
             concurrency,
             model,
+            describe,
         }
     }
 
     /// Handle one frame from the peer. `admit` consults the process budget and the shared
     /// SQL cache; it returns Err(message) to refuse, Ok(Some(sql)) for a cache hit.
+    /// `admit_caption` does the same against the caption budget and cache.
     pub fn input(
         &mut self,
         frame: &Frame,
         received_at: f64,
         mut admit: impl FnMut(&Arc<Prepared>, &str) -> Result<Option<Arc<str>>, String>,
+        admit_caption: impl FnOnce(&[u8]) -> Result<Option<Arc<Caption>>, String>,
     ) -> Vec<Action> {
         let h = frame.header;
         if !self.greeted {
@@ -88,7 +103,11 @@ impl Session {
                 )))];
             }
             self.greeted = true;
-            let ready = json!({"node":"inference","name":"time-blast-inference","version":1,"model":self.model,"capabilities":[crate::prompt::EDIT_CAPABILITY]});
+            let mut capabilities = vec![crate::prompt::EDIT_CAPABILITY];
+            if self.describe.is_some() {
+                capabilities.push(caption::CAPABILITY);
+            }
+            let ready = json!({"node":"inference","name":"time-blast-inference","version":1,"model":self.model,"capabilities":capabilities});
             return vec![Action::Send(Frame::new(
                 Header::new(Kind::Ready),
                 ready.to_string(),
@@ -103,8 +122,49 @@ impl Session {
             Kind::Cancel => self.cancel(h.epoch, h.request),
             Kind::Infer | Kind::EditInfer => self.infer(frame, received_at, &mut admit),
             Kind::EditContext => self.edit_context(frame),
+            Kind::Describe => self.describe(frame, received_at, admit_caption),
             // Frames meant for other nodes are ignored, not fatal.
             _ => Vec::new(),
+        }
+    }
+
+    fn describe(
+        &mut self,
+        frame: &Frame,
+        received_at: f64,
+        admit: impl FnOnce(&[u8]) -> Result<Option<Arc<Caption>>, String>,
+    ) -> Vec<Action> {
+        let h = frame.header;
+        let refuse = |code: &str, message: &str| vec![Action::Send(error_frame(&h, code, message))];
+        let Some(model) = self.describe.clone() else {
+            return refuse("unsupported", "This inference node does not write captions.");
+        };
+        if h.request == 0 {
+            return refuse("bad_request", "DESCRIBE needs a request id.");
+        }
+        if self.active.contains_key(&h.request) || self.captions.contains(&h.request) {
+            return refuse("bad_request", "Request id is already active.");
+        }
+        let request = match caption::validate(&frame.payload) {
+            Ok(r) => r,
+            Err(message) => return refuse("bad_request", &message),
+        };
+        if self.captions.len() >= MAX_CAPTIONS {
+            return refuse("busy", "A caption is already in flight on this session.");
+        }
+        match admit(&frame.payload) {
+            Err(message) => refuse("budget", &message),
+            Ok(Some(cached)) => vec![Action::Send(caption::cached_frame(&h, &cached, &model, received_at))],
+            Ok(None) => {
+                self.captions.insert(h.request);
+                vec![Action::SpawnCaption(caption::Job {
+                    header: h,
+                    payload: frame.payload.clone(),
+                    request,
+                    received_at,
+                    progress: Default::default(),
+                })]
+            }
         }
     }
 
@@ -162,11 +222,17 @@ impl Session {
     fn cancel(&mut self, epoch: u32, request: u32) -> Vec<Action> {
         if request == 0 {
             self.epoch = self.epoch.max(epoch);
+            let captions = self.captions.drain().collect::<Vec<_>>();
             return self
                 .active
                 .drain()
-                .map(|(id, _)| Action::Abort(id))
+                .map(|(id, _)| id)
+                .chain(captions)
+                .map(Action::Abort)
                 .collect();
+        }
+        if self.captions.remove(&request) {
+            return vec![Action::Abort(request)];
         }
         match self.active.remove(&request) {
             Some(_) => vec![Action::Abort(request)],
@@ -265,6 +331,12 @@ impl Session {
 
     /// A frame produced by a job. Returns it if it may still leave the process.
     pub fn job_output(&mut self, request: u32, frame: Frame, last: bool) -> Option<Frame> {
+        if self.captions.contains(&request) {
+            if last {
+                self.captions.remove(&request);
+            }
+            return Some(frame);
+        }
         let active = self.active.get(&request)?;
         if active.epoch < self.epoch {
             self.active.remove(&request);
@@ -399,10 +471,11 @@ pub async fn run(app: Arc<App>, upgrade: upgrade::UpgradeFut) {
         }
     });
 
-    let mut session = Session::new(app.session_concurrency, app.model.clone());
+    let mut session = Session::new(app.session_concurrency, app.model.clone(), app.describe.as_ref().map(|d| d.model.clone()));
     let (jobs_out, mut job_frames): (Outbox, _) = mpsc::unbounded_channel();
     let mut jobs: JoinSet<()> = JoinSet::new();
-    let mut handles: HashMap<u32, (AbortHandle, Header, Arc<Mutex<Spent>>)> = HashMap::new();
+    // (abort, header, spend so far, is a caption): captions account against their own budget.
+    let mut handles: HashMap<u32, (AbortHandle, Header, Arc<Mutex<Spent>>, bool)> = HashMap::new();
     let mut last_message = Instant::now();
     let mut heartbeat = tokio::time::interval(Duration::from_secs(25));
     heartbeat.tick().await;
@@ -449,6 +522,13 @@ pub async fn run(app: Arc<App>, upgrade: upgrade::UpgradeFut) {
                         return Ok(Some(sql));
                     }
                     app.budget.lock().unwrap().admit(Instant::now()).map(|_| None).map_err(String::from)
+                }, |payload| {
+                    let Some(d) = app.describe.as_ref() else { return Err("Captions are disabled.".into()) };
+                    if let Some(caption) = d.cache.get(payload) {
+                        d.totals.lock().unwrap().cache_hits += 1;
+                        return Ok(Some(caption));
+                    }
+                    d.budget.lock().unwrap().admit(Instant::now()).map(|_| None).map_err(String::from)
                 });
                 for action in actions {
                     match action {
@@ -459,11 +539,20 @@ pub async fn run(app: Arc<App>, upgrade: upgrade::UpgradeFut) {
                             break 'session;
                         }
                         Action::Abort(request) => {
-                            if let Some((handle, header, progress)) = handles.remove(&request) {
+                            if let Some((handle, header, progress, is_caption)) = handles.remove(&request) {
                                 let finished = handle.is_finished();
                                 handle.abort();
                                 // Speculation cost stays visible: report what is known.
                                 let spent = progress.lock().unwrap().clone();
+                                if is_caption {
+                                    if let (false, Some(d)) = (finished, app.describe.as_ref()) {
+                                        d.budget.lock().unwrap().spend(spent.cost_usd.unwrap_or(0.0));
+                                        let mut totals = d.totals.lock().unwrap();
+                                        totals.cancelled += 1;
+                                        totals.record(&spent, true);
+                                    }
+                                    continue;
+                                }
                                 if !finished {
                                     // A finished job already recorded its own spend.
                                     app.budget.lock().unwrap().spend(spent.cost_usd.unwrap_or(0.0));
@@ -488,7 +577,21 @@ pub async fn run(app: Arc<App>, upgrade: upgrade::UpgradeFut) {
                                 app.budget.lock().unwrap().spend(spent.cost_usd.unwrap_or(0.0));
                                 app.totals.lock().unwrap().record(&spent, result.is_ok());
                             });
-                            handles.insert(request, (handle, header, progress));
+                            handles.insert(request, (handle, header, progress, false));
+                        }
+                        Action::SpawnCaption(job) => {
+                            let Some(d) = app.describe.as_ref() else { continue };
+                            let (request, header, progress) = (job.header.request, job.header, job.progress.clone());
+                            let app = app.clone();
+                            let out = jobs_out.clone();
+                            d.totals.lock().unwrap().requests += 1;
+                            let handle = jobs.spawn(async move {
+                                let d = app.describe.as_ref().expect("describe is configured");
+                                let (spent, result) = caption::run(&d.provider, &d.cache, &job, &out).await;
+                                d.budget.lock().unwrap().spend(spent.cost_usd.unwrap_or(0.0));
+                                d.totals.lock().unwrap().record(&spent, result.is_ok());
+                            });
+                            handles.insert(request, (handle, header, progress, true));
                         }
                     }
                 }

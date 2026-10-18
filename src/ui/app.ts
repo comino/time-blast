@@ -112,6 +112,8 @@ canvasPanel = new CanvasPanel(root, () => controller.session, {
   discardDraft: id => controller.discardDraft(id), rebindChart: id => controller.rebindChart(id),
   sourceInfo: () => ({ name: controller.defaultSourceId ? controller.model?.sources.get(controller.defaultSourceId)?.name ?? 'Choose a source' : 'Choose a source', detail: 'Used for new charts; existing charts keep their own source.' }),
   chooseSource: () => q<HTMLDialogElement>('settings-dialog').showModal(),
+  caption: id => { const r = controller.model?.revisions.get(id); return r ? controller.captions.get(id, r.sql) : undefined; },
+  captionVersion: () => controller.captions.version,
 });
 worker.addEventListener('message', (event: MessageEvent) => controller.receive(event.data));
 worker.addEventListener('error', event => { event.preventDefault(); rail.error({ code: 'worker', message: 'The engine worker failed to start', detail: event.message }, 0); });
@@ -161,7 +163,9 @@ const applyMotion = (value: MotionSettings) => {
   board.smooth = board.autoFit = value.camera;
 };
 applyMotion(motion);
-const persist = () => { const { freeSlots: _, ...coordinator } = controller.config; saveSettings({ inference, coordinator, ...(stored.motion || motionChanged ? { motion } : {}), focus }); };
+let captions = stored.captions ?? true;
+controller.setCaptions(captions);
+const persist = () => { const { freeSlots: _, ...coordinator } = controller.config; saveSettings({ inference, coordinator, ...(stored.motion || motionChanged ? { motion } : {}), focus, captions }); };
 // Focus: only the canvas and the chat. The board's viewport changes size, so refit the camera.
 let focus = stored.focus ?? false;
 const applyFocus = (value: boolean) => {
@@ -197,8 +201,10 @@ const settings = new SettingsPanel(root, inference, initialConfig, {
   dataset: source => chooseDataset(source),
   config: patch => applyConfig(patch),
   motion: value => { motionChanged = true; applyMotion(value); persist(); },
+  captions: value => { captions = value; controller.setCaptions(value); persist(); },
 }, envEndpoint);
 settings.syncMotion(motion);
+settings.syncCaptions(captions);
 toggles.forEach(t => t.addEventListener('click', () => { const key = t.dataset.toggle as 'live' | 'speculate'; applyConfig({ [key]: !controller.config[key] }); }));
 syncToggles(initialConfig);
 q('placement-label').textContent = describePlacement(inference);
