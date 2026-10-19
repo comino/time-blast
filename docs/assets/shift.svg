@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760" role="img" aria-label="The shift: from hard-coded APIs, to agents translating at runtime, to time-blast, where intention and query live in the app and only the model and the database are outside">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#c7e3dc"/></marker>
+    <marker id="t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#61dfbf"/></marker>
+    <marker id="y" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#ffd27a"/></marker>
+    <symbol id="person" viewBox="0 0 30 50"><circle cx="15" cy="9" r="8" fill="none" stroke="#c7e3dc" stroke-width="2.5"/><path d="M3 48V30a12 12 0 0 1 24 0v18" fill="none" stroke="#c7e3dc" stroke-width="2.5"/></symbol>
+    <symbol id="db" viewBox="0 0 60 70"><path d="M4 12v46c0 6 12 10 26 10s26-4 26-10V12" fill="#0d1d2a" stroke="#61dfbf" stroke-width="2.5"/><ellipse cx="30" cy="12" rx="26" ry="9" fill="#12293a" stroke="#61dfbf" stroke-width="2.5"/><path d="M4 30c0 6 12 10 26 10s26-4 26-10M4 45c0 6 12 10 26 10s26-4 26-10" fill="none" stroke="#61dfbf" stroke-opacity=".5" stroke-width="2"/></symbol>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0b1825"/><stop offset="1" stop-color="#050b12"/></linearGradient>
+  </defs>
+  <rect width="1280" height="760" fill="url(#bg)"/>
+
+  <g font-family="DM Sans, Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" fill="#c7e3dc">
+
+    <!-- ① today -->
+    <rect x="32" y="32" width="390" height="440" rx="18" fill="#0e1b28" stroke="#ffffff" stroke-opacity=".08"/>
+    <text x="60" y="76" font-family="'IBM Plex Mono', Menlo, Consolas, monospace" font-size="15" letter-spacing="3" fill="#f1b9aa">① TODAY</text>
+    <text x="60" y="110" font-size="26" font-weight="700" fill="#e8f6f3">I → A → Q, hard-coded</text>
+    <use href="#person" x="52" y="225" width="30" height="50"/>
+    <rect x="96" y="214" width="76" height="72" rx="10" fill="#12293a" stroke="#c7e3dc" stroke-opacity=".6" stroke-width="2"/>
+    <text x="134" y="244" text-anchor="middle" font-size="15" fill="#719b9b">App</text>
+    <text x="134" y="272" text-anchor="middle" font-size="24" font-weight="700" fill="#e8f6f3">I</text>
+    <path d="M176 250H204" stroke="#c7e3dc" stroke-width="2" marker-end="url(#a)"/>
+    <rect x="208" y="186" width="118" height="128" rx="14" fill="#2a1a1a" fill-opacity=".5" stroke="#f1b9aa" stroke-width="2" stroke-dasharray="7 5"/>
+    <text x="267" y="216" text-anchor="middle" font-size="18" font-weight="700" fill="#f1b9aa">API</text>
+    <text x="267" y="252" text-anchor="middle" font-size="24" font-weight="700" fill="#e8f6f3">A</text>
+    <text x="267" y="272" text-anchor="middle" font-size="13" fill="#c99a90">analytics</text>
+    <text x="267" y="296" text-anchor="middle" font-size="24" font-weight="700" fill="#e8f6f3">Q</text>
+    <path d="M330 250H346" stroke="#c7e3dc" stroke-width="2" marker-end="url(#a)"/>
+    <use href="#db" x="350" y="222" width="50" height="58"/>
+    <text x="60" y="380" font-size="17">Developers turn intentions into</text>
+    <text x="60" y="404" font-size="17">endpoints. Every new question</text>
+    <text x="60" y="428" font-size="17">is a <tspan fill="#f1b9aa" font-weight="700">ticket, a sprint, a deploy.</tspan></text>
+
+    <!-- ② the shift -->
+    <rect x="445" y="32" width="390" height="440" rx="18" fill="#0e1b28" stroke="#ffffff" stroke-opacity=".08"/>
+    <text x="473" y="76" font-family="'IBM Plex Mono', Menlo, Consolas, monospace" font-size="15" letter-spacing="3" fill="#ffd27a">② THE SHIFT</text>
+    <text x="473" y="110" font-size="26" font-weight="700" fill="#e8f6f3">AI eats the backend</text>
+    <use href="#person" x="465" y="225" width="30" height="50"/>
+    <rect x="509" y="214" width="76" height="72" rx="10" fill="#12293a" stroke="#c7e3dc" stroke-opacity=".6" stroke-width="2"/>
+    <text x="547" y="244" text-anchor="middle" font-size="15" fill="#719b9b">App</text>
+    <text x="547" y="272" text-anchor="middle" font-size="24" font-weight="700" fill="#e8f6f3">I</text>
+    <path d="M589 250H617" stroke="#c7e3dc" stroke-width="2" marker-end="url(#a)"/>
+    <rect x="621" y="200" width="104" height="100" rx="14" fill="#2b2412" fill-opacity=".6" stroke="#ffd27a" stroke-width="2"/>
+    <text x="673" y="230" text-anchor="middle" font-size="16" font-weight="700" fill="#ffd27a">agent</text>
+    <text x="673" y="262" text-anchor="middle" font-size="24" font-weight="700" fill="#e8f6f3">I → Q</text>
+    <text x="673" y="285" text-anchor="middle" font-size="13" fill="#d8b56a">on request</text>
+    <path d="M729 228C750 222 755 222 768 228" fill="none" stroke="#ffd27a" stroke-width="2" marker-end="url(#y)"/>
+    <path d="M768 272C755 278 750 278 729 272" fill="none" stroke="#ffd27a" stroke-width="2" marker-end="url(#y)"/>
+    <text x="748" y="215" text-anchor="middle" font-family="'IBM Plex Mono', Menlo, Consolas, monospace" font-size="11" fill="#d8b56a">SQL ×n</text>
+    <use href="#db" x="770" y="222" width="50" height="58"/>
+    <text x="473" y="380" font-size="17">An agent explores the database</text>
+    <text x="473" y="404" font-size="17">with SQL and writes the query itself.</text>
+    <text x="473" y="428" font-size="17">It works, but takes <tspan fill="#ffd27a" font-weight="700">10 s to a minute.</tspan></text>
+
+    <!-- ③ time-blast -->
+    <rect x="858" y="32" width="390" height="440" rx="18" fill="#0c2226" stroke="#61dfbf" stroke-opacity=".55" stroke-width="2"/>
+    <text x="886" y="76" font-family="'IBM Plex Mono', Menlo, Consolas, monospace" font-size="15" letter-spacing="3" fill="#61dfbf">③ TIME-BLAST</text>
+    <text x="886" y="110" font-size="26" font-weight="700" fill="#e8f6f3">…and how fast can it get?</text>
+    <use href="#person" x="878" y="225" width="30" height="50"/>
+    <rect x="922" y="150" width="112" height="196" rx="12" fill="#12293a" stroke="#61dfbf" stroke-width="2"/>
+    <text x="978" y="176" text-anchor="middle" font-size="14" fill="#74d4c3">chat + canvas</text>
+    <text x="978" y="226" text-anchor="middle" font-size="40" font-weight="700" fill="#e8f6f3">I</text>
+    <text x="978" y="316" text-anchor="middle" font-size="40" font-weight="700" fill="#e8f6f3">Q</text>
+    <path d="M1004 212L1090 192" stroke="#61dfbf" stroke-width="2.5" marker-end="url(#t)"/>
+    <path d="M1096 222L1006 294" stroke="#61dfbf" stroke-width="2.5" marker-end="url(#t)"/>
+    <text x="1118" y="196" text-anchor="middle" font-size="36" font-weight="700" fill="#61dfbf">A</text>
+    <text x="1118" y="220" text-anchor="middle" font-size="13" fill="#74d4c3">LLM writes SQL</text>
+    <path d="M1036 310L1158 318" stroke="#c7e3dc" stroke-width="2" marker-end="url(#a)"/>
+    <use href="#db" x="1162" y="288" width="54" height="62"/>
+    <text x="886" y="380" font-size="17">We hold the intention together; the</text>
+    <text x="886" y="404" font-size="17">canvas holds the query. No API.</text>
+    <text x="886" y="428" font-size="17"><tspan fill="#61dfbf" font-weight="700">547 ms</tspan> from keystroke to chart,</text>
+    <text x="886" y="452" font-size="17"><tspan fill="#61dfbf" font-weight="700">~40 ms</tspan> of it ours. Every ms squeezed.</text>
+
+    <!-- ④ next -->
+    <rect x="32" y="496" width="1216" height="232" rx="18" fill="#0e1b28" stroke="#ffffff" stroke-opacity=".08"/>
+    <text x="60" y="540" font-family="'IBM Plex Mono', Menlo, Consolas, monospace" font-size="15" letter-spacing="3" fill="#74d4c3">④ NEXT: SMALL MODELS, IN THE BROWSER</text>
+    <use href="#person" x="60" y="598" width="30" height="50"/>
+    <rect x="104" y="574" width="220" height="100" rx="12" fill="#12293a" stroke="#61dfbf" stroke-width="2" stroke-dasharray="7 5"/>
+    <text x="214" y="596" text-anchor="middle" font-size="14" fill="#74d4c3">the browser</text>
+    <text x="146" y="644" text-anchor="middle" font-size="36" font-weight="700" fill="#e8f6f3">I</text>
+    <text x="214" y="644" text-anchor="middle" font-size="36" font-weight="700" fill="#61dfbf">A</text>
+    <text x="282" y="644" text-anchor="middle" font-size="36" font-weight="700" fill="#e8f6f3">Q</text>
+    <path d="M162 632H190" stroke="#61dfbf" stroke-width="2.5" marker-end="url(#t)"/><path d="M234 632H262" stroke="#61dfbf" stroke-width="2.5" marker-end="url(#t)"/>
+    <path d="M328 624H372" stroke="#c7e3dc" stroke-width="2" marker-end="url(#a)"/>
+    <use href="#db" x="376" y="596" width="50" height="58"/>
+    <text x="458" y="606" font-size="17">The same protocol runs the model in the tab.</text>
+    <text x="458" y="630" font-size="17">Small models are almost good enough.</text>
+    <text x="458" y="654" font-size="17">When they are, the loop never leaves the browser.</text>
+    <line x1="866" y1="540" x2="866" y2="684" stroke="#ffffff" stroke-opacity=".1" stroke-width="2"/>
+    <text x="892" y="598" font-size="36" font-weight="700" fill="#f1b9aa">API is dying.</text>
+    <text x="892" y="660" font-size="36" font-weight="700" fill="#ffd27a">DB is all you need.</text>
+  </g>
+</svg>

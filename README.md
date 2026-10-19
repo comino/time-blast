@@ -1,6 +1,36 @@
-# time-blast
+<p align="center">
+  <a href="https://time-blast.46-224-133-201.sslip.io"><img src="docs/assets/hero.svg" alt="time-blast: the API is dying, the database is all you need" width="100%"></a>
+</p>
 
-**Research into one loop — natural language → SQL → execute → see it — made so fast that the answer is there the moment you stop thinking about what you want.**
+<p align="center">
+  <b>Ask your data a question. The chart is there before you finish typing.</b><br>
+  <a href="https://time-blast.46-224-133-201.sslip.io">Live demo</a> · <a href="docs/vision.md">Vision</a> · <a href="docs/status.md">What's measured</a>
+</p>
+
+## The big picture
+
+<p align="center"><img src="docs/assets/shift.svg" alt="Today, intention becomes a query through a hand-written API. Agents can do that translation at runtime, but slowly. time-blast does it in about half a second, with only the model and the database outside the app." width="100%"></p>
+
+Every data app does the same thing: it takes an **intention** (I) from the user, runs it through
+**analytics** (A) and sends a **query** (Q) to the database.
+
+1. **Today, I → A → Q is hard-coded.** Developers turn intentions into API endpoints, and every
+   new question is a ticket, a sprint and a deploy. The API *is* the frozen translation.
+2. **AI eats the backend.** An agent can do the translation at runtime: it explores the database
+   with SQL and writes the query itself. It works, but in our agent experiments it takes 10 s to a
+   minute per question.
+3. **time-blast asks how fast that loop can get, and squeezes every millisecond for its own
+   sake.** There is no API. The chat and the canvas hold the intention, the model turns it into
+   SQL, and the canvas keeps the query. Only the model and the database are outside the app.
+   Measured on the live demo: **547 ms** from last keystroke to chart with hosted inference, of
+   which our own pipeline is **~40 ms**.
+4. **Next, the model moves into the browser.** The same protocol already runs inference in the
+   tab. Small models are close to good enough; once they are, the whole loop is the browser and
+   the database.
+
+The API is dying. **The database is all you need.**
+
+## What drives the work
 
 Two questions drive everything:
 
