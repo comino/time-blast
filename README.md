@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://time-blast.46-224-133-201.sslip.io"><img src="docs/assets/hero.svg" alt="time-blast: the API is dying, the database is all you need" width="100%"></a>
+  <a href="https://time-blast.46-224-133-201.sslip.io"><img src="docs/assets/hero.svg" alt="time-blast: the API is dying, the database + AI is all you need" width="100%"></a>
 </p>
 
 <p align="center">
@@ -32,7 +32,7 @@ Every data app does the same thing: it takes an **intention** (I) from the user,
    tab. Small models are close to good enough; once they are, the whole loop is the browser and
    the database.
 
-The API is dying. **The database is all you need.**
+The API is dying. **The database + AI is all you need.**
 
 ## See it
 

@@ -25,7 +25,7 @@
   <g font-family="DM Sans, Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
     <text x="72" y="92" fill="#719b9b" font-family="'IBM Plex Mono', SFMono-Regular, Menlo, Consolas, monospace" font-size="18" letter-spacing="4">INTENTION → SQL → PIXELS</text>
     <text x="68" y="182" fill="#e8f6f3" font-size="104" font-weight="700" letter-spacing="-3">time<tspan fill="#61dfbf">-</tspan>blast</text>
-    <text x="72" y="236" fill="#c7e3dc" font-size="30" font-weight="500">The API is dying. <tspan fill="#ffd27a" font-weight="700">The database is all you need.</tspan></text>
+    <text x="72" y="236" fill="#c7e3dc" font-size="30" font-weight="500">The API is dying. <tspan fill="#ffd27a" font-weight="700">The database + AI is all you need.</tspan></text>
     <g font-family="'IBM Plex Mono', SFMono-Regular, Menlo, Consolas, monospace" font-size="16">
       <rect x="72" y="274" width="290" height="40" rx="20" fill="#0a1a22" fill-opacity=".92" stroke="#61dfbf" stroke-opacity=".5"/>
       <text x="217" y="299" fill="#c4fff0" text-anchor="middle">a chart on every keystroke</text>

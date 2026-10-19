@@ -88,7 +88,7 @@
     <text x="458" y="630" font-size="17">Small models are almost good enough.</text>
     <text x="458" y="654" font-size="17">When they are, the loop never leaves the browser.</text>
     <line x1="866" y1="540" x2="866" y2="684" stroke="#ffffff" stroke-opacity=".1" stroke-width="2"/>
-    <text x="892" y="598" font-size="36" font-weight="700" fill="#f1b9aa">API is dying.</text>
-    <text x="892" y="660" font-size="36" font-weight="700" fill="#ffd27a">DB is all you need.</text>
+    <text x="892" y="598" font-size="32" font-weight="700" fill="#f1b9aa">API is dying.</text>
+    <text x="892" y="660" font-size="32" font-weight="700" fill="#ffd27a">DB + AI is all you need.</text>
   </g>
 </svg>
