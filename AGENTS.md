@@ -76,5 +76,5 @@ it historical in `docs/README.md`; don't leave two truths side by side.
 
 ## Repo conventions
 
-- Default branch `main`, remote `comino/time-blast` (private). The demo is public.
+- Default branch `main`, remote `comino/time-blast` (public since 2026-10-19, MIT), as is the demo.
 - This host is a small ARM64 box (2 cores, ~3.7 GB RAM): no heavy builds or model runs here.

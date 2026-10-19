@@ -2,7 +2,7 @@
 
 Persistent-canvas source updated **2026-10-15**; earlier implementation measurements **2026-10-11**
 (batches 1–3 merged; see Deployed for what runs live). Direction: [vision.md](vision.md). The source repository is
-private; the [live synthetic-data demo](https://time-blast.46-224-133-201.sslip.io) is public and,
+public (MIT, since 2026-10-19); the [live synthetic-data demo](https://time-blast.46-224-133-201.sslip.io) is public and,
 since 2026-10-17, **runs the persistent canvas** (charts survive reload, rebuilt from saved SQL)
 and a **server-side DuckDB** with 120 M NYC taxi trips next to the in-browser datasets
 (`8e78830`, [deploy/README.md](../deploy/README.md)). Since 2026-10-18 each saved chart revision gets an AI
