@@ -2,6 +2,7 @@
   "name": "time-blast",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@10.29.3",
   "engines": { "node": "^20.19.0 || >=22.12.0" },
