@@ -9,7 +9,7 @@
 
 > [!NOTE]
 > **time-blast is not a product.** It's an experiment: research and exploration into new ways to
-> interact with data, time series and beyond. Please don't build anything on top of it.
+> interact with time-series data. Please don't build anything on top of it.
 
 ## The big picture
 
