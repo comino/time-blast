@@ -7,6 +7,10 @@
   <a href="https://time-blast.46-224-133-201.sslip.io">Live demo</a> · <a href="docs/vision.md">Vision</a> · <a href="docs/status.md">What's measured</a>
 </p>
 
+> [!NOTE]
+> **time-blast is not a product.** It's an experiment: research and exploration into new ways to
+> interact with data, time series and beyond. Expect rough edges, fast changes and strong opinions.
+
 ## The big picture
 
 <p align="center"><img src="docs/assets/shift.svg" alt="Today, intention becomes a query through a hand-written API. Agents can do that translation at runtime, but slowly. time-blast does it in about half a second, with only the model and the database outside the app." width="100%"></p>
