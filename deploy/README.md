@@ -2,7 +2,7 @@
 
 The public synthetic-data demo is served at
 https://time-blast.46-224-133-201.sslip.io by the host's existing Caddy service.
-The GitHub repository remains private. Caddy exposes the Rust tb1 inference service at
+The GitHub repository is public (MIT, since 2026-10-19). Caddy exposes the Rust tb1 inference service at
 `/api/inference/`; the coordinator, DuckDB and rendering run in the visiting browser
 (engine worker). The server's default profile is `openai/gpt-oss-120b` on Groq, reasoning low
 ([batch-2/inference.md](../docs/batch-2/inference.md)).
