@@ -14,6 +14,7 @@ optimization is worth it. Those questions are settled.
 No test environment. A change is done when it is merged to `main` with the gate green and shown
 working in a throwaway dev server or preview. The public demo is Sven's live install: only he
 deploys it ([deploy/README.md](deploy/README.md)).
+Merge with `scripts/merge.sh <PR>` only: it runs `bx merge-check` on the PR head and merges that head.
 
 ## What is live
 `curl -s https://time-blast.46-224-133-201.sslip.io/ | shasum -a 256` names the static release:
