@@ -1,7 +1,7 @@
 //! End to end against a real ClickHouse: the server on a loopback port, a raw `tb1`
 //! WebSocket client, the vessels fixture in `time_blast_dev.telemetry`
 //! (scripts/clickhouse-vessels.sh). Skips (passes with a note) when ClickHouse or the
-//! fixture is not reachable.
+//! fixture is not reachable, unless TIME_BLAST_REQUIRE_CLICKHOUSE is set: then it fails.
 //!
 //!   TIME_BLAST_TEST_CLICKHOUSE_URL       default http://127.0.0.1:18123
 //!   TIME_BLAST_TEST_CLICKHOUSE_DATABASE  default time_blast_dev
@@ -44,6 +44,9 @@ async fn fixture_ready() -> bool {
     match clickhouse("SELECT count() FROM telemetry").await.as_deref() {
         Some("1209600") => true,
         other => {
+            if std::env::var_os("TIME_BLAST_REQUIRE_CLICKHOUSE").is_some() {
+                panic!("ClickHouse fixture required but not reachable at {} ({other:?})", clickhouse_url());
+            }
             eprintln!("SKIP: ClickHouse fixture not reachable at {} ({other:?}); run scripts/clickhouse-vessels.sh", clickhouse_url());
             false
         }
