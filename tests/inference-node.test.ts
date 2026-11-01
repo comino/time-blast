@@ -37,7 +37,7 @@ describe('SQL extraction twin of crates/inference-server/src/sql.rs', () => {
     alias: Array<{ sql: string; error: string | null }>;
     nested: Array<{ sql: string; error: string | null }>;
   };
-  it.each(cases.stream)('streams $chunks', ({ chunks, deltas, sql }) => {
+  it.each(cases.stream)('streams %# $chunks', ({ chunks, deltas, sql }) => {
     const stream = new SqlStream();
     let seen = '';
     for (const chunk of chunks) {
@@ -47,7 +47,7 @@ describe('SQL extraction twin of crates/inference-server/src/sql.rs', () => {
     expect(seen).toBe(deltas);
     expect(stream.finish()).toBe(sql);
   });
-  it.each(cases.rows)('row pre-check $sql', ({ sql, error }) => {
+  it.each(cases.rows)('row pre-check %# $sql', ({ sql, error }) => {
     const { large, time } = rowCheckInputs(vessels);
     expect(large).toEqual([['telemetry', 1209600]]);
     expect(time).toEqual(['ts']);
@@ -55,17 +55,17 @@ describe('SQL extraction twin of crates/inference-server/src/sql.rs', () => {
     if (error === null) expect(reason).toBeUndefined();
     else expect(reason).toContain(error);
   });
-  it.each(cases.alias)('keyword alias $sql', ({ sql, error }) => {
+  it.each(cases.alias)('keyword alias %# $sql', ({ sql, error }) => {
     const reason = keywordAlias(sql);
     if (error === null) expect(reason).toBeUndefined();
     else expect(reason).toContain(error);
   });
-  it.each(cases.nested)('nested window $sql', ({ sql, error }) => {
+  it.each(cases.nested)('nested window %# $sql', ({ sql, error }) => {
     const reason = nestedWindow(sql);
     if (error === null) expect(reason).toBeUndefined();
     else expect(reason).toContain(error);
   });
-  it.each(cases.check)('checks $sql', ({ sql, error }) => {
+  it.each(cases.check)('checks %# $sql', ({ sql, error }) => {
     const reason = check(sql);
     if (error === null) expect(reason).toBeUndefined();
     else expect(reason).toContain(error);

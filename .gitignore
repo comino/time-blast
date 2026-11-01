@@ -17,3 +17,6 @@ public/data/vessels/
 public/data/flights-2024/
 public/data/nyc-taxi/
 public/data/.build-*
+
+# bx gate reports (junit)
+.bx-reports/
